@@ -408,8 +408,6 @@ return [
     // Settings: Indexing
     'Auto-Index Elements' => 'Indicizzazione automatica degli elementi',
     'Automatically index elements when they are saved' => 'Indicizza automaticamente gli elementi al salvataggio',
-    'Queue Enabled' => 'Coda abilitata',
-    'Use queue for indexing operations (recommended for production)' => 'Utilizza la coda per le operazioni di indicizzazione (consigliato per la produzione)',
     'Batch Size' => 'Dimensione del batch',
     'Number of elements to index in each batch' => 'Numero di elementi da indicizzare in ciascun batch',
     'Index Prefix' => 'Prefisso dell\'indice',
@@ -1911,7 +1909,6 @@ return [
     'This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>ngramSizes</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>pendingMaxAge</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>pendingMaxAge</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>phraseBoostFactor</code> in <code>config/search-manager.php</code>.',
-    'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>queueEnabled</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>replaceNativeSearch</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>requireApiKey</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>similarityThreshold</code> in <code>config/search-manager.php</code>.',

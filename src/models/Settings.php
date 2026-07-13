@@ -109,11 +109,6 @@ class Settings extends Model
     public int $batchMaxAttempts = 5;
 
     /**
-     * @var bool Use queue for indexing operations
-     */
-    public bool $queueEnabled = true;
-
-    /**
      * @var bool Replace Craft's native search service (CP and ElementQuery search)
      */
     public bool $replaceNativeSearch = false;
@@ -400,7 +395,6 @@ class Settings extends Model
     {
         return [
             'autoIndex',
-            'queueEnabled',
             'replaceNativeSearch',
             'requireApiKey',
             'enableAnalytics',
@@ -480,7 +474,7 @@ class Settings extends Model
         return array_merge([
             [['indexPrefix'], 'string', 'max' => 50],
             [['indexPrefix'], 'match', 'pattern' => '/^[a-zA-Z0-9_-]+$/', 'skipOnEmpty' => true, 'message' => Craft::t('search-manager', 'Index Prefix may contain only letters, numbers, underscores, and hyphens.')],
-            [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'highlightResultsEnabled', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
+            [['autoIndex', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'highlightResultsEnabled', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
             [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
             [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
@@ -530,7 +524,6 @@ class Settings extends Model
             'batchFlushInterval' => Craft::t('search-manager', 'Batch Flush Interval'),
             'pendingMaxAge' => Craft::t('search-manager', 'Pending Max Age'),
             'batchMaxAttempts' => Craft::t('search-manager', 'Batch Max Attempts'),
-            'queueEnabled' => Craft::t('search-manager', 'Queue Enabled'),
             'replaceNativeSearch' => Craft::t('search-manager', 'Replace Native Search'),
             'requireApiKey' => Craft::t('search-manager', 'Require API Key'),
             'statusSyncInterval' => Craft::t('search-manager', 'Status Sync Interval'),

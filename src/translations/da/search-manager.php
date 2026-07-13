@@ -408,8 +408,6 @@ return [
     // Settings: Indexing
     'Auto-Index Elements' => 'Auto-indekser elementer',
     'Automatically index elements when they are saved' => 'Indekser automatisk elementer når de gemmes',
-    'Queue Enabled' => 'Kø aktiveret',
-    'Use queue for indexing operations (recommended for production)' => 'Brug kø til indekseringsoperationer (anbefales til produktion)',
     'Batch Size' => 'Batchstørrelse',
     'Number of elements to index in each batch' => 'Antal elementer der skal indekseres i hver batch',
     'Index Prefix' => 'Indekspræfiks',
@@ -1911,7 +1909,6 @@ return [
     'This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>.' => 'Dette tilsidesættes af indstillingen <code>ngramSizes</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>pendingMaxAge</code> setting in <code>config/search-manager.php</code>.' => 'Dette tilsidesættes af indstillingen <code>pendingMaxAge</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'Dette tilsidesættes af indstillingen <code>phraseBoostFactor</code> i <code>config/search-manager.php</code>.',
-    'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'Dette tilsidesættes af indstillingen <code>queueEnabled</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'Dette tilsidesættes af indstillingen <code>replaceNativeSearch</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'Dette tilsidesættes af indstillingen <code>requireApiKey</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'Dette tilsidesættes af indstillingen <code>similarityThreshold</code> i <code>config/search-manager.php</code>.',

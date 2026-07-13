@@ -101,26 +101,20 @@ SearchManager::$plugin->backend->clearAllSearchCache();
 
 Handles element indexing operations.
 
-### `indexElement(element, queue)`
+### `indexElement(element)`
 
-Index a single element. By default, uses the pending-sync buffer if `queueEnabled` is true; `BatchSyncJob` drains that buffer so rapid repeated saves collapse into one pending row per index/site/element/op.
+Index a single element through the pending-sync buffer. `BatchSyncJob` drains that buffer so rapid repeated saves collapse into one pending row per index/site/element/op. Use `indexElementNow()` only when a caller genuinely needs inline indexing.
 
 ```php
 use lindemannrock\searchmanager\SearchManager;
 
 $entry = \craft\elements\Entry::find()->id(123)->one();
 SearchManager::$plugin->indexing->indexElement($entry);
-
-// Force immediate indexing (bypass queue)
-SearchManager::$plugin->indexing->indexElement($entry, false);
-
-// Force pending-sync buffer indexing
-SearchManager::$plugin->indexing->indexElement($entry, true);
 ```
 
 ### `indexElementNow(element)`
 
-Index a single element immediately, bypassing the queue.
+Index a single element immediately, bypassing the pending-sync buffer.
 
 ```php
 SearchManager::$plugin->indexing->indexElementNow($entry);

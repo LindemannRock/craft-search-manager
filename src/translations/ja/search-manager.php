@@ -408,8 +408,6 @@ return [
     // Settings: Indexing
     'Auto-Index Elements' => 'エレメントの自動インデックス',
     'Automatically index elements when they are saved' => '保存時にエレメントを自動的にインデックスする',
-    'Queue Enabled' => 'キュー有効',
-    'Use queue for indexing operations (recommended for production)' => 'インデックス操作にキューを使用（本番環境に推奨）',
     'Batch Size' => 'バッチサイズ',
     'Number of elements to index in each batch' => '各バッチでインデックスするエレメントの数',
     'Index Prefix' => 'インデックスプレフィックス',
@@ -1911,7 +1909,6 @@ return [
     'This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>ngramSizes</code> 設定によりオーバーライドされています。',
     'This is being overridden by the <code>pendingMaxAge</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>pendingMaxAge</code> 設定によりオーバーライドされています。',
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>phraseBoostFactor</code> 設定によりオーバーライドされています。',
-    'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>queueEnabled</code> 設定によりオーバーライドされています。',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>replaceNativeSearch</code> 設定によりオーバーライドされています。',
     'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>requireApiKey</code> 設定によりオーバーライドされています。',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>similarityThreshold</code> 設定によりオーバーライドされています。',

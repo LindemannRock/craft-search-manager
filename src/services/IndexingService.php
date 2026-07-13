@@ -57,30 +57,19 @@ class IndexingService extends Component
      * Index a single element
      *
      * @param ElementInterface $element
-     * @param bool|null $queue
      * @return bool
      */
-    public function indexElement(ElementInterface $element, ?bool $queue = null): bool
+    public function indexElement(ElementInterface $element): bool
     {
-        // Use queue setting if not specified
-        if ($queue === null) {
-            $queue = SearchManager::$plugin->getSettings()->queueEnabled;
-        }
+        $queued = SearchManager::$plugin->pendingSyncs->queueForElement($element, PendingSyncRepository::OP_UPSERT);
 
-        if ($queue) {
-            $queued = SearchManager::$plugin->pendingSyncs->queueForElement($element, PendingSyncRepository::OP_UPSERT);
+        $this->logDebug('Queued element for pending sync', [
+            'elementId' => $element->id,
+            'elementType' => get_class($element),
+            'rows' => $queued,
+        ]);
 
-            $this->logDebug('Queued element for pending sync', [
-                'elementId' => $element->id,
-                'elementType' => get_class($element),
-                'rows' => $queued,
-            ]);
-
-            return true;
-        }
-
-        // Index immediately
-        return $this->indexElementNow($element);
+        return true;
     }
 
     /**

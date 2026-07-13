@@ -408,8 +408,6 @@ return [
     // Settings: Indexing
     'Auto-Index Elements' => 'فهرسة العناصر تلقائياً',
     'Automatically index elements when they are saved' => 'فهرسة العناصر تلقائياً عند حفظها',
-    'Queue Enabled' => 'قائمة الانتظار مفعّلة',
-    'Use queue for indexing operations (recommended for production)' => 'استخدام قائمة الانتظار لعمليات الفهرسة (موصى به للإنتاج)',
     'Batch Size' => 'حجم الدفعة',
     'Number of elements to index in each batch' => 'عدد العناصر المراد فهرستها في كل دفعة',
     'Index Prefix' => 'بادئة الفهرس',
@@ -1911,7 +1909,6 @@ return [
     'This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>ngramSizes</code> في <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>pendingMaxAge</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>pendingMaxAge</code> في <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>phraseBoostFactor</code> في <code>config/search-manager.php</code>.',
-    'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>queueEnabled</code> في <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>replaceNativeSearch</code> في <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>requireApiKey</code> في <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>similarityThreshold</code> في <code>config/search-manager.php</code>.',

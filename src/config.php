@@ -107,13 +107,6 @@ return [
         // 'autoIndex' => true,
 
         /**
-         * Use queue for indexing operations
-         * Recommended: true for production
-         * Default: true
-         */
-        // 'queueEnabled' => true,
-
-        /**
          * Replace Craft's native search service
          * When true, CP searches and Entry::find()->search() use your backend
          * When false, use craft.searchManager.search() in templates
@@ -952,7 +945,6 @@ return [
     'dev' => [
         'logLevel' => 'debug',
         'indexPrefix' => 'dev_',
-        'queueEnabled' => false, // Process immediately in dev
         'enableCache' => false, // Disable cache for testing
         'enableAutocompleteCache' => false, // Disable autocomplete cache for testing
         'enableCacheWarming' => false, // No need to warm cache in dev
@@ -984,7 +976,6 @@ return [
     'production' => [
         'logLevel' => 'error',
         'indexPrefix' => 'prod_',
-        'queueEnabled' => true,
         'enableCache' => true,
         'enableAutocompleteCache' => true,
         'enableCacheWarming' => true,

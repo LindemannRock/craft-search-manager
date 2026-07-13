@@ -408,8 +408,6 @@ return [
     // Settings: Indexing
     'Auto-Index Elements' => 'Auto-indexar elementos',
     'Automatically index elements when they are saved' => 'Indexar automáticamente los elementos al guardarlos',
-    'Queue Enabled' => 'Cola activada',
-    'Use queue for indexing operations (recommended for production)' => 'Usar la cola para las operaciones de indexación (recomendado para producción)',
     'Batch Size' => 'Tamaño del lote',
     'Number of elements to index in each batch' => 'Número de elementos a indexar en cada lote',
     'Index Prefix' => 'Prefijo del índice',
@@ -1911,7 +1909,6 @@ return [
     'This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>ngramSizes</code> en <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>pendingMaxAge</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>pendingMaxAge</code> en <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>phraseBoostFactor</code> en <code>config/search-manager.php</code>.',
-    'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>queueEnabled</code> en <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>replaceNativeSearch</code> en <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>requireApiKey</code> en <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>similarityThreshold</code> en <code>config/search-manager.php</code>.',

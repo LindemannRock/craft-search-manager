@@ -112,7 +112,7 @@ final class SyncBufferAutoIndexTest extends TestCase
         );
     }
 
-    public function testNativeSearchSavePathQueuesOnePendingRowWhenAutoIndexIsDisabledAndQueueEnabled(): void
+    public function testNativeSearchSavePathQueuesOnePendingRowWhenAutoIndexIsDisabled(): void
     {
         $pair = $this->findWorkingIndexAndElement();
         $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
@@ -122,7 +122,7 @@ final class SyncBufferAutoIndexTest extends TestCase
         $adapter = new CraftSearchAdapter();
         $existingBatchJobs = $this->countQueueRows('BatchSyncJob');
 
-        $this->withIndexingSettings(false, true, function() use ($adapter, $element): void {
+        $this->withAutoIndex(false, function() use ($adapter, $element): void {
             $this->assertTrue($adapter->indexElementAttributes($element));
             $this->assertTrue($adapter->indexElementAttributes($element));
         });
@@ -170,26 +170,6 @@ final class SyncBufferAutoIndexTest extends TestCase
             $callback();
         } finally {
             $settings->autoIndex = $original;
-        }
-    }
-
-    /**
-     * @param callable(): void $callback
-     */
-    private function withIndexingSettings(bool $autoIndex, bool $queueEnabled, callable $callback): void
-    {
-        $settings = SearchManager::$plugin->getSettings();
-        $originalAutoIndex = $settings->autoIndex;
-        $originalQueueEnabled = $settings->queueEnabled;
-
-        $settings->autoIndex = $autoIndex;
-        $settings->queueEnabled = $queueEnabled;
-
-        try {
-            $callback();
-        } finally {
-            $settings->autoIndex = $originalAutoIndex;
-            $settings->queueEnabled = $originalQueueEnabled;
         }
     }
 

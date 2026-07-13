@@ -39,7 +39,7 @@ Common issues and solutions for Search Manager.
 ## Indexing Is Slow
 
 - **Adjust batch size**: The `batchSize` setting (default: 100) controls how many elements are loaded per batch. Increase to 250–500 for faster indexing on servers with plenty of memory. On shared or memory-constrained hosting, **lower it** to 25–50 to prevent out-of-memory errors — the rebuild takes longer but completes reliably.
-- **Use pending-sync queueing**: Ensure `queueEnabled` is `true` (default).
+- **Keep queue workers running**: Automatic and native-search indexing paths write pending-sync rows that `BatchSyncJob` drains.
 - **Check your transformer**: Complex transformers that query relations or perform heavy computation slow down indexing. Pre-fetch related data where possible.
 - **Rebuild during off-hours**: For sites with 10,000+ elements, schedule rebuilds during low-traffic periods to avoid queue congestion.
 
@@ -86,7 +86,7 @@ If rows still appear after disabling `autoIndex`:
 
 - Confirm the setting was saved and is not overridden by `config/search-manager.php`.
 - Confirm the rows are new by checking `queuedAt` on the Pending Syncs page.
-- Check whether `replaceNativeSearch` and `queueEnabled` are both enabled. In that mode, Craft's native search indexing callback still routes saved elements into the same pending-sync buffer, then `BatchSyncJob` drains them.
+- Check whether `replaceNativeSearch` is enabled. In that mode, Craft's native search indexing callback still routes saved elements into the same pending-sync buffer, then `BatchSyncJob` drains them.
 - Check whether another process is queueing rows directly through `SearchManager::$plugin->pendingSyncs->queueForElement()`.
 - Check whether the status sync job queued rows for entries that became live or expired without a save event. That job is controlled by `statusSyncInterval`, not `autoIndex`.
 

@@ -408,8 +408,6 @@ return [
     // Settings: Indexing
     'Auto-Index Elements' => 'Elementen automatisch indexeren',
     'Automatically index elements when they are saved' => 'Elementen automatisch indexeren bij opslaan',
-    'Queue Enabled' => 'Wachtrij ingeschakeld',
-    'Use queue for indexing operations (recommended for production)' => 'Wachtrij gebruiken voor indexeerbewerkingen (aanbevolen voor productie)',
     'Batch Size' => 'Batchgrootte',
     'Number of elements to index in each batch' => 'Aantal elementen per batch te indexeren',
     'Index Prefix' => 'Indexprefix',
@@ -1911,7 +1909,6 @@ return [
     'This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>ngramSizes</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>pendingMaxAge</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>pendingMaxAge</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>phraseBoostFactor</code> in <code>config/search-manager.php</code>.',
-    'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>queueEnabled</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>replaceNativeSearch</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>requireApiKey</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>similarityThreshold</code> in <code>config/search-manager.php</code>.',

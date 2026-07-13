@@ -46,17 +46,6 @@
                 "This is being overridden by the <code>autoIndex</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
 
-		{{ forms.lightswitchField({
-            label: 'Queue Enabled'|t('search-manager'),
-            instructions: 'Use queue for indexing operations (recommended for production)'|t('search-manager'),
-            id: 'queueEnabled',
-            name: 'settings[queueEnabled]',
-            on: settings.queueEnabled,
-            disabled: settings.isOverriddenByConfig('queueEnabled'),
-            warning: settings.isOverriddenByConfig('queueEnabled') ?
-                "This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-        }) }}
-
 		{% set activeBackend = craft.app.plugins.getPlugin('search-manager').backend.getActiveBackend() %}
 		{% set backendType = activeBackend ? activeBackend.getName() : 'file' %}
 		{% set isBuiltinBackend = backendType in ['mysql', 'pgsql', 'redis', 'file'] %}

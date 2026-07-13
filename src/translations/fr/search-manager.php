@@ -408,8 +408,6 @@ return [
     // Settings: Indexing
     'Auto-Index Elements' => 'Indexation automatique des éléments',
     'Automatically index elements when they are saved' => 'Indexer automatiquement les éléments lors de leur sauvegarde',
-    'Queue Enabled' => 'File d\'attente activée',
-    'Use queue for indexing operations (recommended for production)' => 'Utiliser la file d\'attente pour les opérations d\'indexation (recommandé pour la production)',
     'Batch Size' => 'Taille du lot',
     'Number of elements to index in each batch' => 'Nombre d\'éléments à indexer dans chaque lot',
     'Index Prefix' => 'Préfixe d\'index',
@@ -1911,7 +1909,6 @@ return [
     'This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>.' => 'Ceci est remplacé par le paramètre <code>ngramSizes</code> dans <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>pendingMaxAge</code> setting in <code>config/search-manager.php</code>.' => 'Ceci est remplacé par le paramètre <code>pendingMaxAge</code> dans <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'Ceci est remplacé par le paramètre <code>phraseBoostFactor</code> dans <code>config/search-manager.php</code>.',
-    'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'Ceci est remplacé par le paramètre <code>queueEnabled</code> dans <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'Ceci est remplacé par le paramètre <code>replaceNativeSearch</code> dans <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'Ceci est remplacé par le paramètre <code>requireApiKey</code> dans <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'Ceci est remplacé par le paramètre <code>similarityThreshold</code> dans <code>config/search-manager.php</code>.',

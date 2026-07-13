@@ -408,8 +408,6 @@ return [
     // Settings: Indexing
     'Auto-Index Elements' => 'Automatisk indexering av element',
     'Automatically index elements when they are saved' => 'Indexera element automatiskt när de sparas',
-    'Queue Enabled' => 'Kö aktiverad',
-    'Use queue for indexing operations (recommended for production)' => 'Använd kö för indexeringsoperationer (rekommenderas för produktion)',
     'Batch Size' => 'Batchstorlek',
     'Number of elements to index in each batch' => 'Antal element att indexera i varje batch',
     'Index Prefix' => 'Indexprefix',
@@ -1911,7 +1909,6 @@ return [
     'This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>ngramSizes</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>pendingMaxAge</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>pendingMaxAge</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>phraseBoostFactor</code> i <code>config/search-manager.php</code>.',
-    'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>queueEnabled</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>replaceNativeSearch</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>requireApiKey</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>similarityThreshold</code> i <code>config/search-manager.php</code>.',
