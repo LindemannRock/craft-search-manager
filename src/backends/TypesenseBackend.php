@@ -582,6 +582,13 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
         }
     }
 
+    protected function browseDocumentsForElement(string $indexName, int $elementId, ?int $siteId): iterable
+    {
+        $filter = self::siteIdFilter($siteId, $this->elementIdFilter([$elementId]));
+
+        return $this->browse($indexName, '', ['filter_by' => $filter]);
+    }
+
     /**
      * Perform multiple search queries in a single request
      *

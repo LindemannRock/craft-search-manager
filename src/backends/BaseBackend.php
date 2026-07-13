@@ -268,7 +268,7 @@ abstract class BaseBackend extends Component implements BackendInterface
         $keep = array_flip(array_map('strval', $keepBackendIds));
         $deleteItems = [];
 
-        foreach ($this->browse($indexName) as $hit) {
+        foreach ($this->browseDocumentsForElement($indexName, $elementId, $siteId) as $hit) {
             if (!is_array($hit)) {
                 continue;
             }
@@ -291,6 +291,11 @@ abstract class BaseBackend extends Component implements BackendInterface
         }
 
         return $deleteItems === [] || $this->batchDelete($indexName, $deleteItems);
+    }
+
+    protected function browseDocumentsForElement(string $indexName, int $elementId, ?int $siteId): iterable
+    {
+        return $this->browse($indexName);
     }
 
     protected function deleteByBackendId(string $indexName, string $backendId): bool

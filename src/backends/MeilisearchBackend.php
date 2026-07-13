@@ -585,25 +585,53 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             $fullIndexName = $this->getFullIndexName($indexName);
             $index = $client->index($fullIndexName);
 
-            $limit = $parameters['limit'] ?? 1000;
-            $offset = $parameters['offset'] ?? 0;
+            $limit = max(1, (int)($parameters['limit'] ?? 1000));
+            $offset = max(0, (int)($parameters['offset'] ?? 0));
             $fields = $parameters['fields'] ?? null;
+            $filter = $parameters['filter'] ?? null;
+            $documents = [];
 
-            $query = (new DocumentsQuery())
-                ->setLimit($limit)
-                ->setOffset($offset);
+            do {
+                $query = (new DocumentsQuery())
+                    ->setLimit($limit)
+                    ->setOffset($offset);
 
-            if ($fields !== null) {
-                $query->setFields($fields);
-            }
+                if (is_array($fields)) {
+                    $fields = array_values(array_filter(
+                        $fields,
+                        static fn(mixed $field): bool => is_string($field) && $field !== '',
+                    ));
+                    if ($fields !== []) {
+                        /** @var non-empty-list<string> $fields */
+                        $query->setFields($fields);
+                    }
+                }
 
-            $results = $index->getDocuments($query);
+                if (is_string($filter) && $filter !== '') {
+                    $query->setFilter([$filter]);
+                }
 
-            return $results->getResults();
+                $results = $index->getDocuments($query)->getResults();
+                foreach ($results as $result) {
+                    $documents[] = $result;
+                }
+
+                $resultCount = count($results);
+                $offset += $limit;
+            } while ($resultCount === $limit);
+
+            return $documents;
         } catch (\Throwable $e) {
             $this->logError('Meilisearch browse failed', ['error' => $e->getMessage()]);
             return [];
         }
+    }
+
+    protected function browseDocumentsForElement(string $indexName, int $elementId, ?int $siteId): iterable
+    {
+        $filter = self::siteIdFilter($siteId, $this->elementIdFilter([$elementId]));
+
+        return $this->browse($indexName, '', ['filter' => $filter]);
     }
 
     /**

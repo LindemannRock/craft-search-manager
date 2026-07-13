@@ -514,6 +514,14 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
         }
     }
 
+    protected function browseDocumentsForElement(string $indexName, int $elementId, ?int $siteId): iterable
+    {
+        $filters = $this->elementIdFilter([$elementId]);
+        $filters = self::siteIdFilter($siteId, $filters);
+
+        return $this->browse($indexName, '', ['filters' => $filters]);
+    }
+
     /**
      * Perform multiple queries at once
      *
