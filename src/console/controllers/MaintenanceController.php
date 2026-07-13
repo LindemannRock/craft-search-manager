@@ -319,6 +319,7 @@ class MaintenanceController extends Controller
             '{{%searchmanager_search_ngram_counts}}',
             '{{%searchmanager_search_metadata}}',
             '{{%searchmanager_search_elements}}',
+            '{{%searchmanager_search_compounds}}',
         ];
 
         $db = Craft::$app->getDb();

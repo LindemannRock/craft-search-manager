@@ -1630,10 +1630,6 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
                     return $bucket;
                 },
             );
-
-            if (empty($this->readFile($path))) {
-                @unlink($path);
-            }
         }
     }
 
@@ -1716,11 +1712,6 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
                 return $bucket;
             },
         );
-
-        $bucket = $this->readFile($path);
-        if (empty($bucket)) {
-            @unlink($path);
-        }
     }
 
     private function getIndexedCompoundSuggestionsForAutocomplete(

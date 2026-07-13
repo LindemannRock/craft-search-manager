@@ -116,6 +116,30 @@ final class EntrySplitSectionsTest extends TestCase
         self::assertStringNotContainsString('Alpha body.', (string)$documents[2]['_bodyClean']);
     }
 
+    public function testIntroSectionIdIsReservedWhenHeadingIdAttributeIsIntro(): void
+    {
+        $documents = $this->htmlSectionsForIntroCollision('<p>Intro prose.</p><h2 id="intro">Install</h2><p>Install body.</p>', true);
+
+        self::assertCount(2, $documents);
+        self::assertSame(['intro', 'intro-2'], array_column($documents, 'sectionId'));
+        self::assertSame(['1087_1_intro', '1087_1_intro-2'], array_column($documents, 'backendId'));
+        self::assertSame('Intro prose.', $documents[0]['_bodyClean']);
+        self::assertSame('Install body.', $documents[1]['_bodyClean']);
+        self::assertNotSame($documents[0]['backendId'], $documents[1]['backendId']);
+    }
+
+    public function testIntroSectionIdIsReservedWhenGeneratedHeadingAnchorIsIntro(): void
+    {
+        $documents = $this->htmlSectionsForIntroCollision('<p>Intro prose.</p><h2>Intro</h2><p>Heading body.</p>', false);
+
+        self::assertCount(2, $documents);
+        self::assertSame(['intro', 'intro-2'], array_column($documents, 'sectionId'));
+        self::assertSame(['1087_1_intro', '1087_1_intro-2'], array_column($documents, 'backendId'));
+        self::assertSame('Intro prose.', $documents[0]['_bodyClean']);
+        self::assertSame('Heading body.', $documents[1]['_bodyClean']);
+        self::assertNotSame($documents[0]['backendId'], $documents[1]['backendId']);
+    }
+
     public function testHeadinglessEntryInSplitIndexStaysNormalRecord(): void
     {
         $entry = $this->entry([
@@ -312,6 +336,27 @@ final class EntrySplitSectionsTest extends TestCase
 
         /** @var list<array<string, mixed>> */
         return $method->invoke(SearchManager::$plugin->indexing, $index, $entry, $pageData ?? (new AutoTransformer())->transform($entry));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function htmlSectionsForIntroCollision(string $html, bool $preferHeadingIdAttribute): array
+    {
+        return HtmlSectionSplitter::split(
+            pageData: [
+                'elementId' => 1087,
+                'siteId' => 1,
+                'title' => 'Intro Collision',
+                'url' => 'https://example.test/intro-collision',
+            ],
+            sources: [['html' => $html]],
+            headingLevels: [2],
+            introContentParts: ['Intro Collision'],
+            emitIntroWithoutBody: false,
+            preferHeadingIdAttribute: $preferHeadingIdAttribute,
+            dedupeAnchors: true,
+        );
     }
 
     /**

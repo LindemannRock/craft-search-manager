@@ -178,6 +178,16 @@ final class FileStorageRegressionTest extends TestCase
             self::assertStringNotContainsString('readFile(', $body, $method);
             self::assertStringNotContainsString('writeFile(', $body, $method);
         }
+
+        foreach ([
+            'removeTermFromNgramBuckets',
+            'updateCompoundAggregateBucket',
+        ] as $method) {
+            $body = $this->methodBody($source, $method);
+            self::assertStringContainsString('updateJsonFile(', $body, $method);
+            self::assertStringNotContainsString('@unlink(', $body, $method);
+            self::assertStringNotContainsString('readFile(', $body, $method);
+        }
     }
 
     public function testConcurrentNgramBucketRemovalsPreserveBothRemovals(): void
@@ -201,7 +211,8 @@ final class FileStorageRegressionTest extends TestCase
             ['store-term-ngrams', $this->basePath, 'beta', '1', json_encode(['be'], JSON_THROW_ON_ERROR)],
         );
 
-        self::assertFileDoesNotExist($sharedBucketPath);
+        self::assertFileExists($sharedBucketPath);
+        self::assertSame([], json_decode((string)file_get_contents($sharedBucketPath), true, 512, JSON_THROW_ON_ERROR));
         self::assertSame(['beta'], array_keys($storage->getTermsByNgramSimilarity(['be'], 1, 1.0)));
     }
 
@@ -324,8 +335,9 @@ final class FileStorageRegressionTest extends TestCase
         self::assertSame([], $storage->getTermsByNgramSimilarity(['al', 'lp'], 1, 1.0));
         self::assertSame(['alpha'], array_keys($storage->getTermsByNgramSimilarity(['be', 'et'], 1, 1.0)));
 
-        $indexPath = $this->basePath . '/file-storage-regression';
-        self::assertFileDoesNotExist($indexPath . '/ngrams-index/site1/al.dat');
+        $staleBucketPath = $this->indexPath() . '/ngrams-index/site1/al.dat';
+        self::assertFileExists($staleBucketPath);
+        self::assertSame([], json_decode((string)file_get_contents($staleBucketPath), true, 512, JSON_THROW_ON_ERROR));
     }
 
     public function testIndexedNgramLookupRecoversHashedSidecarTerm(): void
@@ -417,6 +429,10 @@ final class FileStorageRegressionTest extends TestCase
 
         self::assertSame([], $storage->getCompoundSuggestionsForAutocomplete('readme', 1, 'en', 10));
         self::assertSame(['readme.twig' => 3], $storage->getCompoundSuggestionsForAutocomplete('readme', null, 'en', 10));
+
+        $siteBucketPath = $this->indexPath() . '/compounds-index/site1/en/r.dat';
+        self::assertFileExists($siteBucketPath);
+        self::assertSame([], json_decode((string)file_get_contents($siteBucketPath), true, 512, JSON_THROW_ON_ERROR));
     }
 
     public function testCompoundLookupRequiresAggregateScope(): void
