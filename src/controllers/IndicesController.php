@@ -441,9 +441,12 @@ class IndicesController extends Controller
             return null;
         }
 
-        Craft::$app->getSession()->setNotice(
-            Craft::t('search-manager', 'Index saved')
-        );
+        $notice = Craft::t('search-manager', 'Index saved');
+        if ($index->wasRebuildQueuedOnLastSave()) {
+            $notice .= '. ' . Craft::t('search-manager', 'Index rebuild queued');
+        }
+
+        Craft::$app->getSession()->setNotice($notice);
 
         return $this->redirectToPostedUrl($index);
     }

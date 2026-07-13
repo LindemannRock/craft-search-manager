@@ -139,6 +139,8 @@ class SearchIndex extends Model
      */
     public int $documentCount = 0;
 
+    private bool $rebuildQueuedOnLastSave = false;
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -980,6 +982,8 @@ class SearchIndex extends Model
      */
     public function save(): bool
     {
+        $this->rebuildQueuedOnLastSave = false;
+
         // Prevent saving config indices - they should only be modified via config file
         if ($this->source === 'config') {
             $this->logError('Cannot save config index - modify config file instead', [
@@ -1026,6 +1030,8 @@ class SearchIndex extends Model
             ];
 
             if ($this->id) {
+                $queueRebuild = $this->shouldQueueRebuildAfterSave($previousRow, $attributes);
+
                 // Update existing
                 $db
                     ->createCommand()
@@ -1036,8 +1042,13 @@ class SearchIndex extends Model
                 $transaction->commit();
                 $this->clearPreviousStorageAfterIdentityChange($previousRow);
                 self::clearCache();
+                if ($queueRebuild) {
+                    $this->queueRebuildAfterSave();
+                }
                 return true;
             } else {
+                $queueRebuild = $this->enabled;
+
                 // Insert new
                 $attributes['dateCreated'] = Db::prepareDateForDb(new \DateTime());
                 $attributes['uid'] = StringHelper::UUID();
@@ -1052,6 +1063,9 @@ class SearchIndex extends Model
                 $this->saveIndexSites($this->getSiteIds());
                 $transaction->commit();
                 self::clearCache();
+                if ($queueRebuild) {
+                    $this->queueRebuildAfterSave();
+                }
                 return true;
             }
         } catch (\Throwable $e) {
@@ -1069,12 +1083,34 @@ class SearchIndex extends Model
     }
 
     /**
-     * @return array{handle: string, backend: string|null}|null
+     * Whether the most recent successful save queued a full index rebuild.
+     */
+    public function wasRebuildQueuedOnLastSave(): bool
+    {
+        return $this->rebuildQueuedOnLastSave;
+    }
+
+    /**
+     * @return array<string, mixed>|null
      */
     private function existingPersistenceRow(): ?array
     {
         $row = (new Query())
-            ->select(['handle', 'backend'])
+            ->select([
+                'id',
+                'handle',
+                'elementType',
+                'siteId',
+                'criteria',
+                'transformerClass',
+                'headingLevels',
+                'language',
+                'backend',
+                'disableStopWords',
+                'skipEntriesWithoutUrl',
+                'splitSections',
+                'retrievableFields',
+            ])
             ->from('{{%searchmanager_indices}}')
             ->where(['id' => $this->id])
             ->one();
@@ -1085,12 +1121,23 @@ class SearchIndex extends Model
 
         return [
             'handle' => (string)$row['handle'],
+            'elementType' => (string)$row['elementType'],
+            'siteId' => $row['siteId'],
+            'siteIds' => $this->previousSiteIds((int)$row['id'], $row['siteId']),
+            'criteria' => $row['criteria'],
+            'transformerClass' => $row['transformerClass'],
+            'headingLevels' => $row['headingLevels'],
+            'language' => $row['language'],
             'backend' => $row['backend'] !== null && $row['backend'] !== '' ? (string)$row['backend'] : null,
+            'disableStopWords' => $row['disableStopWords'],
+            'skipEntriesWithoutUrl' => $row['skipEntriesWithoutUrl'],
+            'splitSections' => $row['splitSections'],
+            'retrievableFields' => $row['retrievableFields'],
         ];
     }
 
     /**
-     * @param array{handle: string, backend: string|null}|null $previousRow
+     * @param array<string, mixed>|null $previousRow
      */
     private function clearPreviousStorageAfterIdentityChange(?array $previousRow): void
     {
@@ -1128,6 +1175,148 @@ class SearchIndex extends Model
         }
 
         $this->updateStats(0);
+    }
+
+    /**
+     * @param array<string, mixed>|null $previousRow
+     * @param array<string, mixed> $attributes
+     */
+    private function shouldQueueRebuildAfterSave(?array $previousRow, array $attributes): bool
+    {
+        if ($previousRow === null || !$this->enabled) {
+            return false;
+        }
+
+        return $this->shapeComparableFromPreviousRow($previousRow) !== $this->shapeComparableFromCurrentAttributes($attributes);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function shapeComparableFromPreviousRow(array $row): array
+    {
+        return [
+            'elementType' => (string)$row['elementType'],
+            'siteIds' => self::normalizeSiteIdsComparable($row['siteIds'] ?? null),
+            'criteria' => self::decodeJsonComparable($row['criteria'] ?? null, []),
+            'transformerClass' => self::normalizeOptionalString($row['transformerClass'] ?? null),
+            'headingLevels' => self::decodeJsonComparable($row['headingLevels'] ?? null, null),
+            'language' => self::normalizeOptionalString($row['language'] ?? null),
+            'disableStopWords' => (bool)$row['disableStopWords'],
+            'skipEntriesWithoutUrl' => (bool)$row['skipEntriesWithoutUrl'],
+            'splitSections' => (bool)$row['splitSections'],
+            'retrievableFields' => self::normalizeRetrievableFields(
+                self::decodeJsonComparable($row['retrievableFields'] ?? null, null),
+            ),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     * @return array<string, mixed>
+     */
+    private function shapeComparableFromCurrentAttributes(array $attributes): array
+    {
+        return [
+            'elementType' => (string)$attributes['elementType'],
+            'siteIds' => self::normalizeSiteIdsComparable($this->getSiteIds()),
+            'criteria' => self::decodeJsonComparable($attributes['criteria'] ?? null, []),
+            'transformerClass' => self::normalizeOptionalString($attributes['transformerClass'] ?? null),
+            'headingLevels' => self::decodeJsonComparable($attributes['headingLevels'] ?? null, null),
+            'language' => self::normalizeOptionalString($attributes['language'] ?? null),
+            'disableStopWords' => (bool)$attributes['disableStopWords'],
+            'skipEntriesWithoutUrl' => (bool)$attributes['skipEntriesWithoutUrl'],
+            'splitSections' => (bool)$attributes['splitSections'],
+            'retrievableFields' => self::normalizeRetrievableFields(
+                self::decodeJsonComparable($attributes['retrievableFields'] ?? null, null),
+            ),
+        ];
+    }
+
+    private function queueRebuildAfterSave(): void
+    {
+        try {
+            $this->rebuildQueuedOnLastSave = SearchManager::$plugin->indexing->rebuildIndex($this->handle);
+        } catch (\Throwable $e) {
+            $this->logWarning('Unable to queue index rebuild after index save', [
+                'handle' => $this->handle,
+                'error' => $e->getMessage(),
+            ]);
+            $this->rebuildQueuedOnLastSave = false;
+        }
+    }
+
+    private function previousSiteIds(int $indexId, mixed $siteId): ?array
+    {
+        $siteIds = self::loadSiteIdsForIndexId($indexId);
+        if ($siteIds !== null) {
+            return $siteIds;
+        }
+
+        if ($siteId === null || $siteId === '') {
+            return null;
+        }
+
+        return [(int)$siteId];
+    }
+
+    private static function decodeJsonComparable(mixed $value, mixed $emptyValue): mixed
+    {
+        if ($value === null || $value === '') {
+            return $emptyValue;
+        }
+
+        if (is_array($value)) {
+            return self::normalizeComparableValue($value);
+        }
+
+        $decoded = json_decode((string)$value, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return (string)$value;
+        }
+
+        return self::normalizeComparableValue($decoded ?? $emptyValue);
+    }
+
+    private static function normalizeComparableValue(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        foreach ($value as $key => $nestedValue) {
+            $value[$key] = self::normalizeComparableValue($nestedValue);
+        }
+
+        if (!array_is_list($value)) {
+            ksort($value);
+        }
+
+        return $value;
+    }
+
+    private static function normalizeOptionalString(mixed $value): ?string
+    {
+        $value = trim((string)$value);
+
+        return $value === '' ? null : $value;
+    }
+
+    private static function normalizeSiteIdsComparable(mixed $siteIds): ?array
+    {
+        if ($siteIds === null) {
+            return null;
+        }
+
+        if (!is_array($siteIds)) {
+            $siteIds = [$siteIds];
+        }
+
+        $siteIds = array_values(array_unique(array_filter(array_map('intval', $siteIds), fn($id) => $id > 0)));
+        sort($siteIds);
+
+        return $siteIds;
     }
 
     private function createBackendForStoredHandle(?string $backendHandle): ?BackendInterface

@@ -97,6 +97,86 @@ final class AuditHousekeepingRegressionTest extends TestCase
         self::assertSame(0, $reloaded->documentCount);
     }
 
+    public function testShapeAttributeChangeQueuesOneRebuildJob(): void
+    {
+        $backendHandle = self::PREFIX . '-shape-backend';
+        $indexHandle = self::PREFIX . '-shape';
+
+        $this->insertBackend($backendHandle, $this->databaseBackendType());
+        $this->insertIndex($indexHandle, $backendHandle, 3);
+
+        $index = SearchIndex::findByHandle($indexHandle);
+        self::assertNotNull($index);
+        $index->criteria = ['sections' => ['news']];
+
+        self::assertTrue($index->save(), print_r($index->getErrors(), true));
+
+        self::assertTrue($index->wasRebuildQueuedOnLastSave());
+        self::assertSame(1, $this->countRebuildQueueRows($indexHandle));
+    }
+
+    public function testNoOpSaveDoesNotQueueRebuildJob(): void
+    {
+        $backendHandle = self::PREFIX . '-noop-backend';
+        $indexHandle = self::PREFIX . '-noop';
+
+        $this->insertBackend($backendHandle, $this->databaseBackendType());
+        $this->insertIndex($indexHandle, $backendHandle, 3);
+
+        $index = SearchIndex::findByHandle($indexHandle);
+        self::assertNotNull($index);
+
+        self::assertTrue($index->save(), print_r($index->getErrors(), true));
+
+        self::assertFalse($index->wasRebuildQueuedOnLastSave());
+        self::assertSame(0, $this->countRebuildQueueRows($indexHandle));
+    }
+
+    public function testNewEnabledIndexQueuesInitialRebuildJob(): void
+    {
+        $indexHandle = self::PREFIX . '-new-index';
+        $index = new SearchIndex();
+        $index->name = 'Audit Housekeeping New Index';
+        $index->handle = $indexHandle;
+        $index->elementType = Entry::class;
+        $index->transformerClass = '';
+        $index->enabled = true;
+        $index->criteria = [];
+        $index->retrievableFields = ['*'];
+
+        self::assertTrue($index->save(), print_r($index->getErrors(), true));
+
+        self::assertTrue($index->wasRebuildQueuedOnLastSave());
+        self::assertSame(1, $this->countRebuildQueueRows($indexHandle));
+    }
+
+    public function testCombinedIdentityAndShapeChangeClearsOldStorageAndQueuesOneRebuildJob(): void
+    {
+        $backendHandle = self::PREFIX . '-combined-backend';
+        $oldHandle = self::PREFIX . '-combined-old';
+        $newHandle = self::PREFIX . '-combined-new';
+
+        $this->insertBackend($backendHandle, $this->databaseBackendType());
+        $this->insertIndex($oldHandle, $backendHandle, 7);
+        $this->insertDocumentRow($this->fullHandle($oldHandle));
+
+        $index = SearchIndex::findByHandle($oldHandle);
+        self::assertNotNull($index);
+        $index->handle = $newHandle;
+        $index->criteria = ['sections' => ['news']];
+
+        self::assertTrue($index->save(), print_r($index->getErrors(), true));
+
+        self::assertSame(0, $this->documentRowsForHandle($this->fullHandle($oldHandle)));
+        self::assertTrue($index->wasRebuildQueuedOnLastSave());
+        self::assertSame(1, $this->countRebuildQueueRows($newHandle));
+        self::assertSame(0, $this->countRebuildQueueRows($oldHandle));
+
+        $reloaded = SearchIndex::findByHandle($newHandle);
+        self::assertNotNull($reloaded);
+        self::assertSame(0, $reloaded->documentCount);
+    }
+
     public function testSettingsSaveClearsDeviceDetectionCacheAfterExistingCacheClears(): void
     {
         $settingsController = $this->readPluginFile('src/controllers/SettingsController.php');
@@ -249,12 +329,26 @@ final class AuditHousekeepingRegressionTest extends TestCase
         Craft::$app->getDb()->createCommand()
             ->delete('{{%searchmanager_backends}}', ['like', 'handle', self::PREFIX . '%', false])
             ->execute();
+        Craft::$app->getDb()->createCommand()
+            ->delete('{{%queue}}', ['like', 'job', self::PREFIX])
+            ->execute();
         SearchIndex::clearCache();
     }
 
     private function fullHandle(string $handle): string
     {
         return SearchManager::$plugin->getSettings()->getFullIndexName($handle);
+    }
+
+    private function countRebuildQueueRows(string $handle): int
+    {
+        return (int)(new Query())
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'RebuildIndexJob'])
+            ->andWhere(['like', 'job', $handle])
+            ->andWhere(['fail' => false])
+            ->andWhere(['timeUpdated' => null])
+            ->count();
     }
 
     private function databaseBackendType(): string

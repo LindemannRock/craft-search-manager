@@ -6,7 +6,7 @@
 [![Craft CMS](https://img.shields.io/badge/Craft%20CMS-5.0%2B-orange.svg)](https://craftcms.com/)
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-blue.svg)](https://php.net/)
 [![Logging Library](https://img.shields.io/badge/Logging%20Library-5.0%2B-green.svg)](https://github.com/LindemannRock/craft-logging-library)
-[![License](https://img.shields.io/packagist/l/lindemannrock/craft-search-manager.svg)](LICENSE)
+[![License](https://img.shields.io/packagist/l/lindemannrock/craft-search-manager.svg)](LICENSE.md)
 
 Advanced multi-backend search management for Craft CMS with BM25 ranking, analytics, caching, query rules, promotions, and a frontend search widget.
 
