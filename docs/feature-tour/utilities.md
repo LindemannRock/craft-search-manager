@@ -35,9 +35,19 @@ Each option shows a live count (rows, keys, or files) loaded via AJAX.
 
 - **Switching backends** — You moved from Redis to MySQL. The old Redis keys are orphaned. Select "Redis" and clear them.
 - **Troubleshooting** — An index rebuild fails or produces stale results. Clear the storage type and rebuild fresh.
-- **Removing deleted indices** — You deleted an index in the CP, but its data remains in storage. This cleans it up.
+- **Resetting a storage driver** — You want to wipe one storage driver completely before rebuilding the affected indices.
 
 The "Database" option automatically detects whether you're running MySQL or PostgreSQL and labels accordingly.
+
+### Orphaned Handles
+
+If you only need to remove data for handles that no longer exist, use the console command instead of clearing an entire storage type:
+
+```bash
+php craft search-manager/maintenance/purge-orphaned-storage --dry-run
+```
+
+This is useful after removing a config-file index or renaming an index handle. The command only considers stored handles that carry the current environment's `indexPrefix`, and it compares them against both database-backed and config-file indices before deleting anything.
 
 ## Cache Management
 
@@ -95,6 +105,9 @@ php craft search-manager/index/rebuild --handle=entries-en
 
 # Clear search cache
 php craft search-manager/maintenance/clear-storage --type=database
+
+# Preview orphaned storage handles
+php craft search-manager/maintenance/purge-orphaned-storage --dry-run
 ```
 
 See [Console Commands](../developers/console-commands.md) for the full list.

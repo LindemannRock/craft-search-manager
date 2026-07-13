@@ -182,6 +182,8 @@ The IP hash salt is typically set via `.env` as `SEARCH_MANAGER_IP_SALT` — the
 | `enableAutocompleteCache` | `bool` | `true` | Cache autocomplete suggestions separately |
 | `autocompleteCacheDuration` | `int` | `300` | Autocomplete cache TTL (default: 5 min) |
 
+Saving any settings section from the CP clears both the search-results cache and the autocomplete cache. This keeps scoring, language, indexing, and backend-related setting changes from serving stale cached results. Element save/delete cache clearing is still controlled separately by `clearCacheOnSave`.
+
 See [Caching](../feature-tour/caching.md) for cache strategies and recommendations.
 
 ### Status Sync

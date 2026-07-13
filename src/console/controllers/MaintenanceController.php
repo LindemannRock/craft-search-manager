@@ -15,6 +15,13 @@ use craft\helpers\FileHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
+use lindemannrock\searchmanager\models\ConfiguredBackend;
+use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\search\storage\FileStorage;
+use lindemannrock\searchmanager\search\storage\MySqlStorage;
+use lindemannrock\searchmanager\search\storage\PostgreSqlStorage;
+use lindemannrock\searchmanager\search\storage\RedisStorage;
+use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\SearchManager;
 use yii\console\ExitCode;
 
@@ -31,6 +38,10 @@ class MaintenanceController extends Controller
      * @var string Backend storage type to clear (mysql, redis, file)
      */
     public string $type = '';
+    /**
+     * @var bool Preview orphaned storage handles without deleting data
+     */
+    public bool $dryRun = false;
     /**
      * @var bool Show verbose backend details (like indices list/count)
      */
@@ -53,11 +64,25 @@ class MaintenanceController extends Controller
         if ($actionID === 'clear-storage') {
             $options[] = 'type';
         }
+        if ($actionID === 'purge-orphaned-storage') {
+            $options[] = 'type';
+            $options[] = 'dryRun';
+        }
         if ($actionID === 'status') {
             $options[] = 'verbose';
         }
 
         return $options;
+    }
+
+    /**
+     * Map CLI option names with hyphens to their PHP property camelCase forms.
+     */
+    public function optionAliases(): array
+    {
+        return [
+            'dry-run' => 'dryRun',
+        ];
     }
 
     /**
@@ -128,6 +153,85 @@ class MaintenanceController extends Controller
             ]);
             return ExitCode::UNSPECIFIED_ERROR;
         }
+    }
+
+    /**
+     * Purge storage for prefixed handles that no longer have a live index.
+     *
+     * @since 5.53.0
+     */
+    public function actionPurgeOrphanedStorage(): int
+    {
+        $this->stdout("Search Manager - Purge Orphaned Storage\n", Console::FG_CYAN);
+        $this->stdout(str_repeat('=', 60) . "\n\n");
+
+        $validTypes = ['all', 'database', 'redis', 'file'];
+        $type = strtolower($this->type ?: 'all');
+
+        if (!in_array($type, $validTypes, true)) {
+            $this->stderr("Error: Invalid type '{$this->type}'\n", Console::FG_RED);
+            $this->stdout("Valid types: " . implode(', ', $validTypes) . "\n");
+            return ExitCode::USAGE;
+        }
+
+        $types = $type === 'all' ? ['database', 'redis', 'file'] : [$type];
+        $plan = [];
+        foreach ($types as $storageType) {
+            $plan[$storageType] = $this->getOrphanedStorageHandlesByType($storageType);
+        }
+
+        $totalCandidates = array_sum(array_map('count', $plan));
+        if ($totalCandidates === 0) {
+            $this->stdout("No orphaned storage handles found for this environment prefix.\n", Console::FG_GREEN);
+            return ExitCode::OK;
+        }
+
+        foreach ($plan as $storageType => $handles) {
+            if ($handles === []) {
+                continue;
+            }
+
+            $this->stdout(ucfirst($storageType) . " orphaned handles:\n", Console::FG_YELLOW);
+            foreach ($handles as $handle) {
+                $this->stdout("  - {$handle}\n");
+            }
+            $this->stdout("\n");
+        }
+
+        if ($this->dryRun) {
+            $this->stdout("Dry run only. No storage data was deleted.\n", Console::FG_GREEN);
+            return ExitCode::OK;
+        }
+
+        $this->stdout("WARNING: This will delete all storage data for the handles listed above.\n", Console::FG_YELLOW);
+        $this->stdout("Only handles carrying this environment's configured prefix are eligible.\n\n");
+
+        if (!$this->confirm('Are you sure you want to continue?')) {
+            $this->stdout("Operation cancelled.\n", Console::FG_YELLOW);
+            return ExitCode::OK;
+        }
+
+        $deleted = 0;
+        foreach ($plan as $storageType => $handles) {
+            foreach ($handles as $handle) {
+                try {
+                    $this->clearOrphanedStorageHandle($storageType, $handle);
+                    $deleted++;
+                    $this->stdout("  Purged {$storageType}: {$handle}\n", Console::FG_GREEN);
+                } catch (\Throwable $e) {
+                    $this->stderr("  Failed {$storageType}: {$handle} ({$e->getMessage()})\n", Console::FG_RED);
+                    $this->logError('Failed to purge orphaned storage handle', [
+                        'type' => $storageType,
+                        'handle' => $handle,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        $this->stdout("\nPurged {$deleted} orphaned storage handle(s). Rebuild affected indices if needed.\n", Console::FG_GREEN);
+
+        return ExitCode::OK;
     }
 
     /**
@@ -312,22 +416,11 @@ class MaintenanceController extends Controller
      */
     private function clearDatabaseStorage(): array
     {
-        $tables = [
-            '{{%searchmanager_search_documents}}',
-            '{{%searchmanager_search_terms}}',
-            '{{%searchmanager_search_titles}}',
-            '{{%searchmanager_search_ngrams}}',
-            '{{%searchmanager_search_ngram_counts}}',
-            '{{%searchmanager_search_metadata}}',
-            '{{%searchmanager_search_elements}}',
-            '{{%searchmanager_search_compounds}}',
-        ];
-
         $db = Craft::$app->getDb();
         $driverLabel = $this->getDatabaseDriverLabel();
         $deletedRows = 0;
 
-        foreach ($tables as $table) {
+        foreach ($this->databaseStorageTables() as $table) {
             // Check if table exists before deleting
             $tableName = $db->getSchema()->getRawTableName($table);
             if ($db->getTableSchema($tableName) === null) {
@@ -437,6 +530,303 @@ class MaintenanceController extends Controller
             'success' => true,
             'message' => "File storage cleared successfully ({$deletedFilesTotal} files deleted). Rebuild affected indices to re-index your content.",
             'deletedFiles' => $deletedFilesTotal,
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getOrphanedStorageHandlesByType(string $type): array
+    {
+        $storageHandles = match ($type) {
+            'database' => $this->getDatabaseStorageHandles(),
+            'redis' => $this->getRedisStorageHandles(),
+            'file' => $this->getFileStorageHandles(),
+            default => [],
+        };
+
+        $liveFullIndexNames = array_fill_keys($this->getLiveFullIndexNames(), true);
+        $orphaned = [];
+
+        foreach ($storageHandles as $handle) {
+            if (isset($liveFullIndexNames[$handle])) {
+                continue;
+            }
+            if (!$this->isCurrentEnvironmentStorageHandle($handle)) {
+                continue;
+            }
+            $orphaned[] = $handle;
+        }
+
+        $orphaned = array_values(array_unique($orphaned));
+        sort($orphaned, SORT_STRING);
+
+        return $orphaned;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getLiveFullIndexNames(): array
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $handles = [];
+
+        foreach (SearchIndex::findAll() as $index) {
+            $handles[] = $settings->getFullIndexName($index->handle);
+        }
+
+        $handles = array_values(array_unique($handles));
+        sort($handles, SORT_STRING);
+
+        return $handles;
+    }
+
+    private function isCurrentEnvironmentStorageHandle(string $storageHandle): bool
+    {
+        $prefix = SearchManager::$plugin->getSettings()->getFullIndexName('');
+
+        return $prefix === '' || str_starts_with($storageHandle, $prefix);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getDatabaseStorageHandles(): array
+    {
+        $db = Craft::$app->getDb();
+        $handles = [];
+
+        foreach ($this->databaseStorageTables() as $table) {
+            $tableName = $db->getSchema()->getRawTableName($table);
+            if ($db->getTableSchema($tableName) === null) {
+                continue;
+            }
+
+            $rows = (new \craft\db\Query())
+                ->select(['indexHandle'])
+                ->distinct()
+                ->from($table)
+                ->column();
+            foreach ($rows as $row) {
+                $handles[] = (string)$row;
+            }
+        }
+
+        $handles = array_values(array_unique(array_filter($handles)));
+        sort($handles, SORT_STRING);
+
+        return $handles;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getRedisStorageHandles(): array
+    {
+        if (!class_exists('\Redis')) {
+            return [];
+        }
+
+        $handles = [];
+        foreach ($this->getResolvedRedisTargets() as $target) {
+            $redis = new \Redis();
+            try {
+                $redis->connect($target['host'], $target['port']);
+                if ($target['password']) {
+                    $redis->auth($target['password']);
+                }
+                $redis->select($target['database']);
+
+                foreach ($this->scanRedisKeys($redis, 'sm:idx:*') as $key) {
+                    $handle = $this->storageHandleFromRedisKey($key);
+                    if ($handle !== null) {
+                        $handles[] = $handle;
+                    }
+                }
+            } catch (\Throwable $e) {
+                $this->logWarning('Failed to scan Redis storage handles', [
+                    'target' => $target['key'],
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $handles = array_values(array_unique($handles));
+        sort($handles, SORT_STRING);
+
+        return $handles;
+    }
+
+    /**
+     * @return array<int, array{key: string, host: string, port: int, password: mixed, database: int, settings: array<string, mixed>}>
+     */
+    private function getResolvedRedisTargets(): array
+    {
+        $targets = [];
+        $seen = [];
+
+        foreach (ConfiguredBackend::findAll() as $backend) {
+            if ($backend->backendType !== 'redis') {
+                continue;
+            }
+
+            $config = $this->getResolvedRedisConfig($backend);
+            if (empty($config['host'])) {
+                continue;
+            }
+
+            $host = (string)$this->resolveEnvVar($config['host'], '127.0.0.1');
+            $port = (int)$this->resolveEnvVar($config['port'], 6379);
+            $password = $this->resolveEnvVar($config['password'], null);
+            $database = (int)$this->resolveEnvVar($config['database'], 0);
+            $key = "{$host}:{$port}:{$database}";
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $targets[] = [
+                'key' => $key,
+                'host' => $host,
+                'port' => $port,
+                'password' => $password,
+                'database' => $database,
+                'settings' => $config,
+            ];
+        }
+
+        return $targets;
+    }
+
+    private function storageHandleFromRedisKey(string $key): ?string
+    {
+        $prefix = 'sm:idx:';
+        if (!str_starts_with($key, $prefix)) {
+            return null;
+        }
+
+        $remainder = substr($key, strlen($prefix));
+        $separator = strpos($remainder, ':');
+        if ($separator === false) {
+            return null;
+        }
+
+        $handle = substr($remainder, 0, $separator);
+
+        return $handle !== '' ? $handle : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getFileStorageHandles(): array
+    {
+        $handles = [];
+
+        foreach ($this->getFileStorageTargets() as $target) {
+            $indicesPath = $target['basePath'];
+            if (!is_dir($indicesPath)) {
+                continue;
+            }
+
+            foreach (glob($indicesPath . '/*', GLOB_ONLYDIR) ?: [] as $indexPath) {
+                $handle = basename($indexPath);
+                if ($handle !== '') {
+                    $handles[] = $handle;
+                }
+            }
+        }
+
+        $handles = array_values(array_unique($handles));
+        sort($handles, SORT_STRING);
+
+        return $handles;
+    }
+
+    /**
+     * @return array<int, array{basePath: string, configuredPath: string|null}>
+     */
+    private function getFileStorageTargets(): array
+    {
+        $targets = [[
+            'basePath' => FileBackendStoragePathHelper::defaultBasePath(),
+            'configuredPath' => null,
+        ]];
+        $seen = [FileBackendStoragePathHelper::defaultBasePath() => true];
+
+        foreach (ConfiguredBackend::findAll() as $backend) {
+            if ($backend->backendType !== 'file') {
+                continue;
+            }
+
+            $configuredPathValue = $backend->settings['storagePath'] ?? null;
+            $configuredPath = is_string($configuredPathValue) ? $configuredPathValue : null;
+            try {
+                $basePath = FileBackendStoragePathHelper::resolve($configuredPath);
+            } catch (\InvalidArgumentException $e) {
+                $this->logWarning('Skipping invalid file backend storage path', [
+                    'backend' => $backend->handle,
+                    'error' => $e->getMessage(),
+                ]);
+                continue;
+            }
+
+            if (isset($seen[$basePath])) {
+                continue;
+            }
+
+            $seen[$basePath] = true;
+            $targets[] = [
+                'basePath' => $basePath,
+                'configuredPath' => is_string($configuredPath) && $configuredPath !== '' ? $configuredPath : null,
+            ];
+        }
+
+        return $targets;
+    }
+
+    private function clearOrphanedStorageHandle(string $type, string $fullIndexHandle): void
+    {
+        switch ($type) {
+            case 'database':
+                $this->createDatabaseStorage($fullIndexHandle)->clearAll();
+                return;
+            case 'redis':
+                foreach ($this->getResolvedRedisTargets() as $target) {
+                    (new RedisStorage($fullIndexHandle, $target['settings']))->clearAll();
+                }
+                return;
+            case 'file':
+                foreach ($this->getFileStorageTargets() as $target) {
+                    (new FileStorage($fullIndexHandle, $target['configuredPath']))->clearAll();
+                }
+                return;
+        }
+    }
+
+    private function createDatabaseStorage(string $fullIndexHandle): StorageInterface
+    {
+        return Craft::$app->getDb()->getDriverName() === 'pgsql'
+            ? new PostgreSqlStorage($fullIndexHandle)
+            : new MySqlStorage($fullIndexHandle);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function databaseStorageTables(): array
+    {
+        return [
+            '{{%searchmanager_search_documents}}',
+            '{{%searchmanager_search_terms}}',
+            '{{%searchmanager_search_titles}}',
+            '{{%searchmanager_search_ngrams}}',
+            '{{%searchmanager_search_ngram_counts}}',
+            '{{%searchmanager_search_metadata}}',
+            '{{%searchmanager_search_elements}}',
+            '{{%searchmanager_search_compounds}}',
         ];
     }
 

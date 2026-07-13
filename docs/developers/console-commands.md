@@ -9,11 +9,13 @@ Use the plugin help command when you need to discover available commands or conf
 ```bash title="PHP"
 php craft search-manager/help
 php craft search-manager/help maintenance/clear-storage
+php craft search-manager/help maintenance/purge-orphaned-storage
 ```
 
 ```bash title="DDEV"
 ddev craft search-manager/help
 ddev craft search-manager/help maintenance/clear-storage
+ddev craft search-manager/help maintenance/purge-orphaned-storage
 ```
 
 Craft's native help also works when you already know the exact command:
@@ -139,6 +141,37 @@ ddev craft search-manager/maintenance/clear-storage --type=database
 
 > [!WARNING]
 > This permanently removes stored data. Rebuild your indices afterward to restore search functionality.
+
+### `search-manager/maintenance/purge-orphaned-storage`
+
+List and purge storage handles that no longer match a live index. The command compares stored full index names against every configured index handle from both the database and `config/search-manager.php`, after applying the current environment's `indexPrefix`.
+
+Preview candidates first:
+
+```bash title="PHP"
+php craft search-manager/maintenance/purge-orphaned-storage --dry-run
+```
+
+```bash title="DDEV"
+ddev craft search-manager/maintenance/purge-orphaned-storage --dry-run
+```
+
+Purge one storage type:
+
+```bash title="PHP"
+php craft search-manager/maintenance/purge-orphaned-storage --type=database
+```
+
+```bash title="DDEV"
+ddev craft search-manager/maintenance/purge-orphaned-storage --type=database
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--type` | `string` | `all` | Storage type to inspect: `all`, `database`, `redis`, or `file` |
+| `--dry-run` | `bool` | `false` | List candidates without deleting storage data |
+
+Use this after removing an index from `config/search-manager.php`, renaming an index handle, or finding old prefixed handles in storage. Storage under a different `indexPrefix` is ignored so shared services can hold data for multiple environments.
 
 ## Security Commands
 

@@ -1211,6 +1211,9 @@ class SettingsController extends Controller
             return $this->_renderSettingsTemplate($section, $settings);
         }
 
+        SearchManager::$plugin->backend->clearAllSearchCache();
+        SearchManager::$plugin->autocomplete->clearCache();
+
         $this->logInfo('Settings saved successfully');
         Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved'));
 

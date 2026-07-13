@@ -130,6 +130,30 @@ final class HelpController extends AbstractHelpController
                                 'This is destructive. Rebuild affected indices afterward to restore search results.',
                             ],
                         ],
+                        [
+                            'path' => 'maintenance/purge-orphaned-storage',
+                            'summary' => 'Purge prefixed storage handles with no live index.',
+                            'description' => 'List and delete storage handles that carry this environment\'s configured index prefix but no longer match any database or config-file index.',
+                            'usageOptions' => '[--type=<all|database|redis|file>] [--dry-run]',
+                            'options' => [
+                                [
+                                    'name' => '--type',
+                                    'description' => 'Storage type to inspect: all, database, redis, or file. Defaults to all.',
+                                ],
+                                [
+                                    'name' => '--dry-run',
+                                    'description' => 'List orphaned handles without deleting storage data.',
+                                ],
+                            ],
+                            'examples' => [
+                                'search-manager/maintenance/purge-orphaned-storage --dry-run',
+                                'search-manager/maintenance/purge-orphaned-storage --type=database --dry-run',
+                                'search-manager/maintenance/purge-orphaned-storage --type=file',
+                            ],
+                            'notes' => [
+                                'Only storage handles produced by the current indexPrefix are eligible. Data under other environment prefixes is left untouched.',
+                            ],
+                        ],
                     ],
                 ],
                 [

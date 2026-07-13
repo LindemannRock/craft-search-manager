@@ -205,6 +205,11 @@ final class StubBackend extends BackendService
         $this->calls[] = ['method' => 'clearSearchCache', 'indexName' => $indexName];
     }
 
+    public function clearAllSearchCache(): void
+    {
+        $this->calls[] = ['method' => 'clearAllSearchCache', 'indexName' => '*'];
+    }
+
     /**
      * @param array<string, mixed> $options
      * @return array<string, mixed>
