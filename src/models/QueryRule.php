@@ -123,6 +123,22 @@ class QueryRule extends Model
         ];
     }
 
+    /** @inheritdoc */
+    public function attributeLabels(): array
+    {
+        return [
+            'name' => Craft::t('search-manager', 'Name'),
+            'indexHandle' => Craft::t('search-manager', 'Index'),
+            'matchType' => Craft::t('search-manager', 'Match Type'),
+            'matchValue' => Craft::t('search-manager', 'Match Pattern'),
+            'actionType' => Craft::t('search-manager', 'Action Type'),
+            'actionValue' => Craft::t('search-manager', 'Action'),
+            'priority' => Craft::t('search-manager', 'Priority'),
+            'siteId' => Craft::t('search-manager', 'Site'),
+            'enabled' => Craft::t('search-manager', 'Enabled'),
+        ];
+    }
+
     /**
      * Validate action value based on action type
      *

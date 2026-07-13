@@ -89,6 +89,22 @@ class Promotion extends Model
         ];
     }
 
+    /** @inheritdoc */
+    public function attributeLabels(): array
+    {
+        return [
+            'indexHandle' => Craft::t('search-manager', 'Index'),
+            'title' => Craft::t('search-manager', 'Title'),
+            'query' => Craft::t('search-manager', 'Query Pattern'),
+            'matchType' => Craft::t('search-manager', 'Match Type'),
+            'elementId' => Craft::t('search-manager', 'Promoted Element'),
+            'elementType' => Craft::t('search-manager', 'Type'),
+            'position' => Craft::t('search-manager', 'Position'),
+            'siteId' => Craft::t('search-manager', 'Site'),
+            'enabled' => Craft::t('search-manager', 'Enabled'),
+        ];
+    }
+
     /**
      * Validate that element exists
      *

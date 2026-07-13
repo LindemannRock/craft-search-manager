@@ -160,6 +160,25 @@ class ApiKey extends Model
         ];
     }
 
+    /** @inheritdoc */
+    public function attributeLabels(): array
+    {
+        return [
+            'name' => Craft::t('search-manager', 'Name'),
+            'handle' => Craft::t('search-manager', 'Handle'),
+            'type' => Craft::t('search-manager', 'Type'),
+            'enabled' => Craft::t('search-manager', 'Enabled'),
+            'keyHash' => Craft::t('search-manager', 'API Key'),
+            'encryptedKey' => Craft::t('search-manager', 'API Key'),
+            'keyPrefix' => Craft::t('search-manager', 'Prefix'),
+            'allowedIndices' => Craft::t('search-manager', 'Allowed indices'),
+            'allowedReferrers' => Craft::t('search-manager', 'Allowed referrers'),
+            'maxHitsPerPage' => Craft::t('search-manager', 'Max hits'),
+            'validUntil' => Craft::t('search-manager', 'Valid until'),
+            'rateLimit' => Craft::t('search-manager', 'Rate limit'),
+        ];
+    }
+
     /**
      * Validate handle is unique among database-backed API keys.
      */

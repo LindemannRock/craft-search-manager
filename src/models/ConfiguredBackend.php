@@ -265,7 +265,7 @@ class ConfiguredBackend extends Model
         return [
             [['name', 'handle', 'backendType'], 'required'],
             [['name', 'handle'], 'string', 'max' => 255],
-            [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/'],
+            [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/', 'message' => Craft::t('search-manager', 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.')],
             [['handle'], 'validateUniqueHandle'],
             [['backendType'], 'in', 'range' => array_keys(self::BACKEND_TYPES)],
             [['backendType'], 'validateDatabaseBackend'],
@@ -274,6 +274,18 @@ class ConfiguredBackend extends Model
             [['settings'], 'safe'],
             [['settings'], 'validateSettingsSchema'],
             [['settings'], 'validateStoragePath'],
+        ];
+    }
+
+    /** @inheritdoc */
+    public function attributeLabels(): array
+    {
+        return [
+            'name' => Craft::t('search-manager', 'Name'),
+            'handle' => Craft::t('search-manager', 'Handle'),
+            'backendType' => Craft::t('search-manager', 'Backend Type'),
+            'settings' => Craft::t('search-manager', 'Settings'),
+            'enabled' => Craft::t('search-manager', 'Enabled'),
         ];
     }
 

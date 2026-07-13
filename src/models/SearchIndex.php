@@ -162,7 +162,7 @@ class SearchIndex extends Model
         return [
             [['name', 'handle', 'elementType'], 'required'],
             [['name', 'handle', 'elementType', 'transformerClass'], 'string', 'max' => 255],
-            [['handle'], 'match', 'pattern' => '/^[a-zA-Z0-9_-]+$/'],
+            [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/', 'message' => Craft::t('search-manager', 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.')],
             [['handle'], 'validateUniqueHandle'],
             [['language'], 'string', 'max' => 10],
             [['language'], 'match', 'pattern' => '/^[a-z]{2}(-[a-z]{2})?$/i', 'skipOnEmpty' => true, 'message' => Craft::t('search-manager', 'Language must be a valid language code (e.g., en, ar, fr-ca)')],
@@ -178,6 +178,29 @@ class SearchIndex extends Model
             [['criteria'], 'safe'],
             [['headingLevels'], 'validateHeadingLevels'],
             [['transformerClass'], 'validateTransformerClass'],
+        ];
+    }
+
+    /** @inheritdoc */
+    public function attributeLabels(): array
+    {
+        return [
+            'name' => Craft::t('search-manager', 'Name'),
+            'handle' => Craft::t('search-manager', 'Handle'),
+            'elementType' => Craft::t('search-manager', 'Element Type'),
+            'siteId' => Craft::t('search-manager', 'Sites'),
+            'transformerClass' => Craft::t('search-manager', 'Transformer Class'),
+            'headingLevels' => Craft::t('search-manager', 'Heading Levels'),
+            'language' => Craft::t('search-manager', 'Language (Search Processing)'),
+            'backend' => Craft::t('search-manager', 'Search Backend'),
+            'enabled' => Craft::t('search-manager', 'Enabled'),
+            'enableAnalytics' => Craft::t('search-manager', 'Track Analytics'),
+            'disableStopWords' => Craft::t('search-manager', 'Disable Stop Words'),
+            'skipEntriesWithoutUrl' => Craft::t('search-manager', 'Skip Entries Without URL'),
+            'splitSections' => Craft::t('search-manager', 'Split Sections'),
+            'retrievableFields' => Craft::t('search-manager', 'Retrievable Fields'),
+            'documentCount' => Craft::t('search-manager', 'Documents'),
+            'source' => Craft::t('search-manager', 'Source'),
         ];
     }
 

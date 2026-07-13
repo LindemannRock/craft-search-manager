@@ -81,6 +81,18 @@ class WidgetStyle extends Model
         ];
     }
 
+    /** @inheritdoc */
+    public function attributeLabels(): array
+    {
+        return [
+            'handle' => Craft::t('search-manager', 'Handle'),
+            'name' => Craft::t('search-manager', 'Name'),
+            'type' => Craft::t('search-manager', 'Widget Type'),
+            'enabled' => Craft::t('search-manager', 'Enabled'),
+            'styles' => Craft::t('search-manager', 'Styles'),
+        ];
+    }
+
     /**
      * Validate handle is unique among database-backed widget styles.
      */

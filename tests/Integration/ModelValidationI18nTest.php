@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use lindemannrock\searchmanager\models\ApiKey;
+use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -24,12 +26,68 @@ use PHPUnit\Framework\Attributes\CoversClass;
  */
 #[CoversClass(QueryRule::class)]
 #[CoversClass(SearchManager::class)]
+#[CoversClass(ApiKey::class)]
+#[CoversClass(ConfiguredBackend::class)]
 #[CoversClass(Promotion::class)]
 #[CoversClass(SearchIndex::class)]
 #[CoversClass(WidgetConfig::class)]
 #[CoversClass(WidgetStyle::class)]
 final class ModelValidationI18nTest extends TestCase
 {
+    public function testSearchIndexValidationUsesTranslatedAttributeLabels(): void
+    {
+        $previousLanguage = \Craft::$app->language;
+
+        try {
+            \Craft::$app->language = 'de';
+
+            $index = new SearchIndex();
+
+            self::assertFalse($index->validate(['elementType']));
+            self::assertSame([
+                \Craft::t('yii', '{attribute} cannot be blank.', [
+                    'attribute' => \Craft::t('search-manager', 'Element Type'),
+                ]),
+            ], $index->getErrors('elementType'));
+            self::assertStringNotContainsString('Element Type', implode(' ', $index->getErrors('elementType')));
+        } finally {
+            \Craft::$app->language = $previousLanguage;
+        }
+    }
+
+    public function testBareHandleMatchValidatorsUseTranslatedMessages(): void
+    {
+        $previousLanguage = \Craft::$app->language;
+
+        try {
+            \Craft::$app->language = 'de';
+
+            $index = new SearchIndex();
+            $index->handle = '9foo';
+
+            self::assertFalse($index->validate(['handle']));
+            self::assertSame([
+                \Craft::t('search-manager', 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.'),
+            ], $index->getErrors('handle'));
+
+            $index = new SearchIndex();
+            $index->handle = 'foo9_bar-baz';
+
+            self::assertTrue($index->validate(['handle']), implode('; ', $index->getErrors('handle')));
+            self::assertSame([], $index->getErrors('handle'));
+
+            $backend = new ConfiguredBackend();
+            $backend->handle = '1 invalid handle';
+
+            self::assertFalse($backend->validate(['handle']));
+            self::assertSame([
+                \Craft::t('search-manager', 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.'),
+            ], $backend->getErrors('handle'));
+        } finally {
+            \Craft::$app->language = $previousLanguage;
+        }
+    }
+
     public function testQueryRuleValidationMessagesAndDescriptionsStayStable(): void
     {
         $rule = new QueryRule();
