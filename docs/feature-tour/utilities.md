@@ -28,6 +28,9 @@ Clear ALL search index data from a specific storage type. The dropdown shows thr
 
 Each option shows a live count (rows, keys, or files) loaded via AJAX.
 
+> [!NOTE]
+> Clear Storage only covers local storage types: Database, Redis, and File. External search backends run on shared provider accounts, and a matching index-name prefix does not prove Search Manager ownership. For Algolia, Meilisearch, and Typesense, rebuild or clear configured indices individually; delete old or renamed provider indices in the provider dashboard.
+
 > [!WARNING]
 > This deletes all search index data stored in the selected storage type across **all indices** using that storage — including orphaned data from indices that no longer exist. You'll need to rebuild affected indices afterwards.
 

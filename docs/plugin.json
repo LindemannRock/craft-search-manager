@@ -2,7 +2,7 @@
     "name": "Search Manager",
     "handle": "search-manager",
     "description": "Advanced multi-backend search management for Craft CMS with BM25 ranking, analytics, caching, query rules, promotions, and a frontend search widget.",
-    "version": "5.38.0",
+    "version": "5.52.0",
     "developer": "LindemannRock",
     "developerUrl": "https://lindemannrock.com",
     "documentationUrl": "https://github.com/LindemannRock/craft-search-manager/blob/main/README.md"

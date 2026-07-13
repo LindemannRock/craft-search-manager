@@ -144,7 +144,7 @@ ddev craft search-manager/maintenance/clear-storage --type=database
 
 ### `search-manager/maintenance/purge-orphaned-storage`
 
-List and purge storage handles that no longer match a live index. The command compares stored full index names against every configured index handle from both the database and `config/search-manager.php`, after applying the current environment's `indexPrefix`.
+List and purge local storage handles that no longer match a live index. The command compares stored full index names against every configured index handle from both the database and `config/search-manager.php`, after applying the current environment's `indexPrefix`.
 
 Preview candidates first:
 
@@ -170,6 +170,9 @@ ddev craft search-manager/maintenance/purge-orphaned-storage --type=database
 |--------|------|---------|-------------|
 | `--type` | `string` | `all` | Storage type to inspect: `all`, `database`, `redis`, or `file` |
 | `--dry-run` | `bool` | `false` | List candidates without deleting storage data |
+
+> [!NOTE]
+> This command only inspects local storage: database, Redis, and file. External search backends run on shared provider accounts, and a matching index-name prefix does not prove Search Manager ownership. Clean up old Algolia, Meilisearch, or Typesense indices via your provider's dashboard.
 
 Use this after removing an index from `config/search-manager.php`, renaming an index handle, or finding old prefixed handles in storage. Storage under a different `indexPrefix` is ignored so shared services can hold data for multiple environments.
 

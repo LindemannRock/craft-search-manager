@@ -188,6 +188,15 @@ See [Redis Backend](../backends/backend-redis.md) for database isolation details
 3. **Check firewall**: Ensure your server can reach the external service
 4. **Check logs**: Look for specific error messages in Search Manager > Logs
 
+## Old Indices Still Visible in My Algolia/Meilisearch/Typesense Dashboard
+
+Old provider-side indices can remain visible after removing a config-file index, renaming an index handle, or switching between backends before cleanup was available. Search Manager can clear or rebuild configured external indices, but it does not automatically purge external indices that are no longer part of the live configuration.
+
+**Fix:** Delete the old prefixed index in the Algolia, Meilisearch, or Typesense dashboard. Before deleting anything, compare the provider index name against your current live Search Manager index handles and environment prefix so you do not remove an index still used by this project or another application.
+
+> [!WARNING]
+> External search backends run on shared provider accounts, and a matching index-name prefix does not prove Search Manager ownership. Search Manager intentionally leaves orphaned external index cleanup manual because deleting a provider index is unrecoverable and the account may also contain indices from other projects.
+
 ## Analytics Not Tracking
 
 1. **Is analytics enabled?** Check `enableAnalytics` is `true` in settings.
