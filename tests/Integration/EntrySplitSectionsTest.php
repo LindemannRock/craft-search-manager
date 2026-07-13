@@ -140,6 +140,30 @@ final class EntrySplitSectionsTest extends TestCase
         self::assertNotSame($documents[0]['backendId'], $documents[1]['backendId']);
     }
 
+    public function testPromotedPageSectionIdIsReservedWhenHeadingIdAttributeIsPromotedPage(): void
+    {
+        $documents = $this->htmlSectionsForIntroCollision('<p>Intro prose.</p><h2 id="promoted-page">Promotion</h2><p>Promotion body.</p>', true);
+
+        self::assertCount(2, $documents);
+        self::assertSame(['intro', 'promoted-page-2'], array_column($documents, 'sectionId'));
+        self::assertSame(['1087_1_intro', '1087_1_promoted-page-2'], array_column($documents, 'backendId'));
+        self::assertSame('Intro prose.', $documents[0]['_bodyClean']);
+        self::assertSame('Promotion body.', $documents[1]['_bodyClean']);
+        self::assertNotSame($documents[0]['backendId'], $documents[1]['backendId']);
+    }
+
+    public function testPromotedPageSectionIdIsReservedWhenGeneratedHeadingAnchorIsPromotedPage(): void
+    {
+        $documents = $this->htmlSectionsForIntroCollision('<p>Intro prose.</p><h2>Promoted Page</h2><p>Promotion body.</p>', false);
+
+        self::assertCount(2, $documents);
+        self::assertSame(['intro', 'promoted-page-2'], array_column($documents, 'sectionId'));
+        self::assertSame(['1087_1_intro', '1087_1_promoted-page-2'], array_column($documents, 'backendId'));
+        self::assertSame('Intro prose.', $documents[0]['_bodyClean']);
+        self::assertSame('Promotion body.', $documents[1]['_bodyClean']);
+        self::assertNotSame($documents[0]['backendId'], $documents[1]['backendId']);
+    }
+
     public function testHeadinglessEntryInSplitIndexStaysNormalRecord(): void
     {
         $entry = $this->entry([

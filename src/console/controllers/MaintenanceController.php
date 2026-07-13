@@ -151,6 +151,7 @@ class MaintenanceController extends Controller
             $dbStats = $this->getDatabaseStats();
             $this->stdout("  Documents: {$dbStats['documentRows']}\n");
             $this->stdout("  Terms: {$dbStats['termRows']}\n");
+            $this->stdout("  Compounds: {$dbStats['compoundRows']}\n");
             $indexHandles = $dbStats['indexHandles'] ?: [];
             if ($this->verbose) {
                 $this->stdout("  Unique Index Handles: " . count($indexHandles) . "\n");
@@ -454,13 +455,23 @@ class MaintenanceController extends Controller
             'SELECT COUNT(*) FROM {{%searchmanager_search_terms}}'
         )->queryScalar();
 
+        $compoundRows = (int)$db->createCommand(
+            'SELECT COUNT(*) FROM {{%searchmanager_search_compounds}}'
+        )->queryScalar();
+
         $indexHandles = $db->createCommand(
-            'SELECT DISTINCT indexHandle FROM {{%searchmanager_search_documents}}'
+            'SELECT DISTINCT indexHandle FROM (
+                SELECT indexHandle FROM {{%searchmanager_search_documents}}
+                UNION
+                SELECT indexHandle FROM {{%searchmanager_search_compounds}}
+            ) storageIndexHandles
+            ORDER BY indexHandle'
         )->queryColumn();
 
         return [
             'documentRows' => $documentRows,
             'termRows' => $termRows,
+            'compoundRows' => $compoundRows,
             'indexHandles' => $indexHandles,
         ];
     }

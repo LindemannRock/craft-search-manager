@@ -497,6 +497,7 @@ class UtilitiesController extends Controller
             '{{%searchmanager_search_ngram_counts}}',
             '{{%searchmanager_search_metadata}}',
             '{{%searchmanager_search_elements}}',
+            '{{%searchmanager_search_compounds}}',
         ];
 
         $db = Craft::$app->getDb();
@@ -647,8 +648,17 @@ class UtilitiesController extends Controller
                 'SELECT COUNT(*) FROM {{%searchmanager_search_terms}}'
             )->queryScalar();
 
+            $compoundRows = (int)$db->createCommand(
+                'SELECT COUNT(*) FROM {{%searchmanager_search_compounds}}'
+            )->queryScalar();
+
             $indexHandles = $db->createCommand(
-                'SELECT DISTINCT indexHandle FROM {{%searchmanager_search_documents}}'
+                'SELECT DISTINCT indexHandle FROM (
+                    SELECT indexHandle FROM {{%searchmanager_search_documents}}
+                    UNION
+                    SELECT indexHandle FROM {{%searchmanager_search_compounds}}
+                ) storageIndexHandles
+                ORDER BY indexHandle'
             )->queryColumn();
 
             return [
@@ -657,8 +667,9 @@ class UtilitiesController extends Controller
                 'driverLabel' => $driverLabel,
                 'documentRows' => $documentRows,
                 'termRows' => $termRows,
+                'compoundRows' => $compoundRows,
                 'indexHandles' => $indexHandles,
-                'totalRows' => $documentRows + $termRows,
+                'totalRows' => $documentRows + $termRows + $compoundRows,
             ];
         } catch (\Throwable $e) {
             return [

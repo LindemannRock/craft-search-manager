@@ -34,7 +34,7 @@ class HtmlSectionSplitter
         $cleaner = new SearchContentCleaner();
         $introHtmlParts = [];
         $headingSections = [];
-        $usedAnchors = ['intro' => true];
+        $usedAnchors = ['intro' => true, 'promoted-page' => true];
 
         foreach ($sources as $source) {
             $html = trim($source['html']);
