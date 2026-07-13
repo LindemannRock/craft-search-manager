@@ -1211,12 +1211,14 @@ class SearchIndex extends Model
     private function shapeComparableFromPreviousRow(array $row): array
     {
         return [
+            'handle' => (string)$row['handle'],
             'elementType' => (string)$row['elementType'],
             'siteIds' => self::normalizeSiteIdsComparable($row['siteIds'] ?? null),
             'criteria' => self::decodeJsonComparable($row['criteria'] ?? null, []),
             'transformerClass' => self::normalizeOptionalString($row['transformerClass'] ?? null),
             'headingLevels' => self::decodeJsonComparable($row['headingLevels'] ?? null, null),
             'language' => self::normalizeOptionalString($row['language'] ?? null),
+            'backend' => self::normalizeOptionalString($row['backend'] ?? null),
             'disableStopWords' => (bool)$row['disableStopWords'],
             'skipEntriesWithoutUrl' => (bool)$row['skipEntriesWithoutUrl'],
             'splitSections' => (bool)$row['splitSections'],
@@ -1233,12 +1235,14 @@ class SearchIndex extends Model
     private function shapeComparableFromCurrentAttributes(array $attributes): array
     {
         return [
+            'handle' => (string)$attributes['handle'],
             'elementType' => (string)$attributes['elementType'],
             'siteIds' => self::normalizeSiteIdsComparable($this->getSiteIds()),
             'criteria' => self::decodeJsonComparable($attributes['criteria'] ?? null, []),
             'transformerClass' => self::normalizeOptionalString($attributes['transformerClass'] ?? null),
             'headingLevels' => self::decodeJsonComparable($attributes['headingLevels'] ?? null, null),
             'language' => self::normalizeOptionalString($attributes['language'] ?? null),
+            'backend' => self::normalizeOptionalString($attributes['backend'] ?? null),
             'disableStopWords' => (bool)$attributes['disableStopWords'],
             'skipEntriesWithoutUrl' => (bool)$attributes['skipEntriesWithoutUrl'],
             'splitSections' => (bool)$attributes['splitSections'],
@@ -1255,12 +1259,14 @@ class SearchIndex extends Model
     private function shapeComparableFromConfigAttributes(array $attributes): array
     {
         return [
+            'handle' => (string)$attributes['handle'],
             'elementType' => (string)$attributes['elementType'],
             'siteIds' => self::normalizeSiteIdsComparable($attributes['siteIds'] ?? null),
             'criteria' => self::decodeJsonComparable($attributes['criteria'] ?? null, []),
             'transformerClass' => self::normalizeOptionalString($attributes['transformerClass'] ?? null),
             'headingLevels' => self::decodeJsonComparable($attributes['headingLevels'] ?? null, null),
             'language' => self::normalizeOptionalString($attributes['language'] ?? null),
+            'backend' => self::normalizeOptionalString($attributes['backend'] ?? null),
             'disableStopWords' => (bool)$attributes['disableStopWords'],
             'skipEntriesWithoutUrl' => (bool)$attributes['skipEntriesWithoutUrl'],
             'splitSections' => (bool)$attributes['splitSections'],

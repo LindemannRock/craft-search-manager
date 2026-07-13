@@ -70,6 +70,9 @@ final class AuditHousekeepingRegressionTest extends TestCase
         self::assertTrue($index->save(), print_r($index->getErrors(), true));
 
         self::assertSame(0, $this->documentRowsForHandle($this->fullHandle($oldHandle)));
+        self::assertTrue($index->wasRebuildQueuedOnLastSave());
+        self::assertSame(1, $this->countRebuildQueueRows($newHandle));
+        self::assertSame(0, $this->countRebuildQueueRows($oldHandle));
 
         $reloaded = SearchIndex::findByHandle($newHandle);
         self::assertNotNull($reloaded);
@@ -97,6 +100,8 @@ final class AuditHousekeepingRegressionTest extends TestCase
 
         self::assertSame([$indexHandle], $backendService->backendFor($oldBackendHandle)->clearedIndices);
         self::assertSame([], $backendService->backendFor($newBackendHandle)->clearedIndices);
+        self::assertTrue($index->wasRebuildQueuedOnLastSave());
+        self::assertSame(1, $this->countRebuildQueueRows($indexHandle));
 
         $reloaded = SearchIndex::findByHandle($indexHandle);
         self::assertNotNull($reloaded);
