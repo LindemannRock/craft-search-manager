@@ -1098,6 +1098,7 @@ class SearchIndex extends Model
         $row = (new Query())
             ->select([
                 'id',
+                'name',
                 'handle',
                 'elementType',
                 'siteId',
@@ -1106,6 +1107,8 @@ class SearchIndex extends Model
                 'headingLevels',
                 'language',
                 'backend',
+                'enabled',
+                'enableAnalytics',
                 'disableStopWords',
                 'skipEntriesWithoutUrl',
                 'splitSections',
@@ -1120,6 +1123,7 @@ class SearchIndex extends Model
         }
 
         return [
+            'name' => (string)$row['name'],
             'handle' => (string)$row['handle'],
             'elementType' => (string)$row['elementType'],
             'siteId' => $row['siteId'],
@@ -1129,6 +1133,8 @@ class SearchIndex extends Model
             'headingLevels' => $row['headingLevels'],
             'language' => $row['language'],
             'backend' => $row['backend'] !== null && $row['backend'] !== '' ? (string)$row['backend'] : null,
+            'enabled' => $row['enabled'],
+            'enableAnalytics' => $row['enableAnalytics'],
             'disableStopWords' => $row['disableStopWords'],
             'skipEntriesWithoutUrl' => $row['skipEntriesWithoutUrl'],
             'splitSections' => $row['splitSections'],
@@ -1183,7 +1189,15 @@ class SearchIndex extends Model
      */
     private function shouldQueueRebuildAfterSave(?array $previousRow, array $attributes): bool
     {
-        if ($previousRow === null || !$this->enabled) {
+        if ($previousRow === null) {
+            return false;
+        }
+
+        if (!(bool)$previousRow['enabled'] && $this->enabled) {
+            return true;
+        }
+
+        if (!$this->enabled) {
             return false;
         }
 
@@ -1232,6 +1246,156 @@ class SearchIndex extends Model
                 self::decodeJsonComparable($attributes['retrievableFields'] ?? null, null),
             ),
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     * @return array<string, mixed>
+     */
+    private function shapeComparableFromConfigAttributes(array $attributes): array
+    {
+        return [
+            'elementType' => (string)$attributes['elementType'],
+            'siteIds' => self::normalizeSiteIdsComparable($attributes['siteIds'] ?? null),
+            'criteria' => self::decodeJsonComparable($attributes['criteria'] ?? null, []),
+            'transformerClass' => self::normalizeOptionalString($attributes['transformerClass'] ?? null),
+            'headingLevels' => self::decodeJsonComparable($attributes['headingLevels'] ?? null, null),
+            'language' => self::normalizeOptionalString($attributes['language'] ?? null),
+            'disableStopWords' => (bool)$attributes['disableStopWords'],
+            'skipEntriesWithoutUrl' => (bool)$attributes['skipEntriesWithoutUrl'],
+            'splitSections' => (bool)$attributes['splitSections'],
+            'retrievableFields' => self::normalizeRetrievableFields(
+                self::decodeJsonComparable($attributes['retrievableFields'] ?? null, null),
+            ),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>|null $previousRow
+     * @param array<string, mixed> $attributes
+     */
+    private function shouldQueueRebuildAfterConfigSync(?array $previousRow, array $attributes): bool
+    {
+        if (!(bool)$attributes['enabled']) {
+            return false;
+        }
+
+        if ($previousRow === null) {
+            return true;
+        }
+
+        return $this->shapeComparableFromPreviousRow($previousRow) !== $this->shapeComparableFromConfigAttributes($attributes);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function metadataComparableFromPreviousRow(array $row): array
+    {
+        return [
+            'name' => (string)$row['name'],
+            'elementType' => (string)$row['elementType'],
+            'siteIds' => self::normalizeSiteIdsComparable($row['siteIds'] ?? null),
+            'criteria' => self::decodeJsonComparable($row['criteria'] ?? null, []),
+            'transformerClass' => self::normalizeOptionalString($row['transformerClass'] ?? null),
+            'headingLevels' => self::decodeJsonComparable($row['headingLevels'] ?? null, null),
+            'language' => self::normalizeOptionalString($row['language'] ?? null),
+            'backend' => self::normalizeOptionalString($row['backend'] ?? null),
+            'enabled' => (bool)$row['enabled'],
+            'enableAnalytics' => (bool)$row['enableAnalytics'],
+            'disableStopWords' => (bool)$row['disableStopWords'],
+            'skipEntriesWithoutUrl' => (bool)$row['skipEntriesWithoutUrl'],
+            'splitSections' => (bool)$row['splitSections'],
+            'retrievableFields' => self::normalizeRetrievableFields(
+                self::decodeJsonComparable($row['retrievableFields'] ?? null, null),
+            ),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     * @return array<string, mixed>
+     */
+    private function metadataComparableFromConfigAttributes(array $attributes): array
+    {
+        return [
+            'name' => (string)$attributes['name'],
+            'elementType' => (string)$attributes['elementType'],
+            'siteIds' => self::normalizeSiteIdsComparable($attributes['siteIds'] ?? null),
+            'criteria' => self::decodeJsonComparable($attributes['criteria'] ?? null, []),
+            'transformerClass' => self::normalizeOptionalString($attributes['transformerClass'] ?? null),
+            'headingLevels' => self::decodeJsonComparable($attributes['headingLevels'] ?? null, null),
+            'language' => self::normalizeOptionalString($attributes['language'] ?? null),
+            'backend' => self::normalizeOptionalString($attributes['backend'] ?? null),
+            'enabled' => (bool)$attributes['enabled'],
+            'enableAnalytics' => (bool)$attributes['enableAnalytics'],
+            'disableStopWords' => (bool)$attributes['disableStopWords'],
+            'skipEntriesWithoutUrl' => (bool)$attributes['skipEntriesWithoutUrl'],
+            'splitSections' => (bool)$attributes['splitSections'],
+            'retrievableFields' => self::normalizeRetrievableFields(
+                self::decodeJsonComparable($attributes['retrievableFields'] ?? null, null),
+            ),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $configData
+     * @return array<string, mixed>
+     */
+    private function configPersistenceAttributes(array $configData): array
+    {
+        $siteId = isset($configData['siteId']) ? self::normalizeSiteIdValue($configData['siteId']) : null;
+        $siteIds = is_array($siteId) ? $siteId : ($siteId ? [(int)$siteId] : null);
+        $headingLevels = $configData['headingLevels'] ?? null;
+        $retrievableFields = self::normalizeRetrievableFields($configData['retrievableFields'] ?? null);
+
+        return [
+            'name' => $configData['name'] ?? $this->handle,
+            'handle' => $this->handle,
+            'elementType' => $configData['elementType'] ?? Entry::class,
+            'siteId' => is_array($siteId) ? null : $siteId,
+            'siteIds' => $siteIds,
+            'criteria' => json_encode($configData['criteria'] ?? []),
+            'transformerClass' => ($configData['transformer'] ?? null) ?: '',
+            'headingLevels' => $headingLevels ? json_encode($headingLevels) : null,
+            'language' => $configData['language'] ?? null,
+            'backend' => ($configData['backend'] ?? null) ?: null,
+            'enabled' => (int)($configData['enabled'] ?? true),
+            'enableAnalytics' => (int)($configData['enableAnalytics'] ?? true),
+            'disableStopWords' => (int)($configData['disableStopWords'] ?? false),
+            'skipEntriesWithoutUrl' => (int)($configData['skipEntriesWithoutUrl'] ?? false),
+            'splitSections' => (int)(bool)($configData['splitSections'] ?? false),
+            'retrievableFields' => json_encode($retrievableFields),
+            'source' => 'config',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    private function applyConfigPersistenceAttributesToModel(array $attributes): void
+    {
+        $siteIds = $attributes['siteIds'] ?? null;
+
+        $this->name = (string)$attributes['name'];
+        $this->elementType = (string)$attributes['elementType'];
+        $this->siteId = is_array($siteIds)
+            ? (count($siteIds) === 1 ? (int)$siteIds[0] : $siteIds)
+            : null;
+        $this->criteria = self::decodeJsonComparable($attributes['criteria'] ?? null, []);
+        $this->transformerClass = self::normalizeOptionalString($attributes['transformerClass'] ?? null);
+        $this->headingLevels = self::decodeJsonComparable($attributes['headingLevels'] ?? null, null);
+        $this->language = self::normalizeOptionalString($attributes['language'] ?? null);
+        $this->backend = self::normalizeOptionalString($attributes['backend'] ?? null);
+        $this->enabled = (bool)$attributes['enabled'];
+        $this->enableAnalytics = (bool)$attributes['enableAnalytics'];
+        $this->disableStopWords = (bool)$attributes['disableStopWords'];
+        $this->skipEntriesWithoutUrl = (bool)$attributes['skipEntriesWithoutUrl'];
+        $this->splitSections = (bool)$attributes['splitSections'];
+        $this->retrievableFields = self::normalizeRetrievableFields(
+            self::decodeJsonComparable($attributes['retrievableFields'] ?? null, null),
+        );
     }
 
     private function queueRebuildAfterSave(): void
@@ -1385,12 +1549,12 @@ class SearchIndex extends Model
 
     /**
      * Sync metadata from config file (for config indices)
-     * Updates name, transformer, language from config without changing stats
+     * Updates persisted metadata from config without changing stats.
      */
     public function syncMetadataFromConfig(): bool
     {
-        if ($this->source !== 'config' || !$this->id) {
-            $this->logDebug('Sync skipped - not config or no ID', [
+        if ($this->source !== 'config') {
+            $this->logDebug('Sync skipped - not config', [
                 'source' => $this->source,
                 'id' => $this->id,
                 'handle' => $this->handle,
@@ -1407,57 +1571,63 @@ class SearchIndex extends Model
                 return false;
             }
 
-            // Extract fresh values from config
-            $freshName = $configData['name'] ?? $this->handle;
-            $freshTransformer = $configData['transformer'] ?? null;
-            $freshLanguage = $configData['language'] ?? null;
-            $freshHeadingLevels = $configData['headingLevels'] ?? null;
-            $freshEnabled = $configData['enabled'] ?? true;
-            $freshDisableStopWords = $configData['disableStopWords'] ?? false;
-            $freshRetrievableFields = self::normalizeRetrievableFields($configData['retrievableFields'] ?? null);
+            $attributes = $this->configPersistenceAttributes($configData);
 
             // Validate transformer class before syncing
-            if (!$this->validateConfigTransformerClass($freshTransformer)) {
+            if (!$this->validateConfigTransformerClass($attributes['transformerClass'])) {
                 return false;
+            }
+
+            $previousRow = $this->id ? $this->existingPersistenceRow() : null;
+            $metadataChanged = $previousRow === null
+                || $this->metadataComparableFromPreviousRow($previousRow) !== $this->metadataComparableFromConfigAttributes($attributes);
+            $queueRebuild = $this->shouldQueueRebuildAfterConfigSync($previousRow, $attributes);
+
+            if (!$metadataChanged) {
+                $this->applyConfigPersistenceAttributesToModel($attributes);
+                return true;
             }
 
             $this->logInfo('Syncing metadata from config', [
                 'handle' => $this->handle,
                 'old_name' => $this->name,
-                'new_name' => $freshName,
+                'new_name' => $attributes['name'],
                 'old_transformer' => $this->transformerClass,
-                'new_transformer' => $freshTransformer,
+                'new_transformer' => $attributes['transformerClass'],
             ]);
 
-            Craft::$app->getDb()
-                ->createCommand()
-                ->update(
-                    '{{%searchmanager_indices}}',
-                    [
-                        'name' => $freshName,
-                        'transformerClass' => $freshTransformer ?: '',
-                        'headingLevels' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
-                        'language' => $freshLanguage,
-                        'enabled' => (int)$freshEnabled,
-                        'disableStopWords' => (int)$freshDisableStopWords,
-                        'retrievableFields' => json_encode($freshRetrievableFields),
-                        'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
-                    ],
-                    ['id' => $this->id]
-                )
-                ->execute();
+            $siteIds = $attributes['siteIds'];
+            unset($attributes['siteIds']);
+            $attributes['dateUpdated'] = Db::prepareDateForDb(new \DateTime());
 
-            // Update current object with fresh values
-            $this->name = $freshName;
-            $this->transformerClass = $freshTransformer;
-            $this->headingLevels = $freshHeadingLevels;
-            $this->language = $freshLanguage;
-            $this->enabled = $freshEnabled;
-            $this->disableStopWords = (bool)$freshDisableStopWords;
-            $this->retrievableFields = $freshRetrievableFields;
+            if ($this->id) {
+                Craft::$app->getDb()
+                    ->createCommand()
+                    ->update('{{%searchmanager_indices}}', $attributes, ['id' => $this->id])
+                    ->execute();
+            } else {
+                $attributes['lastIndexed'] = $this->lastIndexed ? Db::prepareDateForDb($this->lastIndexed) : null;
+                $attributes['documentCount'] = $this->documentCount;
+                $attributes['dateCreated'] = $attributes['dateUpdated'];
+                $attributes['uid'] = StringHelper::UUID();
+
+                Craft::$app->getDb()
+                    ->createCommand()
+                    ->insert('{{%searchmanager_indices}}', $attributes)
+                    ->execute();
+
+                $this->id = (int)Craft::$app->getDb()->getLastInsertID();
+            }
+
+            $this->saveIndexSites($siteIds);
+            $attributes['siteIds'] = $siteIds;
+            $this->applyConfigPersistenceAttributesToModel($attributes);
 
             $this->logInfo('Metadata synced successfully', ['handle' => $this->handle]);
             self::clearCache();
+            if ($queueRebuild) {
+                $this->queueRebuildAfterSave();
+            }
             return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to sync config metadata', [
@@ -2169,11 +2339,11 @@ class SearchIndex extends Model
     }
 
     /**
-     * Save index site mappings for database indices.
+     * Save persisted index site mappings.
      */
     private function saveIndexSites(?array $siteIds): void
     {
-        if (!$this->id || $this->source !== 'database') {
+        if (!$this->id) {
             return;
         }
 
@@ -2199,7 +2369,7 @@ class SearchIndex extends Model
      */
     private function clearIndexSites(): void
     {
-        if (!$this->id || $this->source !== 'database') {
+        if (!$this->id) {
             return;
         }
 
