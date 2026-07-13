@@ -188,9 +188,19 @@ class CraftSearchAdapter extends \craft\services\Search
             'fieldHandles' => $fieldHandles,
         ]);
 
+        $nativeIndexed = parent::indexElementAttributes($element, $fieldHandles);
+        if (!$nativeIndexed) {
+            $this->logWarning('Craft native searchindex refresh failed while Search Manager indexing continues', [
+                'elementId' => $element->id,
+                'elementType' => get_class($element),
+            ]);
+        }
+
         // Delegate to our indexing service
         // Note: We index all fields via transformers, not specific fieldHandles
-        return SearchManager::$plugin->indexing->indexElement($element);
+        $searchManagerIndexed = SearchManager::$plugin->indexing->indexElement($element);
+
+        return $nativeIndexed || $searchManagerIndexed;
     }
 
     /**

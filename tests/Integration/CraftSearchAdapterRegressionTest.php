@@ -20,6 +20,7 @@ use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
+use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -170,6 +171,52 @@ final class CraftSearchAdapterRegressionTest extends TestCase
             self::assertSame(0, $this->nativeSearchIndexRowCount($condition));
             self::assertTrue((new CraftSearchAdapter())->indexElementAttributes($element));
             self::assertGreaterThan(0, $this->nativeSearchIndexRowCount($condition));
+        } finally {
+            $settings->autoIndex = $originalAutoIndex;
+        }
+    }
+
+    public function testManualIndexingRefreshesCraftNativeSearchIndexAndQueuesPendingSync(): void
+    {
+        $fixture = $this->findWorkingIndexAndElement();
+        if ($fixture === null) {
+            self::markTestSkipped('No enabled Entry index with a matching element is available.');
+        }
+
+        [$index, $element] = $fixture;
+        $settings = SearchManager::$plugin->getSettings();
+        $originalAutoIndex = $settings->autoIndex;
+        $settings->autoIndex = false;
+
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), ['hits' => []]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $condition = [
+            'elementId' => (int)$element->id,
+            'siteId' => (int)$element->siteId,
+        ];
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%searchindex}}', $condition)
+            ->execute();
+
+        try {
+            self::assertSame(0, $this->nativeSearchIndexRowCount($condition));
+            self::assertSame(0, $this->countPendingRows([
+                'indexHandle' => $index->handle,
+                'elementId' => (int)$element->id,
+                'siteId' => (int)$element->siteId,
+            ]));
+
+            $indexed = $this->withOnlySearchIndices([$index], fn(): bool => (new CraftSearchAdapter())->indexElementAttributes($element));
+
+            self::assertTrue($indexed);
+            self::assertGreaterThan(0, $this->nativeSearchIndexRowCount($condition));
+
+            $pendingRow = $this->fetchPendingRow($index->handle, (int)$element->id, (int)$element->siteId);
+            self::assertNotNull($pendingRow);
+            self::assertSame(PendingSyncRepository::OP_UPSERT, $pendingRow['op']);
+            self::assertSame(PendingSyncRepository::STATUS_PENDING, $pendingRow['status']);
         } finally {
             $settings->autoIndex = $originalAutoIndex;
         }
