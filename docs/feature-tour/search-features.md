@@ -191,12 +191,9 @@ See [Multi-Language](multi-language.md) and [Advanced Operators](../template-gui
 
 ## Native Search Replacement
 
-When `replaceNativeSearch` is enabled, Search Manager replaces Craft's built-in search service. This means:
+When `replaceNativeSearch` is enabled, Search Manager can answer Craft's built-in `.search()` calls with a Search Manager index. It uses your index only when a full-coverage, criteria-less index exists for the element type and query site scope.
 
-- **CP searches** use your backend (Entries > Search, Assets > Search, etc.)
-- **Template searches** use your backend automatically
-- **Element queries** use your backend (`Entry::find()->search('query')`)
-- **All search operators** work everywhere, including the CP search box
+Element types with only criteria-limited indices continue using Craft's native search. Craft's native search index stays fully up to date, so fallback searches remain current and disabling native replacement does not require a content resave.
 
 ```php
 // config/search-manager.php
@@ -204,3 +201,12 @@ When `replaceNativeSearch` is enabled, Search Manager replaces Craft's built-in 
 ```
 
 This only works with built-in backends (MySQL, PostgreSQL, Redis, File).
+
+> [!NOTE]
+> `splitSections` does not make an index criteria-limited. It changes the indexed document shape, not which elements the index covers.
+
+| Native `.search()` behavior | Carries through? | Notes |
+|---|---:|---|
+| Relevance ranking, boosts, and synonyms | Yes | Results use Search Manager scoring when a full-coverage index answers the query. |
+| Promotion pinning | No | Promoted elements can still appear, but fixed promotion positions are not preserved through Craft's native score map. |
+| Redirects, snippets, and highlighting | No | Use `craft.searchManager.search()` when the template needs the full Search Manager response. |

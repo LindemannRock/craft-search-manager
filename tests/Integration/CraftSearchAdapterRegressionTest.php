@@ -10,12 +10,15 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
+use craft\db\Query;
 use craft\elements\Entry;
 use lindemannrock\searchmanager\adapters\CraftSearchAdapter;
 use lindemannrock\searchmanager\backends\AlgoliaBackend;
 use lindemannrock\searchmanager\backends\MySqlBackend;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -49,6 +52,7 @@ final class CraftSearchAdapterRegressionTest extends TestCase
             '49639-2' => 11.5,
         ], $scores);
         self::assertSame('*', $backend->searchCalls[0]['options']['siteId'] ?? null);
+        self::assertSame(0, $backend->searchCalls[0]['options']['limit'] ?? null);
     }
 
     public function testSiteIdArraySearchPassesNormalizedScopeAndKeysReturnedSites(): void
@@ -138,7 +142,101 @@ final class CraftSearchAdapterRegressionTest extends TestCase
         });
     }
 
-    private function index(string $handle, int|array|null $siteId, ?string $backend = null): SearchIndex
+    public function testAutoIndexStillRefreshesCraftNativeSearchIndex(): void
+    {
+        $fixture = $this->findWorkingIndexAndElement();
+        if ($fixture === null) {
+            self::markTestSkipped('No enabled Entry index with a matching element is available.');
+        }
+
+        [, $element] = $fixture;
+        $settings = SearchManager::$plugin->getSettings();
+        $originalAutoIndex = $settings->autoIndex;
+        $settings->autoIndex = true;
+
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), ['hits' => []]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $condition = [
+            'elementId' => (int)$element->id,
+            'siteId' => (int)$element->siteId,
+        ];
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%searchindex}}', $condition)
+            ->execute();
+
+        try {
+            self::assertSame(0, $this->nativeSearchIndexRowCount($condition));
+            self::assertTrue((new CraftSearchAdapter())->indexElementAttributes($element));
+            self::assertGreaterThan(0, $this->nativeSearchIndexRowCount($condition));
+        } finally {
+            $settings->autoIndex = $originalAutoIndex;
+        }
+    }
+
+    public function testNarrowConfigIndexIsSkippedForCatchAllDatabaseIndex(): void
+    {
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [
+            'hits' => [
+                ['elementId' => 49639, 'siteId' => 1, 'score' => 12.5],
+            ],
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $narrowConfig = $this->index('narrow-config', 1, null, static fn($query) => $query, 'config');
+        $catchAllDb = $this->index('db-catch-all', 1);
+
+        $scores = $this->withOnlySearchIndices([$narrowConfig, $catchAllDb], function(): array {
+            $query = Entry::find();
+            $query->search = 'classic watches';
+            $query->siteId = 1;
+
+            return (new CraftSearchAdapter())->searchElements($query);
+        });
+
+        self::assertSame(['49639-1' => 12.5], $scores);
+        self::assertSame('db-catch-all', $backend->searchCalls[0]['indexName'] ?? null);
+    }
+
+    public function testOnlyNarrowIndicesFallBackToNativeWithoutBackendSearch(): void
+    {
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [
+            'hits' => [
+                ['elementId' => 49639, 'siteId' => 1, 'score' => 12.5],
+            ],
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $this->withOnlySearchIndices([$this->index('narrow-db', 1, null, ['sections' => ['news']])], function() use ($backend): void {
+            $query = Entry::find();
+            $query->search = 'classic watches';
+            $query->siteId = 1;
+
+            (new CraftSearchAdapter())->searchElements($query);
+
+            self::assertSame([], $backend->searchCalls);
+        });
+    }
+
+    /**
+     * @param array<string, int> $condition
+     */
+    private function nativeSearchIndexRowCount(array $condition): int
+    {
+        return (int)(new Query())
+            ->from('{{%searchindex}}')
+            ->where($condition)
+            ->count();
+    }
+
+    private function index(
+        string $handle,
+        int|array|null $siteId,
+        ?string $backend = null,
+        mixed $criteria = [],
+        string $source = 'database',
+    ): SearchIndex
     {
         $index = new SearchIndex();
         $index->handle = $handle;
@@ -146,7 +244,9 @@ final class CraftSearchAdapterRegressionTest extends TestCase
         $index->elementType = Entry::class;
         $index->siteId = $siteId;
         $index->backend = $backend;
+        $index->criteria = $criteria;
         $index->enabled = true;
+        $index->source = $source;
 
         return $index;
     }
@@ -171,6 +271,11 @@ final class CraftSearchAdapterRecordingBackendService extends BackendService
     }
 
     public function getBackendForIndex(string $indexName): ?BackendInterface
+    {
+        return $this->resolvedBackend;
+    }
+
+    public function getActiveBackend(): ?BackendInterface
     {
         return $this->resolvedBackend;
     }

@@ -12,6 +12,7 @@ use Craft;
 use craft\base\ElementInterface;
 use craft\elements\db\ElementQuery;
 use craft\search\SearchQuery;
+use lindemannrock\base\helpers\ConfigFileHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
@@ -103,6 +104,7 @@ class CraftSearchAdapter extends \craft\services\Search
                 $parsedQuery,
                 [
                     'siteId' => SearchSiteScopeHelper::normalize($query->siteId),
+                    'limit' => 0,
                 ]
             );
 
@@ -168,16 +170,16 @@ class CraftSearchAdapter extends \craft\services\Search
             return parent::indexElementAttributes($element, $fieldHandles);
         }
 
-        // When autoIndex is enabled, the EVENT_AFTER_SAVE_ELEMENT listener
-        // routes the save through PendingSyncRepository → BatchSyncJob, which
-        // handles multi-site fanout and per-index criteria correctly. Skip
-        // here to avoid double-indexing.
+        // When autoIndex is enabled, Search Manager's EVENT_AFTER_SAVE_ELEMENT
+        // listener routes the save through PendingSyncRepository → BatchSyncJob.
+        // Craft still needs its own searchindex table refreshed for native
+        // fallback coverage and for instantly reversible replacement.
         $settings = SearchManager::$plugin->getSettings();
         if ($settings->autoIndex) {
-            $this->logDebug('Skipping Craft-triggered indexing (autoIndex handles it)', [
+            $this->logDebug('Refreshing Craft native searchindex while autoIndex handles Search Manager storage', [
                 'elementId' => $element->id,
             ]);
-            return true;
+            return parent::indexElementAttributes($element, $fieldHandles);
         }
 
         $this->logDebug('Craft requested element indexing', [
@@ -233,20 +235,53 @@ class CraftSearchAdapter extends \craft\services\Search
                 continue;
             }
 
-            // Match site if specified
-            if ($siteId !== null && $siteId !== '*') {
-                $querySiteIds = is_array($siteId) ? array_map('intval', $siteId) : [(int)$siteId];
-                $indexSiteIds = $index->getSiteIds();
+            if (!$this->indexCoversQuerySites($index, $siteId)) {
+                continue;
+            }
 
-                if ($indexSiteIds !== null && empty(array_intersect($querySiteIds, $indexSiteIds))) {
-                    continue;
-                }
+            if (!$this->indexHasNoCriteriaRestriction($index)) {
+                continue;
             }
 
             return $index;
         }
 
         return null;
+    }
+
+    private function indexCoversQuerySites(SearchIndex $index, mixed $siteId): bool
+    {
+        $querySiteIds = SearchSiteScopeHelper::siteIds($siteId);
+        $indexSiteIds = $index->getSiteIds();
+
+        if ($querySiteIds === null) {
+            return $indexSiteIds === null;
+        }
+
+        if ($indexSiteIds === null) {
+            return true;
+        }
+
+        return empty(array_diff($querySiteIds, array_map('intval', $indexSiteIds)));
+    }
+
+    private function indexHasNoCriteriaRestriction(SearchIndex $index): bool
+    {
+        if ($index->isFromConfig()) {
+            $config = ConfigFileHelper::getConfigByHandle('search-manager', 'indices', $index->handle);
+
+            return $config !== null && !array_key_exists('criteria', $config);
+        }
+
+        return $this->isEmptyCriteria($index->criteria);
+    }
+
+    private function isEmptyCriteria(mixed $criteria): bool
+    {
+        return $criteria === []
+            || $criteria === null
+            || $criteria === ''
+            || $criteria === '{}';
     }
 
     /**
