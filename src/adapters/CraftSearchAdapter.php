@@ -21,9 +21,9 @@ use lindemannrock\searchmanager\SearchManager;
 /**
  * Craft Search Adapter
  *
- * Implements Craft's native search interface
- * Replaces Craft::$app->search to use our multi-backend search engine
- * This makes CP searches and Entry::find()->search() use our backends
+ * Implements Craft's native search interface for front-end template searches.
+ * Control Panel requests stay on Craft's native search service, while site
+ * requests can resolve ElementQuery::search() through Search Manager coverage.
  *
  * @since 5.0.0
  */
@@ -55,6 +55,10 @@ class CraftSearchAdapter extends \craft\services\Search
      */
     public function searchElements(ElementQuery $query): array
     {
+        if (Craft::$app->getRequest()->getIsCpRequest()) {
+            return parent::searchElements($query);
+        }
+
         $searchQuery = $query->search;
 
         if (empty($searchQuery)) {

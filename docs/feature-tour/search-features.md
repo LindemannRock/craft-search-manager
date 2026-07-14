@@ -191,9 +191,9 @@ See [Multi-Language](multi-language.md) and [Advanced Operators](../template-gui
 
 ## Native Search Replacement
 
-When `replaceNativeSearch` is enabled, Search Manager can answer Craft's built-in `.search()` calls with a Search Manager index. It uses your index only when a full-coverage, criteria-less index exists for the element type and query site scope.
+When `replaceNativeSearch` is enabled, Search Manager can answer front-end template `.search()` calls with a Search Manager index. It uses your index only when a full-coverage, criteria-less index exists for the element type and query site scope.
 
-Element types with only criteria-limited indices continue using Craft's native search. Craft's native search index stays fully up to date, so fallback searches remain current and disabling native replacement does not require a content resave.
+Element types with only criteria-limited indices continue using Craft's native search. Control Panel searches always use Craft's native search. Craft's native search index stays fully up to date, so fallback searches remain current and disabling native replacement does not require a content resave.
 
 ```php
 // config/search-manager.php

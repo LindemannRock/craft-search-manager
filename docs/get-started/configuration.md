@@ -76,14 +76,14 @@ These settings control how content gets indexed.
 | `batchFlushInterval` | `int` | `5` | Seconds to wait before draining pending sync rows. Increase during bulk imports to coalesce more writes |
 | `pendingMaxAge` | `int` | `3600` | Seconds to retain abandoned pending sync rows before cleanup |
 | `batchMaxAttempts` | `int` | `5` | Failed processing attempts before a pending sync row is abandoned |
-| `replaceNativeSearch` | `bool` | `false` | Replace Craft's built-in search with your backend |
+| `replaceNativeSearch` | `bool` | `false` | Enhance front-end template `.search()` queries with Search Manager coverage |
 | `indexPrefix` | `?string` | `null` | Prefix for index names (useful for multi-environment setups). Use only letters, numbers, underscores, and hyphens |
 
 > [!NOTE]
 > Search Manager registers its save/delete listeners at plugin bootstrap, then checks the current `autoIndex` value each time an element event fires. Turning `autoIndex` off stops those listeners from adding pending sync rows. Turning `autoIndex` back on resumes listener queueing on the next event.
 
 > [!NOTE]
-> When `replaceNativeSearch` is enabled, all CP searches and `Entry::find()->search()` queries use your backend instead of Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.
+> When `replaceNativeSearch` is enabled, front-end template `.search()` queries can use Search Manager when a full-coverage index exists for the element type and site scope. Control Panel searches always stay on Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.
 
 > [!NOTE]
 > The `indexPrefix` setting is especially useful when sharing an Algolia or Meilisearch account across environments. See [Indices](../feature-tour/indices.md) for details.

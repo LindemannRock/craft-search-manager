@@ -13,6 +13,8 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use Craft;
 use craft\db\Query;
 use craft\elements\Entry;
+use craft\services\Search as CraftSearchService;
+use craft\web\Request as WebRequest;
 use lindemannrock\searchmanager\adapters\CraftSearchAdapter;
 use lindemannrock\searchmanager\backends\AlgoliaBackend;
 use lindemannrock\searchmanager\backends\MySqlBackend;
@@ -30,6 +32,64 @@ use lindemannrock\searchmanager\tests\TestCase;
  */
 final class CraftSearchAdapterRegressionTest extends TestCase
 {
+    public function testCpRequestFallsBackToNativeSearchWithoutResolvingSearchManagerIndex(): void
+    {
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [
+            'hits' => [
+                ['elementId' => 49639, 'siteId' => 1, 'score' => 12.5],
+            ],
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $adapter = new CraftSearchAdapter();
+        $nativeSearchCalls = 0;
+        $adapter->on(CraftSearchService::EVENT_BEFORE_SEARCH, static function() use (&$nativeSearchCalls): void {
+            ++$nativeSearchCalls;
+        });
+
+        $this->withOnlySearchIndices([$this->index('products', 1)], function() use ($adapter, $backend, &$nativeSearchCalls): void {
+            $query = Entry::find();
+            $query->search = 'classic watches';
+            $query->siteId = 1;
+
+            $this->withCpRequest(true, fn(): array => $adapter->searchElements($query));
+
+            self::assertSame(1, $nativeSearchCalls);
+            self::assertSame([], $backend->backendForIndexCalls);
+            self::assertSame([], $backend->searchCalls);
+        });
+    }
+
+    public function testSiteRequestStillResolvesThroughSearchManagerCoveragePath(): void
+    {
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [
+            'hits' => [
+                ['elementId' => 49639, 'siteId' => 1, 'score' => 12.5],
+            ],
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $adapter = new CraftSearchAdapter();
+        $nativeSearchCalls = 0;
+        $adapter->on(CraftSearchService::EVENT_BEFORE_SEARCH, static function() use (&$nativeSearchCalls): void {
+            ++$nativeSearchCalls;
+        });
+
+        $scores = $this->withOnlySearchIndices([$this->index('products', 1)], function() use ($adapter): array {
+            $query = Entry::find();
+            $query->search = 'classic watches';
+            $query->siteId = 1;
+
+            return $this->withCpRequest(false, fn(): array => $adapter->searchElements($query));
+        });
+
+        self::assertSame(['49639-1' => 12.5], $scores);
+        self::assertSame(0, $nativeSearchCalls);
+        self::assertSame(['products', 'products'], $backend->backendForIndexCalls);
+        self::assertCount(1, $backend->searchCalls);
+        self::assertSame('products', $backend->searchCalls[0]['indexName'] ?? null);
+    }
+
     public function testAllSitesSearchKeysScoresByHitSiteId(): void
     {
         $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [
@@ -305,6 +365,25 @@ final class CraftSearchAdapterRegressionTest extends TestCase
             ->count();
     }
 
+    /**
+     * @template T
+     * @param callable(): T $callback
+     * @return T
+     */
+    private function withCpRequest(bool $isCpRequest, callable $callback): mixed
+    {
+        $original = Craft::$app->get('request');
+        $request = new WebRequest();
+        $request->setIsCpRequest($isCpRequest);
+        Craft::$app->set('request', $request);
+
+        try {
+            return $callback();
+        } finally {
+            Craft::$app->set('request', $original);
+        }
+    }
+
     private function index(
         string $handle,
         int|array|null $siteId,
@@ -330,6 +409,11 @@ final class CraftSearchAdapterRegressionTest extends TestCase
 final class CraftSearchAdapterRecordingBackendService extends BackendService
 {
     /**
+     * @var list<string>
+     */
+    public array $backendForIndexCalls = [];
+
+    /**
      * @var list<array{indexName: string, query: string, options: array<string, mixed>}>
      */
     public array $searchCalls = [];
@@ -347,6 +431,8 @@ final class CraftSearchAdapterRecordingBackendService extends BackendService
 
     public function getBackendForIndex(string $indexName): ?BackendInterface
     {
+        $this->backendForIndexCalls[] = $indexName;
+
         return $this->resolvedBackend;
     }
 

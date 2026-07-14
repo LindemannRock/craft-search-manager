@@ -107,9 +107,9 @@ return [
         // 'autoIndex' => true,
 
         /**
-         * Replace Craft's native search service
-         * When true, CP searches and Entry::find()->search() use your backend
-         * When false, use craft.searchManager.search() in templates
+         * Enhance front-end ElementQuery::search() calls with Search Manager.
+         * Control Panel searches stay on Craft's native search service.
+         * When false, use craft.searchManager.search() in templates.
          * Default: false
          */
         // 'replaceNativeSearch' => false,

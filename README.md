@@ -34,7 +34,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 - **Analytics** — Track queries, devices, geo-location, performance, content gaps
 - **Caching** — Multi-layer caching with cache warming after rebuilds
 - **Frontend Widget** — CMD+K search modal (WCAG 2.1 AA, keyboard navigation, theming)
-- **Native Search Replacement** — Optionally replace Craft's built-in search
+- **Native Search Replacement** — Optionally enhance front-end template `.search()` queries while Control Panel search stays native
 - **REST API** — Search and autocomplete endpoints for headless/mobile apps, including configured retrievable custom field values under each hit's `fields` object
 - **GraphQL** — Read-only search and autocomplete queries for SPA/headless frontends, with typed `fields { handle value values }` hit data for configured retrievable custom fields
 - **Breadcrumb Metadata** — Structure Entries, Categories, and public Assets can expose source-backed `ancestors`, `level`, and `folderPath` context in search hits

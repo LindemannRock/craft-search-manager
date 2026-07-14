@@ -9,7 +9,7 @@ Search Manager is a full-featured search solution for Craft CMS that replaces or
 
 At its core, Search Manager indexes your Craft content into a search backend of your choice, then provides fast, relevant search results with features like BM25 ranking, typo tolerance, highlighting, and autocomplete.
 
-You can use it alongside Craft's native search, or replace it entirely.
+You can use it alongside Craft's native search, or let Search Manager answer covered front-end template `.search()` queries while Control Panel search stays native.
 
 ## Core Capabilities
 

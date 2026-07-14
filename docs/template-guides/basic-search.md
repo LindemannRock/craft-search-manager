@@ -114,7 +114,7 @@ Search results contain the indexed data from your transformer. If you need the f
 
 ## Using Native Search Replacement
 
-If you've enabled `replaceNativeSearch`, you don't need `craft.searchManager` at all — Craft's standard search works automatically:
+If you've enabled `replaceNativeSearch`, front-end template `.search()` queries can use Search Manager automatically when the element type has a full-coverage index:
 
 ```twig
 {% set entries = craft.entries.search(query).orderBy('score').all() %}
@@ -125,6 +125,8 @@ If you've enabled `replaceNativeSearch`, you don't need `craft.searchManager` at
 ```
 
 All search operators (phrase, NOT, wildcards, etc.) work in this mode too.
+
+Control Panel searches always stay on Craft's native search.
 
 ## Next Steps
 

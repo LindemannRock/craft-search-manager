@@ -1205,8 +1205,10 @@ class SearchManager extends Plugin
     // =========================================================================
 
     /**
-     * Replace Craft's native search service with our adapter
-     * Makes CP searches and Entry::find()->search() use our backends
+     * Replace Craft's native search service with our adapter.
+     *
+     * Site ElementQuery::search() requests can use Search Manager coverage;
+     * Control Panel searches remain on Craft's native search path.
      */
     private function replaceNativeSearchService(): void
     {
