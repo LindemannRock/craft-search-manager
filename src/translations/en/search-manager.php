@@ -504,6 +504,7 @@ return [
     'Search Settings' => 'Search Settings',
     'General Settings' => 'General Settings',
     'Search Configuration' => 'Search Configuration',
+    'Native Search Replacement' => 'Native Search Replacement',
     'BM25 Ranking Algorithm' => 'BM25 Ranking Algorithm',
     'Term Frequency Weight (K1)' => 'Term Frequency Weight (K1)',
     'Document Length Impact (B)' => 'Document Length Impact (B)',

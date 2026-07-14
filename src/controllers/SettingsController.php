@@ -113,14 +113,9 @@ class SettingsController extends Controller
     {
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
-        $nativeSearchCoverage = SearchManager::$plugin->nativeSearchCoverage;
 
         return $this->renderTemplate('search-manager/settings/indexing', [
             'settings' => $settings,
-            'nativeSearchCoverageReport' => $nativeSearchCoverage->getReport(),
-            'nativeSearchHasLocalBackend' => $nativeSearchCoverage->hasLocalBackend(),
-            'nativeSearchDefaultBackendIsLocal' => $nativeSearchCoverage->defaultBackendIsLocal(),
-            'nativeSearchLocalBackendOptions' => $nativeSearchCoverage->getLocalBackendOptions(),
         ]);
     }
 
@@ -138,9 +133,14 @@ class SettingsController extends Controller
     {
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
+        $nativeSearchCoverage = SearchManager::$plugin->nativeSearchCoverage;
 
         return $this->renderTemplate('search-manager/settings/search', [
             'settings' => $settings,
+            'nativeSearchCoverageReport' => $nativeSearchCoverage->getReport(),
+            'nativeSearchHasLocalBackend' => $nativeSearchCoverage->hasLocalBackend(),
+            'nativeSearchDefaultBackendIsLocal' => $nativeSearchCoverage->defaultBackendIsLocal(),
+            'nativeSearchLocalBackendOptions' => $nativeSearchCoverage->getLocalBackendOptions(),
         ]);
     }
 
@@ -1460,9 +1460,9 @@ class SettingsController extends Controller
     {
         return match ($section) {
             'general' => ['pluginName', 'defaultBackendHandle', 'defaultWidgetHandle', 'requireApiKey', 'logLevel'],
-            'indexing' => ['autoIndex', 'replaceNativeSearch', 'batchSize', 'lastIndexedDebounceSeconds', 'syncBatchSize', 'batchFlushInterval', 'pendingMaxAge', 'batchMaxAttempts', 'indexPrefix'],
+            'indexing' => ['autoIndex', 'batchSize', 'lastIndexedDebounceSeconds', 'syncBatchSize', 'batchFlushInterval', 'pendingMaxAge', 'batchMaxAttempts', 'indexPrefix'],
             'analytics' => ['enableAnalytics', 'enableGeoDetection', 'geoProvider', 'geoApiKey', 'anonymizeIpAddress', 'analyticsRetention'],
-            'search' => ['bm25K1', 'bm25B', 'titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor', 'similarityThreshold', 'maxFuzzyCandidates', 'ngramSizes'],
+            'search' => ['replaceNativeSearch', 'bm25K1', 'bm25B', 'titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor', 'similarityThreshold', 'maxFuzzyCandidates', 'ngramSizes'],
             'language' => ['defaultLanguage', 'enableStopWords'],
             'highlighting' => ['highlightResultsEnabled', 'highlightTag', 'highlightClass', 'snippetMaxLength', 'maxSnippets', 'enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit', 'autocompleteFuzzy'],
             'cache' => ['cacheStorageMethod', 'enableCache', 'cacheDuration', 'enableAutocompleteCache', 'autocompleteCacheDuration', 'clearCacheOnSave', 'statusSyncInterval', 'enableCacheWarming', 'cacheWarmingQueryCount', 'cacheDeviceDetection', 'deviceDetectionCacheDuration'],

@@ -33,7 +33,217 @@
 	{{ redirectInput('search-manager/settings/search') }}
 	{{ hiddenInput('section', 'search') }}
 
-		<h2 class="first">{{ "BM25 Ranking Algorithm"|t('search-manager') }}</h2>
+		<h2 class="first">{{ 'Native Search Replacement'|t('search-manager') }}</h2>
+
+		{% set activeBackend = craft.app.plugins.getPlugin('search-manager').backend.getActiveBackend() %}
+		{% if nativeSearchHasLocalBackend %}
+			{{ forms.lightswitchField({
+				label: 'Replace Native Search'|t('search-manager'),
+				instructions: 'Enhance Craft\'s Control Panel and template search with Search Manager for element types that have a full-coverage index. Types without one keep using Craft\'s native search.'|t('search-manager'),
+				id: 'replaceNativeSearch',
+				name: 'settings[replaceNativeSearch]',
+				on: settings.replaceNativeSearch,
+				tip: "When disabled, use craft.searchManager.search() in templates instead."|t('search-manager'),
+				disabled: settings.isOverriddenByConfig('replaceNativeSearch'),
+				warning: settings.isOverriddenByConfig('replaceNativeSearch') ?
+					"This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+			}) }}
+
+			<div id="native-search-coverage-settings" class="{{ not settings.replaceNativeSearch ? 'hidden' }}">
+				{% include 'lindemannrock-base/_components/info-box' with {
+					type: 'info',
+					message: '<p>' ~ 'Search Manager enhances Craft\'s Control Panel and template search for element types you\'ve indexed with a full-coverage index — one that covers all sites, has no filters, and runs on a local backend (MySQL, PostgreSQL, Redis, or File). Element types without a full-coverage index continue to use Craft\'s native search.'|t('search-manager') ~ '</p><p>' ~ 'Review coverage below, or create a catch-all index to extend Search Manager to more element types.'|t('search-manager') ~ '</p>',
+				} %}
+
+				<h3>{{ 'Native Search Coverage'|t('search-manager') }}</h3>
+				<p class="light">{{ 'While Replace Native Search is on, this shows which element types Search Manager answers and which fall back to Craft\'s native search.'|t('search-manager') }}</p>
+
+				{% set canCreateCatchAll = currentUser.can('searchManager:editIndices') %}
+				{% set showCatchAllBackendPicker = nativeSearchLocalBackendOptions|length > 1 or not nativeSearchDefaultBackendIsLocal %}
+				<table class="data fullwidth">
+					<thead>
+						<tr>
+							<th scope="col">{{ 'Element Type'|t('search-manager') }}</th>
+							<th scope="col">{{ 'Coverage'|t('search-manager') }}</th>
+							<th scope="col">{{ 'Index'|t('search-manager') }}</th>
+							{% if canCreateCatchAll %}
+								<th scope="col" class="lr-text-end">{{ 'Actions'|t('search-manager') }}</th>
+							{% endif %}
+						</tr>
+					</thead>
+					<tbody>
+						{% for item in nativeSearchCoverageReport %}
+							<tr>
+								<td>{{ item.label }}</td>
+								<td>
+									{% include 'lindemannrock-base/_components/badge' with {
+										label: item.covered ? 'Search Manager'|t('search-manager') : 'Craft native'|t('search-manager'),
+										value: item.covered ? 'searchManager' : 'craftNative',
+										colorSet: 'nativeSearchCoverage',
+									} only %}
+								</td>
+								<td>
+									{% if item.covered and item.indexHandle %}
+										<code>{{ item.indexHandle }}</code>
+									{% else %}
+										<span class="light">{{ 'Fallback'|t('search-manager') }}</span>
+									{% endif %}
+								</td>
+								{% if canCreateCatchAll %}
+									<td class="lr-text-end">
+										{% if not item.covered %}
+											<div class="buttons right">
+												{% if showCatchAllBackendPicker %}
+													<div class="select">
+														<select class="native-search-catch-all-backend" aria-label="{{ 'Backend'|t('search-manager') }}">
+															{% if nativeSearchDefaultBackendIsLocal %}
+																<option value="">{{ 'Default Backend'|t('search-manager') }}</option>
+															{% endif %}
+															{% for handle, label in nativeSearchLocalBackendOptions %}
+																<option value="{{ handle }}">{{ label }}</option>
+															{% endfor %}
+														</select>
+													</div>
+												{% endif %}
+												<button
+													type="button"
+													class="btn native-search-create-catch-all"
+													data-element-type="{{ item.type }}"
+													data-element-label="{{ item.label }}"
+													data-default-backend-label="{{ activeBackend ? activeBackend.getName() : 'file' }}"
+												>
+													{{ 'Create catch-all index'|t('search-manager') }}
+												</button>
+											</div>
+										{% endif %}
+									</td>
+								{% endif %}
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+
+			{% js %}
+				(() => {
+					const $section = $('#native-search-coverage-settings');
+					const $lightswitch = $('#replaceNativeSearch').closest('.lightswitch');
+					const T = {
+						confirmTemplate: {{ 'Create a full-coverage index for {type}? This indexes all {type} content across all sites on the {backend} backend so Search Manager can answer Control Panel and template searches for it. The initial build may take a while depending on how much content you have.'|t('search-manager')|json_encode|raw }},
+						createIndex: {{ 'Create Index'|t('search-manager')|json_encode|raw }},
+						cancel: {{ 'Cancel'|t('search-manager')|json_encode|raw }},
+						createFailed: {{ 'Could not create catch-all index'|t('search-manager')|json_encode|raw }},
+					};
+
+					if (!$section.length || !$lightswitch.length) {
+						return;
+					}
+
+					const updateNativeSearchCoverageVisibility = () => {
+						$section.toggleClass('hidden', !$lightswitch.hasClass('on'));
+					};
+
+					$lightswitch.on('change', updateNativeSearchCoverageVisibility);
+					updateNativeSearchCoverageVisibility();
+
+					const confirmCatchAll = (message) => new Promise((resolve) => {
+						if (typeof Garnish === 'undefined' || !Garnish.Modal) {
+							resolve(confirm(message));
+							return;
+						}
+
+						const $modal = $(
+							'<form class="modal fitted native-search-catch-all-confirm" style="width: min(42rem, calc(100vw - 48px)); max-width: 42rem;" accept-charset="UTF-8">' +
+								'<div class="body"><p></p></div>' +
+								'<div class="footer">' +
+									'<div class="buttons right">' +
+										'<button type="button" class="btn cancel"></button>' +
+										'<button type="submit" class="btn submit"></button>' +
+									'</div>' +
+								'</div>' +
+							'</form>'
+						).appendTo(Garnish.$bod);
+
+						$modal.find('.body p').text(message);
+						$modal.find('.cancel').text(T.cancel);
+						$modal.find('.submit').text(T.createIndex);
+
+						const modal = new Garnish.Modal($modal);
+						const close = (confirmed) => {
+							modal.hide();
+							$modal.remove();
+							resolve(confirmed);
+						};
+
+						$modal.on('submit', (event) => {
+							event.preventDefault();
+							close(true);
+						});
+						$modal.find('.cancel').on('click', () => close(false));
+					});
+
+					document.querySelectorAll('.native-search-create-catch-all').forEach((button) => {
+						button.addEventListener('click', async () => {
+							const row = button.closest('tr');
+							const select = row ? row.querySelector('.native-search-catch-all-backend') : null;
+							const backend = select ? select.value : '';
+							const backendLabel = select
+								? select.options[select.selectedIndex].text
+								: button.dataset.defaultBackendLabel;
+							const typeLabel = button.dataset.elementLabel || '';
+							const confirmed = await confirmCatchAll(
+								T.confirmTemplate
+									.replaceAll('{type}', typeLabel)
+									.replace('{backend}', backendLabel || 'file')
+							);
+
+							if (!confirmed) {
+								return;
+							}
+
+							button.disabled = true;
+
+							Craft.sendActionRequest('POST', 'search-manager/indices/create-catch-all', {
+								data: {
+									elementType: button.dataset.elementType,
+									backend,
+									confirmed: '1',
+								},
+							}).then((response) => {
+								if (response.data && response.data.success) {
+									Craft.cp.displayNotice(response.data.message);
+									window.location.reload();
+									return;
+								}
+
+								Craft.cp.displayError((response.data && response.data.error) || T.createFailed);
+								button.disabled = false;
+							}).catch(() => {
+								Craft.cp.displayError(T.createFailed);
+								button.disabled = false;
+							});
+						});
+					});
+				})();
+			{% endjs %}
+		{% else %}
+			<div class="field">
+				<div class="heading">
+					<label>{{ 'Replace Native Search'|t('search-manager') }}</label>
+				</div>
+				<div class="instructions">
+					<p>{{ 'Enhance Craft\'s Control Panel and template search with Search Manager for element types that have a full-coverage index. Types without one keep using Craft\'s native search.'|t('search-manager') }}</p>
+				</div>
+			</div>
+			{% include 'lindemannrock-base/_components/info-box' with {
+				type: 'info',
+				message: 'Replace Native Search requires a local backend (MySQL, PostgreSQL, Redis, or File). Configure one to enable coverage.'|t('search-manager')
+			} %}
+		{% endif %}
+
+		<hr>
+
+		<h2>{{ "BM25 Ranking Algorithm"|t('search-manager') }}</h2>
 
         <div class="field">
             <p class="light">
