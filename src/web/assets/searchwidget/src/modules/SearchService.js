@@ -2,6 +2,8 @@
  * Search Service - API calls and search logic
  */
 
+import { t } from './Translations.js';
+
 /**
  * @typedef {Object} SearchResponse
  * @property {Array} results - Search results array
@@ -26,9 +28,10 @@
  * @param {boolean} options.debugEnabled - Request debug metadata (overrides devMode default)
  * @param {string} options.apiKey - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  * @param {AbortSignal} options.signal - AbortController signal
+ * @param {Object} options.translations - Widget UI translations
  * @returns {Promise<SearchResponse>} - Search response with results and meta
  */
-export async function performSearch({ query, endpoint, indexHandles = [], siteId = '', resultsLimit = 10, resultsRequireUrl = false, snippetIncludeCodeBlocks = false, snippetMode = '', snippetMaxLength = 0, snippetCleanMarkdown = false, debugEnabled = false, apiKey = '', signal }) {
+export async function performSearch({ query, endpoint, indexHandles = [], siteId = '', resultsLimit = 10, resultsRequireUrl = false, snippetIncludeCodeBlocks = false, snippetMode = '', snippetMaxLength = 0, snippetCleanMarkdown = false, debugEnabled = false, apiKey = '', signal, translations = {} }) {
     const params = new URLSearchParams({
         q: query,
         resultsLimit: resultsLimit.toString(),
@@ -86,7 +89,7 @@ export async function performSearch({ query, endpoint, indexHandles = [], siteId
     });
 
     if (!response.ok) {
-        throw new Error(await getSearchErrorMessage(response));
+        throw new Error(await getSearchErrorMessage(response, translations));
     }
 
     const data = await response.json();
@@ -111,20 +114,20 @@ export async function performSearch({ query, endpoint, indexHandles = [], siteId
  * @param {Response} response - Fetch response object
  * @returns {Promise<string>} Error message
  */
-async function getSearchErrorMessage(response) {
+async function getSearchErrorMessage(response, translations = {}) {
     const serverMessage = await readServerError(response);
 
     if (response.status === 401) {
-        return serverMessage || 'Search requires an API key.';
+        return serverMessage || t(translations, 'Search requires an API key.');
     }
     if (response.status === 403) {
-        return serverMessage || 'This API key cannot access this search.';
+        return serverMessage || t(translations, 'This API key cannot access this search.');
     }
     if (response.status === 429) {
-        return serverMessage || 'Search rate limit exceeded. Try again in a moment.';
+        return serverMessage || t(translations, 'Search rate limit exceeded. Try again in a moment.');
     }
 
-    return serverMessage || 'Search failed.';
+    return serverMessage || t(translations, 'Search failed.');
 }
 
 /**

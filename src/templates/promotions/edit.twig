@@ -145,7 +145,7 @@
 		<div class="field{% if promotion.getErrors('query') %} has-errors{% endif %}" id="query-field">
 			<div class="heading">
 				<label for="query">{{ 'Query Pattern'|t('search-manager') }}
-					<span class="required" aria-label="Required"></span>
+						<span class="required" aria-label="{{ 'Required'|t('search-manager') }}"></span>
 				</label>
 				<div class="instructions">
 					<p id="queryInstructions">
@@ -161,7 +161,7 @@
 				</div>
 			</div>
 			<div class="input ltr">
-				<input type="text" id="query" name="query" value="{{ promotion.query }}" placeholder="{{ promotion.matchType == 'contains' ? 'sale' : (promotion.matchType == 'prefix' ? 'best ' : 'holiday sale') }}" required class="text fullwidth{% if promotion.getErrors('query') %} error{% endif %}">
+					<input type="text" id="query" name="query" value="{{ promotion.query }}" placeholder="{{ promotion.matchType == 'contains' ? 'sale'|t('search-manager') : (promotion.matchType == 'prefix' ? 'best '|t('search-manager') : 'holiday sale'|t('search-manager')) }}" required class="text fullwidth{% if promotion.getErrors('query') %} error{% endif %}">
 			</div>
 			{% if promotion.getErrors('query') %}
 				<ul class="errors">
@@ -172,14 +172,14 @@
 			{% endif %}
 			<p id="matchTypeTip" class="notice has-icon" style="margin-top: 10px;">
 				<span class="icon" aria-hidden="true"></span>
-				<span class="visually-hidden">Tip:</span>
+					<span class="visually-hidden">{{ 'Tip:'|t('search-manager') }}</span>
 				<span id="matchTypeTipText">
 					{% if promotion.matchType == 'contains' %}
-						Example: "sale" matches "holiday sale", "sale items", "big sale event"
+							{{ 'Example: "sale" matches "holiday sale", "sale items", "big sale event"'|t('search-manager') }}
 					{% elseif promotion.matchType == 'prefix' %}
-						Example: "best " matches "best deals", "best products", "best sellers"
+							{{ 'Example: "best " matches "best deals", "best products", "best sellers"'|t('search-manager') }}
 					{% else %}
-						Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"
+							{{ 'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"'|t('search-manager') }}
 					{% endif %}
 				</span>
 			</p>
@@ -225,7 +225,7 @@
 					<select id="position" name="position" style="width: 250px;">
 						{% for i in 1..10 %}
 							<option value="{{ i }}" {% if (promotion.position ?: 1) == i %} selected {% endif %}>
-								{{ i }} - {{ i == 1 ? 'First result' : (i == 2 ? 'Second result' : (i == 3 ? 'Third result' : 'Position ' ~ i)) }}
+									{{ i }} - {{ i == 1 ? 'First result'|t('search-manager') : (i == 2 ? 'Second result'|t('search-manager') : (i == 3 ? 'Third result'|t('search-manager') : 'Position {i}'|t('search-manager', {i: i}))) }}
 							</option>
 						{% endfor %}
 					</select>
@@ -240,8 +240,8 @@
 			{% endif %}
 			<p class="notice has-icon" style="margin-top: 10px;">
 				<span class="icon" aria-hidden="true"></span>
-				<span class="visually-hidden">Tip:</span>
-				<span>Multiple promotions for the same query are sorted by position. If two promotions have position 1, both will appear at the top in order of creation.</span>
+					<span class="visually-hidden">{{ 'Tip:'|t('search-manager') }}</span>
+					<span>{{ 'Multiple promotions for the same query are sorted by position. If two promotions have position 1, both will appear at the top in order of creation.'|t('search-manager') }}</span>
 			</p>
 		</div>
 
@@ -329,19 +329,19 @@ function updateMatchTypeUI() {
 		case 'contains':
 			matchTypeInstructions.textContent = '{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}';
 			queryInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}' + commaHint;
-			queryInput.placeholder = 'sale';
+				queryInput.placeholder = {{ 'sale'|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "sale" matches "holiday sale", "sale items", "big sale event"'|t('search-manager')|json_encode|raw }};
 			break;
 		case 'prefix':
 			matchTypeInstructions.textContent = '{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}';
 			queryInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}' + commaHint;
-			queryInput.placeholder = 'best ';
+				queryInput.placeholder = {{ 'best '|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "best " matches "best deals", "best products", "best sellers"'|t('search-manager')|json_encode|raw }};
 			break;
 		default: // exact
 			matchTypeInstructions.textContent = '{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}';
 			queryInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}' + commaHint;
-			queryInput.placeholder = 'holiday sale';
+				queryInput.placeholder = {{ 'holiday sale'|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"'|t('search-manager')|json_encode|raw }};
 	}
 }

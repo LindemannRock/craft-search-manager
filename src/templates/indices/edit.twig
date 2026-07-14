@@ -707,7 +707,7 @@ document.addEventListener('DOMContentLoaded', function() {
 						{% if configuredBackend %}
 							{{ configuredBackend.name }}
 						{% else %}
-							{{ index.backend }}&nbsp;<span style="color: #ef4444; font-size: 0.85em;">(not found)</span>
+								{{ index.backend }}&nbsp;<span style="color: #ef4444; font-size: 0.85em;">{{ '(not found)'|t('search-manager') }}</span>
 						{% endif %}
 					{% else %}
 						{# Show default backend from settings #}
@@ -715,7 +715,7 @@ document.addEventListener('DOMContentLoaded', function() {
 							{% if defaultConfiguredBackend %}
 								{{ defaultConfiguredBackend.name }}
 							{% else %}
-								{{ defaultBackendHandle }}&nbsp;<span style="color: #8f98a3; font-size: 0.85em;">(default, not found)</span>
+									{{ defaultBackendHandle }}&nbsp;<span style="color: #8f98a3; font-size: 0.85em;">{{ '(default, not found)'|t('search-manager') }}</span>
 							{% endif %}
 						{% else %}
 							<span class="light">{{ 'No default backend'|t('search-manager') }}</span>

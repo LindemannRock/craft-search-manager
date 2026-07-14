@@ -112,7 +112,7 @@
 		<div class="field{% if rule.getErrors('matchType') %} has-errors{% endif %}">
 			<div class="heading">
 				<label for="matchType">{{ 'Match Type'|t('search-manager') }}
-					<span class="required" aria-label="Required"></span>
+					<span class="required" aria-label="{{ 'Required'|t('search-manager') }}"></span>
 				</label>
 				<div class="instructions">
 					<p id="matchTypeInstructions">
@@ -150,7 +150,7 @@
 		<div class="field{% if rule.getErrors('matchValue') %} has-errors{% endif %}" id="matchValue-field">
 			<div class="heading">
 				<label for="matchValue">{{ 'Match Pattern'|t('search-manager') }}
-					<span class="required" aria-label="Required"></span>
+					<span class="required" aria-label="{{ 'Required'|t('search-manager') }}"></span>
 				</label>
 				<div class="instructions">
 					<p id="matchValueInstructions">
@@ -170,7 +170,7 @@
 				</div>
 			</div>
 			<div class="input ltr">
-				<input type="text" id="matchValue" name="matchValue" value="{{ rule.matchValue }}" placeholder="{{ rule.matchType == 'regex' ? '^(sale|تخفيض|soldes|angebot)' : (rule.matchType == 'contains' ? 'sale' : (rule.matchType == 'prefix' ? 'buy ' : 'sale')) }}" required class="text fullwidth{% if rule.getErrors('matchValue') %} error{% endif %}">
+					<input type="text" id="matchValue" name="matchValue" value="{{ rule.matchValue }}" placeholder="{{ rule.matchType == 'regex' ? '^(sale|تخفيض|soldes|angebot)'|t('search-manager') : (rule.matchType == 'contains' ? 'sale'|t('search-manager') : (rule.matchType == 'prefix' ? 'buy '|t('search-manager') : 'sale'|t('search-manager'))) }}" required class="text fullwidth{% if rule.getErrors('matchValue') %} error{% endif %}">
 			</div>
 			{% if rule.getErrors('matchValue') %}
 				<ul class="errors">
@@ -181,23 +181,25 @@
 			{% endif %}
 			<p id="matchTypeTip" class="notice has-icon" style="margin-top: 10px;">
 				<span class="icon" aria-hidden="true"></span>
-				<span class="visually-hidden">Tip:</span>
+				<span class="visually-hidden">{{ 'Tip:'|t('search-manager') }}</span>
 				<span id="matchTypeTipText">
 					{% if rule.matchType == 'contains' %}
-						Example: "phone" matches "buy phone", "phone case", "smartphone"
+							{{ 'Example: "phone" matches "buy phone", "phone case", "smartphone"'|t('search-manager') }}
 					{% elseif rule.matchType == 'prefix' %}
-						Example: "buy " matches "buy phone", "buy laptop", "buy headphones"
+							{{ 'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"'|t('search-manager') }}
 					{% elseif rule.matchType == 'regex' %}
-						Example: "^(phone|mobile|cell)" matches "phone", "mobile", "cell" at the start
+							{{ 'Example: "^(phone|mobile|cell)" matches "phone", "mobile", "cell" at the start'|t('search-manager') }}
 					{% else %}
-						Example: "phone" only matches exactly "phone", not "smartphone"
+							{{ 'Example: "phone" only matches exactly "phone", not "smartphone"'|t('search-manager') }}
 					{% endif %}
 				</span>
 			</p>
 			<p id="regexTip" class="notice has-icon" style="margin-top: 10px; display: {{ rule.matchType == 'regex' ? 'block' : 'none' }};">
 				<span class="icon" aria-hidden="true"></span>
-				<span class="visually-hidden">Tip:</span>
-				<span>Test your pattern at <a class="go" href="https://regexr.com/" target="_blank" rel="noopener">regexr.com</a> before saving.</span>
+				<span class="visually-hidden">{{ 'Tip:'|t('search-manager') }}</span>
+					<span>{{ 'Test your pattern at {link} before saving.'|t('search-manager', {
+						link: '<a class="go" href="https://regexr.com/" target="_blank" rel="noopener">regexr.com</a>'
+					})|raw }}</span>
 			</p>
 		</div>
 
@@ -206,7 +208,7 @@
 		<div class="field{% if rule.getErrors('actionType') %} has-errors{% endif %}">
 			<div class="heading">
 				<label for="actionType">{{ 'Action Type'|t('search-manager') }}
-					<span class="required" aria-label="Required"></span>
+					<span class="required" aria-label="{{ 'Required'|t('search-manager') }}"></span>
 				</label>
 				<div class="instructions">
 					<p id="actionTypeInstructions">
@@ -256,7 +258,7 @@
 					</div>
 				</div>
 				<div class="input ltr">
-					<textarea id="synonyms" name="synonyms" rows="3" class="text fullwidth{% if rule.actionType == 'synonym' and rule.getErrors('actionValue') %} error{% endif %}" placeholder="mobile, cell phone, smartphone, cellular">{{ rule.actionValue.terms is defined ? rule.actionValue.terms|join(', ') : '' }}</textarea>
+						<textarea id="synonyms" name="synonyms" rows="3" class="text fullwidth{% if rule.actionType == 'synonym' and rule.getErrors('actionValue') %} error{% endif %}" placeholder="{{ 'mobile, cell phone, smartphone, cellular'|t('search-manager') }}">{{ rule.actionValue.terms is defined ? rule.actionValue.terms|join(', ') : '' }}</textarea>
 				</div>
 				{% if rule.actionType == 'synonym' and rule.getErrors('actionValue') %}
 					<ul class="errors">
@@ -267,19 +269,19 @@
 				{% endif %}
 				<p class="notice has-icon" style="margin-top: 10px;">
 					<span class="icon" aria-hidden="true"></span>
-					<span class="visually-hidden">Tip:</span>
-					<span>Example: For query "phone", add synonyms "mobile, cell phone, smartphone" to show results containing any of these terms. Maximum 10 synonyms per rule.</span>
+					<span class="visually-hidden">{{ 'Tip:'|t('search-manager') }}</span>
+						<span>{{ 'Example: For query "phone", add synonyms "mobile, cell phone, smartphone" to show results containing any of these terms. Maximum 10 synonyms per rule.'|t('search-manager') }}</span>
 				</p>
 			</div>
 		</div>
 
 		{# Boost multiplier options (shared) #}
 		{% set boostMultiplierOptions = [
-			{ label: '1.5× - Slight boost', value: '1.5' },
-			{ label: '2.0× - Double score (recommended)', value: '2.0' },
-			{ label: '3.0× - Triple score', value: '3.0' },
-			{ label: '5.0× - Strong boost', value: '5.0' },
-			{ label: '10.0× - Very strong boost', value: '10.0' },
+				{ label: '1.5× - Slight boost'|t('search-manager'), value: '1.5' },
+				{ label: '2.0× - Double score (recommended)'|t('search-manager'), value: '2.0' },
+				{ label: '3.0× - Triple score'|t('search-manager'), value: '3.0' },
+				{ label: '5.0× - Strong boost'|t('search-manager'), value: '5.0' },
+				{ label: '10.0× - Very strong boost'|t('search-manager'), value: '10.0' },
 		] %}
 
 		{# Boost section fields #}
@@ -412,8 +414,8 @@
 
 			<p class="notice has-icon" style="margin-top: 10px;">
 				<span class="icon" aria-hidden="true"></span>
-				<span class="visually-hidden">Tip:</span>
-				<span>Use redirects for seasonal promotions (e.g., "christmas" → /holiday-deals) or to guide users to specific pages.</span>
+				<span class="visually-hidden">{{ 'Tip:'|t('search-manager') }}</span>
+					<span>{{ 'Use redirects for seasonal promotions (e.g., "christmas" → /holiday-deals) or to guide users to specific pages.'|t('search-manager') }}</span>
 			</p>
 		</div>
 
@@ -431,7 +433,7 @@
 					<select id="priority" name="priority" style="width: 300px;">
 						{% for i in [10, 5, 0, -5, -10] %}
 							<option value="{{ i }}" {% if (rule.priority ?? 0) == i %} selected {% endif %}>
-								{{ i }} - {{ i == 10 ? 'Highest priority' : (i == 5 ? 'High priority' : (i == 0 ? 'Normal (default)' : (i == -5 ? 'Low priority' : 'Lowest priority'))) }}
+									{{ i }} - {{ i == 10 ? 'Highest priority'|t('search-manager') : (i == 5 ? 'High priority'|t('search-manager') : (i == 0 ? 'Normal (default)'|t('search-manager') : (i == -5 ? 'Low priority'|t('search-manager') : 'Lowest priority'|t('search-manager')))) }}
 							</option>
 						{% endfor %}
 					</select>
@@ -446,8 +448,8 @@
 			{% endif %}
 			<p class="notice has-icon" style="margin-top: 10px;">
 				<span class="icon" aria-hidden="true"></span>
-				<span class="visually-hidden">Tip:</span>
-				<span>Set specific rules to high priority and general catch-all rules to low priority. For example, "buy iphone 15" (priority 10) before "buy" (priority 0).</span>
+				<span class="visually-hidden">{{ 'Tip:'|t('search-manager') }}</span>
+					<span>{{ 'Set specific rules to high priority and general catch-all rules to low priority. For example, "buy iphone 15" (priority 10) before "buy" (priority 0).'|t('search-manager') }}</span>
 			</p>
 		</div>
 
@@ -573,28 +575,28 @@ function updateMatchTypeUI() {
 		case 'contains':
 			matchTypeInstructions.textContent = '{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}';
 			matchValueInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}' + commaHint;
-			matchValueInput.placeholder = 'sale';
+				matchValueInput.placeholder = {{ 'sale'|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "sale" matches "big sale", "sale items", "flash sale"'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'none';
 			break;
 		case 'prefix':
 			matchTypeInstructions.textContent = '{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}';
 			matchValueInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}' + commaHint;
-			matchValueInput.placeholder = 'buy ';
+				matchValueInput.placeholder = {{ 'buy '|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'none';
 			break;
 		case 'regex':
 			matchTypeInstructions.textContent = '{{ 'Match using a regular expression pattern for complex matching.'|t('search-manager') }}';
 			matchValueInstructions.textContent = '{{ 'Enter a regular expression pattern (without delimiters).'|t('search-manager') }}';
-			matchValueInput.placeholder = '^(sale|تخفيض|soldes|angebot)';
+				matchValueInput.placeholder = {{ '^(sale|تخفيض|soldes|angebot)'|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'block';
 			break;
 		default: // exact
 			matchTypeInstructions.textContent = '{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}';
 			matchValueInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}' + commaHint;
-			matchValueInput.placeholder = 'sale';
+				matchValueInput.placeholder = {{ 'sale'|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "sale" only matches exactly "sale", not "flash sale"'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'none';
 	}

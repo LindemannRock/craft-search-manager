@@ -7,6 +7,8 @@
  * @see https://www.w3.org/WAI/ARIA/apg/patterns/combobox/
  */
 
+import { t } from './Translations.js';
+
 // Counter for generating unique IDs
 let idCounter = 0;
 
@@ -57,22 +59,22 @@ export function announce(liveRegion, message, delay = 100) {
  * @param {string} query - Search query
  * @returns {string} Announcement message
  */
-export function getResultsAnnouncement(count, query) {
+export function getResultsAnnouncement(count, query, translations = {}) {
     if (count === 0) {
-        return `No results found for "${query}"`;
+        return t(translations, 'No results found for "{query}"', { query });
     }
     if (count === 1) {
-        return `1 result found for "${query}"`;
+        return t(translations, '1 result found for "{query}"', { query });
     }
-    return `${count} results found for "${query}"`;
+    return t(translations, '{count} results found for "{query}"', { count, query });
 }
 
 /**
  * Get announcement for loading state
  * @returns {string} Loading announcement
  */
-export function getLoadingAnnouncement() {
-    return 'Searching...';
+export function getLoadingAnnouncement(translations = {}) {
+    return t(translations, 'Searching...');
 }
 
 /**
@@ -80,14 +82,14 @@ export function getLoadingAnnouncement() {
  * @param {number} count - Number of recent searches
  * @returns {string} Announcement message
  */
-export function getRecentSearchesAnnouncement(count) {
+export function getRecentSearchesAnnouncement(count, translations = {}) {
     if (count === 0) {
-        return 'No recent searches';
+        return t(translations, 'No recent searches');
     }
     if (count === 1) {
-        return '1 recent search available';
+        return t(translations, '1 recent search available');
     }
-    return `${count} recent searches available`;
+    return t(translations, '{count} recent searches available', { count });
 }
 
 /**

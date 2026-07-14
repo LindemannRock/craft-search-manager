@@ -90,7 +90,7 @@ class SearchManagerVariable
                 'hits' => [],
                 'total' => 0,
                 'query' => $query,
-                'error' => 'Query too long (max ' . TwigSearchOptionsHelper::MAX_QUERY_LENGTH . ' characters)',
+                'error' => Craft::t('search-manager', 'Query too long (max {max} characters)', ['max' => TwigSearchOptionsHelper::MAX_QUERY_LENGTH]),
             ];
         }
 
@@ -115,7 +115,7 @@ class SearchManagerVariable
                 'total' => 0,
                 'indices' => [],
                 'query' => $query,
-                'error' => 'Query too long (max ' . TwigSearchOptionsHelper::MAX_QUERY_LENGTH . ' characters)',
+                'error' => Craft::t('search-manager', 'Query too long (max {max} characters)', ['max' => TwigSearchOptionsHelper::MAX_QUERY_LENGTH]),
             ];
         }
 

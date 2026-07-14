@@ -228,7 +228,7 @@ final class ModelValidationI18nTest extends TestCase
         $promotion = new Promotion();
         $promotion->elementId = 999999999;
         $promotion->validateElement('elementId');
-        self::assertSame(['Element not found.'], $promotion->getErrors('elementId'));
+        self::assertSame(['Element not found'], $promotion->getErrors('elementId'));
 
         $index = new SearchIndex();
         $index->siteId = ['not-a-site'];

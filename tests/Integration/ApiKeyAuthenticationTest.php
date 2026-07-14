@@ -161,7 +161,7 @@ final class ApiKeyAuthenticationTest extends TestCase
         $this->installHeaderRequest($plaintext);
 
         $this->expectException(UnauthorizedHttpException::class);
-        $this->expectExceptionMessage('Invalid API key.');
+        $this->expectExceptionMessage('Invalid API key');
         $this->runApiBeforeAction();
     }
 

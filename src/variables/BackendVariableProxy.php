@@ -8,6 +8,7 @@
 
 namespace lindemannrock\searchmanager\variables;
 
+use Craft;
 use lindemannrock\searchmanager\helpers\TwigSearchOptionsHelper;
 use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
@@ -69,7 +70,7 @@ class BackendVariableProxy
                 'hits' => [],
                 'total' => 0,
                 'query' => $query,
-                'error' => 'Query too long (max ' . TwigSearchOptionsHelper::MAX_QUERY_LENGTH . ' characters)',
+                'error' => Craft::t('search-manager', 'Query too long (max {max} characters)', ['max' => TwigSearchOptionsHelper::MAX_QUERY_LENGTH]),
             ];
         }
 

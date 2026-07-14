@@ -121,6 +121,58 @@
 {% set snippetCleanMarkdown = snippetCleanMarkdown ?? widgetConfig.isSnippetCleanMarkdownEnabled() %}
 {% set snippetDefaults = widgetConfig.getSnippetDefaults() %}
 
+{% set widgetTranslations = {
+    'Search': 'Search'|t('search-manager'),
+    'Close search': 'Close search'|t('search-manager'),
+    'Search results': 'Search results'|t('search-manager'),
+    'navigate': 'navigate'|t('search-manager'),
+    'select': 'select'|t('search-manager'),
+    'close': 'close'|t('search-manager'),
+    'Powered by': 'Powered by'|t('search-manager'),
+    'Untitled': 'Untitled'|t('search-manager'),
+    'Recent searches': 'Recent searches'|t('search-manager'),
+    'Clear': 'Clear'|t('search-manager'),
+    'Start typing to search': 'Start typing to search'|t('search-manager'),
+    'No results for "{query}"': 'No results for "{query}"'|t('search-manager'),
+    'Searching...': 'Searching...'|t('search-manager'),
+    'Search failed.': 'Search failed.'|t('search-manager'),
+    'No results found for "{query}"': 'No results found for "{query}"'|t('search-manager'),
+    '1 result found for "{query}"': '1 result found for "{query}"'|t('search-manager'),
+    '{count} results found for "{query}"': '{count} results found for "{query}"'|t('search-manager'),
+    'No recent searches': 'No recent searches'|t('search-manager'),
+    '1 recent search available': '1 recent search available'|t('search-manager'),
+    '{count} recent searches available': '{count} recent searches available'|t('search-manager'),
+    'results': 'results'|t('search-manager'),
+    'time': 'time'|t('search-manager'),
+    'cache': 'cache'|t('search-manager'),
+    'off': 'off'|t('search-manager'),
+    'hit': 'hit'|t('search-manager'),
+    'miss': 'miss'|t('search-manager'),
+    'storage': 'storage'|t('search-manager'),
+    '{count} indices': '{count} indices'|t('search-manager'),
+    'indices': 'indices'|t('search-manager'),
+    'synonyms': 'synonyms'|t('search-manager'),
+    'rules': 'rules'|t('search-manager'),
+    'promoted': 'promoted'|t('search-manager'),
+    'Debug': 'Debug'|t('search-manager'),
+    'Collapse debug panel': 'Collapse debug panel'|t('search-manager'),
+    'index': 'index'|t('search-manager'),
+    'backend': 'backend'|t('search-manager'),
+    'element': 'element'|t('search-manager'),
+    'score': 'score'|t('search-manager'),
+    'site': 'site'|t('search-manager'),
+    'lang': 'lang'|t('search-manager'),
+    'matched': 'matched'|t('search-manager'),
+    'yes': 'yes'|t('search-manager'),
+    'boosted': 'boosted'|t('search-manager'),
+    'h': 'h'|t('search-manager'),
+    'anchor': 'anchor'|t('search-manager'),
+    'parent': 'parent'|t('search-manager'),
+    'Search requires an API key.': 'Search requires an API key.'|t('search-manager'),
+    'This API key cannot access this search.': 'This API key cannot access this search.'|t('search-manager'),
+    'Search rate limit exceeded. Try again in a moment.': 'Search rate limit exceeded. Try again in a moment.'|t('search-manager'),
+} %}
+
 {# Merged styles already resolved above (resolvedStyles) #}
 {% set mergedStyles = resolvedStyles %}
 
@@ -165,6 +217,7 @@
     trigger-label="{{ triggerLabel|e('html_attr') }}"
     {% if triggerSelector %}trigger-selector="{{ triggerSelector }}"{% endif %}
     styles="{{ mergedStyles|json_encode|e('html_attr') }}"
+    translations="{{ widgetTranslations|json_encode|e('html_attr') }}"
     loading-indicator-enabled="{{ _self.toBool(loadingIndicatorEnabled, true) }}"
     debug-enabled="{{ _self.toBool(debugEnabled, false) }}"
     {% if resultsLayout != 'default' %}results-layout="{{ resultsLayout }}"{% endif %}

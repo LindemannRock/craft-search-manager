@@ -245,26 +245,23 @@ class ApiKeyService extends Component
      */
     public function authenticate(?string $plaintext): ApiKey
     {
-        // Enforcement messages are returned as JSON to API clients, so they
-        // stay raw English (not Craft::t) per the suite's exception-message
-        // convention for REST endpoints. See exception-messages.md.
         $plaintext = is_string($plaintext) ? trim($plaintext) : '';
         if ($plaintext === '') {
-            throw new UnauthorizedHttpException('API key required.');
+            throw new UnauthorizedHttpException(Craft::t('search-manager', 'API key required'));
         }
 
         $key = $this->findByPlaintextKey($plaintext);
         if ($key === null) {
-            throw new UnauthorizedHttpException('Invalid API key.');
+            throw new UnauthorizedHttpException(Craft::t('search-manager', 'Invalid API key'));
         }
 
         // Known key but not active → 403 with the specific reason.
         $status = $key->getStatus();
         if ($status === ApiKey::STATUS_DISABLED) {
-            throw new ForbiddenHttpException('This API key is disabled.');
+            throw new ForbiddenHttpException(Craft::t('search-manager', 'This API key is disabled.'));
         }
         if ($status === ApiKey::STATUS_EXPIRED) {
-            throw new ForbiddenHttpException('This API key has expired.');
+            throw new ForbiddenHttpException(Craft::t('search-manager', 'This API key has expired.'));
         }
 
         $this->recordUsage($key);
@@ -294,12 +291,11 @@ class ApiKeyService extends Component
         if ($key->type !== ApiKey::TYPE_PUBLIC) {
             // Keep public endpoint failures undifferentiated: callers should not
             // learn whether a presented secret was a valid server key.
-            throw new UnauthorizedHttpException('Invalid API key.');
+            throw new UnauthorizedHttpException(Craft::t('search-manager', 'Invalid API key'));
         }
 
         if (!$key->allowsReferrer($referer)) {
-            // Raw English — JSON API response (see exception-messages.md).
-            throw new ForbiddenHttpException('Referrer not allowed for this API key.');
+            throw new ForbiddenHttpException(Craft::t('search-manager', 'Referrer not allowed for this API key.'));
         }
 
         return $key;
@@ -343,8 +339,7 @@ class ApiKeyService extends Component
         if ($indicesProvided) {
             foreach ($requestedHandles as $handle) {
                 if (!$key->allowsIndex($handle)) {
-                    // Raw English — JSON API response (see exception-messages.md).
-                    throw new ForbiddenHttpException('API key not permitted for the requested index: ' . $handle);
+                    throw new ForbiddenHttpException(Craft::t('search-manager', 'API key not permitted for the requested index: {handle}', ['handle' => $handle]));
                 }
             }
 
@@ -395,14 +390,13 @@ class ApiKeyService extends Component
      */
     public function assertSiteInScope(int $siteId, SearchIndex ...$indices): void
     {
-        // Raw English — JSON API responses (see exception-messages.md).
         if (Craft::$app->getSites()->getSiteById($siteId) === null) {
-            throw new BadRequestHttpException('Unknown site requested.');
+            throw new BadRequestHttpException(Craft::t('search-manager', 'Unknown site requested'));
         }
 
         foreach ($indices as $index) {
             if (!$index->appliesToSiteId($siteId)) {
-                throw new ForbiddenHttpException('The requested site is outside the scope of index "' . $index->handle . '".');
+                throw new ForbiddenHttpException(Craft::t('search-manager', 'The requested site is outside the scope of index "{handle}".', ['handle' => $index->handle]));
             }
         }
     }
@@ -438,14 +432,13 @@ class ApiKeyService extends Component
         $mutex = Craft::$app->getMutex();
         $lockAcquired = $mutex->acquire($lockName, 30);
         if (!$lockAcquired) {
-            throw new TooManyRequestsHttpException('API rate limit exceeded. Try again in a moment.');
+            throw new TooManyRequestsHttpException(Craft::t('search-manager', 'API rate limit exceeded. Try again in a moment.'));
         }
 
         try {
             $count = (int) $cache->get($cacheKey);
             if ($count >= $key->rateLimit) {
-                // Raw English — JSON API response (see exception-messages.md).
-                throw new TooManyRequestsHttpException('API rate limit exceeded. Try again in a moment.');
+                throw new TooManyRequestsHttpException(Craft::t('search-manager', 'API rate limit exceeded. Try again in a moment.'));
             }
 
             $cache->set($cacheKey, $count + 1, self::RATE_LIMIT_WINDOW);

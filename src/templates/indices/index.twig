@@ -205,9 +205,9 @@
         {% if item.documentCount == expected %}
             <span class="lr-text-green">{{ item.documentCount }}</span>
         {% elseif item.documentCount < expected %}
-            <span class="lr-text-amber" title="{{ expected - item.documentCount }} missing">{{ item.documentCount }}</span>
+            <span class="lr-text-amber" title="{{ expected - item.documentCount }} {{ 'missing'|t('search-manager') }}">{{ item.documentCount }}</span>
         {% else %}
-            <span class="lr-text-red" title="{{ item.documentCount - expected }} stale">{{ item.documentCount }}</span>
+            <span class="lr-text-red" title="{{ item.documentCount - expected }} {{ 'stale'|t('search-manager') }}">{{ item.documentCount }}</span>
         {% endif %}
     </td>
 

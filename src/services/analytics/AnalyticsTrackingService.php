@@ -489,7 +489,7 @@ class AnalyticsTrackingService
                 'ip' => 'hidden',
                 'saltValue' => $salt ?? 'NULL',
             ]);
-            throw new \Exception('IP hash salt not configured. Run: php craft search-manager/security/generate-salt');
+            throw new \Exception(Craft::t('search-manager', 'IP hash salt not configured. Run: php craft search-manager/security/generate-salt'));
         }
 
         return hash('sha256', $ip . $salt);

@@ -13,6 +13,7 @@ import { highlightMatches, escapeHtml } from './Highlighter.js';
 import { groupResultsByType, groupResultsByField } from './SearchService.js';
 import { getOptionId } from './A11yUtils.js';
 import { appendQueryParam } from './UrlUtils.js';
+import { t } from './Translations.js';
 
 /**
  * @typedef {Object} RenderOptions
@@ -117,12 +118,13 @@ export function renderResultItem(result, index, query, options = {}) {
         debugEnabled = false,
         highlightDestinationPersistQuery = false,
         highlightDestinationQueryParam = 'smq',
+        translations = {},
     } = options;
 
     const sectionHit = isSectionHit(result);
     const title = sectionHit
-        ? (result.sectionTitle || result.title || result.name || 'Untitled')
-        : (result.title || result.name || 'Untitled');
+        ? (result.sectionTitle || result.title || result.name || t(translations, 'Untitled'))
+        : (result.title || result.name || t(translations, 'Untitled'));
     const snippet = result.snippet || '';
     const rawUrl = sectionHit
         ? (result.sectionUrl || result.url || result.href || '#')
@@ -160,7 +162,7 @@ export function renderResultItem(result, index, query, options = {}) {
         : '';
 
     // Build debug info (only if debug mode enabled)
-    const debugInfo = debugEnabled ? renderDebugInfo(result) : '';
+    const debugInfo = debugEnabled ? renderDebugInfo(result, translations) : '';
 
     // When debug is enabled, wrap main content so debug-info can be full-width sibling
     if (debugEnabled) {
@@ -202,58 +204,58 @@ export function renderResultItem(result, index, query, options = {}) {
  * @param {SearchResult} result - Result object with debug fields
  * @returns {string} HTML string of debug info
  */
-function renderDebugInfo(result) {
+function renderDebugInfo(result, translations = {}) {
     const debugItems = [];
     const backendValue = result.backend ? result.backend.toLowerCase() : '';
 
     // Index handle
     if (result._index || result.index) {
-        debugItems.push(debugItem('index', result._index || result.index, 'index'));
+        debugItems.push(debugItem('index', result._index || result.index, 'index', '', translations));
     }
 
     // Backend - color-coded
     if (result.backend) {
-        debugItems.push(debugItem('backend', backendValue, 'backend', backendValue));
+        debugItems.push(debugItem('backend', backendValue, 'backend', backendValue, translations));
     }
 
     if (result.elementId) {
-        debugItems.push(debugItem('element', result.elementId, 'generic'));
+        debugItems.push(debugItem('element', result.elementId, 'generic', '', translations));
     }
 
     if (result.backendId) {
-        debugItems.push(debugItem('hit', result.backendId, 'generic'));
+        debugItems.push(debugItem('hit', result.backendId, 'generic', '', translations));
     }
 
     // Score - highlighted
     if (result.score !== undefined && result.score !== null) {
         const scoreDisplay = typeof result.score === 'number' ? result.score.toFixed(2) : result.score;
-        debugItems.push(debugItem('score', scoreDisplay, 'score'));
+        debugItems.push(debugItem('score', scoreDisplay, 'score', '', translations));
     }
 
     // Site
     if (result.site) {
-        debugItems.push(debugItem('site', result.site, 'generic'));
+        debugItems.push(debugItem('site', result.site, 'generic', '', translations));
     }
 
     // Language
     if (result.language) {
-        debugItems.push(debugItem('lang', result.language, 'generic'));
+        debugItems.push(debugItem('lang', result.language, 'generic', '', translations));
     }
 
     // Matched fields - which fields contained the search query
     if (result.matchedIn && Array.isArray(result.matchedIn) && result.matchedIn.length > 0) {
         const matchedDisplay = result.matchedIn.join(', ');
-        debugItems.push(debugItem('matched', matchedDisplay, 'matched'));
+        debugItems.push(debugItem('matched', matchedDisplay, 'matched', '', translations));
     }
 
     // Promoted flag - result was injected via promotion
     if (result.promoted) {
-        debugItems.push(debugItem('promoted', 'yes', 'promoted'));
+        debugItems.push(debugItem('promoted', t(translations, 'yes'), 'promoted', '', translations));
     }
 
     // Boosted flag - result score was boosted via query rule
     if (result.boosted) {
-        debugItems.push(debugItem('boosted', 'yes', 'boosted'));
+        debugItems.push(debugItem('boosted', t(translations, 'yes'), 'boosted', '', translations));
     }
 
     if (debugItems.length === 0) {
@@ -300,9 +302,9 @@ function renderSnippetHtml(result, snippet, query, highlightOptions) {
  * @param {string} [backendType] - Backend type for color coding
  * @returns {string} HTML string
  */
-function debugItem(label, value, type, backendType = '') {
+function debugItem(label, value, type, backendType = '', translations = {}) {
     const backendAttr = backendType ? ` data-backend="${escapeHtml(backendType)}"` : '';
-    return `<span class="sm-debug-item"><span class="sm-debug-label">${escapeHtml(label)}</span><span class="sm-debug-value" data-type="${escapeHtml(type)}"${backendAttr}>${escapeHtml(String(value))}</span></span>`;
+    return `<span class="sm-debug-item"><span class="sm-debug-label">${escapeHtml(t(translations, label))}</span><span class="sm-debug-value" data-type="${escapeHtml(type)}"${backendAttr}>${escapeHtml(String(value))}</span></span>`;
 }
 
 /**
@@ -433,7 +435,7 @@ function sectionGroupToPageResult(hits, hierarchyMaxHeadings) {
         ...pageHit,
         elementId: elementId || pageHit.elementId,
         backendId: introHit?.backendId || pageHit.backendId || syntheticPageBackendId(elementId, siteId),
-        title: pageHit.title || pageHit.sectionTitle || pageHit.name || 'Untitled',
+        title: pageHit.title || pageHit.sectionTitle || pageHit.name || '',
         url: pageHit.url || '#',
         snippet: introHit ? (introHit.snippet || null) : null,
         score: numericScore(bestHit),
@@ -670,9 +672,10 @@ function renderHierarchyParent(result, index, query, options = {}) {
         debugEnabled = false,
         highlightDestinationPersistQuery = false,
         highlightDestinationQueryParam = 'smq',
+        translations = {},
     } = options;
 
-    const title = result.title || result.name || 'Untitled';
+    const title = result.title || result.name || t(translations, 'Untitled');
     const snippet = result.snippet || '';
     const rawUrl = result.url || '#';
     const url = appendQueryParam(rawUrl, query, highlightDestinationPersistQuery ? highlightDestinationQueryParam : '');
@@ -695,7 +698,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
         terms: getHighlightTerms(result, 'snippet'),
     }) : '';
 
-    const debugInfo = debugEnabled ? renderDebugInfo(result) : '';
+    const debugInfo = debugEnabled ? renderDebugInfo(result, translations) : '';
     const hasHeadings = result.headings && result.headings.length > 0;
     const icon = hasHeadings ? documentIcon() : contentIcon();
 
@@ -746,6 +749,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
         debugEnabled = false,
         highlightDestinationPersistQuery = false,
         highlightDestinationQueryParam = 'smq',
+        translations = {},
     } = options;
 
     const rawText = heading.title || heading.text || '';
@@ -787,13 +791,13 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
     let debugInfo = '';
     if (debugEnabled) {
         const childDebugItems = [];
-        childDebugItems.push(debugItem('h', level, 'generic'));
+        childDebugItems.push(debugItem('h', level, 'generic', '', translations));
         if (anchorId) {
-            childDebugItems.push(debugItem('anchor', anchorId, 'generic'));
+            childDebugItems.push(debugItem('anchor', anchorId, 'generic', '', translations));
         }
         const elementId = elementIdentity(heading, result);
         if (elementId) {
-            childDebugItems.push(debugItem('parent', elementId, 'generic'));
+            childDebugItems.push(debugItem('parent', elementId, 'generic', '', translations));
         }
         debugInfo = `<div class="sm-debug-info">${childDebugItems.join('')}</div>`;
     }
@@ -857,7 +861,7 @@ function slugifyHeading(text) {
  *   { query: 'test', title: 'Test Result', url: '/test' },
  * ], 'sm-results');
  */
-export function renderRecentSearches(recentSearches, listboxId) {
+export function renderRecentSearches(recentSearches, listboxId, translations = {}) {
     if (!recentSearches || recentSearches.length === 0) {
         return '';
     }
@@ -865,8 +869,8 @@ export function renderRecentSearches(recentSearches, listboxId) {
     return `
         <div class="sm-section">
             <div class="sm-section-header">
-                <span id="${listboxId}-recent-label">Recent searches</span>
-                <button class="sm-clear-recent" part="clear-recent">Clear</button>
+                <span id="${listboxId}-recent-label">${escapeHtml(t(translations, 'Recent searches'))}</span>
+                <button class="sm-clear-recent" part="clear-recent">${escapeHtml(t(translations, 'Clear'))}</button>
             </div>
             ${recentSearches.map((item, i) => `
                 <div class="sm-result-item sm-recent-item" id="${getOptionId(listboxId, i)}" role="option" aria-selected="false" data-index="${i}" data-url="${escapeHtml(item.url || '')}" data-query="${escapeHtml(item.query)}">
@@ -895,7 +899,7 @@ export function renderRecentSearches(recentSearches, listboxId) {
  * // No results found
  * renderEmptyState('search term'); // "No results for 'search term'"
  */
-export function renderEmptyState(query) {
+export function renderEmptyState(query, translations = {}) {
     if (!query || !query.trim()) {
         // No query - show "start typing" message
         return `
@@ -904,7 +908,7 @@ export function renderEmptyState(query) {
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
-                <p>Start typing to search</p>
+                <p>${escapeHtml(t(translations, 'Start typing to search'))}</p>
             </div>
         `;
     }
@@ -916,7 +920,7 @@ export function renderEmptyState(query) {
                 <circle cx="12" cy="12" r="10"/>
                 <path d="m15 9-6 6M9 9l6 6"/>
             </svg>
-            <p>No results for "<strong>${escapeHtml(query)}</strong>"</p>
+            <p>${escapeHtml(t(translations, 'No results for "{query}"', { query }))}</p>
         </div>
     `;
 }
@@ -926,14 +930,14 @@ export function renderEmptyState(query) {
  *
  * @returns {string} HTML string of loading indicator
  */
-export function renderLoadingState() {
+export function renderLoadingState(translations = {}) {
     return `
         <div class="sm-loading-state" part="loading-state">
             <svg class="sm-spinner" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
             </svg>
-            <p>Searching...</p>
+            <p>${escapeHtml(t(translations, 'Searching...'))}</p>
         </div>
     `;
 }
@@ -944,7 +948,7 @@ export function renderLoadingState() {
  * @param {string} message - Error message to show
  * @returns {string} HTML string of error state
  */
-export function renderErrorState(message) {
+export function renderErrorState(message, translations = {}) {
     return `
         <div class="sm-empty sm-error" part="error">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -952,7 +956,7 @@ export function renderErrorState(message) {
                 <line x1="12" y1="8" x2="12" y2="12"/>
                 <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            <p>${escapeHtml(message || 'Search failed.')}</p>
+            <p>${escapeHtml(message || t(translations, 'Search failed.'))}</p>
         </div>
     `;
 }
@@ -983,13 +987,13 @@ export function renderErrorState(message) {
  */
 export function getContentToRender(state, options) {
     const { query, results, recentSearches, loading, recentSearchesEnabled, error } = state;
-    const { loadingIndicatorEnabled = true } = options;
+    const { loadingIndicatorEnabled = true, translations = {} } = options;
     const hasQuery = query && query.trim();
 
     // Loading state (only if loadingIndicatorEnabled is enabled)
     if (loading && loadingIndicatorEnabled) {
         return {
-            html: renderLoadingState(),
+            html: renderLoadingState(translations),
             hasResults: false,
             showListbox: false,
         };
@@ -997,7 +1001,7 @@ export function getContentToRender(state, options) {
 
     if (error) {
         return {
-            html: renderErrorState(error),
+            html: renderErrorState(error, translations),
             hasResults: false,
             showListbox: false,
         };
@@ -1007,13 +1011,13 @@ export function getContentToRender(state, options) {
     if (!hasQuery) {
         if (recentSearchesEnabled && recentSearches && recentSearches.length > 0) {
             return {
-                html: renderRecentSearches(recentSearches, options.listboxId),
+                html: renderRecentSearches(recentSearches, options.listboxId, translations),
                 hasResults: true,
                 showListbox: true,
             };
         }
         return {
-            html: renderEmptyState(''),
+            html: renderEmptyState('', translations),
             hasResults: false,
             showListbox: false,
         };
@@ -1022,7 +1026,7 @@ export function getContentToRender(state, options) {
     // Has query but no results
     if (!results || results.length === 0) {
         return {
-            html: renderEmptyState(query),
+            html: renderEmptyState(query, translations),
             hasResults: false,
             showListbox: false,
         };

@@ -123,7 +123,7 @@ class ApiController extends Controller
             return $this->asJson([
                 'suggestions' => [],
                 'results' => [],
-                'error' => 'Query too long',
+                'error' => Craft::t('search-manager', 'Query too long'),
             ]);
         }
 
@@ -373,7 +373,7 @@ class ApiController extends Controller
                 'hits' => [],
                 'total' => 0,
                 'query' => $query,
-                'error' => 'Query too long (max ' . self::MAX_QUERY_LENGTH . ' characters)',
+                'error' => Craft::t('search-manager', 'Query too long (max {max} characters)', ['max' => self::MAX_QUERY_LENGTH]),
             ]);
         }
 
@@ -511,7 +511,7 @@ class ApiController extends Controller
                 return $this->asJson([
                     'hits' => [],
                     'total' => 0,
-                    'error' => 'No search indices configured',
+                    'error' => Craft::t('search-manager', 'No search indices configured'),
                 ]);
             }
 

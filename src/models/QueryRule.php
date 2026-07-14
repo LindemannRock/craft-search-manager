@@ -182,7 +182,7 @@ class QueryRule extends Model
                     $this->addError($attribute, Craft::t('search-manager', 'Boost element action requires an "elementId".'));
                 }
                 if (!empty($value['elementType']) && !TargetElementTypeHelper::isSupportedElementType((string)$value['elementType'])) {
-                    $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
+                    $this->addError($attribute, Craft::t('search-manager', 'Element not found'));
                 }
                 if (!isset($value['multiplier']) || !is_numeric($value['multiplier'])) {
                     $this->addError($attribute, Craft::t('search-manager', 'Boost element action requires a numeric "multiplier".'));
@@ -197,7 +197,7 @@ class QueryRule extends Model
                     $this->addError($attribute, Craft::t('search-manager', 'Redirect action requires a URL or an element.'));
                 }
                 if ($hasElement && !TargetElementTypeHelper::isSupportedElementType((string)$value['elementType'])) {
-                    $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
+                    $this->addError($attribute, Craft::t('search-manager', 'Element not found'));
                 }
                 // Validate URL protocol when URL-based redirect
                 if ($hasUrl) {

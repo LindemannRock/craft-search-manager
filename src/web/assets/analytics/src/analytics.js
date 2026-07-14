@@ -488,7 +488,7 @@
                     .text(w.text)
                     .addClass('lr-word-cloud-item')
                     .css('fontSize', size + 'px')
-                    .attr('title', w.weight + ' searches');
+                    .attr('title', w.weight + ' ' + strings.searchesLabel.toLowerCase());
                 container.append(span).append(' ');
             });
         } else {

@@ -31,6 +31,7 @@
 import SearchWidgetBase from '../core/SearchWidgetBase.js';
 import { getObservedAttributes, parseConfig } from '../core/ConfigParser.js';
 import { escapeHtml } from '../modules/Highlighter.js';
+import { t } from '../modules/Translations.js';
 import baseStyles from '../styles/base.css';
 import modalStyles from '../styles/modal.css';
 import debugStyles from '../styles/debug.css';
@@ -166,10 +167,13 @@ class SearchModalWidget extends SearchWidgetBase {
      * Render the modal HTML structure
      */
     render() {
-        const { theme, placeholder, triggerEnabled, triggerLabel } = this.config;
+        const { theme, placeholder, triggerEnabled, triggerLabel, translations } = this.config;
         const hotkeyDisplay = escapeHtml(this.getHotkeyDisplay());
         const safePlaceholder = escapeHtml(placeholder || '');
-        const safeTriggerLabel = escapeHtml(triggerLabel || 'Search');
+        const safeTriggerLabel = escapeHtml(triggerLabel || t(translations, 'Search'));
+        const safeSearchLabel = escapeHtml(t(translations, 'Search'));
+        const safeCloseSearchLabel = escapeHtml(t(translations, 'Close search'));
+        const safeSearchResultsLabel = escapeHtml(t(translations, 'Search results'));
 
         this.shadowRoot.innerHTML = `
             <style>${styles}</style>
@@ -186,7 +190,7 @@ class SearchModalWidget extends SearchWidgetBase {
 
             <!-- Modal backdrop -->
             <div class="sm-backdrop" part="backdrop" hidden>
-                <div class="sm-modal" part="modal" role="dialog" aria-modal="true" aria-label="Search">
+                <div class="sm-modal" part="modal" role="dialog" aria-modal="true" aria-label="${safeSearchLabel}">
                     <!-- Search input -->
                     <div class="sm-header" part="header">
                         <svg class="sm-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -216,13 +220,13 @@ class SearchModalWidget extends SearchWidgetBase {
                                 <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <button class="sm-close" part="close" aria-label="Close search">
+                        <button class="sm-close" part="close" aria-label="${safeCloseSearchLabel}">
                             <kbd>esc</kbd>
                         </button>
                     </div>
 
                     <!-- Results -->
-                    <div class="sm-results" part="results" id="${this.listboxId}" role="listbox" aria-label="Search results"></div>
+                    <div class="sm-results" part="results" id="${this.listboxId}" role="listbox" aria-label="${safeSearchResultsLabel}"></div>
 
                     <!-- Debug toolbar (sticky at bottom) -->
                     <div class="sm-debug-toolbar" part="debug-toolbar" hidden></div>
@@ -230,12 +234,12 @@ class SearchModalWidget extends SearchWidgetBase {
                     <!-- Footer -->
                     <div class="sm-footer" part="footer">
                         <div class="sm-footer-hints">
-                            <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
-                            <span><kbd>↵</kbd> select</span>
-                            <span><kbd>esc</kbd> close</span>
+                            <span><kbd>↑</kbd><kbd>↓</kbd> ${escapeHtml(t(translations, 'navigate'))}</span>
+                            <span><kbd>↵</kbd> ${escapeHtml(t(translations, 'select'))}</span>
+                            <span><kbd>esc</kbd> ${escapeHtml(t(translations, 'close'))}</span>
                         </div>
                         <div class="sm-footer-brand">
-                            Powered by <strong>Search Manager</strong>
+                            ${escapeHtml(t(translations, 'Powered by'))} <strong>Search Manager</strong>
                         </div>
                     </div>
                 </div>

@@ -132,7 +132,7 @@
 						{% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (PostgreSQL) - Not available (Craft uses MySQL)'|t('search-manager'), value: 'pgsql' }]) %}
 					{% endif %}
 				{% else %}
-					{% set backendTypeOptions = backendTypeOptions|merge([{ label: label, value: value }]) %}
+						{% set backendTypeOptions = backendTypeOptions|merge([{ label: label|t('search-manager'), value: value }]) %}
 				{% endif %}
 			{% endfor %}
 
@@ -230,7 +230,7 @@
                                         name: 'settings[' ~ key ~ ']',
                                         value: fieldValue,
                                         required: config.required ?? false,
-                                        placeholder: fieldPlaceholder,
+	                                        placeholder: fieldPlaceholder|t('search-manager'),
                                         suggestEnvVars: true,
                                         errors: backend.getErrors('settings.' ~ key),
                                     }) }}
@@ -242,7 +242,7 @@
                                         name: 'settings[' ~ key ~ ']',
                                         value: fieldValue,
                                         required: config.required ?? false,
-                                        placeholder: fieldPlaceholder,
+	                                        placeholder: fieldPlaceholder|t('search-manager'),
                                         suggestEnvVars: true,
                                         errors: backend.getErrors('settings.' ~ key),
                                     }) }}
@@ -266,7 +266,7 @@
                                         name: 'settings[' ~ key ~ ']',
                                         value: fieldValue,
                                         required: config.required ?? false,
-                                        placeholder: fieldPlaceholder,
+	                                        placeholder: fieldPlaceholder|t('search-manager'),
                                         suggestEnvVars: true,
                                         errors: backend.getErrors('settings.' ~ key),
                                     }) }}

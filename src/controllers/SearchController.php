@@ -252,7 +252,7 @@ class SearchController extends Controller
         );
 
         if (empty(trim($query))) {
-            return $this->asJson(['success' => false, 'error' => 'Query is required']);
+            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Query is required.')]);
         }
 
         // Check if analytics is enabled
@@ -342,7 +342,7 @@ class SearchController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return $this->asJson(['success' => false, 'error' => 'Tracking failed']);
+            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Tracking failed')]);
         }
     }
 
@@ -504,7 +504,7 @@ class SearchController extends Controller
 
         if (is_string($origin) && trim($origin) !== '') {
             if (!self::trackingOriginAllowed($origin, $hostInfo, SearchManager::$plugin->getSettings()->trackingAllowedOrigins)) {
-                throw new ForbiddenHttpException('Cross-origin tracking requests are not allowed.');
+                throw new ForbiddenHttpException(Craft::t('search-manager', 'Cross-origin tracking requests are not allowed.'));
             }
 
             if (!self::sameOrigin($origin, $hostInfo)) {
@@ -520,7 +520,7 @@ class SearchController extends Controller
         }
 
         if (is_string($referer) && trim($referer) !== '' && !self::trackingOriginAllowed($referer, $hostInfo, SearchManager::$plugin->getSettings()->trackingAllowedOrigins)) {
-            throw new ForbiddenHttpException('Cross-origin tracking requests are not allowed.');
+            throw new ForbiddenHttpException(Craft::t('search-manager', 'Cross-origin tracking requests are not allowed.'));
         }
 
         if ($isOptions) {

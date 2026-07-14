@@ -332,13 +332,13 @@ class PendingSyncsController extends Controller
         }
 
         if (!is_array($raw)) {
-            throw new BadRequestHttpException('ids must be an array or comma-delimited string');
+            throw new BadRequestHttpException(Craft::t('search-manager', 'ids must be an array or comma-delimited string.'));
         }
 
         $ids = array_values(array_filter(array_map('intval', $raw), static fn(int $id): bool => $id > 0));
 
         if (empty($ids)) {
-            throw new BadRequestHttpException('At least one valid id is required.');
+            throw new BadRequestHttpException(Craft::t('search-manager', 'At least one valid id is required.'));
         }
 
         return $ids;

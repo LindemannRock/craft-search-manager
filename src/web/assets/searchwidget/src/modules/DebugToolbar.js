@@ -10,6 +10,7 @@
  */
 
 import { escapeHtml } from './Highlighter.js';
+import { t } from './Translations.js';
 
 /**
  * @typedef {Object} DebugMeta
@@ -32,7 +33,7 @@ import { escapeHtml } from './Highlighter.js';
  * @param {boolean} collapsed - Whether toolbar is collapsed
  * @returns {string} HTML string of toolbar items with toggle
  */
-export function renderDebugToolbarContent(meta, totalResults, collapsed = false) {
+export function renderDebugToolbarContent(meta, totalResults, collapsed = false, translations = {}) {
     if (!meta) {
         return '';
     }
@@ -40,51 +41,51 @@ export function renderDebugToolbarContent(meta, totalResults, collapsed = false)
     const items = [];
 
     // Results count
-    items.push(toolbarItem('results', totalResults, 'generic'));
+    items.push(toolbarItem('results', totalResults, 'generic', '', translations));
 
     // Timing
     if (meta.took !== undefined) {
         const timeDisplay = meta.took < 1 ? '<1ms' : `${Math.round(meta.took)}ms`;
-        items.push(toolbarItem('time', timeDisplay, 'time'));
+        items.push(toolbarItem('time', timeDisplay, 'time', '', translations));
     }
 
     // Cache status
     if (meta.cacheEnabled !== undefined) {
         if (!meta.cacheEnabled) {
-            items.push(toolbarItem('cache', 'off', 'cache-off'));
+            items.push(toolbarItem('cache', t(translations, 'off'), 'cache-off', '', translations));
         } else if (meta.cached) {
-            items.push(toolbarItem('cache', 'hit', 'cache-hit'));
+            items.push(toolbarItem('cache', t(translations, 'hit'), 'cache-hit', '', translations));
         } else {
-            items.push(toolbarItem('cache', 'miss', 'cache-miss'));
+            items.push(toolbarItem('cache', t(translations, 'miss'), 'cache-miss', '', translations));
         }
     }
 
     // Cache driver (file, redis, memcached, etc.)
     if (meta.cacheDriver) {
-        items.push(toolbarItem('storage', meta.cacheDriver, 'cache-driver', meta.cacheDriver));
+        items.push(toolbarItem('storage', meta.cacheDriver, 'cache-driver', meta.cacheDriver, translations));
     }
 
     // Indices
     if (meta.indices && meta.indices.length > 0) {
         const indicesDisplay = meta.indices.length > 2
-            ? `${meta.indices.length} indices`
+            ? t(translations, '{count} indices', { count: meta.indices.length })
             : meta.indices.join(', ');
-        items.push(toolbarItem('indices', indicesDisplay, 'generic'));
+        items.push(toolbarItem('indices', indicesDisplay, 'generic', '', translations));
     }
 
     // Synonyms (only show if expanded)
     if (meta.synonymsExpanded) {
         const synonymCount = meta.expandedQueries ? meta.expandedQueries.length - 1 : 0;
-        items.push(toolbarItem('synonyms', `+${synonymCount}`, 'synonyms'));
+        items.push(toolbarItem('synonyms', `+${synonymCount}`, 'synonyms', '', translations));
     }
 
     // Rules matched (always show)
     const rulesCount = meta.rulesMatched?.length || 0;
-    items.push(toolbarItem('rules', rulesCount, rulesCount > 0 ? 'rules' : 'generic'));
+    items.push(toolbarItem('rules', rulesCount, rulesCount > 0 ? 'rules' : 'generic', '', translations));
 
     // Promotions (always show)
     const promotedCount = meta.promotionsMatched?.length || 0;
-    items.push(toolbarItem('promoted', promotedCount, promotedCount > 0 ? 'promotions' : 'generic'));
+    items.push(toolbarItem('promoted', promotedCount, promotedCount > 0 ? 'promotions' : 'generic', '', translations));
 
     // Toggle icon (chevron)
     const toggleIcon = collapsed
@@ -95,10 +96,10 @@ export function renderDebugToolbarContent(meta, totalResults, collapsed = false)
 
     // When collapsed, show label; when expanded, show items
     if (collapsed) {
-        return `<div class="sm-toolbar-collapsed-bar"><span class="sm-toolbar-collapsed-label">Debug</span>${toggleSvg}</div>`;
+        return `<div class="sm-toolbar-collapsed-bar"><span class="sm-toolbar-collapsed-label">${escapeHtml(t(translations, 'Debug'))}</span>${toggleSvg}</div>`;
     }
 
-    return `<div class="sm-toolbar-content">${items.join('')}</div><button class="sm-toolbar-toggle" aria-label="Collapse debug panel" aria-expanded="true">${toggleSvg}</button>`;
+    return `<div class="sm-toolbar-content">${items.join('')}</div><button class="sm-toolbar-toggle" aria-label="${escapeHtml(t(translations, 'Collapse debug panel'))}" aria-expanded="true">${toggleSvg}</button>`;
 }
 
 /**
@@ -108,8 +109,8 @@ export function renderDebugToolbarContent(meta, totalResults, collapsed = false)
  * @param {number} totalResults - Total results count
  * @returns {string} HTML string of the toolbar with wrapper div
  */
-export function renderDebugToolbar(meta, totalResults) {
-    const content = renderDebugToolbarContent(meta, totalResults);
+export function renderDebugToolbar(meta, totalResults, translations = {}) {
+    const content = renderDebugToolbarContent(meta, totalResults, false, translations);
     if (!content) return '';
     return `<div class="sm-debug-toolbar">${content}</div>`;
 }
@@ -123,9 +124,9 @@ export function renderDebugToolbar(meta, totalResults) {
  * @param {string} [backendType] - Backend type for color coding
  * @returns {string} HTML string
  */
-function toolbarItem(label, value, type, backendType = '') {
+function toolbarItem(label, value, type, backendType = '', translations = {}) {
     const backendAttr = backendType ? ` data-backend="${escapeHtml(backendType)}"` : '';
-    return `<span class="sm-toolbar-item"><span class="sm-toolbar-label">${escapeHtml(label)}</span><span class="sm-toolbar-value" data-type="${escapeHtml(type)}"${backendAttr}>${escapeHtml(String(value))}</span></span>`;
+    return `<span class="sm-toolbar-item"><span class="sm-toolbar-label">${escapeHtml(t(translations, label))}</span><span class="sm-toolbar-value" data-type="${escapeHtml(type)}"${backendAttr}>${escapeHtml(String(value))}</span></span>`;
 }
 
 /**
@@ -135,9 +136,9 @@ function toolbarItem(label, value, type, backendType = '') {
  * @param {DebugMeta} meta - Search metadata
  * @param {number} totalResults - Total results count
  */
-export function updateDebugToolbar(container, meta, totalResults) {
+export function updateDebugToolbar(container, meta, totalResults, translations = {}) {
     if (!container) return;
 
-    const html = renderDebugToolbar(meta, totalResults);
+    const html = renderDebugToolbar(meta, totalResults, translations);
     container.innerHTML = html;
 }

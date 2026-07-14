@@ -57,7 +57,7 @@ class SearchResolver extends Resolver
                 'hits' => [],
                 'total' => 0,
                 'query' => $query,
-                'error' => 'Query too long (max ' . self::MAX_QUERY_LENGTH . ' characters)',
+                'error' => Craft::t('search-manager', 'Query too long (max {max} characters)', ['max' => self::MAX_QUERY_LENGTH]),
             ];
         }
 
@@ -88,7 +88,7 @@ class SearchResolver extends Resolver
                 'page' => $page,
                 'resultsLimit' => $limit,
                 'totalPages' => 0,
-                'error' => 'The filters argument requires a single index.',
+                'error' => Craft::t('search-manager', 'The filters argument requires a single index.'),
             ];
         }
 
@@ -134,7 +134,7 @@ class SearchResolver extends Resolver
                 'hits' => [],
                 'total' => 0,
                 'query' => $query,
-                'error' => 'No search indices configured',
+                'error' => Craft::t('search-manager', 'No search indices configured'),
             ];
         }
         $options['retrievableFieldsByIndex'] = SearchIndex::retrievableFieldsByIndex($indexHandles, $requestedRetrievableFields);
@@ -332,7 +332,7 @@ class SearchResolver extends Resolver
 
         if ($requestedSiteId !== null) {
             if (!in_array($requestedSiteId, $allowedSiteIds, true)) {
-                throw new ForbiddenHttpException('The active GraphQL schema is not allowed to query the requested site.');
+                throw new ForbiddenHttpException(Craft::t('search-manager', 'The active GraphQL schema is not allowed to query the requested site.'));
             }
 
             return [$requestedSiteId];

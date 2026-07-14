@@ -214,7 +214,7 @@ class AnalyticsController extends Controller
         $format = $request->getBodyParam('format', 'csv');
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
-            throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
+            throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Export format "{format}" is not enabled.', ['format' => $format]));
         }
         $siteId = $request->getBodyParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
@@ -575,7 +575,7 @@ class AnalyticsController extends Controller
             'recent-searches', 'recent-unhandled', 'bot-stats',
         ];
         if (!in_array($type, $validTypes, true)) {
-            throw new \yii\web\BadRequestHttpException('Invalid data type.');
+            throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Invalid data type'));
         }
 
         try {
@@ -945,11 +945,11 @@ class AnalyticsController extends Controller
         $effectiveSiteId = $this->resolveEffectiveSiteId($request->getBodyParam('siteId'));
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
-            throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
+            throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Export format "{format}" is not enabled.', ['format' => $format]));
         }
 
         if (!$ruleId) {
-            throw new \yii\web\BadRequestHttpException('Rule ID is required');
+            throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Rule ID is required.'));
         }
 
         // Get the rule
@@ -1012,11 +1012,11 @@ class AnalyticsController extends Controller
         $effectiveSiteId = $this->resolveEffectiveSiteId($request->getBodyParam('siteId'));
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
-            throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
+            throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Export format "{format}" is not enabled.', ['format' => $format]));
         }
 
         if (!$promotionId) {
-            throw new \yii\web\BadRequestHttpException('Promotion ID is required');
+            throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Promotion ID is required.'));
         }
 
         // Get the promotion
@@ -1078,11 +1078,11 @@ class AnalyticsController extends Controller
 
         $validTabs = ['trending', 'query-rules', 'promotions', 'performance', 'traffic-devices', 'geographic'];
         if (!in_array($tab, $validTabs, true)) {
-            throw new \yii\web\BadRequestHttpException('Invalid tab specified.');
+            throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Invalid tab specified'));
         }
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
-            throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
+            throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Export format "{format}" is not enabled.', ['format' => $format]));
         }
 
         $effectiveSiteId = $this->resolveEffectiveSiteId($siteId);
@@ -1215,7 +1215,7 @@ class AnalyticsController extends Controller
                 break;
 
             default:
-                throw new \yii\web\BadRequestHttpException('Invalid tab specified');
+                throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Invalid tab specified'));
         }
 
         if (empty($data)) {
@@ -1251,11 +1251,11 @@ class AnalyticsController extends Controller
         $type = $request->getBodyParam('type', 'clusters'); // 'clusters' or 'recent'
 
         if (!in_array($type, ['clusters', 'recent'], true)) {
-            throw new \yii\web\BadRequestHttpException('Invalid type specified.');
+            throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Invalid type specified'));
         }
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
-            throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
+            throw new \yii\web\BadRequestHttpException(Craft::t('search-manager', 'Export format "{format}" is not enabled.', ['format' => $format]));
         }
 
         $effectiveSiteId = $this->resolveEffectiveSiteId($siteId);

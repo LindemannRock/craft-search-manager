@@ -117,19 +117,19 @@ class Promotion extends Model
         }
 
         if ($this->elementId <= 0) {
-            $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
+            $this->addError($attribute, Craft::t('search-manager', 'Element not found'));
             return;
         }
 
         if ($this->elementType !== null && !TargetElementTypeHelper::isSupportedElementType($this->elementType)) {
-            $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
+            $this->addError($attribute, Craft::t('search-manager', 'Element not found'));
             return;
         }
 
         $elementType = $this->elementType;
         $element = Craft::$app->getElements()->getElementById($this->elementId, $elementType, $this->siteId);
         if (!$element) {
-            $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
+            $this->addError($attribute, Craft::t('search-manager', 'Element not found'));
             return;
         }
 

@@ -434,7 +434,7 @@ class SearchWidgetBase extends HTMLElement {
 
         // Announce loading for screen readers
         if (this.liveRegion) {
-            announce(this.liveRegion, getLoadingAnnouncement());
+            announce(this.liveRegion, getLoadingAnnouncement(this.config.translations));
         }
 
         try {
@@ -451,6 +451,7 @@ class SearchWidgetBase extends HTMLElement {
                 snippetCleanMarkdown: this.config.snippetCleanMarkdown,
                 debugEnabled: this.config.debugEnabled,
                 apiKey: this.config.apiKey,
+                translations: this.config.translations,
             });
 
             // Stale response — a newer search owns the UI state
@@ -480,7 +481,7 @@ class SearchWidgetBase extends HTMLElement {
 
             // Announce results for screen readers
             if (this.liveRegion) {
-                announce(this.liveRegion, getResultsAnnouncement(results.length, query));
+                announce(this.liveRegion, getResultsAnnouncement(results.length, query, this.config.translations));
             }
 
             // Dispatch search event
@@ -555,6 +556,7 @@ class SearchWidgetBase extends HTMLElement {
                 highlightClass,
                 loadingIndicatorEnabled,
                 debugEnabled,
+                translations: this.config.translations,
                 highlightDestinationPersistQuery: this.config.highlightDestinationEnabled && this.config.highlightDestinationPersistQuery,
                 highlightDestinationQueryParam: this.config.highlightDestinationQueryParam,
                 promotionBadge: this.config.promotionBadge,
@@ -590,9 +592,9 @@ class SearchWidgetBase extends HTMLElement {
         // Announce for screen readers
         if (this.liveRegion && !state.loading) {
             if (state.query && state.results.length === 0) {
-                announce(this.liveRegion, getResultsAnnouncement(0, state.query));
+                announce(this.liveRegion, getResultsAnnouncement(0, state.query, this.config.translations));
             } else if (!state.query && state.recentSearches.length > 0 && recentSearchesEnabled) {
-                announce(this.liveRegion, getRecentSearchesAnnouncement(state.recentSearches.length));
+                announce(this.liveRegion, getRecentSearchesAnnouncement(state.recentSearches.length, this.config.translations));
             }
         }
 
@@ -1041,7 +1043,7 @@ class SearchWidgetBase extends HTMLElement {
         const isCollapsed = toolbar.classList.contains('sm-collapsed');
 
         // Render and show toolbar
-        toolbar.innerHTML = renderDebugToolbarContent(state.meta, state.results.length, isCollapsed);
+        toolbar.innerHTML = renderDebugToolbarContent(state.meta, state.results.length, isCollapsed, this.config.translations);
         toolbar.hidden = false;
 
         // Maintain collapsed class
@@ -1089,7 +1091,7 @@ class SearchWidgetBase extends HTMLElement {
         const state = this.state.getAll();
 
         // Re-render with new state to update content
-        toolbar.innerHTML = renderDebugToolbarContent(state.meta, state.results.length, isCollapsed);
+        toolbar.innerHTML = renderDebugToolbarContent(state.meta, state.results.length, isCollapsed, this.config.translations);
 
         // Maintain collapsed class after re-render
         if (isCollapsed) {

@@ -36,6 +36,7 @@
  * @property {boolean} snippetCleanMarkdown - Clean Markdown markers before displaying snippets
  * @property {Object} styles - Custom style values
  * @property {Object} promotionBadge - Promotion badge display config
+ * @property {Object} translations - Widget UI translations injected by Craft
  */
 
 /**
@@ -96,6 +97,7 @@ export const BASE_DEFAULTS = {
     hierarchyDisplay: 'individual', // 'individual' (each parent is its own card) | 'unified' (page block + headings share one card)
     hierarchyMaxHeadings: 3, // Max heading children per page block
     styles: {},
+    translations: {},
     promotionBadge: {
         showBadge: true,
         badgeText: 'Featured',
@@ -329,6 +331,7 @@ export function parseConfig(element, widgetType = 'modal') {
 
         // JSON attributes
         styles: parseJson(element.getAttribute('styles'), defaults.styles),
+        translations: parseJson(element.getAttribute('translations'), defaults.translations),
         promotionBadge: parseJson(element.getAttribute('promotion-badge'), defaults.promotionBadge),
     };
 
@@ -366,7 +369,7 @@ export function getObservedAttributes(widgetType = 'modal') {
         'analytics-idle-timeout-ms', 'analytics-source',
         'highlight-results-enabled', 'highlight-tag',
         'highlight-class', 'results-require-url', 'snippet-include-code-blocks', 'snippet-mode', 'loading-indicator-enabled',
-        'debug-enabled', 'styles', 'promotion-badge',
+        'debug-enabled', 'styles', 'translations', 'promotion-badge',
         'results-layout', 'hierarchy-group-by', 'hierarchy-style', 'hierarchy-display', 'hierarchy-max-headings',
         'results-title-lines', 'results-description-lines', 'snippet-max-length', 'snippet-clean-markdown',
         'highlight-destination-persist-query', 'highlight-destination-query-param', 'highlight-destination-enabled', 'highlight-destination-content-selector',

@@ -193,7 +193,7 @@ final class ApiKeyTrackingGateTest extends TestCase
         $this->installRequest(apiKey: $plaintext, referer: 'https://anywhere.example/');
 
         $this->expectException(UnauthorizedHttpException::class);
-        $this->expectExceptionMessage('Invalid API key.');
+        $this->expectExceptionMessage('Invalid API key');
         $this->runBeforeAction('track-search');
     }
 

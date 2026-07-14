@@ -59,7 +59,7 @@
             <p>{{ "Enter a search query to test. Supports all operators."|t('search-manager') }}</p>
         </div>
         <div class="sm-test-query-wrap">
-            <input type="text" id="testQuery" name="testQuery" class="text fullwidth" value="" placeholder="Try: 'exact phrase', test NOT spam, title:blog, test*" maxlength="256" autocomplete="off">
+            <input type="text" id="testQuery" name="testQuery" class="text fullwidth" value="" placeholder="{{ "Try: 'exact phrase', test NOT spam, title:blog, test*"|t('search-manager') }}" maxlength="256" autocomplete="off">
             {# Autocomplete dropdown #}
             <div id="autocomplete-dropdown" class="sm-test-autocomplete-dropdown" hidden></div>
         </div>
