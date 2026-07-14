@@ -113,11 +113,14 @@ class SettingsController extends Controller
     {
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
+        $nativeSearchCoverage = SearchManager::$plugin->nativeSearchCoverage;
 
         return $this->renderTemplate('search-manager/settings/indexing', [
             'settings' => $settings,
-            'nativeSearchCoverageReport' => SearchManager::$plugin->nativeSearchCoverage->getReport(),
-            'nativeSearchHasLocalBackend' => SearchManager::$plugin->nativeSearchCoverage->hasLocalBackend(),
+            'nativeSearchCoverageReport' => $nativeSearchCoverage->getReport(),
+            'nativeSearchHasLocalBackend' => $nativeSearchCoverage->hasLocalBackend(),
+            'nativeSearchDefaultBackendIsLocal' => $nativeSearchCoverage->defaultBackendIsLocal(),
+            'nativeSearchLocalBackendOptions' => $nativeSearchCoverage->getLocalBackendOptions(),
         ]);
     }
 

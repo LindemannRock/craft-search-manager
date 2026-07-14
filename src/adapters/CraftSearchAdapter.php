@@ -85,7 +85,7 @@ class CraftSearchAdapter extends \craft\services\Search
         $backendType = $backend?->getName();
 
         // Only works for built-in backends (MySQL, PostgreSQL, Redis, File)
-        if ($backend === null || !in_array($backendType, ['mysql', 'pgsql', 'redis', 'file'], true)) {
+        if (!SearchManager::$plugin->nativeSearchCoverage->isLocalBackendName($backendType)) {
             $this->logDebug('Native search replacement not supported for resolved index backend, falling back', [
                 'index' => $indexHandle,
                 'backend' => $backendType,
@@ -162,7 +162,7 @@ class CraftSearchAdapter extends \craft\services\Search
     {
         // Only works for built-in backends (MySQL, PostgreSQL, Redis, File)
         $backendType = SearchManager::$plugin->backend->getActiveBackend()?->getName();
-        if (!in_array($backendType, ['mysql', 'pgsql', 'redis', 'file'], true)) {
+        if (!SearchManager::$plugin->nativeSearchCoverage->isLocalBackendName($backendType)) {
             $this->logDebug('Native search replacement not supported for external backends, falling back', [
                 'backend' => $backendType,
             ]);

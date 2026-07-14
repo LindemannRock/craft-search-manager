@@ -120,6 +120,15 @@ final class NativeSearchCoverageServiceTest extends TestCase
         self::assertSame(self::MARKER . 'entry-catch-all', $backend->searchCalls[0]['indexName'] ?? null);
     }
 
+    public function testAdapterLocalBackendGuardsUseCoverageService(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/adapters/CraftSearchAdapter.php');
+
+        self::assertIsString($source);
+        self::assertSame(2, substr_count($source, 'nativeSearchCoverage->isLocalBackendName'));
+        self::assertStringNotContainsString("['mysql', 'pgsql', 'redis', 'file']", $source);
+    }
+
     private function index(
         string $handle,
         string $elementType,

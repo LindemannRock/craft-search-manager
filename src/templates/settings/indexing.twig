@@ -47,9 +47,7 @@
         }) }}
 
 		{% set activeBackend = craft.app.plugins.getPlugin('search-manager').backend.getActiveBackend() %}
-		{% set backendType = activeBackend ? activeBackend.getName() : 'file' %}
-		{% set isBuiltinBackend = backendType in ['mysql', 'pgsql', 'redis', 'file'] %}
-		{% if isBuiltinBackend %}
+		{% if nativeSearchHasLocalBackend %}
 			{{ forms.lightswitchField({
 				label: 'Replace Native Search'|t('search-manager'),
 				instructions: 'Enhance Craft\'s Control Panel and template search with Search Manager for element types that have a full-coverage index. Types without one keep using Craft\'s native search.'|t('search-manager'),
@@ -71,49 +69,82 @@
 				<h3>{{ 'Native Search Coverage'|t('search-manager') }}</h3>
 				<p class="light">{{ 'While Replace Native Search is on, this shows which element types Search Manager answers and which fall back to Craft\'s native search.'|t('search-manager') }}</p>
 
-				{% if nativeSearchHasLocalBackend %}
-					<table class="data fullwidth">
-						<thead>
+				{% set canCreateCatchAll = currentUser.can('searchManager:editIndices') %}
+				{% set showCatchAllBackendPicker = nativeSearchLocalBackendOptions|length > 1 or not nativeSearchDefaultBackendIsLocal %}
+				<table class="data fullwidth">
+					<thead>
+						<tr>
+							<th scope="col">{{ 'Element Type'|t('search-manager') }}</th>
+							<th scope="col">{{ 'Coverage'|t('search-manager') }}</th>
+							<th scope="col">{{ 'Index'|t('search-manager') }}</th>
+							{% if canCreateCatchAll %}
+								<th scope="col">{{ 'Actions'|t('search-manager') }}</th>
+							{% endif %}
+						</tr>
+					</thead>
+					<tbody>
+						{% for item in nativeSearchCoverageReport %}
 							<tr>
-								<th scope="col">{{ 'Element Type'|t('search-manager') }}</th>
-								<th scope="col">{{ 'Coverage'|t('search-manager') }}</th>
-								<th scope="col">{{ 'Index'|t('search-manager') }}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{% for item in nativeSearchCoverageReport %}
-								<tr>
-									<td>{{ item.label }}</td>
+								<td>{{ item.label }}</td>
+								<td>
+									{% include 'lindemannrock-base/_components/badge' with {
+										label: item.covered ? 'Search Manager'|t('search-manager') : 'Craft native'|t('search-manager'),
+										value: item.covered ? 'searchManager' : 'craftNative',
+										colorSet: 'nativeSearchCoverage',
+									} only %}
+								</td>
+								<td>
+									{% if item.covered and item.indexHandle %}
+										<code>{{ item.indexHandle }}</code>
+									{% else %}
+										<span class="light">{{ 'Fallback'|t('search-manager') }}</span>
+									{% endif %}
+								</td>
+								{% if canCreateCatchAll %}
 									<td>
-										{% include 'lindemannrock-base/_components/badge' with {
-											label: item.covered ? 'Search Manager'|t('search-manager') : 'Craft native'|t('search-manager'),
-											value: item.covered ? 'searchManager' : 'craftNative',
-											colorSet: 'nativeSearchCoverage',
-										} only %}
-									</td>
-									<td>
-										{% if item.covered and item.indexHandle %}
-											<code>{{ item.indexHandle }}</code>
-										{% else %}
-											<span class="light">{{ 'Fallback'|t('search-manager') }}</span>
+										{% if not item.covered %}
+											<div class="flex">
+												{% if showCatchAllBackendPicker %}
+													<div class="select">
+														<select class="native-search-catch-all-backend" aria-label="{{ 'Backend'|t('search-manager') }}">
+															{% if nativeSearchDefaultBackendIsLocal %}
+																<option value="">{{ 'Default Backend'|t('search-manager') }}</option>
+															{% endif %}
+															{% for handle, label in nativeSearchLocalBackendOptions %}
+																<option value="{{ handle }}">{{ label }}</option>
+															{% endfor %}
+														</select>
+													</div>
+												{% endif %}
+												<button
+													type="button"
+													class="btn small native-search-create-catch-all"
+													data-element-type="{{ item.type }}"
+													data-element-label="{{ item.label }}"
+													data-default-backend-label="{{ activeBackend ? activeBackend.getName() : 'file' }}"
+												>
+													{{ 'Create catch-all index'|t('search-manager') }}
+												</button>
+											</div>
 										{% endif %}
 									</td>
-								</tr>
-							{% endfor %}
-						</tbody>
-					</table>
-				{% else %}
-					{% include 'lindemannrock-base/_components/info-box' with {
-						type: 'info',
-						message: 'Replace Native Search requires a local backend (MySQL, PostgreSQL, Redis, or File). Configure one to enable coverage.'|t('search-manager'),
-					} %}
-				{% endif %}
+								{% endif %}
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
 			</div>
 
 			{% js %}
 				(() => {
 					const $section = $('#native-search-coverage-settings');
 					const $lightswitch = $('#replaceNativeSearch').closest('.lightswitch');
+					const T = {
+						confirmTemplate: {{ 'Create a full-coverage index for {type}? This indexes all {type} content across all sites on the {backend} backend so Search Manager can answer Control Panel and template searches for it. The initial build may take a while depending on how much content you have.'|t('search-manager')|json_encode|raw }},
+						createIndex: {{ 'Create index'|t('search-manager')|json_encode|raw }},
+						cancel: {{ 'Cancel'|t('search-manager')|json_encode|raw }},
+						createFailed: {{ 'Could not create catch-all index'|t('search-manager')|json_encode|raw }},
+					};
 
 					if (!$section.length || !$lightswitch.length) {
 						return;
@@ -125,6 +156,85 @@
 
 					$lightswitch.on('change', updateNativeSearchCoverageVisibility);
 					updateNativeSearchCoverageVisibility();
+
+					const confirmCatchAll = (message) => new Promise((resolve) => {
+						if (typeof Garnish === 'undefined' || !Garnish.Modal) {
+							resolve(confirm(message));
+							return;
+						}
+
+						const $modal = $(
+							'<form class="modal fitted native-search-catch-all-confirm" accept-charset="UTF-8">' +
+								'<div class="body"><p></p></div>' +
+								'<div class="footer">' +
+									'<div class="buttons right">' +
+										'<button type="button" class="btn cancel"></button>' +
+										'<button type="submit" class="btn submit"></button>' +
+									'</div>' +
+								'</div>' +
+							'</form>'
+						).appendTo(Garnish.$bod);
+
+						$modal.find('.body p').text(message);
+						$modal.find('.cancel').text(T.cancel);
+						$modal.find('.submit').text(T.createIndex);
+
+						const modal = new Garnish.Modal($modal);
+						const close = (confirmed) => {
+							modal.hide();
+							$modal.remove();
+							resolve(confirmed);
+						};
+
+						$modal.on('submit', (event) => {
+							event.preventDefault();
+							close(true);
+						});
+						$modal.find('.cancel').on('click', () => close(false));
+					});
+
+					document.querySelectorAll('.native-search-create-catch-all').forEach((button) => {
+						button.addEventListener('click', async () => {
+							const row = button.closest('tr');
+							const select = row ? row.querySelector('.native-search-catch-all-backend') : null;
+							const backend = select ? select.value : '';
+							const backendLabel = select
+								? select.options[select.selectedIndex].text
+								: button.dataset.defaultBackendLabel;
+							const typeLabel = button.dataset.elementLabel || '';
+							const confirmed = await confirmCatchAll(
+								T.confirmTemplate
+									.replaceAll('{type}', typeLabel)
+									.replace('{backend}', backendLabel || 'file')
+							);
+
+							if (!confirmed) {
+								return;
+							}
+
+							button.disabled = true;
+
+							Craft.sendActionRequest('POST', 'search-manager/indices/create-catch-all', {
+								data: {
+									elementType: button.dataset.elementType,
+									backend,
+									confirmed: '1',
+								},
+							}).then((response) => {
+								if (response.data && response.data.success) {
+									Craft.cp.displayNotice(response.data.message);
+									window.location.reload();
+									return;
+								}
+
+								Craft.cp.displayError((response.data && response.data.error) || T.createFailed);
+								button.disabled = false;
+							}).catch(() => {
+								Craft.cp.displayError(T.createFailed);
+								button.disabled = false;
+							});
+						});
+					});
 				})();
 			{% endjs %}
 		{% else %}

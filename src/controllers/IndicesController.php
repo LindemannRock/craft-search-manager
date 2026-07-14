@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\db\Query;
+use craft\helpers\StringHelper;
 use craft\web\Controller;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\PluginHelper;
@@ -428,6 +429,137 @@ class IndicesController extends Controller
         Craft::$app->getSession()->setNotice($notice);
 
         return $this->redirectToPostedUrl($index);
+    }
+
+    /**
+     * Create a full-coverage local index for native-search enhancement.
+     *
+     * @since 5.53.0
+     */
+    public function actionCreateCatchAll(): Response
+    {
+        $this->requirePermission('searchManager:editIndices');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $request = Craft::$app->getRequest();
+        $coverage = SearchManager::$plugin->nativeSearchCoverage;
+        $elementType = (string)$request->getRequiredBodyParam('elementType');
+        $elementTypeOptions = $coverage->getElementTypeOptions();
+
+        if (!isset($elementTypeOptions[$elementType])) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Unsupported element type.'),
+            ]);
+        }
+
+        if (!$this->requestConfirmed($request->getBodyParam('confirmed', false))) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Catch-all index creation must be confirmed.'),
+            ]);
+        }
+
+        $backendHandle = trim((string)$request->getBodyParam('backend', ''));
+        $backendHandle = $backendHandle !== '' ? $backendHandle : null;
+
+        if (!$coverage->isLocalBackendHandle($backendHandle)) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Catch-all indices require a local backend (MySQL, PostgreSQL, Redis, or File).'),
+            ]);
+        }
+
+        $index = $this->createCatchAllIndexModel($elementType, $elementTypeOptions[$elementType], $backendHandle);
+
+        if (!$index->save()) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Could not save index'),
+                'errors' => $index->getErrors(),
+            ]);
+        }
+
+        $allSiteIds = array_map('intval', Craft::$app->getSites()->getAllSiteIds());
+        if (!$coverage->isCoverageIndex($index, $elementType, $allSiteIds)) {
+            $this->logWarning('Generated catch-all index did not satisfy native-search coverage', [
+                'handle' => $index->handle,
+                'elementType' => $elementType,
+            ]);
+
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Catch-all index was created, but coverage could not be verified.'),
+                'indexHandle' => $index->handle,
+            ]);
+        }
+
+        return $this->asJson([
+            'success' => true,
+            'message' => Craft::t('search-manager', 'Catch-all index created for {type}. Building the index now — coverage will be active once the build completes.', [
+                'type' => $elementTypeOptions[$elementType],
+            ]),
+            'indexHandle' => $index->handle,
+            'rebuildQueued' => $index->wasRebuildQueuedOnLastSave(),
+        ]);
+    }
+
+    private function requestConfirmed(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return in_array(strtolower((string)$value), ['1', 'true', 'yes', 'on'], true);
+    }
+
+    private function createCatchAllIndexModel(string $elementType, string $label, ?string $backendHandle): SearchIndex
+    {
+        $shortName = class_exists($elementType)
+            ? (new \ReflectionClass($elementType))->getShortName()
+            : basename(str_replace('\\', '/', $elementType));
+        $baseHandle = SlugHandleHelper::normalizeSlug(StringHelper::toKebabCase($shortName), 'index') . '-all';
+
+        $index = new SearchIndex();
+        $index->name = Craft::t('search-manager', '{type} (All)', ['type' => $label]);
+        $index->handle = $this->makeUniqueIndexHandle($baseHandle);
+        $index->elementType = $elementType;
+        $index->siteId = null;
+        $index->criteria = [];
+        $index->transformerClass = '';
+        $index->backend = $backendHandle;
+        $index->enabled = true;
+        $index->splitSections = false;
+        $index->retrievableFields = ['*'];
+        $index->source = 'database';
+
+        return $index;
+    }
+
+    private function makeUniqueIndexHandle(string $baseHandle): string
+    {
+        $existingHandles = array_fill_keys(array_map(
+            static fn(SearchIndex $index): string => $index->handle,
+            SearchIndex::findAll(),
+        ), true);
+
+        $candidate = $baseHandle;
+        for ($suffix = 1; $suffix <= 100; $suffix++) {
+            if (
+                !isset($existingHandles[$candidate])
+                && !SlugHandleHelper::exists('{{%searchmanager_indices}}', 'handle', $candidate)
+            ) {
+                return $candidate;
+            }
+
+            $candidate = $baseHandle . '-' . $suffix;
+        }
+
+        throw new \RuntimeException(sprintf(
+            "Could not generate a unique index handle for '%s' after 100 attempts.",
+            $baseHandle,
+        ));
     }
 
     /**

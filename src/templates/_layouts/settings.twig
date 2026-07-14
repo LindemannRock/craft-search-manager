@@ -20,7 +20,7 @@
     {% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}
     {% set activeBackend = craft.app.plugins.getPlugin('search-manager').backend.getActiveBackend() %}
     {% set backendType = activeBackend ? activeBackend.getName() : 'file' %}
-    {% set isBuiltinBackend = backendType in ['mysql', 'pgsql', 'redis', 'file'] %}
+    {% set isBuiltinBackend = craft.app.plugins.getPlugin('search-manager').nativeSearchCoverage.isLocalBackendName(backendType) %}
 
     <nav id="settings-nav">
         <ul>

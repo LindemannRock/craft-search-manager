@@ -19,6 +19,7 @@ use lindemannrock\base\helpers\ConfigFileHelper;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 
@@ -102,9 +103,48 @@ class NativeSearchCoverageService extends Component
 
     public function hasLocalBackend(): bool
     {
-        $backendType = SearchManager::$plugin->backend->getActiveBackend()?->getName();
+        return $this->defaultBackendIsLocal() || $this->getLocalBackendOptions() !== [];
+    }
 
-        return $backendType !== null && in_array($backendType, self::LOCAL_BACKENDS, true);
+    public function defaultBackendIsLocal(): bool
+    {
+        return $this->isLocalBackendName(SearchManager::$plugin->backend->getActiveBackend()?->getName());
+    }
+
+    public function isLocalBackendName(?string $backendName): bool
+    {
+        return $backendName !== null && in_array($backendName, self::LOCAL_BACKENDS, true);
+    }
+
+    public function isLocalBackendHandle(?string $handle): bool
+    {
+        if ($handle === null || $handle === '') {
+            return $this->defaultBackendIsLocal();
+        }
+
+        $configuredBackend = ConfiguredBackend::findByHandle($handle);
+
+        return $configuredBackend !== null
+            && $configuredBackend->enabled
+            && $this->isLocalBackendName($configuredBackend->backendType);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getLocalBackendOptions(): array
+    {
+        $options = [];
+
+        foreach (ConfiguredBackend::findAllEnabled() as $backend) {
+            if (!$this->isLocalBackendName($backend->backendType)) {
+                continue;
+            }
+
+            $options[$backend->handle] = $backend->name . ' (' . ($backend->getTypeLabel()) . ')';
+        }
+
+        return $options;
     }
 
     private function findCoverageIndex(string $elementType, mixed $siteId): ?SearchIndex
