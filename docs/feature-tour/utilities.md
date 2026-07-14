@@ -91,7 +91,7 @@ Each section requires specific permissions:
 | Rebuild indices, clear storage | `searchManager:rebuildIndices` |
 | Clear caches | `searchManager:clearCache` |
 | Clear analytics | `searchManager:clearAnalytics` |
-| Developer resources | `searchManager:manageSettings` |
+| Developer Resources | `searchManager:manageSettings` |
 
 Sections are hidden from users who don't have the required permission. See [Permissions](../developers/permissions.md) for the full permission tree.
 
