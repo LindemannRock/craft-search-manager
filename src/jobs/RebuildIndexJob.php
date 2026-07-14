@@ -13,6 +13,7 @@ use craft\db\Query;
 use craft\queue\BaseJob;
 use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -150,22 +151,16 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
                     ->all();
 
                 foreach ($batchElements as $element) {
-                    // Only index if element exists and is enabled for this site
-                    if ($element->enabled && $element->getEnabledForSite()) {
-                        // Skip entries without URL if index is configured to do so
-                        if ($index->shouldSkipElementWithoutUrl($element)) {
-                            continue;
-                        }
-
-                        // For entries, also check if live (not pending/expired)
-                        if ($element instanceof \craft\elements\Entry) {
-                            if ($element->getStatus() === \craft\elements\Entry::STATUS_LIVE) {
-                                $elements[] = $element;
-                            }
-                        } else {
-                            $elements[] = $element;
-                        }
+                    if (!SearchElementAvailabilityHelper::isSearchable($element)) {
+                        continue;
                     }
+
+                    // Skip entries without URL if index is configured to do so
+                    if ($index->shouldSkipElementWithoutUrl($element)) {
+                        continue;
+                    }
+
+                    $elements[] = $element;
                 }
 
                 if (!empty($elements)) {

@@ -20,6 +20,7 @@ use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
+use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
@@ -2228,10 +2229,7 @@ class SearchIndex extends Model
                     $query = SearchIndexCriteriaHelper::apply($query, $elementType, $this->criteria);
                 }
 
-                // For entries, only count live status (matching RebuildIndexJob filtering)
-                if ($elementType === Entry::class) {
-                    $query->status(Entry::STATUS_LIVE);
-                }
+                SearchElementAvailabilityHelper::applyToQuery($query, $elementType);
 
                 // If skipEntriesWithoutUrl is enabled, filter Entry URI in SQL.
                 if ($this->skipEntriesWithoutUrl && $elementType === Entry::class) {
