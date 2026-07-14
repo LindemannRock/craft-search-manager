@@ -124,7 +124,7 @@ If you've enabled `replaceNativeSearch`, front-end template `.search()` queries 
 {% endfor %}
 ```
 
-All search operators (phrase, NOT, wildcards, etc.) work in this mode too.
+Search Manager's query operators work in this mode when Search Manager answers the query. See [Search Features](../feature-tour/search-features.md#query-syntax-differences) for the syntax differences from Craft native search.
 
 Control Panel searches always stay on Craft's native search.
 

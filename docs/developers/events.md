@@ -138,6 +138,9 @@ Event::on(
 
 Triggered by `BackendService` during search operations. `EVENT_BEFORE_SEARCH` fires after query rules are resolved but before the search executes. `EVENT_AFTER_SEARCH` fires after the search completes and promotions are applied.
 
+> [!NOTE]
+> When `replaceNativeSearch` is enabled and a front-end `.search()` query is answered by Search Manager, Craft's `craft\services\Search` events (`EVENT_BEFORE_SEARCH`, `EVENT_AFTER_SEARCH`, and `EVENT_BEFORE_SCORE_RESULTS`) do not fire for that adapter path. Listen to `BackendService::EVENT_BEFORE_SEARCH` and `BackendService::EVENT_AFTER_SEARCH` for Search Manager searches. There is no Search Manager equivalent to Craft's `EVENT_BEFORE_SCORE_RESULTS`; backend scoring is engine-internal.
+
 ### `EVENT_BEFORE_SEARCH`
 
 Modify the query, options, or short-circuit the search entirely. Set `$event->handled = true` to skip the search and return `$event->results` directly.

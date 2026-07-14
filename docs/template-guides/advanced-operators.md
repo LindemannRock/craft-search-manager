@@ -26,7 +26,7 @@ Exclude documents containing specific terms:
 
 ## Field-Specific Search
 
-Target specific fields in your indexed documents:
+Target supported built-in document fields:
 
 ```twig
 {# Search only in titles #}
@@ -39,7 +39,7 @@ Target specific fields in your indexed documents:
 {% set results = craft.searchManager.search('entries', 'title:craft content:plugin') %}
 ```
 
-Field names correspond to the keys returned by your transformer.
+The query parser accepts `title:` and `content:` field filters. Other transformer fields can still be exposed for filtering through backend-specific filter options, but they are not parsed as `field:value` search operators.
 
 ## Wildcards
 
@@ -119,7 +119,7 @@ All operators can be combined in a single query:
 
 ```twig
 {% set results = craft.searchManager.search('entries',
-    'craft* OR plugin title:tutorial NOT beginner "getting started"^2'
+    'craft* OR plugin title:tutorial NOT beginner getting^2 "started guide"'
 ) %}
 ```
 
@@ -127,7 +127,8 @@ This query:
 - Matches words starting with "craft" OR containing "plugin"
 - Requires "tutorial" in the title field
 - Excludes documents containing "beginner"
-- Gives a 2x boost to the exact phrase "getting started"
+- Gives a 2x boost to the term "getting"
+- Boosts the exact phrase "started guide" with the configured phrase boost
 
 ## Practical Examples
 
