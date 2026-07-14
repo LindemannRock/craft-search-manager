@@ -244,11 +244,15 @@ final class ModelValidationI18nTest extends TestCase
 
         $widget = $this->makeWidgetConfig();
         $widget->settings['behavior']['searchDebounceMs'] = 'not-a-number';
+        $widget->settings['behavior']['resultsRequireUrl'] = 'not-a-boolean';
+        $widget->settings['behavior']['hierarchyGroupBy'] = str_repeat('x', 65);
         $widget->settings['behavior']['highlightDestinationQueryParam'] = '1bad';
         $widget->settings['behavior']['highlightDestinationContentSelector'] = '<script';
 
         self::assertFalse($widget->validate(['settings']));
         self::assertSame(['Search Debounce must be a whole number.'], $widget->getErrors('settings.behavior.searchDebounceMs'));
+        self::assertSame(['Require URL for Results must be true or false.'], $widget->getErrors('settings.behavior.resultsRequireUrl'));
+        self::assertSame(['Hierarchy Group By Field must be 64 characters or fewer.'], $widget->getErrors('settings.behavior.hierarchyGroupBy'));
         self::assertSame([
             'Destination Highlighting Query Parameter must start with a letter and contain only letters, numbers, hyphens, and underscores.',
         ], $widget->getErrors('settings.behavior.highlightDestinationQueryParam'));

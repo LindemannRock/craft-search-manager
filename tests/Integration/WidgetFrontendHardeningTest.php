@@ -140,6 +140,44 @@ final class WidgetFrontendHardeningTest extends TestCase
         self::assertStringContainsString('{% include "search-manager/widgets/_partials/hierarchy" with {', $results);
     }
 
+    public function testWidgetConfigFormUsesApprovedBehaviorLabels(): void
+    {
+        $source = implode("\n", [
+            $this->readPluginFile('src/templates/widgets/_partials/recent-searches.twig'),
+            $this->readPluginFile('src/templates/widgets/_partials/results.twig'),
+            $this->readPluginFile('src/templates/widgets/_partials/snippets.twig'),
+            $this->readPluginFile('src/templates/widgets/_partials/destination-highlighting.twig'),
+            $this->readPluginFile('src/templates/widgets/_partials/hierarchy.twig'),
+            $this->readPluginFile('src/templates/widgets/view.twig'),
+        ]);
+
+        foreach ([
+            'Enable Recent Searches',
+            'Enable Result Grouping',
+            'Require URL for Results',
+            'Include Code Blocks',
+            'Clean Markdown',
+            'Enable Destination Highlighting',
+            'Persist Query in URL',
+            'Hierarchy Group By Field',
+        ] as $label) {
+            self::assertStringContainsString("label: '{$label}'|t('search-manager')", $source);
+        }
+
+        foreach ([
+            'Recent Searches Enabled',
+            'Results Grouping Enabled',
+            'Results Require URL',
+            'Snippet Include Code Blocks',
+            'Snippet Clean Markdown',
+            'Destination Highlighting Enabled',
+            'Destination Highlighting Persist Query',
+            'Group By Field',
+        ] as $label) {
+            self::assertStringNotContainsString("label: '{$label}'|t('search-manager')", $source);
+        }
+    }
+
     private function readPluginFile(string $path): string
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);

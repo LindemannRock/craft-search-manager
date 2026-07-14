@@ -707,18 +707,18 @@ class WidgetConfig extends Model
 
         // Behavior settings — booleans
         $this->validateBooleanField($s, 'behavior', 'modalPreventBodyScroll', Craft::t('search-manager', 'Prevent Body Scroll'));
-        $this->validateBooleanField($s, 'behavior', 'recentSearchesEnabled', Craft::t('search-manager', 'Recent Searches Enabled'));
-        $this->validateBooleanField($s, 'behavior', 'resultsGroupingEnabled', Craft::t('search-manager', 'Results Grouping Enabled'));
-        $this->validateBooleanField($s, 'behavior', 'resultsRequireUrl', Craft::t('search-manager', 'Results Require URL'));
-        $this->validateBooleanField($s, 'behavior', 'snippetIncludeCodeBlocks', Craft::t('search-manager', 'Snippet Include Code Blocks'));
-        $this->validateBooleanField($s, 'behavior', 'snippetCleanMarkdown', Craft::t('search-manager', 'Snippet Clean Markdown'));
+        $this->validateBooleanField($s, 'behavior', 'recentSearchesEnabled', Craft::t('search-manager', 'Enable Recent Searches'));
+        $this->validateBooleanField($s, 'behavior', 'resultsGroupingEnabled', Craft::t('search-manager', 'Enable Result Grouping'));
+        $this->validateBooleanField($s, 'behavior', 'resultsRequireUrl', Craft::t('search-manager', 'Require URL for Results'));
+        $this->validateBooleanField($s, 'behavior', 'snippetIncludeCodeBlocks', Craft::t('search-manager', 'Include Code Blocks'));
+        $this->validateBooleanField($s, 'behavior', 'snippetCleanMarkdown', Craft::t('search-manager', 'Clean Markdown'));
         $this->validateBooleanField($s, 'behavior', 'loadingIndicatorEnabled', Craft::t('search-manager', 'Loading Indicator Enabled'));
-        $this->validateBooleanField($s, 'behavior', 'highlightDestinationEnabled', Craft::t('search-manager', 'Destination Highlighting Enabled'));
-        $this->validateBooleanField($s, 'behavior', 'highlightDestinationPersistQuery', Craft::t('search-manager', 'Destination Highlighting Persist Query'));
+        $this->validateBooleanField($s, 'behavior', 'highlightDestinationEnabled', Craft::t('search-manager', 'Enable Destination Highlighting'));
+        $this->validateBooleanField($s, 'behavior', 'highlightDestinationPersistQuery', Craft::t('search-manager', 'Persist Query in URL'));
 
         // Behavior settings — strings
         $this->validateStringField($s, 'behavior', 'triggerHotkey', Craft::t('search-manager', 'Trigger Hotkey'), 1);
-        $this->validateStringField($s, 'behavior', 'hierarchyGroupBy', Craft::t('search-manager', 'Group By Field'), 64);
+        $this->validateStringField($s, 'behavior', 'hierarchyGroupBy', Craft::t('search-manager', 'Hierarchy Group By Field'), 64);
         $this->validateStringField($s, 'behavior', 'highlightDestinationQueryParam', Craft::t('search-manager', 'Destination Highlighting Query Parameter'), 32);
         $this->validateStringField($s, 'behavior', 'highlightDestinationContentSelector', Craft::t('search-manager', 'Destination Highlighting Content Selector'), 255);
         $this->validateQueryParamName($s);

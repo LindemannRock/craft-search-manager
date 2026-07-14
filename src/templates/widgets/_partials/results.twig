@@ -14,7 +14,7 @@
 }) }}
 
 {{ forms.lightswitchField({
-	label: 'Results Require URL'|t('search-manager'),
+	label: 'Require URL for Results'|t('search-manager'),
 	instructions: 'Hide search results that do not have a URL (e.g., entries without landing pages)'|t('search-manager'),
 	id: 'behavior-resultsRequireUrl',
 	name: 'settings[behavior][resultsRequireUrl]',
@@ -40,7 +40,7 @@
 
 <div id="result-layout-default"{% if widgetConfig.getResultsLayout() != 'default' %} class="hidden"{% endif %}>
 	{{ forms.lightswitchField({
-		label: 'Results Grouping Enabled'|t('search-manager'),
+		label: 'Enable Result Grouping'|t('search-manager'),
 		instructions: 'Group flat results by source, Entry section, or type.'|t('search-manager'),
 		id: 'behavior-resultsGroupingEnabled',
 		name: 'settings[behavior][resultsGroupingEnabled]',

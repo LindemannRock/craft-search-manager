@@ -1,7 +1,7 @@
 {% import "_includes/forms" as forms %}
 
 {{ forms.lightswitchField({
-	label: 'Snippet Include Code Blocks'|t('search-manager'),
+	label: 'Include Code Blocks'|t('search-manager'),
 	instructions: 'Allow snippets to use block-level code from page and section bodies.'|t('search-manager'),
 	id: 'behavior-snippetIncludeCodeBlocks',
 	name: 'settings[behavior][snippetIncludeCodeBlocks]',
@@ -37,7 +37,7 @@
 }) }}
 
 {{ forms.lightswitchField({
-	label: 'Snippet Clean Markdown'|t('search-manager'),
+	label: 'Clean Markdown'|t('search-manager'),
 	instructions: 'Clean Markdown markers from page and section snippet display text.'|t('search-manager'),
 	tip: 'Enable for Markdown-heavy content, such as documentation pages. This does not change indexed content.'|t('search-manager'),
 	id: 'behavior-snippetCleanMarkdown',

@@ -1,7 +1,7 @@
 {% import "_includes/forms" as forms %}
 
 {{ forms.lightswitchField({
-	label: 'Destination Highlighting Enabled'|t('search-manager'),
+	label: 'Enable Destination Highlighting'|t('search-manager'),
 	instructions: 'Highlight matching search terms on the destination page after navigating from a search result.'|t('search-manager'),
 	id: 'behavior-highlightDestinationEnabled',
 	name: 'settings[behavior][highlightDestinationEnabled]',
@@ -11,7 +11,7 @@
 
 <div id="destination-highlight-options"{% if not widgetConfig.isHighlightDestinationEnabled() %} class="hidden"{% endif %}>
 	{{ forms.lightswitchField({
-		label: 'Destination Highlighting Persist Query'|t('search-manager'),
+		label: 'Persist Query in URL'|t('search-manager'),
 		instructions: 'Append the search query to the destination URL so the page knows what to highlight.'|t('search-manager'),
 		id: 'behavior-highlightDestinationPersistQuery',
 		name: 'settings[behavior][highlightDestinationPersistQuery]',
