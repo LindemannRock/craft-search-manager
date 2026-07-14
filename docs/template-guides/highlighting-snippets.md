@@ -47,9 +47,9 @@ Use `craft.searchManager.snippets()` to extract text excerpts around matched ter
 
 Each snippet is a string with matched terms already highlighted.
 
-## API Result Snippets @since(5.53.0)
+## Search Result Snippets @since(5.53.0)
 
-When you call the REST API or GraphQL, Search Manager returns a plain-text `snippet`. Matched headings can also include their own plain-text `snippet`:
+When you call `craft.searchManager.search()`, `craft.searchManager.searchMultiple()`, the REST API, or GraphQL, Search Manager returns presented hits with a plain-text `snippet`. Matched headings can also include their own plain-text `snippet`:
 
 ```json
 {
@@ -68,7 +68,7 @@ When you call the REST API or GraphQL, Search Manager returns a plain-text `snip
 
 The top-level `snippet` is the best match-centered excerpt from eligible searchable custom fields in the private snippet source, then from the dedicated indexed clean body. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body.
 
-Search Manager does not build these API snippets from title, slug, URL, SKU, native identity values, live element fields, or the flattened content bag. If no eligible field or body text contains the query, `snippet` is `null`.
+Search Manager does not build these result snippets from title, slug, URL, SKU, native identity values, live element fields, or the flattened content bag. If no eligible field or body text contains the query, `snippet` is `null`.
 
 `snippet` and `headings.*.snippet` are plain text. Render them as text and apply highlighting in your frontend when needed.
 
@@ -84,44 +84,57 @@ The bundled widget highlights titles and snippets client-side with its configure
 GET /actions/search-manager/api/search?q=craft
 ```
 
+Twig templates pass the same snippet options through the search call:
+
+```twig
+{% set results = craft.searchManager.search('entries-en', query, {
+    snippetMode: 'balanced',
+    snippetMaxLength: 180,
+    snippetIncludeCodeBlocks: false,
+    snippetCleanMarkdown: true,
+}) %}
+```
+
 ## Complete Search Results Template
 
 ```twig
 {% set query = craft.app.request.getParam('q') %}
 
 {% if query %}
-    {% set results = craft.searchManager.search('entries-en', query) %}
+    {% set results = craft.searchManager.search('entries-en', query, {
+        snippetMaxLength: 180,
+        snippetCleanMarkdown: true,
+    }) %}
 
     {% for hit in results.hits %}
-        {% set entry = craft.entries.id(hit.elementId).one() %}
-        {% if entry %}
-            <article class="search-result">
-                <h3>
-                    <a href="{{ entry.url }}">
-                        {{ craft.searchManager.highlight(entry.title, query)|raw }}
-                    </a>
-                </h3>
+        <article class="search-result">
+            <h3>
+                <a href="{{ hit.url }}">
+                    {{ craft.searchManager.highlight(hit.title, query)|raw }}
+                </a>
+            </h3>
 
-                {# Show context snippets from the body #}
-                {% set snippets = craft.searchManager.snippets(
-                    entry.body ?? '',
-                    query,
-                    {snippetMaxLength: 150, maxSnippets: 2}
-                ) %}
+            {% if hit.snippet %}
+                <p class="snippet">{{ hit.snippet }}</p>
+            {% endif %}
 
-                {% if snippets|length %}
-                    {% for snippet in snippets %}
-                        <p class="snippet">...{{ snippet|raw }}...</p>
+            {% if hit.headings|length %}
+                <ul class="matched-headings">
+                    {% for heading in hit.headings %}
+                        <li>
+                            <a href="{{ heading.url ?? hit.url }}">{{ heading.title }}</a>
+                            {% if heading.snippet %}
+                                <span>{{ heading.snippet }}</span>
+                            {% endif %}
+                        </li>
                     {% endfor %}
-                {% elseif hit.excerpt is defined %}
-                    <p>{{ hit.excerpt }}</p>
-                {% endif %}
+                </ul>
+            {% endif %}
 
-                <small>
-                    <a href="{{ entry.url }}">{{ entry.url }}</a>
-                </small>
-            </article>
-        {% endif %}
+            <small>
+                <a href="{{ hit.url }}">{{ hit.url }}</a>
+            </small>
+        </article>
     {% endfor %}
 {% endif %}
 ```
@@ -230,6 +243,15 @@ Via the API:
 
 ```text
 GET /actions/search-manager/api/search?q=querySelector&snippetIncludeCodeBlocks=0
+```
+
+Via Twig:
+
+```twig
+{% set results = craft.searchManager.search('docs', query, {
+    snippetIncludeCodeBlocks: false,
+    snippetCleanMarkdown: true,
+}) %}
 ```
 
 ### When to Enable

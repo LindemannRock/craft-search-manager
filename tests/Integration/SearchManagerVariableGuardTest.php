@@ -10,8 +10,13 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
+use craft\elements\Entry;
+use craft\helpers\Db;
+use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\variables\BackendVariableProxy;
@@ -65,6 +70,142 @@ final class SearchManagerVariableGuardTest extends TestCase
         self::assertArrayNotHasKey('resultsLimit', $searchMultipleCalls[0]['items'][0]['options']);
     }
 
+    public function testTwigSearchReturnsPresentedHitsByDefault(): void
+    {
+        /** @param list<SearchIndex> $indices */
+        $callback = function (array $indices): void {
+            $index = $indices[0];
+            $variable = new SearchManagerVariable();
+            $stub = $this->installStubBackend();
+            $stub->searchResponse = [
+                'hits' => [$this->rawTwigHit($index->handle)],
+                'total' => 1,
+            ];
+
+            $results = $variable->search($index->handle, 'needle phrase', [
+                'limit' => 5,
+                'snippetMode' => 'early',
+                'snippetMaxLength' => 80,
+                'snippetCleanMarkdown' => true,
+                'retrievableFields' => 'intro,secret',
+            ]);
+
+            self::assertCount(1, $results['hits']);
+            $hit = $results['hits'][0];
+            self::assertSame(101, $hit['elementId'] ?? null);
+            self::assertSame('101_1', $hit['backendId'] ?? null);
+            self::assertSame($index->handle, $hit['index'] ?? null);
+            self::assertSame(['intro' => '**Needle phrase** appears in the private snippet source.'], $hit['fields'] ?? null);
+            $snippet = $hit['snippet'] ?? null;
+            self::assertIsString($snippet);
+            self::assertStringContainsString('Needle phrase', $snippet);
+            self::assertStringNotContainsString('**', $snippet);
+            self::assertSame([], $hit['headings'] ?? null);
+            self::assertArrayNotHasKey('id', $hit);
+            self::assertArrayNotHasKey('objectID', $hit);
+            self::assertArrayNotHasKey('_index', $hit);
+            self::assertArrayNotHasKey('_snippetFields', $hit);
+
+            $searchCalls = $stub->callsFor('search');
+            self::assertCount(1, $searchCalls);
+            self::assertSame([
+                $index->handle => ['intro'],
+            ], $searchCalls[0]['items'][0]['options']['retrievableFieldsByIndex']);
+            self::assertArrayNotHasKey('raw', $searchCalls[0]['items'][0]['options']);
+        };
+
+        $this->withTemporaryTwigIndices([
+            'twig_presented_single' => ['intro', 'category'],
+        ], $callback);
+    }
+
+    public function testTwigSearchRawOptionReturnsBackendHitsUnshaped(): void
+    {
+        /** @param list<SearchIndex> $indices */
+        $callback = function (array $indices): void {
+            $index = $indices[0];
+            $variable = new SearchManagerVariable();
+            $stub = $this->installStubBackend();
+            $stub->searchResponse = [
+                'hits' => [$this->rawTwigHit($index->handle)],
+                'total' => 1,
+            ];
+
+            $results = $variable->search($index->handle, 'needle phrase', [
+                'raw' => true,
+                'retrievableFields' => 'intro',
+            ]);
+
+            self::assertSame($stub->searchResponse, $results);
+            self::assertArrayHasKey('id', $results['hits'][0]);
+            self::assertArrayHasKey('_snippetFields', $results['hits'][0]);
+            self::assertArrayNotHasKey('snippet', $results['hits'][0]);
+
+            $searchCalls = $stub->callsFor('search');
+            self::assertCount(1, $searchCalls);
+            self::assertArrayNotHasKey('raw', $searchCalls[0]['items'][0]['options']);
+            self::assertSame([
+                $index->handle => ['intro'],
+            ], $searchCalls[0]['items'][0]['options']['retrievableFieldsByIndex']);
+        };
+
+        $this->withTemporaryTwigIndices([
+            'twig_presented_raw' => ['intro', 'category'],
+        ], $callback);
+    }
+
+    public function testTwigSearchMultipleReturnsPresentedHitsByDefault(): void
+    {
+        /** @param list<SearchIndex> $indices */
+        $callback = function (array $indices): void {
+            [$first, $second] = $indices;
+            $variable = new SearchManagerVariable();
+            $stub = $this->installStubBackend();
+            $stub->searchMultipleResponse = [
+                'hits' => [
+                    $this->rawTwigHit($first->handle, 201),
+                    $this->rawTwigHit($second->handle, 202),
+                ],
+                'total' => 2,
+                'indices' => [
+                    $first->handle => 1,
+                    $second->handle => 1,
+                ],
+            ];
+
+            $results = $variable->searchMultiple([$first->handle, $second->handle], 'needle phrase', [
+                'retrievableFields' => 'intro,category',
+                'snippetMode' => 'balanced',
+            ]);
+
+            self::assertCount(2, $results['hits']);
+            self::assertSame($first->handle, $results['hits'][0]['index'] ?? null);
+            self::assertSame($second->handle, $results['hits'][1]['index'] ?? null);
+            self::assertSame([
+                'intro' => '**Needle phrase** appears in the private snippet source.',
+                'category' => 'Visible category',
+            ], $results['hits'][0]['fields'] ?? null);
+            self::assertSame([
+                'intro' => '**Needle phrase** appears in the private snippet source.',
+            ], $results['hits'][1]['fields'] ?? null);
+            self::assertArrayNotHasKey('id', $results['hits'][0]);
+            self::assertArrayNotHasKey('_index', $results['hits'][1]);
+
+            $searchMultipleCalls = $stub->callsFor('searchMultiple');
+            self::assertCount(1, $searchMultipleCalls);
+            self::assertSame([$first->handle, $second->handle], $searchMultipleCalls[0]['items'][0]['indices']);
+            self::assertSame([
+                $first->handle => ['intro', 'category'],
+                $second->handle => ['intro'],
+            ], $searchMultipleCalls[0]['items'][0]['options']['retrievableFieldsByIndex']);
+        };
+
+        $this->withTemporaryTwigIndices([
+            'twig_presented_multi_a' => ['intro', 'category'],
+            'twig_presented_multi_b' => ['intro'],
+        ], $callback);
+    }
+
     public function testTwigVariableAndProxyNormalizeSearchLimitsIdentically(): void
     {
         $cases = [
@@ -90,9 +231,9 @@ final class SearchManagerVariableGuardTest extends TestCase
 
             self::assertSame($expectedLimit, $variableOptions['limit']);
             self::assertSame($expectedLimit, $proxyOptions['limit']);
-            self::assertSame($variableOptions, $proxyOptions);
             self::assertArrayNotHasKey('resultsLimit', $variableOptions);
             self::assertArrayNotHasKey('resultsLimit', $proxyOptions);
+            self::assertArrayHasKey('retrievableFieldsByIndex', $variableOptions);
         }
     }
 
@@ -212,6 +353,95 @@ final class SearchManagerVariableGuardTest extends TestCase
         self::assertSame([], $proxy->suggest('coffee', 'content', ['limit' => 10]));
         self::assertSame([], $autocomplete->suggestCalls);
         self::assertSame([], $stub->callsFor('autocomplete'));
+    }
+
+    /**
+     * @param array<string, list<string>> $indexFieldsByHandle
+     * @param callable(list<SearchIndex>): void $callback
+     */
+    private function withTemporaryTwigIndices(array $indexFieldsByHandle, callable $callback): void
+    {
+        $createdHandles = [];
+
+        foreach ($indexFieldsByHandle as $handle => $retrievableFields) {
+            $db = Craft::$app->getDb();
+            $db->createCommand()
+                ->delete('{{%searchmanager_indices}}', ['handle' => $handle])
+                ->execute();
+
+            $now = Db::prepareDateForDb(new \DateTime());
+            $db->createCommand()
+                ->insert('{{%searchmanager_indices}}', [
+                    'name' => $handle,
+                    'handle' => $handle,
+                    'elementType' => Entry::class,
+                    'siteId' => null,
+                    'criteria' => '[]',
+                    'transformerClass' => '',
+                    'headingLevels' => null,
+                    'language' => null,
+                    'enabled' => 0,
+                    'enableAnalytics' => 1,
+                    'disableStopWords' => 0,
+                    'skipEntriesWithoutUrl' => 0,
+                    'splitSections' => 0,
+                    'source' => 'database',
+                    'backend' => null,
+                    'lastIndexed' => null,
+                    'documentCount' => 0,
+                    'retrievableFields' => json_encode(SearchIndex::normalizeRetrievableFields($retrievableFields)),
+                    'dateCreated' => $now,
+                    'dateUpdated' => $now,
+                    'uid' => StringHelper::UUID(),
+                ])
+                ->execute();
+            $createdHandles[] = $handle;
+        }
+
+        SearchIndex::clearCache();
+
+        try {
+            $indices = array_values(array_filter(array_map(
+                static fn(string $handle): ?SearchIndex => SearchIndex::findByHandle($handle),
+                $createdHandles,
+            )));
+            self::assertCount(count($createdHandles), $indices);
+            $callback($indices);
+        } finally {
+            Craft::$app->getDb()
+                ->createCommand()
+                ->delete('{{%searchmanager_indices}}', ['handle' => $createdHandles])
+                ->execute();
+            SearchIndex::clearCache();
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function rawTwigHit(string $indexHandle, int $elementId = 101): array
+    {
+        return [
+            'id' => (string)$elementId . '_1',
+            'objectID' => (string)$elementId . '_1',
+            'elementId' => $elementId,
+            'siteId' => 1,
+            '_index' => $indexHandle,
+            'title' => 'Needle title',
+            'url' => 'https://example.test/needle',
+            'type' => 'entry',
+            'elementType' => 'entry',
+            '_internal' => 'must stay private',
+            '_fields' => [
+                'intro' => '**Needle phrase** appears in the private snippet source.',
+                'category' => 'Visible category',
+                'secret' => 'Caller must not widen to this field.',
+            ],
+            '_snippetFields' => [
+                'intro' => '**Needle phrase** appears in the private snippet source.',
+                'secret' => 'Needle phrase appears in a hidden snippet source.',
+            ],
+        ];
     }
 }
 
