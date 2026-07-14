@@ -41,10 +41,6 @@
 		label: 'Results'|t('search-manager'),
 		url: '#results',
 	},
-	hierarchy: {
-		label: 'Hierarchy'|t('search-manager'),
-		url: '#hierarchy',
-	},
 	snippets: {
 		label: 'Snippets'|t('search-manager'),
 		url: '#snippets',
@@ -69,7 +65,7 @@
 	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.snippet')|length %}
 		{% set selectedTab = 'snippets' %}
 	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.hierarchy')|length %}
-		{% set selectedTab = 'hierarchy' %}
+		{% set selectedTab = 'results' %}
 	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.results')|length %}
 		{% set selectedTab = 'results' %}
 	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.recentSearches')|length %}
@@ -167,13 +163,6 @@
 	{# Results Tab #}
 	<div id="results"{% if selectedTab != 'results' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/_partials/results" with {
-			widgetConfig: widgetConfig,
-		} %}
-	</div>
-
-	{# Hierarchy Tab #}
-	<div id="hierarchy"{% if selectedTab != 'hierarchy' %} class="hidden"{% endif %}>
-		{% include "search-manager/widgets/_partials/hierarchy" with {
 			widgetConfig: widgetConfig,
 		} %}
 	</div>

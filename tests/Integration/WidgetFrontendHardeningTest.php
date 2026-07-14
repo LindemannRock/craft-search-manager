@@ -123,6 +123,23 @@ final class WidgetFrontendHardeningTest extends TestCase
         self::assertStringNotContainsString('getStylesForRender', $source);
     }
 
+    public function testWidgetHierarchySettingsLiveUnderResultsLayoutToggle(): void
+    {
+        $edit = $this->readPluginFile('src/templates/widgets/edit.twig');
+        $results = $this->readPluginFile('src/templates/widgets/_partials/results.twig');
+
+        self::assertStringNotContainsString("hierarchy: {\n\t\tlabel: 'Hierarchy'|t('search-manager'),", $edit);
+        self::assertStringNotContainsString("url: '#hierarchy'", $edit);
+        self::assertStringNotContainsString('<div id="hierarchy"', $edit);
+        self::assertStringContainsString("{% set selectedTab = 'results' %}", $edit);
+
+        self::assertStringContainsString("targetPrefix: 'result-layout-'", $results);
+        self::assertStringContainsString('<div id="result-layout-default"', $results);
+        self::assertStringContainsString('<div id="result-layout-hierarchical"', $results);
+        self::assertStringContainsString('widgetConfig.getResultsLayout() != \'hierarchical\'', $results);
+        self::assertStringContainsString('{% include "search-manager/widgets/_partials/hierarchy" with {', $results);
+    }
+
     private function readPluginFile(string $path): string
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);

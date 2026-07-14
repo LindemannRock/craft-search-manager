@@ -48,6 +48,12 @@
 	}) }}
 </div>
 
+<div id="result-layout-hierarchical"{% if widgetConfig.getResultsLayout() != 'hierarchical' %} class="hidden"{% endif %}>
+	{% include "search-manager/widgets/_partials/hierarchy" with {
+		widgetConfig: widgetConfig,
+	} %}
+</div>
+
 <hr>
 
 {# Line Clamping #}
