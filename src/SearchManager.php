@@ -62,6 +62,7 @@ use lindemannrock\searchmanager\services\DeviceDetectionService;
 use lindemannrock\searchmanager\services\IndexedSnippetService;
 use lindemannrock\searchmanager\services\IndexingService;
 use lindemannrock\searchmanager\services\LiveComparisonService;
+use lindemannrock\searchmanager\services\NativeSearchCoverageService;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\services\SetupService;
@@ -92,6 +93,7 @@ use yii\base\Event;
  * @property-read DeviceDetectionService $deviceDetection
  * @property-read IndexedSnippetService $indexedSnippets
  * @property-read LiveComparisonService $liveComparison
+ * @property-read NativeSearchCoverageService $nativeSearchCoverage
  * @property-read PromotionService $promotions
  * @property-read QueryRuleService $queryRules
  * @property-read SetupService $setup
@@ -200,6 +202,10 @@ class SearchManager extends Plugin
                         'upsert' => ColorHelper::getPaletteColor('teal'),
                         'delete' => ColorHelper::getPaletteColor('red'),
                     ],
+                    'nativeSearchCoverage' => [
+                        'searchManager' => ColorHelper::getPaletteColor('teal'),
+                        'craftNative' => ColorHelper::getPaletteColor('blue'),
+                    ],
                     // Public is browser-embeddable; server is trusted server-side
                     // only. Blue + pink gives clear visual separation without
                     // overloading the `status` set's enabled/disabled hues.
@@ -284,6 +290,7 @@ class SearchManager extends Plugin
             'indexedSnippets' => IndexedSnippetService::class,
             'indexing' => IndexingService::class,
             'liveComparison' => LiveComparisonService::class,
+            'nativeSearchCoverage' => NativeSearchCoverageService::class,
             'pendingSyncs' => PendingSyncRepository::class,
             'pendingSyncProcessor' => PendingSyncProcessor::class,
             'promotions' => PromotionService::class,

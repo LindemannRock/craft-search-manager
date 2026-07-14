@@ -20,6 +20,7 @@ use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
+use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\SearchManager;
@@ -2223,30 +2224,8 @@ class SearchIndex extends Model
                 // Apply criteria
                 $hasClosure = false;
                 if (!empty($this->criteria)) {
-                    // Config indices: criteria is a Closure that returns the modified query
-                    if ($this->criteria instanceof \Closure) {
-                        $hasClosure = true;
-                        $criteriaCallback = $this->criteria;
-                        $query = $criteriaCallback($query);
-                    } elseif (is_array($this->criteria)) {
-                        // Database indices: criteria is an array with section/volume/group filters
-                        if ($elementType === \craft\elements\Entry::class && !empty($this->criteria['sections'])) {
-                            /** @var \craft\elements\db\EntryQuery $query */
-                            $query->section($this->criteria['sections']);
-                        }
-                        if ($elementType === \craft\elements\Asset::class && !empty($this->criteria['volumes'])) {
-                            /** @var \craft\elements\db\AssetQuery $query */
-                            $query->volume($this->criteria['volumes']);
-                        }
-                        if ($elementType === \craft\elements\Category::class && !empty($this->criteria['groups'])) {
-                            /** @var \craft\elements\db\CategoryQuery $query */
-                            $query->group($this->criteria['groups']);
-                        }
-                        if ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' && !empty($this->criteria['sourceHandles'])) {
-                            /** @var \lindemannrock\docsmanager\elements\db\SourceDocQuery $query */
-                            $query->sourceHandle($this->criteria['sourceHandles']);
-                        }
-                    }
+                    $hasClosure = $this->criteria instanceof \Closure;
+                    $query = SearchIndexCriteriaHelper::apply($query, $elementType, $this->criteria);
                 }
 
                 // For entries, only count live status (matching RebuildIndexJob filtering)
@@ -2507,27 +2486,7 @@ class SearchIndex extends Model
             $query->drafts(false);
             $query->revisions(false);
 
-            if ($this->criteria instanceof \Closure) {
-                $criteriaCallback = $this->criteria;
-                $query = $criteriaCallback($query);
-            } elseif (is_array($this->criteria)) {
-                if ($elementType === \craft\elements\Entry::class && !empty($this->criteria['sections'])) {
-                    /** @var \craft\elements\db\EntryQuery $query */
-                    $query->section($this->criteria['sections']);
-                }
-                if ($elementType === \craft\elements\Asset::class && !empty($this->criteria['volumes'])) {
-                    /** @var \craft\elements\db\AssetQuery $query */
-                    $query->volume($this->criteria['volumes']);
-                }
-                if ($elementType === \craft\elements\Category::class && !empty($this->criteria['groups'])) {
-                    /** @var \craft\elements\db\CategoryQuery $query */
-                    $query->group($this->criteria['groups']);
-                }
-                if ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' && !empty($this->criteria['sourceHandles'])) {
-                    /** @var \lindemannrock\docsmanager\elements\db\SourceDocQuery $query */
-                    $query->sourceHandle($this->criteria['sourceHandles']);
-                }
-            }
+            $query = SearchIndexCriteriaHelper::apply($query, $elementType, $this->criteria);
 
             return (bool)$query->exists();
         } catch (\Throwable $e) {

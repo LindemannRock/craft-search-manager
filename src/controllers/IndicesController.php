@@ -262,28 +262,7 @@ class IndicesController extends Controller
      */
     private function getElementTypeOptions(): array
     {
-        $options = [
-            \craft\elements\Entry::class => Craft::t('search-manager', 'Entries'),
-            \craft\elements\Asset::class => Craft::t('search-manager', 'Assets'),
-            \craft\elements\Category::class => Craft::t('search-manager', 'Categories'),
-            \craft\elements\User::class => Craft::t('search-manager', 'Users'),
-        ];
-
-        $options = array_merge($options, $this->getTranslatedCommerceElementTypeLabels());
-
-        if (PluginHelper::isPluginEnabled('smartlink-manager')) {
-            $options['lindemannrock\\smartlinkmanager\\elements\\SmartLink'] = PluginHelper::getPluginName('smartlink-manager', 'SmartLink Manager');
-        }
-
-        if (PluginHelper::isPluginEnabled('shortlink-manager')) {
-            $options['lindemannrock\\shortlinkmanager\\elements\\ShortLink'] = PluginHelper::getPluginName('shortlink-manager', 'ShortLink Manager');
-        }
-
-        if (PluginHelper::isPluginEnabled('docs-manager')) {
-            $options['lindemannrock\\docsmanager\\elements\\SourceDoc'] = PluginHelper::getPluginName('docs-manager', 'Docs Manager');
-        }
-
-        return $options;
+        return SearchManager::$plugin->nativeSearchCoverage->getElementTypeOptions();
     }
 
     /**

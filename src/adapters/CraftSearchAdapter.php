@@ -12,7 +12,6 @@ use Craft;
 use craft\base\ElementInterface;
 use craft\elements\db\ElementQuery;
 use craft\search\SearchQuery;
-use lindemannrock\base\helpers\ConfigFileHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
@@ -231,67 +230,7 @@ class CraftSearchAdapter extends \craft\services\Search
      */
     private function getIndexForQuery(ElementQuery $query): ?SearchIndex
     {
-        $indices = SearchIndex::findAll();
-        $elementType = $query->elementType;
-        $siteId = $query->siteId;
-
-        foreach ($indices as $index) {
-            if (!$index->enabled) {
-                continue;
-            }
-
-            // Match element type
-            if ($index->elementType !== $elementType) {
-                continue;
-            }
-
-            if (!$this->indexCoversQuerySites($index, $siteId)) {
-                continue;
-            }
-
-            if (!$this->indexHasNoCriteriaRestriction($index)) {
-                continue;
-            }
-
-            return $index;
-        }
-
-        return null;
-    }
-
-    private function indexCoversQuerySites(SearchIndex $index, mixed $siteId): bool
-    {
-        $querySiteIds = SearchSiteScopeHelper::siteIds($siteId);
-        $indexSiteIds = $index->getSiteIds();
-
-        if ($querySiteIds === null) {
-            return $indexSiteIds === null;
-        }
-
-        if ($indexSiteIds === null) {
-            return true;
-        }
-
-        return empty(array_diff($querySiteIds, array_map('intval', $indexSiteIds)));
-    }
-
-    private function indexHasNoCriteriaRestriction(SearchIndex $index): bool
-    {
-        if ($index->isFromConfig()) {
-            $config = ConfigFileHelper::getConfigByHandle('search-manager', 'indices', $index->handle);
-
-            return $config !== null && !array_key_exists('criteria', $config);
-        }
-
-        return $this->isEmptyCriteria($index->criteria);
-    }
-
-    private function isEmptyCriteria(mixed $criteria): bool
-    {
-        return $criteria === []
-            || $criteria === null
-            || $criteria === ''
-            || $criteria === '{}';
+        return SearchManager::$plugin->nativeSearchCoverage->getIndexForQuery($query);
     }
 
     /**

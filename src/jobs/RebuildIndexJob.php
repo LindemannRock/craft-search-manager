@@ -13,6 +13,7 @@ use craft\db\Query;
 use craft\queue\BaseJob;
 use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
@@ -126,26 +127,7 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 
             // Apply criteria
             if (!empty($index->criteria)) {
-                // Config indices: criteria is a Closure to apply to query
-                if ($index->criteria instanceof \Closure) {
-                    $criteriaCallback = $index->criteria;
-                    $siteQuery = $criteriaCallback($siteQuery);
-                }
-                // Database indices: criteria is an array with section/volume/group filters
-                elseif (is_array($index->criteria)) {
-                    if ($elementType === \craft\elements\Entry::class && !empty($index->criteria['sections'])) {
-                        $siteQuery->section($index->criteria['sections']);
-                    }
-                    if ($elementType === \craft\elements\Asset::class && !empty($index->criteria['volumes'])) {
-                        $siteQuery->volume($index->criteria['volumes']);
-                    }
-                    if ($elementType === \craft\elements\Category::class && !empty($index->criteria['groups'])) {
-                        $siteQuery->group($index->criteria['groups']);
-                    }
-                    if ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' && !empty($index->criteria['sourceHandles'])) {
-                        $siteQuery->sourceHandle($index->criteria['sourceHandles']);
-                    }
-                }
+                $siteQuery = SearchIndexCriteriaHelper::apply($siteQuery, $elementType, $index->criteria);
             }
 
             $elementIds = $siteQuery->ids();

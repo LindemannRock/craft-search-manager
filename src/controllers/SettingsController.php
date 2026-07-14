@@ -116,6 +116,8 @@ class SettingsController extends Controller
 
         return $this->renderTemplate('search-manager/settings/indexing', [
             'settings' => $settings,
+            'nativeSearchCoverageReport' => SearchManager::$plugin->nativeSearchCoverage->getReport(),
+            'nativeSearchHasLocalBackend' => SearchManager::$plugin->nativeSearchCoverage->hasLocalBackend(),
         ]);
     }
 

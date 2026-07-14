@@ -159,7 +159,7 @@ final class AuditStorageAtomicityRegressionTest extends TestCase
         self::assertStringNotContainsString('->insert(', $configBranch);
     }
 
-    public function testMatchesCriteriaDoesNotUseMethodExistsQueryGuards(): void
+    public function testMatchesCriteriaUsesSharedCriteriaHelperWithoutMethodExistsQueryGuards(): void
     {
         $source = $this->readPluginSource('src/models/SearchIndex.php');
         $body = $this->methodBody($source, 'matchesCriteria', 'public');
@@ -167,10 +167,14 @@ final class AuditStorageAtomicityRegressionTest extends TestCase
         self::assertStringNotContainsString('method_exists($query', $body);
         self::assertStringContainsString('$query->drafts(false);', $body);
         self::assertStringContainsString('$query->revisions(false);', $body);
-        self::assertStringContainsString('$query->section($this->criteria[\'sections\']);', $body);
-        self::assertStringContainsString('$query->volume($this->criteria[\'volumes\']);', $body);
-        self::assertStringContainsString('$query->group($this->criteria[\'groups\']);', $body);
-        self::assertStringContainsString('$query->sourceHandle($this->criteria[\'sourceHandles\']);', $body);
+        self::assertStringContainsString('SearchIndexCriteriaHelper::apply($query, $elementType, $this->criteria)', $body);
+
+        $helperSource = $this->readPluginSource('src/helpers/SearchIndexCriteriaHelper.php');
+        self::assertStringNotContainsString('method_exists($query', $helperSource);
+        self::assertStringContainsString('$query->section($criteria[\'sections\']);', $helperSource);
+        self::assertStringContainsString('$query->volume($criteria[\'volumes\']);', $helperSource);
+        self::assertStringContainsString('$query->group($criteria[\'groups\']);', $helperSource);
+        self::assertStringContainsString('$query->sourceHandle($criteria[\'sourceHandles\']);', $helperSource);
     }
 
     private function purgeRows(): void

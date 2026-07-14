@@ -266,6 +266,34 @@ final class CraftSearchAdapterRegressionTest extends TestCase
         });
     }
 
+    public function testCpSavedEmptyCriteriaShapeStillResolvesCatchAllIndex(): void
+    {
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [
+            'hits' => [
+                ['elementId' => 49639, 'siteId' => 1, 'score' => 12.5],
+            ],
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $scores = $this->withOnlySearchIndices([
+            $this->index('cp-saved-empty-criteria', null, null, [
+                'sections' => '',
+                'volumes' => '',
+                'groups' => '',
+                'sourceHandles' => '',
+            ]),
+        ], function(): array {
+            $query = Entry::find();
+            $query->search = 'classic watches';
+            $query->siteId = 1;
+
+            return (new CraftSearchAdapter())->searchElements($query);
+        });
+
+        self::assertSame(['49639-1' => 12.5], $scores);
+        self::assertSame('cp-saved-empty-criteria', $backend->searchCalls[0]['indexName'] ?? null);
+    }
+
     /**
      * @param array<string, int> $condition
      */

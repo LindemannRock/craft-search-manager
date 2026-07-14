@@ -41,7 +41,7 @@ final class DedicatedI18nSweepTest extends TestCase
     public function testElementTypeDropdownLabelsAreTranslated(): void
     {
         // #181: index-edit element-type dropdown plural labels.
-        $controller = $this->readPluginFile('src/controllers/IndicesController.php');
+        $controller = $this->readPluginFile('src/services/NativeSearchCoverageService.php');
         foreach (['Entries', 'Assets', 'Categories', 'Users'] as $label) {
             self::assertStringContainsString("Craft::t('search-manager', '{$label}')", $controller);
         }
