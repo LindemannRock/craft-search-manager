@@ -1826,7 +1826,7 @@ return [
     '{count} files' => '{count} ファイル',
 
     // Test features
-    'Developer resources' => '開発者向けリソース',
+    'Developer Resources' => '開発者向けリソース',
     'Download the Postman collection and environment to test the Search Manager API outside Craft.' => 'Search Manager API を Craft の外部でテストするために、Postman コレクションと環境をダウンロードします。',
     'Download Postman collection' => 'Postman コレクションをダウンロードする',
     'Test Features' => 'テスト機能',

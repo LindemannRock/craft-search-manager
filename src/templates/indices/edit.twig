@@ -52,7 +52,6 @@
 	{% set validationSummary = include('lindemannrock-base/_partials/error-summary', {
 		errors: index.getErrors(),
 		linkMode: 'data-key',
-		translationCategory: 'search-manager',
 	})|trim %}
 {% endif %}
 {% set errorSummary = [setupIncompleteSummary, validationSummary]|filter(v => v)|join("\n") %}

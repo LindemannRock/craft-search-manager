@@ -79,7 +79,6 @@
     {% set validationSummary = include('lindemannrock-base/_partials/error-summary', {
         errors: apiKey.getErrors(),
         linkMode: 'data-key',
-        translationCategory: 'search-manager',
     })|trim %}
 {% endif %}
 
