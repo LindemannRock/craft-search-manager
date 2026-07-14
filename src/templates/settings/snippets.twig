@@ -1,0 +1,77 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Snippets"|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSettingsItem = 'snippets' %}
+
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Snippets'|t('search-manager'),
+        url: url('search-manager/settings/snippets'),
+    },
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('search-manager') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+
+	{{ actionInput('search-manager/settings/save') }}
+	{{ redirectInput('search-manager/settings/snippets') }}
+	{{ hiddenInput('section', 'snippets') }}
+
+		<h2 class="first">{{ "Snippets"|t('search-manager') }}</h2>
+
+        {% include 'lindemannrock-base/_components/info-box' with {
+            type: 'info',
+            message: 'These control the craft.searchManager.snippets() template helper. Search-result snippets (widgets, API) are configured per widget or request.'|t('search-manager'),
+        } %}
+
+        {{ forms.textField({
+            label: 'Snippet Length'|t('search-manager'),
+            instructions: 'Maximum characters per snippet. Range: 50 - 1000. Snippets show context around matched terms.'|t('search-manager'),
+            id: 'snippetMaxLength',
+            name: 'settings[snippetMaxLength]',
+            value: settings.snippetMaxLength ?? 200,
+            type: 'number',
+            min: '50',
+            max: '1000',
+            required: true,
+            tip: 'Default: 200 characters (~30-40 words).'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('snippetMaxLength'),
+            warning: settings.isOverriddenByConfig('snippetMaxLength') ?
+                "This is being overridden by the <code>snippetMaxLength</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('snippetMaxLength')
+        }) }}
+
+        {{ forms.textField({
+            label: 'Max Snippets'|t('search-manager'),
+            instructions: 'Maximum snippets per result. Range: 1 - 10. Multiple snippets show different sections where terms matched.'|t('search-manager'),
+            id: 'maxSnippets',
+            name: 'settings[maxSnippets]',
+            value: settings.maxSnippets ?? 3,
+            type: 'number',
+            min: '1',
+            max: '10',
+            required: true,
+            tip: 'Default: 3 snippets. Shows up to 3 different matched sections per document.'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('maxSnippets'),
+            warning: settings.isOverriddenByConfig('maxSnippets') ?
+                "This is being overridden by the <code>maxSnippets</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('maxSnippets')
+        }) }}
+
+{% endblock %}

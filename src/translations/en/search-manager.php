@@ -584,6 +584,7 @@ return [
     'Default: <mark> (from global highlighting settings)' => 'Default: <mark> (from global highlighting settings)',
     'Default: <mark>. Recommended for search highlighting due to semantic meaning and yellow background.' => 'Default: <mark>. Recommended for search highlighting due to semantic meaning and yellow background.',
     'Snippets' => 'Snippets',
+    'These control the craft.searchManager.snippets() template helper. Search-result snippets (widgets, API) are configured per widget or request.' => 'These control the craft.searchManager.snippets() template helper. Search-result snippets (widgets, API) are configured per widget or request.',
     'Snippet Length' => 'Snippet Length',
     'Snippet Mode' => 'Snippet Mode',
     'Max Snippets' => 'Max Snippets',

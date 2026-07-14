@@ -532,6 +532,7 @@ class SearchManager extends Plugin
                     'search-manager/settings/search' => 'search-manager/settings/search',
                     'search-manager/settings/language' => 'search-manager/settings/language',
                     'search-manager/settings/highlighting' => 'search-manager/settings/highlighting',
+                    'search-manager/settings/snippets' => 'search-manager/settings/snippets',
                     'search-manager/settings/analytics' => 'search-manager/settings/analytics',
                     'search-manager/settings/cache' => 'search-manager/settings/cache',
                     'search-manager/settings/interface' => 'search-manager/settings/interface',

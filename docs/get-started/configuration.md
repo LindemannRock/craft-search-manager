@@ -115,13 +115,21 @@ These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The 
 Search Manager supports 12 languages: English, German, French, Dutch, Spanish, Arabic, Italian, Portuguese, Japanese, Swedish, Danish, and Norwegian. Language is auto-detected from each site's locale setting. See [Multi-Language](../feature-tour/multi-language.md) for details.
 
 ### Highlighting
-**CP:** Settings → Highlighting & Autocomplete
+**CP:** Settings → Highlighting
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `highlightResultsEnabled` | `bool` | `true` | Enable search term highlighting |
 | `highlightTag` | `string` | `'mark'` | HTML tag wrapping highlighted terms (`mark`, `em`, `strong`, `b`, `i`, `span`) |
 | `highlightClass` | `?string` | `null` | CSS class added to the highlight tag |
+
+### Template Helper Snippets
+**CP:** Settings → Snippets
+
+These settings apply to `craft.searchManager.snippets()` and `craft.searchManager.highlight()` template-helper output. Search-result snippets for widgets and API requests are configured per widget or request.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
 | `snippetMaxLength` | `int` | `200` | Characters per context snippet |
 | `maxSnippets` | `int` | `3` | Maximum snippets per result |
 

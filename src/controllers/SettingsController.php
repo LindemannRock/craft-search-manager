@@ -164,6 +164,19 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * @since 5.53.0
+     */
+    public function actionSnippets(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+        $settings = SearchManager::$plugin->getSettings();
+
+        return $this->renderTemplate('search-manager/settings/snippets', [
+            'settings' => $settings,
+        ]);
+    }
+
     public function actionCache(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -1448,7 +1461,7 @@ class SettingsController extends Controller
      */
     private function _validSettingsSection(string $section): string
     {
-        $allowed = ['general', 'indexing', 'analytics', 'search', 'language', 'highlighting', 'cache', 'interface', 'test'];
+        $allowed = ['general', 'indexing', 'analytics', 'search', 'language', 'highlighting', 'snippets', 'cache', 'interface', 'test'];
 
         return in_array($section, $allowed, true) ? $section : 'general';
     }
@@ -1464,7 +1477,8 @@ class SettingsController extends Controller
             'analytics' => ['enableAnalytics', 'enableGeoDetection', 'geoProvider', 'geoApiKey', 'anonymizeIpAddress', 'analyticsRetention'],
             'search' => ['replaceNativeSearch', 'bm25K1', 'bm25B', 'titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor', 'similarityThreshold', 'maxFuzzyCandidates', 'ngramSizes'],
             'language' => ['defaultLanguage', 'enableStopWords'],
-            'highlighting' => ['highlightResultsEnabled', 'highlightTag', 'highlightClass', 'snippetMaxLength', 'maxSnippets', 'enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit', 'autocompleteFuzzy'],
+            'highlighting' => ['highlightResultsEnabled', 'highlightTag', 'highlightClass', 'enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit', 'autocompleteFuzzy'],
+            'snippets' => ['snippetMaxLength', 'maxSnippets'],
             'cache' => ['cacheStorageMethod', 'enableCache', 'cacheDuration', 'enableAutocompleteCache', 'autocompleteCacheDuration', 'clearCacheOnSave', 'statusSyncInterval', 'enableCacheWarming', 'cacheWarmingQueryCount', 'cacheDeviceDetection', 'deviceDetectionCacheDuration'],
             'interface' => ['itemsPerPage', 'timeFormat', 'monthFormat', 'dateOrder', 'dateSeparator', 'showSeconds', 'defaultDateRange', 'exportsCsv', 'exportsJson', 'exportsExcel'],
             default => [],

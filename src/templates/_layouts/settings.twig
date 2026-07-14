@@ -35,7 +35,7 @@
                 </a>
             </li>
 
-            {# Only show Search/Language/Highlighting for built-in backends #}
+            {# Only show Search/Language/Highlighting/Snippets for built-in backends #}
             {% if isBuiltinBackend %}
                 <li>
                     <a href="{{ url('search-manager/settings/search') }}" {% if selectedSettingsItem == 'search' %}class="sel"{% endif %}>
@@ -50,6 +50,11 @@
                 <li>
                     <a href="{{ url('search-manager/settings/highlighting') }}" {% if selectedSettingsItem == 'highlighting' %}class="sel"{% endif %}>
                         {{ 'Highlighting'|t('search-manager') }}
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url('search-manager/settings/snippets') }}" {% if selectedSettingsItem == 'snippets' %}class="sel"{% endif %}>
+                        {{ 'Snippets'|t('search-manager') }}
                     </a>
                 </li>
             {% endif %}
