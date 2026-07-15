@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\search\storage;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\search\TermNormalizer;
 
 /**
  * FileStorage
@@ -649,7 +650,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         $elementPath = $this->getElementPath($siteId, $elementId);
 
         // Normalize searchText for prefix matching (lowercase)
-        $searchText = mb_strtolower(trim($title));
+        $searchText = TermNormalizer::normalizeSearchText($title);
 
         $data = [
             'title' => $title,
@@ -732,7 +733,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         $this->rememberFilenameKey($documentKey);
         $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
 
-        $searchText = mb_strtolower(trim($title));
+        $searchText = TermNormalizer::normalizeSearchText($title);
         $data = [
             'title' => $title,
             'elementType' => $elementType,
@@ -789,7 +790,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function getElementSuggestions(string $query, ?int $siteId, int $limit = 10, ?string $elementType = null): array
     {
-        $searchText = mb_strtolower(trim($query));
+        $searchText = TermNormalizer::normalizeSearchText($query);
         $elementsDir = $this->basePath . '/elements';
 
         if (!is_dir($elementsDir)) {

@@ -120,7 +120,10 @@ final class AuditBatch7RegressionTest extends TestCase
 
     public function testAutocompleteStorageFailureLoggingOmitsTraceStrings(): void
     {
-        $body = $this->methodBody($this->readPluginFile('src/services/AutocompleteService.php'), 'getAllTerms');
+        // Phase C (#383/#384) replaced getAllTerms with the shared-core
+        // buildTokenSuggestions; the batch-7 invariant (graceful degrade, no
+        // trace strings in the failure log) carries over to it.
+        $body = $this->methodBody($this->readPluginFile('src/services/AutocompleteService.php'), 'buildTokenSuggestions');
 
         self::assertStringContainsString("'exception' => get_class(\$e)", $body);
         self::assertStringNotContainsString('getTraceAsString()', $body);

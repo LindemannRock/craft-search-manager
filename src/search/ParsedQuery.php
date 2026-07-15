@@ -77,6 +77,39 @@ class ParsedQuery
     public string $originalQuery = '';
 
     /**
+     * @var string Unicode-normalized query text (TermNormalizer + collapsed whitespace)
+     * @since 5.53.0
+     */
+    public string $normalizedQuery = '';
+
+    /**
+     * @var string[] Plain search tokens — the AND/OR terms after tokenization
+     * (phrases, NOT terms, wildcards, and field filters are NOT included here;
+     * they keep their dedicated properties)
+     * @since 5.53.0
+     */
+    public array $tokens = [];
+
+    /**
+     * @var bool Whether the query is a filename-like dotted compound (e.g. "config.php")
+     * @since 5.53.0
+     */
+    public bool $isCompound = false;
+
+    /**
+     * @var string Normalized compound prefix (only meaningful when $isCompound is true)
+     * @since 5.53.0
+     */
+    public string $compoundPrefix = '';
+
+    /**
+     * @var bool Whether the final token is still being typed (autocomplete parsing
+     * only — true unless the input ends with whitespace or is a closed phrase)
+     * @since 5.53.0
+     */
+    public bool $lastTokenIncomplete = false;
+
+    /**
      * Check if query is empty (no searchable content)
      *
      * @return bool
@@ -149,6 +182,11 @@ class ParsedQuery
     {
         return [
             'original' => $this->originalQuery,
+            'normalizedQuery' => $this->normalizedQuery,
+            'tokens' => $this->tokens,
+            'isCompound' => $this->isCompound,
+            'compoundPrefix' => $this->compoundPrefix,
+            'lastTokenIncomplete' => $this->lastTokenIncomplete,
             'terms' => $this->terms,
             'phrases' => $this->phrases,
             'notTerms' => $this->notTerms,

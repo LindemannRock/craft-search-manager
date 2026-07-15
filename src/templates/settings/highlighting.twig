@@ -218,18 +218,6 @@
                 errors: settings.getErrors('autocompleteLimit')
             }) }}
 
-            {{ forms.lightswitchField({
-                label: 'Fuzzy Autocomplete'|t('search-manager'),
-                instructions: 'Enable typo-tolerance in autocomplete suggestions'|t('search-manager'),
-                id: 'autocompleteFuzzy',
-                name: 'settings[autocompleteFuzzy]',
-                on: settings.autocompleteFuzzy ?? false,
-                tip: 'May be slower but finds suggestions even with typos'|t('search-manager'),
-                disabled: settings.isOverriddenByConfig('autocompleteFuzzy'),
-                warning: settings.isOverriddenByConfig('autocompleteFuzzy') ?
-                    "This is being overridden by the <code>autocompleteFuzzy</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-            }) }}
-
         </div>
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}

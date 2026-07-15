@@ -17,10 +17,8 @@ use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\QueryParser;
 use lindemannrock\searchmanager\search\SearchEngine;
-use lindemannrock\searchmanager\search\StopWords;
 use lindemannrock\searchmanager\search\storage\DocumentKeyStorageInterface;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
-use lindemannrock\searchmanager\search\Tokenizer;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -162,6 +160,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
                 'ngramSizes' => explode(',', $settings->ngramSizes ?? '2,3'),
                 'similarityThreshold' => $settings->similarityThreshold ?? 0.25,
                 'maxFuzzyCandidates' => $settings->maxFuzzyCandidates ?? 100,
+                'enableFuzzy' => $settings->enableFuzzy ?? true,
             ]);
         }
 
@@ -558,6 +557,12 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
             $languageOverride = isset($options['language']) && is_string($options['language'])
                 ? LanguageNormalizer::normalizeOrNull($options['language'])
                 : null;
+            // Query script beats site language — the same heuristic
+            // autocomplete uses, so an Arabic query on an English site finds
+            // the Arabic documents its suggestions came from (coherence).
+            if ($languageOverride === null) {
+                $languageOverride = LanguageNormalizer::detectScriptLanguage($query);
+            }
             if ($languageOverride === null && is_int($siteScope)) {
                 $site = Craft::$app->getSites()->getSiteById($siteScope);
                 if ($site && !empty($site->language)) {
@@ -597,7 +602,12 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
                 'all_sites' => $siteScope === SearchSiteScopeHelper::ALL_SITES,
             ]);
 
-            return ['hits' => $hits, 'total' => $total];
+            $response = ['hits' => $hits, 'total' => $total];
+            if (isset($result['searchDebug'])) {
+                $response['searchDebug'] = $result['searchDebug'];
+            }
+
+            return $response;
         } catch (\Throwable $e) {
             $this->logError("{$this->getBackendLabel()} search failed", ['error' => $e->getMessage()]);
             return ['hits' => [], 'total' => 0];
@@ -661,9 +671,12 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
         }
         $documentStorage = $this->documentKeyStorage($storage);
 
+        $searchDebug = ['relaxedMatching' => false, 'resolvedTerms' => []];
+
         foreach ($siteIds as $siteId) {
             $siteId = (int)$siteId;
             $siteResults = $engine->search($query, $siteId, 0, $searchOptions);
+            $searchDebug = $this->mergeSearchDebug($searchDebug, $engine->getLastSearchDebug());
             foreach ($siteResults as $documentKey => $score) {
                 $elementId = $splitSections ? $this->elementIdFromDocumentKey((string)$documentKey) : (int)$documentKey;
                 $compositeKey = $siteId . ':' . $documentKey;
@@ -730,9 +743,38 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
         // Add matchedIn field indicating which fields matched the query
         // Use first site's ID as default (helper uses per-hit siteId when available)
         $defaultSiteId = !empty($siteIds) ? (int)$siteIds[0] : 1;
-        $hits = $this->addMatchedFieldsToHits($hits, $query, $indexName, $defaultSiteId, $storage, count($hits));
+        $hits = $this->addMatchedFieldsToHits($hits, $query, $indexName, $defaultSiteId, $storage, count($hits), $searchDebug['resolvedTerms']);
 
-        return ['hits' => $hits, 'total' => $total];
+        return ['hits' => $hits, 'total' => $total, 'searchDebug' => $searchDebug];
+    }
+
+    /**
+     * Merge per-site engine debug state: relax is sticky, resolved terms union
+     * per token (a term counts once, first similarity wins).
+     *
+     * @param array{relaxedMatching: bool, resolvedTerms: array<string, array<int, array{term: string, matchType: string, similarity: float}>>} $carry
+     * @param array{relaxedMatching: bool, resolvedTerms: array<string, array<int, array{term: string, matchType: string, similarity: float}>>} $debug
+     * @return array{relaxedMatching: bool, resolvedTerms: array<string, array<int, array{term: string, matchType: string, similarity: float}>>}
+     */
+    private function mergeSearchDebug(array $carry, array $debug): array
+    {
+        $carry['relaxedMatching'] = $carry['relaxedMatching'] || !empty($debug['relaxedMatching']);
+
+        foreach ($debug['resolvedTerms'] as $token => $entries) {
+            $seen = [];
+            foreach ($carry['resolvedTerms'][$token] ?? [] as $existing) {
+                $seen[$existing['term']] = true;
+            }
+
+            foreach ($entries as $entry) {
+                if (!isset($seen[$entry['term']])) {
+                    $carry['resolvedTerms'][$token][] = $entry;
+                    $seen[$entry['term']] = true;
+                }
+            }
+        }
+
+        return $carry;
     }
 
     /**
@@ -769,6 +811,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
         }
         $documentStorage = $this->documentKeyStorage($storage);
         $results = $engine->search($query, $siteId, 0, $searchOptions);
+        $searchDebug = $engine->getLastSearchDebug();
         $elementInfo = [];
 
         if ($typeFilter !== null) {
@@ -821,9 +864,9 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
         }
 
         // Add matchedIn field indicating which fields matched the query
-        $hits = $this->addMatchedFieldsToHits($hits, $query, $indexName, $siteId, $storage, count($hits));
+        $hits = $this->addMatchedFieldsToHits($hits, $query, $indexName, $siteId, $storage, count($hits), $searchDebug['resolvedTerms']);
 
-        return ['hits' => $hits, 'total' => $total];
+        return ['hits' => $hits, 'total' => $total, 'searchDebug' => $searchDebug];
     }
 
     /**
@@ -1004,6 +1047,9 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
      * @param int $siteId Site ID
      * @param StorageInterface $storage Storage instance
      * @param int $maxHits Maximum hits to hydrate (0 = all)
+     * @param array<string, array<int, array{term: string, matchType: string, similarity: float}>> $resolvedTermsByToken
+     *        Per-token resolved terms from the engine's search debug — the SAME
+     *        resolution ranking used, so matchedIn cannot disagree with scoring
      * @return array Hits with matchedIn field added
      */
     protected function addMatchedFieldsToHits(
@@ -1013,25 +1059,11 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
         int $siteId,
         StorageInterface $storage,
         int $maxHits = 0,
+        array $resolvedTermsByToken = [],
     ): array {
         if (empty($hits) || empty($query)) {
             return $hits;
         }
-
-        $settings = SearchManager::$plugin->getSettings();
-        $searchIndex = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexName);
-        $disableStopWords = $searchIndex ? (bool)$searchIndex->disableStopWords : false;
-
-        $tokenizer = new Tokenizer();
-        $ngramSizes = array_map('intval', explode(',', $settings->ngramSizes ?? '2,3'));
-        $ngramGenerator = new \lindemannrock\searchmanager\search\NgramGenerator($ngramSizes);
-        $fuzzyMatcher = new \lindemannrock\searchmanager\search\FuzzyMatcher(
-            $ngramGenerator,
-            $settings->similarityThreshold ?? 0.25,
-            $settings->maxFuzzyCandidates ?? 100
-        );
-
-        $siteCache = [];
 
         $hitCount = count($hits);
         $limit = $maxHits > 0 ? min($maxHits, $hitCount) : $hitCount;
@@ -1040,6 +1072,21 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
         $parsedQuery = QueryParser::hasAdvancedOperators($query) ? QueryParser::parse($query) : null;
         $phrases = $parsedQuery !== null ? $parsedQuery->phrases : [];
         $isPhraseOnly = !empty($phrases) && empty($parsedQuery->terms) && empty($parsedQuery->wildcards);
+
+        // Flatten the engine's per-token resolution into the matched-term set
+        // (exact + expanded terms that actually drove ranking).
+        $actualTermSet = [];
+        foreach ($resolvedTermsByToken as $entries) {
+            foreach ($entries as $entry) {
+                $actualTermSet[$entry['term']] = true;
+            }
+        }
+        $actualTerms = array_keys($actualTermSet);
+
+        if (empty($actualTerms) && empty($phrases)) {
+            return $hits;
+        }
+
         $elementTermsCache = $this->preloadMatchedFieldTerms($hits, $siteId, $storage, $limit);
 
         for ($i = 0; $i < $limit; $i++) {
@@ -1052,57 +1099,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
 
             // Use siteId from hit if available (for multi-site searches)
             $hitSiteId = $hit['siteId'] ?? $siteId;
-
-            if (!isset($siteCache[$hitSiteId])) {
-                $language = $this->getSearchLanguageForSite($indexName, $hitSiteId);
-
-                // For parsed queries with phrases, only tokenize the non-phrase terms
-                // so phrase words don't leak into individual matchedTerms
-                if ($parsedQuery !== null && !empty($phrases)) {
-                    $nonPhraseTerms = array_merge($parsedQuery->terms, $parsedQuery->wildcards);
-                    $queryTerms = [];
-                    foreach ($nonPhraseTerms as $term) {
-                        $queryTerms = array_merge($queryTerms, $tokenizer->tokenize($term));
-                    }
-                } else {
-                    $queryTerms = $tokenizer->tokenize($query);
-                }
-                if (($settings->enableStopWords ?? true) && !$disableStopWords) {
-                    $stopWords = new StopWords($language);
-                    $queryTerms = $stopWords->filter($queryTerms);
-                }
-                $queryTerms = array_values(array_unique($queryTerms));
-
-                $actualTermSet = [];
-                $termDocsByTerm = $queryTerms !== []
-                    ? $storage->getTermDocumentsBatch($queryTerms, (int)$hitSiteId)
-                    : [];
-
-                foreach ($queryTerms as $queryTerm) {
-                    $termDocs = $termDocsByTerm[$queryTerm] ?? [];
-                    if (!empty($termDocs)) {
-                        $actualTermSet[$queryTerm] = true;
-                        continue;
-                    }
-
-                    $fuzzyTerms = $fuzzyMatcher->findMatches($queryTerm, $storage, (int)$hitSiteId);
-                    if (!empty($fuzzyTerms)) {
-                        foreach ($fuzzyTerms as $term) {
-                            $actualTermSet[$term] = true;
-                        }
-                    }
-                }
-
-                $siteCache[$hitSiteId] = [
-                    'actualTerms' => array_keys($actualTermSet),
-                ];
-            }
-
-            $actualTerms = $siteCache[$hitSiteId]['actualTerms'] ?? [];
-            if (empty($actualTerms) && empty($phrases)) {
-                unset($hit);
-                continue;
-            }
 
             $matchedIn = [];
 
@@ -1205,23 +1201,5 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
         }
 
         return $elementTermsCache;
-    }
-
-    /**
-     * Resolve search language for a site
-     */
-    protected function getSearchLanguageForSite(string $indexHandle, int $siteId): string
-    {
-        $searchIndex = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
-        if ($searchIndex && !empty($searchIndex->language)) {
-            return $searchIndex->language;
-        }
-
-        $site = \Craft::$app->getSites()->getSiteById($siteId);
-        if ($site && !empty($site->language)) {
-            return strtolower(substr($site->language, 0, 2));
-        }
-
-        return 'en';
     }
 }

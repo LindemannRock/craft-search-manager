@@ -86,4 +86,19 @@ class TermNormalizer
 
         return $text;
     }
+
+    /**
+     * Normalize element searchText symmetrically for storage and prefix lookup.
+     *
+     * Applies the full Unicode normalization (lowercase + accent folding) plus
+     * whitespace collapsing, so "Café Menü" stored and "cafe" typed meet on the
+     * same form. Store-side and query-side MUST use this same helper — a
+     * one-sided change breaks accented-title prefix matching until reindex.
+     *
+     * @since 5.53.0
+     */
+    public static function normalizeSearchText(string $text): string
+    {
+        return trim((string)preg_replace('/\s+/u', ' ', self::normalize($text)));
+    }
 }

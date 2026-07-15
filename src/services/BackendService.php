@@ -625,6 +625,10 @@ class BackendService extends Component
                     }, $matchedPromotions),
                 ];
 
+                // Cache stores RAW backend results, so the local-engine debug
+                // rides along and stays accurate for the cached hit set.
+                $this->_mergeSearchDebugIntoMeta($cached);
+
                 // Fire after-search event for cached results too
                 if ($this->hasEventHandlers(self::EVENT_AFTER_SEARCH)) {
                     $afterEvent = new SearchEvent([
@@ -748,6 +752,8 @@ class BackendService extends Component
             }, $matchedPromotions),
         ];
 
+        $this->_mergeSearchDebugIntoMeta($results);
+
         // =====================================================================
         // EVENT: After search — allows result filtering, enrichment, reordering
         // =====================================================================
@@ -766,6 +772,24 @@ class BackendService extends Component
         }
 
         return $results;
+    }
+
+    /**
+     * Move the local engine's coherence debug (#383/#384) — per-token resolved
+     * terms and the relax-on-zero flag — from the backend result into meta.
+     * External backends don't emit it; their meta stays unchanged.
+     *
+     * @param array<string, mixed> $results Backend results (meta already built)
+     */
+    private function _mergeSearchDebugIntoMeta(array &$results): void
+    {
+        $searchDebug = $results['searchDebug'] ?? null;
+        unset($results['searchDebug']);
+
+        if (is_array($searchDebug) && isset($results['meta'])) {
+            $results['meta']['relaxedMatching'] = !empty($searchDebug['relaxedMatching']);
+            $results['meta']['resolvedTerms'] = $searchDebug['resolvedTerms'] ?? [];
+        }
     }
 
     /**
@@ -792,9 +816,19 @@ class BackendService extends Component
 
         $allHits = [];
         $hitIndexesByElementId = [];
+        $searchDebug = null;
 
         foreach ($queries as $searchQuery) {
             $queryResults = $backend->search($indexName, $searchQuery, $options);
+
+            // Merge local-engine debug across the expanded queries: relax is
+            // sticky, per-token resolutions union (first query wins per token).
+            if (isset($queryResults['searchDebug']) && is_array($queryResults['searchDebug'])) {
+                $searchDebug ??= ['relaxedMatching' => false, 'resolvedTerms' => []];
+                $searchDebug['relaxedMatching'] = $searchDebug['relaxedMatching']
+                    || !empty($queryResults['searchDebug']['relaxedMatching']);
+                $searchDebug['resolvedTerms'] += $queryResults['searchDebug']['resolvedTerms'] ?? [];
+            }
 
             if (!empty($queryResults['hits'])) {
                 foreach ($queryResults['hits'] as $hit) {
@@ -836,10 +870,16 @@ class BackendService extends Component
             $allHits = array_slice($allHits, $offset);
         }
 
-        return [
+        $merged = [
             'hits' => $allHits,
             'total' => $total,
         ];
+
+        if ($searchDebug !== null) {
+            $merged['searchDebug'] = $searchDebug;
+        }
+
+        return $merged;
     }
 
     /**
@@ -945,6 +985,8 @@ class BackendService extends Component
             'rulesMatched' => [],
             'promotionsMatched' => [],
             'cached' => true, // Will be set to false if any index isn't cached
+            'relaxedMatching' => false,
+            'resolvedTerms' => [],
         ];
 
         $limit = (int) ($options['limit'] ?? 0);
@@ -1005,6 +1047,14 @@ class BackendService extends Component
                         }
                     }
                 }
+                if (!empty($indexMeta['relaxedMatching'])) {
+                    $meta['relaxedMatching'] = true;
+                }
+                if (!empty($indexMeta['resolvedTerms'])) {
+                    // First index wins per token — indices resolve against the
+                    // same query, so per-token differences are corpus-local.
+                    $meta['resolvedTerms'] += $indexMeta['resolvedTerms'];
+                }
             }
         }
 
@@ -1035,6 +1085,8 @@ class BackendService extends Component
                 'expandedQueries' => $meta['expandedQueries'],
                 'rulesMatched' => array_values($meta['rulesMatched']),
                 'promotionsMatched' => array_values($meta['promotionsMatched']),
+                'relaxedMatching' => $meta['relaxedMatching'],
+                'resolvedTerms' => $meta['resolvedTerms'],
             ],
         ];
     }

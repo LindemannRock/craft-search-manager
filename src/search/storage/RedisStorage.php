@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\search\storage;
 
 use craft\helpers\App;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\search\TermNormalizer;
 
 /**
  * RedisStorage
@@ -724,7 +725,7 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         $key = $this->getElementKey($siteId, $elementId);
 
         // Normalize searchText for prefix matching (lowercase)
-        $searchText = mb_strtolower(trim($title));
+        $searchText = TermNormalizer::normalizeSearchText($title);
 
         $data = [
             'title' => $title,
@@ -823,7 +824,7 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         $data = [
             'title' => $title,
             'elementType' => $elementType,
-            'searchText' => mb_strtolower(trim($title)),
+            'searchText' => TermNormalizer::normalizeSearchText($title),
             'elementId' => $elementId,
             'siteId' => $siteId,
             'documentKey' => $documentKey,
@@ -892,7 +893,7 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
      */
     public function getElementSuggestions(string $query, ?int $siteId, int $limit = 10, ?string $elementType = null): array
     {
-        $searchText = mb_strtolower(trim($query));
+        $searchText = TermNormalizer::normalizeSearchText($query);
 
         // Determine which site keys to search
         $siteIds = [];

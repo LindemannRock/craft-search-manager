@@ -13,12 +13,11 @@ use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
-use lindemannrock\searchmanager\search\CompoundSuggestionExtractor;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
+use lindemannrock\searchmanager\search\QueryUnderstanding;
 use lindemannrock\searchmanager\search\storage\ElementSuggestionStorageInterface;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
-use lindemannrock\searchmanager\search\TermNormalizer;
-use lindemannrock\searchmanager\search\Tokenizer;
+use lindemannrock\searchmanager\search\TermResolver;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 
@@ -30,6 +29,9 @@ use yii\base\Component;
  * Features:
  * - Prefix matching (query: "te" → "test", "testing", "technical")
  * - Fuzzy suggestions (typo-tolerant)
+ * - Multi-word completion via the shared query-understanding/term-resolution
+ *   core (#383/#384): the last token is completed, constrained to documents
+ *   matching the preceding tokens, so suggestions always have search results
  * - Popular terms (sorted by frequency)
  * - Configurable limits
  *
@@ -64,7 +66,7 @@ class AutocompleteService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $minLength = $options['minLength'] ?? $settings->autocompleteMinLength ?? 2;
         $limit = $options['limit'] ?? $settings->autocompleteLimit ?? 10;
-        $fuzzy = $options['fuzzy'] ?? $settings->autocompleteFuzzy ?? false;
+        $fuzzy = $options['fuzzy'] ?? $settings->enableFuzzy ?? true;
         $language = isset($options['language']) && is_string($options['language'])
             ? LanguageNormalizer::normalizeOrNull($options['language'])
             : null;
@@ -77,9 +79,11 @@ class AutocompleteService extends Component
         // Auto-detect language only when a specific site is targeted
         if ($language === null) {
             if ($siteIdProvided) {
-                if ($this->containsArabicScript($query)) {
-                    // Query contains Arabic script, use Arabic language
-                    $language = 'ar';
+                $scriptLanguage = LanguageNormalizer::detectScriptLanguage($query);
+                if ($scriptLanguage !== null) {
+                    // Query script is conclusive (e.g. Arabic) — same heuristic
+                    // the search backend applies, keeping both surfaces coherent.
+                    $language = $scriptLanguage;
                 } else {
                     // Detect from site
                     $site = Craft::$app->getSites()->getSiteById($siteId);
@@ -97,14 +101,22 @@ class AutocompleteService extends Component
             return [];
         }
 
-        // Normalize query
-        $normalizedQuery = $this->normalizeQuery($query);
-        $compoundSuggestionExtractor = new CompoundSuggestionExtractor();
-        $isCompoundQuery = $compoundSuggestionExtractor->isCompoundQuery($query);
-        $compoundPrefix = $compoundSuggestionExtractor->normalizePrefix($query);
-        if (!$isCompoundQuery) {
-            $normalizedQuery = $this->normalizeSingleTermPrefix($normalizedQuery);
-        }
+        // Layer 1: shared query understanding (#383/#384) — multi-word input
+        // is tokenized like search tokenizes it, with the last token flagged
+        // as the one being completed.
+        $parsed = QueryUnderstanding::parse($query, [
+            'language' => $language,
+            'forAutocomplete' => true,
+        ]);
+        $normalizedQuery = $parsed->normalizedQuery;
+        $isCompoundQuery = $parsed->isCompound;
+        $compoundPrefix = $parsed->compoundPrefix;
+
+        // Cache on the parsed form: "testing tool" (still typing) and
+        // "testing tool " (closed token) are different suggestion requests.
+        $cacheQuery = $isCompoundQuery
+            ? $normalizedQuery
+            : implode(' ', $parsed->tokens) . ($parsed->lastTokenIncomplete ? "\u{0001}typing" : '');
 
         // Apply index prefix to get full index name (matches how data is stored)
         $fullIndexHandle = $settings->getFullIndexName($indexHandle);
@@ -117,7 +129,7 @@ class AutocompleteService extends Component
         ]);
 
         if ($settings->enableAutocompleteCache) {
-            $cacheKey = $this->generateCacheKey('suggest', $fullIndexHandle, $normalizedQuery, $siteIdProvided ? $siteId : null, $language);
+            $cacheKey = $this->generateCacheKey('suggest', $fullIndexHandle, $cacheQuery, $siteIdProvided ? $siteId : null, $language);
             $cached = $this->getFromCache($cacheKey, $fullIndexHandle);
             if ($cached !== null) {
                 $this->logDebug('Autocomplete cache hit', [
@@ -214,20 +226,16 @@ class AutocompleteService extends Component
             return $suggestions;
         }
 
-        // Method 1: Prefix matching (fast, exact)
-        // For all-sites indices (siteId not provided), skip siteId filter
-        $prefixMatches = $this->getPrefixMatches($storage, $normalizedQuery, $siteIdProvided ? $siteId : null, $limit, $language, $fullIndexHandle);
-        $suggestions = array_merge($suggestions, $prefixMatches);
-
-        // Method 2: Fuzzy matching (slower, typo-tolerant)
-        if ($fuzzy && count($suggestions) < $limit) {
-            $fuzzyMatches = $this->getFuzzyMatches($storage, $normalizedQuery, $siteIdProvided ? $siteId : null, $limit - count($suggestions));
-            $suggestions = array_merge($suggestions, $fuzzyMatches);
-        }
-
-        // Remove duplicates and limit
-        $suggestions = array_values(array_unique($suggestions));
-        $suggestions = array_slice($suggestions, 0, $limit);
+        // Layer 2 + keystone filter: complete the last token via the shared
+        // resolver, constrained by the preceding tokens' resolved documents.
+        $suggestions = $this->buildTokenSuggestions(
+            $storage,
+            $parsed->tokens,
+            $siteIdProvided ? $siteId : null,
+            $limit,
+            $language,
+            $fuzzy,
+        );
 
         // Save to cache
         if ($settings->enableAutocompleteCache) {
@@ -255,137 +263,186 @@ class AutocompleteService extends Component
     }
 
     /**
-     * Get prefix-matched suggestions
+     * Search-as-you-type over the shared Layer-2 policy (#383/#384).
      *
-     * @param mixed $storage Storage instance
-     * @param string $query Query prefix
+     * The last token is completed via exact + prefix + fuzzy candidates from
+     * the shared {@see TermResolver}; preceding tokens resolve through the
+     * same policy search uses. A completion is kept only if its documents
+     * intersect the AND-intersection of the preceding tokens' resolved
+     * doc-sets — so every emitted suggestion is, by construction, a query
+     * search satisfies.
+     *
+     * @param StorageInterface $storage Storage of the index being suggested against
+     * @param string[] $tokens Layer-1 tokens (last one is being completed)
      * @param int|null $siteId Site ID (null for all-sites indices)
      * @param int $limit Maximum suggestions
-     * @param string|null $language Language filter
-     * @param string|null $indexHandle Full index handle (with prefix) to filter by
-     * @return array Matching terms
+     * @param string|null $language Language filter for prefix completions
+     * @param bool $fuzzy Whether fuzzy candidates participate
+     * @return string[] Full suggestion strings (preceding tokens + completion)
      */
-    private function getPrefixMatches($storage, string $query, ?int $siteId, int $limit, ?string $language = null, ?string $indexHandle = null): array
-    {
-        $matches = [];
-
-        // Get prefix-filtered terms from storage so lower-frequency matches are
-        // not hidden behind a fixed global autocomplete pool.
-        $allTerms = $this->getAllTerms($storage, $siteId, $language, $indexHandle, $query, $limit * 2);
-
-        $this->logDebug('getPrefixMatches: Retrieved terms from storage', [
-            'termCount' => count($allTerms),
-            'query' => $query,
-            'siteId' => $siteId,
-            'language' => $language,
-            'indexHandle' => $indexHandle,
-            'sampleTerms' => array_slice(array_keys($allTerms), 0, 10),
-        ]);
-
-        foreach ($allTerms as $term => $frequency) {
-            if (str_starts_with($term, $query)) {
-                $matches[$term] = $frequency;
-            }
-
-            if (count($matches) >= $limit * 2) {
-                break; // Collect more than needed for sorting
-            }
+    private function buildTokenSuggestions(
+        StorageInterface $storage,
+        array $tokens,
+        ?int $siteId,
+        int $limit,
+        ?string $language,
+        bool $fuzzy,
+    ): array {
+        if ($tokens === [] || $limit < 1) {
+            return [];
         }
-
-        $this->logDebug('getPrefixMatches: Found matches', [
-            'matchCount' => count($matches),
-            'matches' => array_keys($matches),
-        ]);
-
-        // Sort by frequency (most common first)
-        arsort($matches);
-
-        return array_keys(array_slice($matches, 0, $limit, true));
-    }
-
-    /**
-     * Get fuzzy-matched suggestions (typo-tolerant)
-     *
-     * @param mixed $storage Storage instance
-     * @param string $query Query string
-     * @param int $siteId Site ID
-     * @param int $limit Maximum suggestions
-     * @return array Matching terms
-     */
-    private function getFuzzyMatches($storage, string $query, ?int $siteId, int $limit): array
-    {
-        $settings = SearchManager::$plugin->getSettings();
-
-        // Use existing FuzzyMatcher logic
-        $ngramGenerator = new \lindemannrock\searchmanager\search\NgramGenerator(
-            explode(',', $settings->ngramSizes ?? '2,3')
-        );
-
-        $fuzzyMatcher = new \lindemannrock\searchmanager\search\FuzzyMatcher(
-            $ngramGenerator,
-            $settings->similarityThreshold ?? 0.25,
-            $limit
-        );
-
-        if ($siteId !== null) {
-            return $fuzzyMatcher->findMatches($query, $storage, $siteId);
-        }
-
-        $matches = [];
-        foreach (Craft::$app->getSites()->getAllSites() as $site) {
-            $siteMatches = $fuzzyMatcher->findMatches($query, $storage, (int)$site->id);
-            foreach ($siteMatches as $term) {
-                if (!in_array($term, $matches, true)) {
-                    $matches[] = $term;
-                }
-                if (count($matches) >= $limit) {
-                    return $matches;
-                }
-            }
-        }
-
-        return $matches;
-    }
-
-    /**
-     * Get all indexed terms for autocomplete
-     *
-     * @param mixed $storage Storage instance
-     * @param int|null $siteId Site ID (null for all-sites indices)
-     * @param string|null $language Language filter
-     * @param string|null $indexHandle Full index handle (with prefix) to filter by
-     * @return array Terms with frequencies [term => frequency]
-     */
-    private function getAllTerms($storage, ?int $siteId, ?string $language = null, ?string $indexHandle = null, ?string $prefix = null, int $limit = 1000): array
-    {
-        $this->logDebug('getAllTerms: Starting', [
-            'storageClass' => $storage ? get_class($storage) : 'null',
-            'isStorageInterface' => $storage instanceof StorageInterface,
-            'siteId' => $siteId,
-            'language' => $language,
-            'indexHandle' => $indexHandle,
-            'prefix' => $prefix,
-            'limit' => $limit,
-        ]);
 
         try {
-            // Use the StorageInterface method
-            if ($storage instanceof StorageInterface) {
-                $terms = $storage->getTermsForAutocomplete($siteId, $language, $limit, $prefix);
-                $this->logDebug('getAllTerms: Got terms from storage', [
-                    'termCount' => count($terms),
-                ]);
-                return $terms;
+            if ($siteId !== null) {
+                return $this->buildTokenSuggestionsForSite($storage, $tokens, $siteId, $limit, $language, $fuzzy);
             }
-            $this->logWarning('getAllTerms: Storage is not StorageInterface');
+
+            // All-sites indices: merge per-site suggestions until the limit
+            // fills (same pattern the old fuzzy path used).
+            $merged = [];
+            foreach (Craft::$app->getSites()->getAllSites() as $site) {
+                foreach ($this->buildTokenSuggestionsForSite($storage, $tokens, (int)$site->id, $limit, $language, $fuzzy) as $suggestion) {
+                    if (!in_array($suggestion, $merged, true)) {
+                        $merged[] = $suggestion;
+                    }
+                    if (count($merged) >= $limit) {
+                        return $merged;
+                    }
+                }
+            }
+
+            return $merged;
         } catch (\Throwable $e) {
-            $this->logError('Failed to get all terms', [
+            // Autocomplete degrades gracefully on storage failure; log without
+            // trace strings (audit batch 7).
+            $this->logError('Failed to build token suggestions', [
                 'error' => $e->getMessage(),
                 'exception' => get_class($e),
             ]);
+
+            return [];
+        }
+    }
+
+    /**
+     * @param string[] $tokens
+     * @return string[]
+     */
+    private function buildTokenSuggestionsForSite(
+        StorageInterface $storage,
+        array $tokens,
+        int $siteId,
+        int $limit,
+        ?string $language,
+        bool $fuzzy,
+    ): array {
+        $resolver = $this->createTermResolver($storage, $fuzzy);
+
+        $completionToken = $tokens[count($tokens) - 1];
+        $precedingTokens = array_slice($tokens, 0, -1);
+
+        // Resolve preceding tokens with the same policy search uses and build
+        // the AND-intersection of their doc-sets. A token that resolves to no
+        // documents is non-restrictive: search's relax-on-zero backstop keeps
+        // even those suggestions answerable.
+        $intersection = null;
+        foreach ($precedingTokens as $token) {
+            $resolved = $resolver->resolve($token, $siteId);
+            if ($resolved === []) {
+                continue;
+            }
+
+            $docsByTerm = $storage->getTermDocumentsBatch(array_column($resolved, 'term'), $siteId);
+            $tokenDocs = [];
+            foreach ($docsByTerm as $docs) {
+                $tokenDocs += $docs;
+            }
+
+            if ($tokenDocs === []) {
+                continue;
+            }
+
+            $intersection = $intersection === null
+                ? $tokenDocs
+                : array_intersect_key($intersection, $tokenDocs);
+
+            if ($intersection === []) {
+                // No document satisfies every preceding token, so no completion
+                // can produce a strict-AND result — suggest nothing.
+                return [];
+            }
         }
 
-        return [];
+        // Completion candidates for the token being typed. Multi-token input
+        // over-fetches so the keystone filter below has headroom.
+        $candidates = $resolver->resolve($completionToken, $siteId, [
+            'includePrefix' => true,
+            'prefixLimit' => $precedingTokens === [] ? $limit : $limit * 2,
+            'language' => $language,
+        ]);
+
+        if ($candidates === []) {
+            return [];
+        }
+
+        $prefix = $precedingTokens === [] ? '' : implode(' ', $precedingTokens) . ' ';
+
+        if ($intersection === null) {
+            // Single token (or only non-restrictive preceding tokens): every
+            // candidate is an indexed term, so search finds it directly.
+            $suggestions = [];
+            foreach (array_slice($candidates, 0, $limit) as $candidate) {
+                $suggestions[] = $prefix . $candidate['term'];
+            }
+
+            return $suggestions;
+        }
+
+        // THE KEYSTONE FILTER: keep a completion only if its documents
+        // intersect the preceding intersection; rank by co-occurrence count,
+        // then in-intersection frequency, then resolver order.
+        $docsByCandidate = $storage->getTermDocumentsBatch(array_column($candidates, 'term'), $siteId);
+
+        $ranked = [];
+        foreach ($candidates as $position => $candidate) {
+            $shared = array_intersect_key($docsByCandidate[$candidate['term']] ?? [], $intersection);
+            if ($shared === []) {
+                continue;
+            }
+
+            $ranked[] = [
+                'term' => $candidate['term'],
+                'coverage' => count($shared),
+                'frequency' => array_sum($shared),
+                'position' => $position,
+            ];
+        }
+
+        usort($ranked, static function(array $a, array $b): int {
+            return [$b['coverage'], $b['frequency'], $a['position']] <=> [$a['coverage'], $a['frequency'], $b['position']];
+        });
+
+        $suggestions = [];
+        foreach (array_slice($ranked, 0, $limit) as $entry) {
+            $suggestions[] = $prefix . $entry['term'];
+        }
+
+        return $suggestions;
+    }
+
+    /**
+     * Build the shared Layer-2 resolver with the same settings search uses.
+     */
+    private function createTermResolver(StorageInterface $storage, bool $fuzzy): TermResolver
+    {
+        $settings = SearchManager::$plugin->getSettings();
+
+        return new TermResolver($storage, [
+            'ngramSizes' => explode(',', $settings->ngramSizes ?? '2,3'),
+            'similarityThreshold' => $settings->similarityThreshold ?? 0.25,
+            'maxFuzzyCandidates' => $settings->maxFuzzyCandidates ?? 100,
+            'enableFuzzy' => $fuzzy,
+        ]);
     }
 
     /**
@@ -566,39 +623,9 @@ class AutocompleteService extends Component
         }
     }
 
-    /**
-     * Check if a string contains Arabic script characters
-     *
-     * @param string $text Text to check
-     * @return bool True if contains Arabic script
-     */
-    private function containsArabicScript(string $text): bool
-    {
-        // Arabic Unicode range: \x{0600}-\x{06FF} (Arabic)
-        // Also includes: \x{0750}-\x{077F} (Arabic Supplement)
-        // And: \x{08A0}-\x{08FF} (Arabic Extended-A)
-        return (bool)preg_match('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]/u', $text);
-    }
-
     // =========================================================================
     // CACHE METHODS
     // =========================================================================
-
-    /**
-     * Normalize query for cache keys and prefix matching.
-     */
-    private function normalizeQuery(string $query): string
-    {
-        $query = TermNormalizer::normalize($query);
-        return trim(preg_replace('/\s+/', ' ', $query));
-    }
-
-    private function normalizeSingleTermPrefix(string $query): string
-    {
-        $tokens = (new Tokenizer())->tokenize($query);
-
-        return count($tokens) === 1 ? $tokens[0] : $query;
-    }
 
     /**
      * Generate cache key for autocomplete

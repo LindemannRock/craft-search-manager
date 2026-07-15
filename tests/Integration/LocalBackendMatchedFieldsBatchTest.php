@@ -55,7 +55,9 @@ final class LocalBackendMatchedFieldsBatchTest extends TestCase
         );
         $backend = new LocalBackendMatchedFieldsTestBackend($storage);
 
-        $decorated = $backend->decorate($hits, 'coffee', 'test-index', 1, 50);
+        $decorated = $backend->decorate($hits, 'coffee', 'test-index', 1, 50, [
+            'coffee' => [['term' => 'coffee', 'matchType' => 'exact', 'similarity' => 1.0]],
+        ]);
 
         self::assertSame(0, $storage->getTitleTermsCalls);
         self::assertSame(1, $storage->getTitleTermsBatchCalls);
@@ -64,8 +66,10 @@ final class LocalBackendMatchedFieldsBatchTest extends TestCase
         self::assertSame(1, $storage->getDocumentTermsBatchCalls);
         self::assertSame([50], $storage->getDocumentTermsBatchSizes);
         self::assertSame(0, $storage->getTermDocumentsCalls);
-        self::assertSame(1, $storage->getTermDocumentsBatchCalls);
-        self::assertSame([1], $storage->getTermDocumentsBatchSizes);
+        // Phase B (#383/#384): matchedIn consumes the engine's resolved terms
+        // instead of re-probing storage, so no term-docs lookups happen here.
+        self::assertSame(0, $storage->getTermDocumentsBatchCalls);
+        self::assertSame([], $storage->getTermDocumentsBatchSizes);
         self::assertSame(['title'], $decorated[0]['matchedIn']);
         self::assertSame(['coffee'], $decorated[0]['matchedTerms']['title']);
         self::assertSame(['content'], $decorated[1]['matchedIn']);
@@ -140,11 +144,12 @@ final class LocalBackendMatchedFieldsTestBackend extends AbstractSearchEngineBac
 
     /**
      * @param array<int, array<string, mixed>> $hits
+     * @param array<string, array<int, array{term: string, matchType: string, similarity: float}>> $resolvedTermsByToken
      * @return array<int, array<string, mixed>>
      */
-    public function decorate(array $hits, string $query, string $indexName, int $siteId, int $maxHits): array
+    public function decorate(array $hits, string $query, string $indexName, int $siteId, int $maxHits, array $resolvedTermsByToken = []): array
     {
-        return $this->addMatchedFieldsToHits($hits, $query, $indexName, $siteId, $this->storage, $maxHits);
+        return $this->addMatchedFieldsToHits($hits, $query, $indexName, $siteId, $this->storage, $maxHits, $resolvedTermsByToken);
     }
 
     /**

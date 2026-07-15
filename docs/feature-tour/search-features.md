@@ -114,17 +114,27 @@ When multiple boost factors apply, they stack. From highest to lowest impact:
 
 ## Fuzzy Matching
 
-Search Manager automatically finds similar terms using n-gram similarity. If a user searches for "tst", it will find documents containing "test". This works transparently — no special syntax needed.
+Search Manager automatically finds similar terms using n-gram similarity. This works transparently — no special syntax needed — and runs as a **two-tier expander**:
+
+1. **Expansion (always):** every query word is expanded with its closest indexed variants — searching for "tool" also matches documents that only contain "tools". Expanded variants are scored below exact matches, so exact matches always rank first.
+2. **Typo recovery (on miss):** a word with no exact match at all gets a much broader fuzzy pass — "javascirpt" finds "javascript", "tst" finds "test".
+
+The same expansion powers autocomplete suggestions, so a suggested completion is always something search can find.
 
 Configuration options:
 
 ```php
+'enableFuzzy' => true,           // Engine-wide switch (search + autocomplete)
 'ngramSizes' => '2,3',           // N-gram sizes for comparison
 'similarityThreshold' => 0.25,   // Minimum similarity (0.0–1.0)
-'maxFuzzyCandidates' => 100,     // Max candidates to evaluate
+'maxFuzzyCandidates' => 100,     // Max candidates for typo recovery
 ```
 
 A lower `similarityThreshold` catches more typos but may return less relevant results. The default of `0.25` provides good typo tolerance without too much noise.
+
+## Relaxed Matching
+
+Multi-word queries require every word to match the same document (AND logic). When a multi-word query would return zero results, Search Manager broadens it to match any word (OR logic) over the same expanded terms instead of dead-ending — documents covering more of the query words still rank first. When this happens, the response debug meta includes `relaxedMatching: true`, so a frontend can render a "showing related results" notice.
 
 ## Stop Words
 

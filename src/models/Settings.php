@@ -211,6 +211,12 @@ class Settings extends Model
     public float $exactMatchBoostFactor = 3.0;
 
     /**
+     * @var bool Engine-wide fuzzy matching switch (search + autocomplete)
+     * @since 5.53.0
+     */
+    public bool $enableFuzzy = true;
+
+    /**
      * @var string N-gram sizes for fuzzy matching (comma-separated)
      */
     public string $ngramSizes = '2,3';
@@ -329,11 +335,6 @@ class Settings extends Model
     public int $autocompleteLimit = 10;
 
     /**
-     * @var bool Enable fuzzy matching in autocomplete
-     */
-    public bool $autocompleteFuzzy = false;
-
-    /**
      * @var bool Enable autocomplete result caching
      */
     public bool $enableAutocompleteCache = true;
@@ -394,9 +395,9 @@ class Settings extends Model
             'enableCache',
             'clearCacheOnSave',
             'enableStopWords',
+            'enableFuzzy',
             'highlightResultsEnabled',
             'enableAutocomplete',
-            'autocompleteFuzzy',
             'enableAutocompleteCache',
             'enableCacheWarming',
             'showSeconds',
@@ -462,7 +463,7 @@ class Settings extends Model
         return array_merge([
             [['indexPrefix'], 'string', 'max' => 50],
             [['indexPrefix'], 'match', 'pattern' => '/^[a-zA-Z0-9_-]+$/', 'skipOnEmpty' => true, 'message' => Craft::t('search-manager', 'Index Prefix may contain only letters, numbers, underscores, and hyphens.')],
-            [['autoIndex', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'highlightResultsEnabled', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
+            [['autoIndex', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableFuzzy', 'highlightResultsEnabled', 'enableAutocomplete', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
             [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
             [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
@@ -529,6 +530,7 @@ class Settings extends Model
             'exactMatchBoostFactor' => Craft::t('search-manager', 'Exact Match Boost'),
             'phraseBoostFactor' => Craft::t('search-manager', 'Phrase Boost'),
             // Fuzzy matching
+            'enableFuzzy' => Craft::t('search-manager', 'Enable Fuzzy Matching'),
             'ngramSizes' => Craft::t('search-manager', 'Fuzzy Match Precision'),
             'similarityThreshold' => Craft::t('search-manager', 'Fuzzy Match Threshold'),
             'maxFuzzyCandidates' => Craft::t('search-manager', 'Fuzzy Candidate Limit'),
@@ -552,7 +554,6 @@ class Settings extends Model
             'enableAutocomplete' => Craft::t('search-manager', 'Enable Autocomplete'),
             'autocompleteMinLength' => Craft::t('search-manager', 'Minimum Length'),
             'autocompleteLimit' => Craft::t('search-manager', 'Suggestion Limit'),
-            'autocompleteFuzzy' => Craft::t('search-manager', 'Fuzzy Autocomplete'),
             'enableAutocompleteCache' => Craft::t('search-manager', 'Cache Autocomplete Results'),
             'autocompleteCacheDuration' => Craft::t('search-manager', 'Autocomplete Cache Duration'),
         ],

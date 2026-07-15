@@ -295,6 +295,15 @@ return [
         // 'phraseBoostFactor' => 4.0,
 
         /**
+         * Enable fuzzy matching engine-wide (search results + autocomplete).
+         * Fuzzy is a two-tier expander: every word is always expanded with its
+         * closest indexed variants (ranked below exact matches), and a word
+         * with no exact match gets full typo-recovery.
+         * Default: true
+         */
+        // 'enableFuzzy' => true,
+
+        /**
          * N-gram sizes for fuzzy matching (comma-separated)
          * Default: '2,3'
          */
@@ -386,12 +395,6 @@ return [
          * Default: 10
          */
         // 'autocompleteLimit' => 10,
-
-        /**
-         * Enable fuzzy matching in autocomplete (typo-tolerance)
-         * Default: false (exact prefix matching only)
-         */
-        // 'autocompleteFuzzy' => false,
 
         // ========================================
         // ANALYTICS SETTINGS

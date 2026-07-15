@@ -24,6 +24,28 @@ Before changing templates or client code, reproduce the same index and query in 
 - Enable debug logging: set `logLevel` to `'debug'` in your config
 - If using `replaceNativeSearch`, verify it only works with built-in backends (MySQL, PostgreSQL, Redis, File)
 
+## Multi-Word Query Returns Nothing (or "Related Results")
+
+**Symptom:** A multi-word query like `testing tool` returns fewer results than expected, or you want to understand when broader results appear.
+
+**Cause:** Multi-word queries require every word to match the same document (AND logic). Two behaviors keep this from dead-ending:
+
+1. **Fuzzy expansion** — every word is always expanded with its closest indexed variants (`tool` also matches documents containing only `tools`), scored below exact matches. This requires `enableFuzzy` (default: on).
+2. **Relaxed matching** — if the AND combination still finds nothing, the engine broadens to match any word over the same expanded terms. The response debug meta then includes `relaxedMatching: true`, which a frontend can use to show a "showing related results" notice.
+
+**Fix / checks:**
+
+- If a variant like singular/plural isn't matching, confirm `enableFuzzy` is on (Settings → Search → Fuzzy Matching) and that `similarityThreshold` hasn't been raised far above the `0.25` default — a config-file override wins over the CP value (the CP shows the effective value in the override warning).
+- To see exactly which terms each query word matched, call the search API with `debugEnabled=1` (requires `devMode` or the *View debug meta* permission) and inspect `meta.resolvedTerms`.
+
+## Accented Titles Missing from Element Suggestions After Upgrade
+
+**Symptom:** Element-title suggestions (`suggestElements` / the API's `results` mode) don't match accented titles when typing unaccented text — e.g. typing `cafe` doesn't suggest "Café Menü".
+
+**Cause:** Title search text is now stored accent-folded so unaccented typing matches accented titles. Indexes built before this change still store the old accented form.
+
+**Fix:** Rebuild the affected indexes once: `php craft search-manager/index/rebuild`. New/updated documents are stored in the folded form automatically.
+
 ## Backend Cannot Be Deleted
 
 Search Manager blocks backend deletion when an index still references that backend. The error lists each dependency as `Index: Name`.

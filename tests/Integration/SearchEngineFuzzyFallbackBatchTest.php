@@ -75,17 +75,20 @@ final class SearchEngineFuzzyFallbackBatchTest extends TestCase
         $this->assertSame($results[2], $results[3], 'docs matched by the same single candidate tie');
     }
 
-    public function testExactMatchPathFetchesTermDocsOncePerTerm(): void
+    public function testExactMatchPathExpandsFuzzyInOneBatch(): void
     {
         $storage = $this->makeStorage();
         $engine = new SearchEngine($storage, 'test-index');
 
-        // Exact hit: matching fetches once, scoring reuses the cached docs.
+        // Phase B (#383): fuzzy is an EXPANDER — it fires even on an exact hit,
+        // so the close variant `protien` contributes (scored below exact).
         $results = $engine->search('protein', self::SITE_ID);
 
-        $this->assertSame(1, $storage->getTermDocumentsCalls, 'exact term fetched once, reused in scoring (was twice)');
-        $this->assertSame(0, $storage->getTermDocumentsBatchCalls, 'no fuzzy fallback on an exact hit');
+        $this->assertSame(1, $storage->getTermDocumentsCalls, 'one exact probe; scoring reuses cached docs');
+        $this->assertSame(1, $storage->getTermDocumentsBatchCalls, 'exact term + fuzzy expansion fetched in one batch');
+        $this->assertSame([2], $storage->getTermDocumentsBatchSizes);
         $this->assertCount(3, $results);
+        $this->assertSame(1, array_key_first($results), 'doc with exact + fuzzy-variant contributions ranks first');
     }
 
     public function testAdvancedOperatorFuzzyFallbackBatches(): void
@@ -122,9 +125,11 @@ final class SearchEngineFuzzyFallbackBatchTest extends TestCase
 
         $results = $engine->search('protein NOT exclude NOT blocked', self::SITE_ID);
 
-        $this->assertSame(1, $storage->getTermDocumentsCalls, 'positive term fetched once; NOT exclusions must not fetch per token');
-        $this->assertSame(1, $storage->getTermDocumentsBatchCalls, 'NOT exclusion terms must be fetched in one batch');
-        $this->assertSame([2], $storage->getTermDocumentsBatchSizes, 'both NOT tokens in a single batch call');
+        $this->assertSame(1, $storage->getTermDocumentsCalls, 'positive term probed once; NOT exclusions must not fetch per token');
+        // Phase B (#383): the resolver path batch-fetches the positive term's
+        // resolved set (no fuzzy candidates here), then the NOT exclusions.
+        $this->assertSame(2, $storage->getTermDocumentsBatchCalls, 'resolved-term batch + one NOT-exclusion batch');
+        $this->assertSame([1, 2], $storage->getTermDocumentsBatchSizes, 'both NOT tokens in a single batch call');
         $this->assertSame([1], array_keys($results), 'documents matching either NOT token are excluded');
     }
 }

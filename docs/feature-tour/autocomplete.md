@@ -6,7 +6,11 @@ Search Manager provides search-as-you-type suggestions based on indexed terms. A
 
 As users type, autocomplete returns matching terms from the index. Built-in backends (MySQL, PostgreSQL, Redis, File) return individual term suggestions. External backends (Algolia, Meilisearch, Typesense) return full entry titles.
 
+Multi-word input is completed word by word: the last word is completed with matching indexed terms, and only completions that actually co-occur with the preceding words in at least one document are suggested. Typing `testing tool` suggests `testing tools` (because documents contain both words) — never a combination that would return zero search results.
+
 Queries are normalized the same way as search — accents are folded, Arabic tatweel is removed, and Unicode digits are converted to ASCII. This means typing `Maámoul` will suggest terms stored as `maamoul`, and `البحـر` (with tatweel) matches `البحر`. See [Text Normalization](search-features.md#text-normalization) for the full list.
+
+Typo tolerance follows the engine-wide `enableFuzzy` setting, so autocomplete and search always share the same fuzzy behavior — see [Fuzzy Matching](search-features.md#fuzzy-matching).
 
 ## Configuration
 
@@ -15,7 +19,7 @@ Queries are normalized the same way as search — accents are folded, Arabic tat
 'enableAutocomplete' => true,
 'autocompleteMinLength' => 2,   // Min characters before suggesting
 'autocompleteLimit' => 10,      // Max suggestions returned
-'autocompleteFuzzy' => false,   // Enable typo tolerance (slower)
+'enableFuzzy' => true,          // Engine-wide typo tolerance (shared with search)
 
 // Separate cache for autocomplete
 'enableAutocompleteCache' => true,

@@ -359,8 +359,22 @@
         <div class="field">
             <p class="light">
                 {{ 'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".'|t('search-manager') }}
+                {{ 'It always expands each word with its closest indexed variants (ranked below exact matches), with full typo-recovery when a word matches nothing.'|t('search-manager') }}
             </p>
         </div>
+
+        {{ forms.lightswitchField({
+            label: 'Enable Fuzzy Matching'|t('search-manager'),
+            instructions: 'Single engine-wide switch that applies to both search results and autocomplete suggestions.'|t('search-manager'),
+            id: 'enableFuzzy',
+            name: 'settings[enableFuzzy]',
+            on: settings.enableFuzzy ?? true,
+            disabled: settings.isOverriddenByConfig('enableFuzzy'),
+            warning: settings.isOverriddenByConfig('enableFuzzy') ?
+                "This is being overridden by the <code>enableFuzzy</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+        <div id="fuzzy-settings" class="{{ not (settings.enableFuzzy ?? true) ? 'hidden' }}">
 
 		{{ forms.textField({
             label: 'Fuzzy Match Threshold'|t('search-manager'),
@@ -376,7 +390,9 @@
             tip: 'Default: 0.25 (typo-tolerant). Lower = more typo tolerance but more false positives; higher = stricter matching.'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('similarityThreshold'),
             warning: settings.isOverriddenByConfig('similarityThreshold') ?
-                "This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+                "This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code> (effective value: {value})."|t('search-manager', {
+                    value: craft.app.config.getConfigFromFile('search-manager').similarityThreshold ?? settings.similarityThreshold,
+                })|raw : null,
             errors: settings.getErrors('similarityThreshold')
         }) }}
 
@@ -411,11 +427,20 @@
             ],
             values: settings.ngramSizes ? settings.ngramSizes|split(',') : [],
             errors: settings.getErrors('ngramSizes'),
-            tip: 'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate. Uncheck all to disable fuzzy matching.'|t('search-manager'),
+            tip: 'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate.'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('ngramSizes'),
             warning: settings.isOverriddenByConfig('ngramSizes') ?
                 "This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
+
+        </div>
+
+        {# Instant show/hide (Craft's toggle param animates div targets) #}
+        {% js %}
+            $('#enableFuzzy').on('change', function() {
+                $('#fuzzy-settings').toggleClass('hidden', !$(this).data('lightswitch').on);
+            });
+        {% endjs %}
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}

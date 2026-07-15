@@ -65,14 +65,21 @@ class SearchEngine
     private BM25Scorer $scorer;
 
     /**
-     * @var FuzzyMatcher Fuzzy matching component
+     * @var TermResolver Shared Layer-2 term-resolution policy (exact + two-tier fuzzy expansion)
+     * @since 5.53.0
      */
-    private FuzzyMatcher $fuzzyMatcher;
+    private TermResolver $termResolver;
 
     /**
      * @var CompoundSuggestionExtractor Filename-like compound extractor
      */
     private CompoundSuggestionExtractor $compoundSuggestionExtractor;
+
+    /**
+     * @var array{relaxedMatching: bool, resolvedTerms: array<string, array<int, array{term: string, matchType: string, similarity: float}>>}
+     * Debug state of the most recent search() call (per-token resolved terms + relax-on-zero flag)
+     */
+    private array $lastSearchDebug = ['relaxedMatching' => false, 'resolvedTerms' => []];
 
     /**
      * @var string Index handle
@@ -116,11 +123,12 @@ class SearchEngine
             $config['exactMatchBoost'] ?? 3.0
         );
 
-        $this->fuzzyMatcher = new FuzzyMatcher(
-            $this->ngramGenerator,
-            $config['similarityThreshold'] ?? 0.25,
-            $config['maxFuzzyCandidates'] ?? 100
-        );
+        $this->termResolver = new TermResolver($storage, [
+            'ngramSizes' => $config['ngramSizes'] ?? [2, 3],
+            'similarityThreshold' => $config['similarityThreshold'] ?? 0.25,
+            'maxFuzzyCandidates' => $config['maxFuzzyCandidates'] ?? 100,
+            'enableFuzzy' => $config['enableFuzzy'] ?? true,
+        ]);
 
         $this->compoundSuggestionExtractor = new CompoundSuggestionExtractor($this->tokenizer);
 
@@ -518,6 +526,25 @@ class SearchEngine
     }
 
     /**
+     * Get debug state of the most recent search: per-token resolved terms
+     * (term, matchType, similarity) and whether the relax-on-zero backstop
+     * fired. Consumed by the backend layer for matchedIn detection and the
+     * debug meta exposed to the widget debug toolbar.
+     *
+     * @return array{relaxedMatching: bool, resolvedTerms: array<string, array<int, array{term: string, matchType: string, similarity: float}>>}
+     * @since 5.53.0
+     */
+    public function getLastSearchDebug(): array
+    {
+        return $this->lastSearchDebug;
+    }
+
+    private function resetSearchDebug(): void
+    {
+        $this->lastSearchDebug = ['relaxedMatching' => false, 'resolvedTerms' => []];
+    }
+
+    /**
      * Search with parsed query (advanced operators)
      *
      * @param ParsedQuery $parsed Parsed query object
@@ -530,6 +557,7 @@ class SearchEngine
     {
         try {
             $startTime = microtime(true);
+            $this->resetSearchDebug();
 
             $this->logDebug('Advanced search with parsed query', $parsed->toArray());
 
@@ -642,17 +670,16 @@ class SearchEngine
         try {
             $startTime = microtime(true);
 
-            // Detect operator (OR/AND)
-            $operator = 'AND'; // Default to AND
-            if (stripos($query, ' OR ') !== false) {
-                $operator = 'OR';
-                $query = preg_replace('/\s+OR\s+/i', ' ', $query); // Remove OR operator for tokenization
-            } elseif (stripos($query, ' AND ') !== false) {
-                $query = preg_replace('/\s+AND\s+/i', ' ', $query); // Remove AND operator for tokenization
-            }
+            $this->resetSearchDebug();
 
-            // Tokenize and filter query
-            $tokens = array_values($this->filterTokens($this->tokenizer->tokenize($query)));
+            // Layer 1: shared query understanding (normalize, tokenize, operator)
+            $parsed = QueryUnderstanding::parse($query, [
+                'language' => isset($options['language']) && is_string($options['language'])
+                    ? $options['language']
+                    : null,
+            ]);
+            $operator = $parsed->operator;
+            $tokens = array_values($this->filterTokens($parsed->tokens));
 
             if (empty($tokens)) {
                 $this->logDebug('Empty query after filtering', ['query' => $query]);
@@ -674,119 +701,32 @@ class SearchEngine
                 return [];
             }
 
-            // Track which documents match each term and actual terms used for scoring
-            $termMatches = [];
-            $docScores = [];
-            $allDocIds = [];
-            $termsForScoring = []; // Maps original term to actual terms used (exact or fuzzy)
-            $termDocsCache = []; // actualTerm => [docId => freq], reused during scoring to avoid re-querying
+            // Layer 2 + scoring: the shared resolver-driven path (see searchTerms)
+            $matchedDocIdsByTerm = [];
+            $scoresBeforeOperator = [];
+            $results = $this->searchTerms(
+                $tokens,
+                $operator,
+                $siteId,
+                $totalDocs,
+                $avgDocLength,
+                $matchedDocIdsByTerm,
+                true,
+                $scoresBeforeOperator,
+            );
 
-            // For each query token, find matching documents
-            foreach ($tokens as $termIndex => $term) {
-                $termMatches[$termIndex] = [];
-                $termsForScoring[$term] = [];
+            // Relax-on-zero backstop: when strict AND over the resolved token
+            // sets yields nothing for a multi-token query, broaden to OR over
+            // the SAME resolved sets instead of dead-ending — BM25 summation
+            // still ranks multi-token-coverage documents first.
+            if ($results === [] && $operator === 'AND' && count($tokens) > 1 && $scoresBeforeOperator !== []) {
+                $results = $scoresBeforeOperator;
+                $this->lastSearchDebug['relaxedMatching'] = true;
 
-                // Try exact match first
-                $termDocs = $this->storage->getTermDocuments($term, $siteId);
-
-                if (empty($termDocs)) {
-                    // Fuzzy fallback
-                    $fuzzyTerms = $this->fuzzyMatcher->findMatches($term, $this->storage, $siteId);
-
-                    $this->logInfo('Fuzzy fallback activated', [
-                        'query_term' => $term,
-                        'fuzzy_matches_found' => count($fuzzyTerms),
-                        'fuzzy_terms' => $fuzzyTerms,
-                    ]);
-
-                    // Batch-fetch docs for all fuzzy candidates in one query
-                    // instead of one query per candidate (was an N+1).
-                    $fuzzyDocsByTerm = !empty($fuzzyTerms)
-                        ? $this->storage->getTermDocumentsBatch($fuzzyTerms, $siteId)
-                        : [];
-
-                    foreach ($fuzzyTerms as $fuzzyTerm) {
-                        $fuzzyDocs = $fuzzyDocsByTerm[$fuzzyTerm] ?? [];
-                        $termsForScoring[$term][] = $fuzzyTerm; // Track fuzzy term for scoring
-                        $termDocsCache[$fuzzyTerm] = $fuzzyDocs;
-
-                        $this->logDebug('Documents for fuzzy term', [
-                            'fuzzy_term' => $fuzzyTerm,
-                            'doc_count' => count($fuzzyDocs),
-                        ]);
-
-                        foreach ($fuzzyDocs as $docId => $freq) {
-                            $termMatches[$termIndex][$docId] = true;
-                            $allDocIds[$docId] = true;
-                        }
-                    }
-                } else {
-                    $termsForScoring[$term][] = $term; // Track exact term for scoring
-                    $termDocsCache[$term] = $termDocs;
-                    foreach (array_keys($termDocs) as $docId) {
-                        $termMatches[$termIndex][$docId] = true;
-                        $allDocIds[$docId] = true;
-                    }
-                }
-            }
-
-            // Early exit if no matches
-            if (empty($allDocIds)) {
-                $this->logDebug('No matching documents', ['query' => $query]);
-                return [];
-            }
-
-            // Batch fetch document lengths
-            $docLengths = $this->documentLengthsForDocIds(array_keys($allDocIds));
-
-            // Batch fetch title terms once for the whole matched set, so the
-            // title boost below is an in-memory lookup rather than one storage
-            // query per matched document (the getTitleTerms() N+1).
-            $titleTermsByDocId = $this->preloadTitleTerms(array_keys($allDocIds), $siteId);
-
-            // Calculate BM25 scores using actual matched terms (exact or fuzzy)
-            foreach ($tokens as $originalTerm) {
-                $actualTerms = $termsForScoring[$originalTerm] ?? [];
-
-                foreach ($actualTerms as $actualTerm) {
-                    // Reuse the docs fetched during matching; fall back to a
-                    // direct lookup only if a term somehow wasn't cached.
-                    $termDocs = $termDocsCache[$actualTerm]
-                        ?? $this->storage->getTermDocuments($actualTerm, $siteId);
-
-                    if (!empty($termDocs)) {
-                        $docFreq = count($termDocs);
-
-                        foreach ($termDocs as $docId => $freq) {
-                            $docLen = $docLengths[$docId] ?? 1;
-
-                            $score = $this->scorer->score(
-                                $freq,
-                                $docFreq,
-                                $docLen,
-                                $avgDocLength,
-                                $totalDocs
-                            );
-
-                            // Apply title boost if term in title
-                            if (in_array($actualTerm, $titleTermsByDocId[$docId] ?? [], true)) {
-                                $score = $this->scorer->applyTitleBoost($score);
-                            }
-
-                            $docScores[$docId] = ($docScores[$docId] ?? 0) + $score;
-                        }
-                    }
-                }
-            }
-
-            // Apply operator logic
-            if ($operator === 'OR') {
-                // OR: Return all documents that match ANY term (no filtering needed)
-                $results = $docScores;
-            } else {
-                // AND: Filter to documents matching ALL terms
-                $validDocs = $this->findDocumentsMatchingAllTerms($termMatches);
-                $results = array_intersect_key($docScores, array_flip($validDocs));
+                $this->logInfo('Relaxed AND to OR after zero-result intersection', [
+                    'query' => $query,
+                    'tokens' => $tokens,
+                ]);
             }
 
             // Apply exact match boost for multi-term queries
@@ -1107,6 +1047,10 @@ class SearchEngine
      * @param int $totalDocs Total document count
      * @param float $avgDocLength Average document length
      * @param array<string, array<string, bool>>|null $matchedDocIdsByTerm Matched doc IDs keyed by normalized query term
+     * @param bool $expandTerms Resolve tokens through the shared TermResolver (false for
+     *        terms that already come FROM the index, e.g. wildcard expansions)
+     * @param array|null $scoresBeforeOperator Receives the pre-operator OR scores so callers
+     *        can implement the relax-on-zero backstop without re-querying
      * @return array Document scores [docId => score]
      */
     private function searchTerms(
@@ -1116,6 +1060,8 @@ class SearchEngine
         int $totalDocs,
         float $avgDocLength,
         ?array &$matchedDocIdsByTerm = null,
+        bool $expandTerms = true,
+        ?array &$scoresBeforeOperator = null,
     ): array {
         $matchedDocIdsByTerm ??= [];
 
@@ -1134,44 +1080,58 @@ class SearchEngine
         $termMatches = [];
         $docScores = [];
         $allDocIds = [];
-        $termsForScoring = [];
-        $termDocsCache = []; // actualTerm => [docId => freq], reused during scoring
+        $resolvedByIndex = []; // token position => resolver entries
+        $termDocsCache = []; // resolved term => [docId => freq], reused during scoring
 
-        // For each term, find matching documents
-        foreach ($processedTerms as $termIndex => $term) {
+        // Layer 2: resolve each token through the shared policy — exact plus
+        // two-tier fuzzy expansion — so a token is satisfied by ANY of its
+        // resolved terms ("tool" → {tool, tools}).
+        foreach ($processedTerms as $termIndex => $token) {
             $termMatches[$termIndex] = [];
-            $termsForScoring[$term] = [];
 
-            // Try exact match first
-            $termDocs = $this->storage->getTermDocuments($term, $siteId);
+            if ($expandTerms) {
+                $resolved = $this->termResolver->resolve($token, $siteId);
 
-            if (empty($termDocs)) {
-                // Fuzzy fallback
-                $fuzzyTerms = $this->fuzzyMatcher->findMatches($term, $this->storage, $siteId);
-
-                // Batch-fetch docs for all fuzzy candidates in one query
-                // instead of one query per candidate (was an N+1).
-                $fuzzyDocsByTerm = !empty($fuzzyTerms)
-                    ? $this->storage->getTermDocumentsBatch($fuzzyTerms, $siteId)
-                    : [];
-
-                foreach ($fuzzyTerms as $fuzzyTerm) {
-                    $fuzzyDocs = $fuzzyDocsByTerm[$fuzzyTerm] ?? [];
-                    $termsForScoring[$term][] = $fuzzyTerm;
-                    $termDocsCache[$fuzzyTerm] = $fuzzyDocs;
-
-                    foreach ($fuzzyDocs as $docId => $freq) {
-                        $termMatches[$termIndex][$docId] = true;
-                        $matchedDocIdsByTerm[$term][$docId] = true;
-                        $allDocIds[$docId] = true;
-                    }
-                }
+                $this->lastSearchDebug['resolvedTerms'][$token] = array_map(
+                    static fn(array $entry): array => [
+                        'term' => $entry['term'],
+                        'matchType' => $entry['matchType'],
+                        'similarity' => $entry['similarity'],
+                    ],
+                    $resolved,
+                );
             } else {
-                $termsForScoring[$term][] = $term;
-                $termDocsCache[$term] = $termDocs;
-                foreach (array_keys($termDocs) as $docId) {
+                // Pre-expanded terms exist in the index by construction —
+                // look them up verbatim instead of re-expanding each one.
+                $resolved = [[
+                    'term' => $token,
+                    'matchType' => TermResolver::MATCH_EXACT,
+                    'similarity' => 1.0,
+                    'weight' => 1.0,
+                ]];
+            }
+
+            $resolvedByIndex[$termIndex] = $resolved;
+
+            // Batch-fetch docs for all newly-seen resolved terms in one query.
+            $termsToFetch = [];
+            foreach ($resolved as $entry) {
+                if (!array_key_exists($entry['term'], $termDocsCache)) {
+                    $termsToFetch[] = $entry['term'];
+                }
+            }
+
+            if ($termsToFetch !== []) {
+                $docsByTerm = $this->storage->getTermDocumentsBatch($termsToFetch, $siteId);
+                foreach ($termsToFetch as $fetchedTerm) {
+                    $termDocsCache[$fetchedTerm] = $docsByTerm[$fetchedTerm] ?? [];
+                }
+            }
+
+            foreach ($resolved as $entry) {
+                foreach (array_keys($termDocsCache[$entry['term']]) as $docId) {
                     $termMatches[$termIndex][$docId] = true;
-                    $matchedDocIdsByTerm[$term][$docId] = true;
+                    $matchedDocIdsByTerm[$token][$docId] = true;
                     $allDocIds[$docId] = true;
                 }
             }
@@ -1187,39 +1147,43 @@ class SearchEngine
         // Batch fetch title terms once for the whole matched set (see searchSimple).
         $titleTermsByDocId = $this->preloadTitleTerms(array_keys($allDocIds), $siteId);
 
-        // Calculate BM25 scores
-        foreach ($processedTerms as $originalTerm) {
-            $actualTerms = $termsForScoring[$originalTerm] ?? [];
+        // Calculate BM25 scores: fuzzy-resolved terms contribute at their
+        // resolver weight (similarity × fuzzyWeight) so exact matches always
+        // outrank fuzzy-only ones; the title boost applies to exact terms only.
+        foreach ($resolvedByIndex as $resolved) {
+            foreach ($resolved as $entry) {
+                $termDocs = $termDocsCache[$entry['term']] ?? [];
 
-            foreach ($actualTerms as $actualTerm) {
-                // Reuse the docs fetched during matching; fall back to a direct
-                // lookup only if a term somehow wasn't cached.
-                $termDocs = $termDocsCache[$actualTerm]
-                    ?? $this->storage->getTermDocuments($actualTerm, $siteId);
+                if (empty($termDocs)) {
+                    continue;
+                }
 
-                if (!empty($termDocs)) {
-                    $docFreq = count($termDocs);
+                $docFreq = count($termDocs);
 
-                    foreach ($termDocs as $docId => $freq) {
-                        $docLen = $docLengths[$docId] ?? 1;
+                foreach ($termDocs as $docId => $freq) {
+                    $docLen = $docLengths[$docId] ?? 1;
 
-                        $score = $this->scorer->score(
-                            $freq,
-                            $docFreq,
-                            $docLen,
-                            $avgDocLength,
-                            $totalDocs
-                        );
+                    $score = $this->scorer->score(
+                        $freq,
+                        $docFreq,
+                        $docLen,
+                        $avgDocLength,
+                        $totalDocs
+                    ) * $entry['weight'];
 
-                        // Apply title boost if term in title
-                        if (in_array($actualTerm, $titleTermsByDocId[$docId] ?? [], true)) {
-                            $score = $this->scorer->applyTitleBoost($score);
-                        }
-
-                        $docScores[$docId] = ($docScores[$docId] ?? 0) + $score;
+                    if ($entry['matchType'] === TermResolver::MATCH_EXACT
+                        && in_array($entry['term'], $titleTermsByDocId[$docId] ?? [], true)
+                    ) {
+                        $score = $this->scorer->applyTitleBoost($score);
                     }
+
+                    $docScores[$docId] = ($docScores[$docId] ?? 0) + $score;
                 }
             }
+        }
+
+        if ($scoresBeforeOperator !== null) {
+            $scoresBeforeOperator = $docScores;
         }
 
         // Apply operator logic
@@ -1254,6 +1218,16 @@ class SearchEngine
                 'matches' => array_slice($matches, 0, 10), // Log first 10 for debugging
             ]);
 
+            // Surface the expansion in debug/matchedIn under its wildcard form.
+            $this->lastSearchDebug['resolvedTerms'][$prefix . '*'] = array_map(
+                static fn(string $match): array => [
+                    'term' => $match,
+                    'matchType' => TermResolver::MATCH_PREFIX,
+                    'similarity' => 1.0,
+                ],
+                $matches,
+            );
+
             // Add all matching terms
             foreach ($matches as $match) {
                 $expandedTerms[] = $match;
@@ -1275,8 +1249,9 @@ class SearchEngine
             'terms' => array_slice($expandedTerms, 0, 20), // Log first 20
         ]);
 
-        // Search with expanded terms
-        return $this->searchTerms($expandedTerms, 'OR', $siteId, $totalDocs, $avgDocLength);
+        // Search with expanded terms verbatim — they come FROM the index, so
+        // the resolver's fuzzy expansion would only add noise per term.
+        return $this->searchTerms($expandedTerms, 'OR', $siteId, $totalDocs, $avgDocLength, expandTerms: false);
     }
 
     /**

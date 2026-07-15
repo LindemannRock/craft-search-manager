@@ -33,6 +33,25 @@ class LanguageNormalizer
     }
 
     /**
+     * Detect a language from the query's script, or null when script alone
+     * isn't conclusive.
+     *
+     * Shared by search and autocomplete so both surfaces treat, e.g., an
+     * Arabic-script query on an English site identically — asymmetric
+     * detection let autocomplete suggest terms search then language-filtered
+     * away (#383/#384 coherence).
+     */
+    public static function detectScriptLanguage(string $text): ?string
+    {
+        // Arabic ranges: Arabic, Arabic Supplement, Arabic Extended-A.
+        if (preg_match('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]/u', $text)) {
+            return 'ar';
+        }
+
+        return null;
+    }
+
+    /**
      * Return a normalized language handle, or null when the value is unsafe.
      */
     public static function normalizeOrNull(?string $language): ?string

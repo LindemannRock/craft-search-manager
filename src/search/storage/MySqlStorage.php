@@ -12,6 +12,7 @@ use Craft;
 use craft\db\Query;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\search\TermNormalizer;
 use yii\db\Expression;
 
 /**
@@ -601,7 +602,7 @@ class MySqlStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
     public function storeElementByKey(int $siteId, int $elementId, string $documentKey, string $title, string $elementType, ?string $documentData = null): void
     {
         // Normalize searchText for prefix matching (lowercase)
-        $searchText = mb_strtolower(trim($title));
+        $searchText = TermNormalizer::normalizeSearchText($title);
         $this->requireDocumentKeyColumn('{{%searchmanager_search_elements}}');
 
         $columns = '`indexHandle`, `siteId`, `elementId`, `documentKey`, `title`, `elementType`, `searchText`, `documentData`';
@@ -721,7 +722,7 @@ class MySqlStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
      */
     public function getElementSuggestions(string $query, ?int $siteId, int $limit = 10, ?string $elementType = null): array
     {
-        $searchText = mb_strtolower(trim($query));
+        $searchText = TermNormalizer::normalizeSearchText($query);
 
         $dbQuery = (new Query())
             ->select(['title', 'elementType', 'elementId', 'siteId'])

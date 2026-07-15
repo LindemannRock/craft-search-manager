@@ -101,6 +101,7 @@ These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The 
 | `titleBoostFactor` | `float` | `5.0` | Multiplier for matches in the title field |
 | `exactMatchBoostFactor` | `float` | `3.0` | Multiplier when normalized query terms appear as an ordered contiguous sequence |
 | `phraseBoostFactor` | `float` | `4.0` | Multiplier for exact phrase matches (`"like this"`) |
+| `enableFuzzy` | `bool` | `true` | Engine-wide fuzzy matching switch — applies to both search results and autocomplete suggestions |
 | `ngramSizes` | `string` | `'2,3'` | N-gram sizes for fuzzy matching (comma-separated) |
 | `similarityThreshold` | `float` | `0.25` | Minimum similarity score for fuzzy matches (0.0–1.0) |
 | `maxFuzzyCandidates` | `int` | `100` | Maximum fuzzy candidates to evaluate per query |
@@ -144,7 +145,9 @@ See [Highlighting](../feature-tour/highlighting.md) and the [Highlighting & Snip
 | `enableAutocomplete` | `bool` | `true` | Enable autocomplete suggestions |
 | `autocompleteMinLength` | `int` | `2` | Minimum query length before suggesting |
 | `autocompleteLimit` | `int` | `10` | Maximum suggestions returned |
-| `autocompleteFuzzy` | `bool` | `false` | Enable typo tolerance in autocomplete (slower) |
+
+> [!NOTE]
+> Typo tolerance in autocomplete is controlled by the engine-wide `enableFuzzy` setting (Search Algorithm section) — autocomplete and search always share the same fuzzy behavior.
 
 See [Autocomplete](../feature-tour/autocomplete.md) for details.
 
