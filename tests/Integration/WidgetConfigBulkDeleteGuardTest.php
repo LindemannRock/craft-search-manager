@@ -19,7 +19,6 @@ use craft\web\Response;
 use lindemannrock\searchmanager\controllers\WidgetsController;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\services\DependencyService;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -27,10 +26,9 @@ use PHPUnit\Framework\Attributes\CoversClass;
  * @since 5.53.0
  */
 #[CoversClass(WidgetsController::class)]
-#[CoversClass(DependencyService::class)]
-final class WidgetStyleDeleteDependencyGuardTest extends TestCase
+final class WidgetConfigBulkDeleteGuardTest extends TestCase
 {
-    private const PREFIX = 'sm-style-delete-guard';
+    private const PREFIX = 'sm-widget-config-bulk-delete';
 
     private ?object $originalRequest = null;
     private ?object $originalResponse = null;
@@ -49,55 +47,28 @@ final class WidgetStyleDeleteDependencyGuardTest extends TestCase
         parent::tearDown();
     }
 
-    public function testWidgetStyleDeleteIsBlockedWhenResolvedWidgetUsesStyle(): void
+    public function testBulkWidgetConfigDeleteDoesNotDeleteAnySelectedConfigWhenOneIsDefault(): void
     {
-        $styleId = $this->insertStyle('used-style', 'Used Style');
-        $this->insertWidget('widget', 'Search Widget', self::PREFIX . '-used-style');
-        $this->actWithPermissions(['searchManager:manageWidgetStyles', 'searchManager:deleteWidgetStyles']);
-        $this->withPostJson(['styleId' => $styleId]);
+        $defaultHandle = SearchManager::$plugin->getSettings()->defaultWidgetHandle;
+        self::assertNotEmpty($defaultHandle);
+        $defaultConfig = SearchManager::$plugin->widgetConfigs->getByHandle((string)$defaultHandle);
+        self::assertNotNull($defaultConfig);
+        self::assertNotNull($defaultConfig->id);
 
-        $response = (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle();
+        $unusedConfigId = $this->insertWidget('unused-widget', 'Unused Widget');
+        $this->actWithPermissions(['searchManager:manageWidgetConfigs', 'searchManager:deleteWidgetConfigs']);
+        $this->withPostJson(['configIds' => [$defaultConfig->id, $unusedConfigId]]);
+
+        $response = (new WidgetsController('widgets', SearchManager::$plugin))->actionBulkDelete();
         $data = $response->data;
 
-        self::assertSame(false, $data['success'] ?? true);
-        self::assertSame(
-            'Cannot delete “Used Style” — it is in use by: Widget: Search Widget.',
-            $data['error'] ?? null,
-        );
-        self::assertSame(1, $this->countMarkedRows('{{%searchmanager_widget_styles}}', ['id' => $styleId]));
-    }
-
-    public function testWidgetStyleDeleteSucceedsWhenNoResolvedWidgetUsesStyle(): void
-    {
-        $styleId = $this->insertStyle('unused-style', 'Unused Style');
-        $this->actWithPermissions(['searchManager:manageWidgetStyles', 'searchManager:deleteWidgetStyles']);
-        $this->withPostJson(['styleId' => $styleId]);
-
-        $response = (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle();
-        $data = $response->data;
-
-        self::assertSame(true, $data['success'] ?? false, json_encode($data));
-        self::assertSame(0, $this->countMarkedRows('{{%searchmanager_widget_styles}}', ['id' => $styleId]));
-    }
-
-    public function testBulkWidgetStyleDeleteDoesNotDeleteAnySelectedStyleWhenOneIsInUse(): void
-    {
-        $usedStyleId = $this->insertStyle('bulk-used-style', 'Bulk Used Style');
-        $unusedStyleId = $this->insertStyle('bulk-unused-style', 'Bulk Unused Style');
-        $this->insertWidget('bulk-widget', 'Bulk Widget', self::PREFIX . '-bulk-used-style');
-        $this->actWithPermissions(['searchManager:manageWidgetStyles', 'searchManager:deleteWidgetStyles']);
-        $this->withPostJson(['styleIds' => [$usedStyleId, $unusedStyleId]]);
-
-        $response = (new WidgetsController('widgets', SearchManager::$plugin))->actionBulkDeleteStyle();
-        $data = $response->data;
-
-        self::assertSame(false, $data['success'] ?? true);
+        self::assertSame(false, $data['success'] ?? true, json_encode($data));
         self::assertSame([
-            'Cannot delete “Bulk Used Style” — it is in use by: Widget: Bulk Widget.',
+            'Cannot delete the default widget. Set another widget as default first.',
         ], $data['errors'] ?? null);
-        self::assertSame('Cannot delete “Bulk Used Style” — it is in use by: Widget: Bulk Widget.', $data['error'] ?? null);
-        self::assertSame(1, $this->countMarkedRows('{{%searchmanager_widget_styles}}', ['id' => $usedStyleId]));
-        self::assertSame(1, $this->countMarkedRows('{{%searchmanager_widget_styles}}', ['id' => $unusedStyleId]));
+        self::assertSame('Cannot delete the default widget. Set another widget as default first.', $data['error'] ?? null);
+        self::assertSame(1, $this->countMarkedRows(['id' => $defaultConfig->id]));
+        self::assertSame(1, $this->countMarkedRows(['id' => $unusedConfigId]));
     }
 
     /**
@@ -151,25 +122,7 @@ final class WidgetStyleDeleteDependencyGuardTest extends TestCase
         }
     }
 
-    private function insertStyle(string $suffix, string $name): int
-    {
-        $now = Db::prepareDateForDb(new \DateTimeImmutable());
-
-        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_widget_styles}}', [
-            'handle' => self::PREFIX . '-' . $suffix,
-            'name' => $name,
-            'type' => 'modal',
-            'styles' => '{}',
-            'enabled' => 1,
-            'dateCreated' => $now,
-            'dateUpdated' => $now,
-            'uid' => StringHelper::UUID(),
-        ])->execute();
-
-        return (int)Craft::$app->getDb()->getLastInsertID();
-    }
-
-    private function insertWidget(string $suffix, string $name, string $styleHandle): int
+    private function insertWidget(string $suffix, string $name): int
     {
         $now = Db::prepareDateForDb(new \DateTimeImmutable());
 
@@ -177,7 +130,7 @@ final class WidgetStyleDeleteDependencyGuardTest extends TestCase
             'handle' => self::PREFIX . '-' . $suffix,
             'name' => $name,
             'type' => 'modal',
-            'styleHandle' => $styleHandle,
+            'styleHandle' => null,
             'settings' => json_encode(WidgetConfig::defaultSettings(), JSON_THROW_ON_ERROR),
             'enabled' => 1,
             'dateCreated' => $now,
@@ -191,10 +144,10 @@ final class WidgetStyleDeleteDependencyGuardTest extends TestCase
     /**
      * @param array<string, mixed> $condition
      */
-    private function countMarkedRows(string $table, array $condition): int
+    private function countMarkedRows(array $condition): int
     {
         return (int)(new Query())
-            ->from($table)
+            ->from('{{%searchmanager_widget_configs}}')
             ->where($condition)
             ->count();
     }
@@ -204,10 +157,6 @@ final class WidgetStyleDeleteDependencyGuardTest extends TestCase
         Craft::$app->getDb()
             ->createCommand()
             ->delete('{{%searchmanager_widget_configs}}', ['like', 'handle', self::PREFIX . '%', false])
-            ->execute();
-        Craft::$app->getDb()
-            ->createCommand()
-            ->delete('{{%searchmanager_widget_styles}}', ['like', 'handle', self::PREFIX . '%', false])
             ->execute();
     }
 }

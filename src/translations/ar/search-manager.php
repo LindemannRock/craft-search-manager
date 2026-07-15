@@ -239,7 +239,6 @@ return [
     'Cannot delete default backend "{name}". Set another backend as default first.' => 'لا يمكن حذف الواجهة الخلفية الافتراضية "{name}". قم بتعيين واجهة خلفية أخرى كافتراضية أولاً.',
     'Cannot delete the default backend. Set another backend as default first.' => 'لا يمكن حذف الواجهة الخلفية الافتراضية. قم بتعيين واجهة خلفية أخرى كافتراضية أولاً.',
     'Cannot delete the default widget. Set another widget as default first.' => 'لا يمكن حذف الأداة الافتراضية. قم بتعيين أداة أخرى كافتراضية أولاً.',
-    'Cannot delete "{name}" because it is the default widget.' => 'لا يمكن حذف "{name}" لأنها الأداة الافتراضية.',
     'Cannot disable default backend "{name}"' => 'لا يمكن تعطيل الواجهة الخلفية الافتراضية "{name}"',
     'Cannot disable "{name}" because it is the default widget.' => 'لا يمكن تعطيل "{name}" لأنها الأداة الافتراضية.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'لا يمكن تعطيل الواجهة الخلفية الافتراضية. قم بتغيير الواجهة الخلفية الافتراضية في الإعدادات أولاً.',

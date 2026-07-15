@@ -42,6 +42,7 @@ use yii\web\Response;
  */
 class ApiKeysController extends Controller
 {
+    use BulkDeleteTrait;
     use LoggingTrait;
 
     /**
@@ -351,62 +352,29 @@ class ApiKeysController extends Controller
         return $this->runBulkSetEnabled(false);
     }
 
-    public function actionBulkDelete(): ?Response
+    public function actionBulkDelete(): Response
     {
         $this->requirePostRequest();
         $this->requirePermission('searchManager:revokeApiKeys');
 
         $ids = $this->parseBulkIds(Craft::$app->getRequest()->getBodyParam('ids', []));
-        $apiKeys = [];
-        $errors = [];
 
-        foreach ($ids as $id) {
-            $apiKey = ApiKey::findById($id);
-            if ($apiKey === null) {
-                continue;
-            }
-
-            $usages = SearchManager::$plugin->dependencies->getApiKeyUsages($apiKey->handle);
-            if ($usages !== []) {
-                $errors[] = SearchManager::$plugin->dependencies->formatInUseError($apiKey->name, $usages);
-                continue;
-            }
-
-            $apiKeys[] = $apiKey;
-        }
-
-        if ($errors !== []) {
-            return $this->respondToBulkErrors($errors);
-        }
-
-        $deleted = 0;
-        $transaction = Craft::$app->getDb()->beginTransaction();
-
-        try {
-            foreach ($apiKeys as $apiKey) {
-                if ($apiKey->delete()) {
-                    $deleted++;
-                    continue;
+        return $this->bulkDeleteAllOrNothing(
+            $ids,
+            static fn(mixed $id): ?object => ApiKey::findById((int)$id),
+            static function(object $apiKey): ?string {
+                if (!$apiKey instanceof ApiKey) {
+                    return null;
                 }
 
-                $errors[] = Craft::t('search-manager', 'Couldn’t revoke API key');
-            }
+                $usages = SearchManager::$plugin->dependencies->getApiKeyUsages($apiKey->handle);
+                if ($usages !== []) {
+                    return SearchManager::$plugin->dependencies->formatInUseError($apiKey->name, $usages);
+                }
 
-            if ($errors !== []) {
-                $transaction->rollBack();
-                return $this->respondToBulkErrors($errors);
-            }
-
-            $transaction->commit();
-        } catch (\Throwable $e) {
-            $transaction->rollBack();
-            throw $e;
-        }
-
-        return $this->respondToBulkResult(
-            $deleted,
-            Craft::t('search-manager', '{count, plural, =1{1 API key revoked} other{# API keys revoked}}', ['count' => $deleted]),
-            Craft::t('search-manager', 'Couldn’t revoke API keys'),
+                return null;
+            },
+            static fn(object $apiKey): bool => $apiKey instanceof ApiKey && $apiKey->delete(),
         );
     }
 
@@ -442,27 +410,6 @@ class ApiKeysController extends Controller
                 ? Craft::t('search-manager', 'Couldn’t enable API keys')
                 : Craft::t('search-manager', 'Couldn’t disable API keys'),
         );
-    }
-
-    /**
-     * @param list<string> $errors
-     */
-    private function respondToBulkErrors(array $errors): Response
-    {
-        $error = implode(' ', $errors);
-        $acceptsJson = Craft::$app->getRequest()->getAcceptsJson();
-
-        if ($acceptsJson) {
-            return $this->asJson([
-                'success' => false,
-                'count' => 0,
-                'error' => $error,
-                'errors' => $errors,
-            ]);
-        }
-
-        Craft::$app->getSession()->setError($error);
-        return $this->redirect('search-manager/api-keys');
     }
 
     /**

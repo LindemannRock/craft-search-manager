@@ -33,6 +33,7 @@ use yii\web\Response;
  */
 class IndicesController extends Controller
 {
+    use BulkDeleteTrait;
     use LoggingTrait;
 
     private const PLUGIN_HANDLE = 'search-manager';
@@ -929,69 +930,27 @@ class IndicesController extends Controller
         $this->requireAcceptsJson();
 
         $indexIds = Craft::$app->getRequest()->getRequiredBodyParam('indexIds');
-        $indices = [];
-        $errors = [];
 
-        foreach ($indexIds as $id) {
-            $index = SearchIndex::findByIdOrHandle($id);
-
-            if (!$index) {
-                continue;
-            }
-
-            if (!$index->canEdit()) {
-                $errors[] = Craft::t('search-manager', 'This index is defined in config and cannot be deleted.');
-                continue;
-            }
-
-            $usages = SearchManager::$plugin->dependencies->getIndexUsages($index->handle);
-            if ($usages !== []) {
-                $errors[] = SearchManager::$plugin->dependencies->formatInUseError($index->name, $usages);
-                continue;
-            }
-
-            $indices[] = $index;
-        }
-
-        if ($errors !== []) {
-            return $this->asJson([
-                'success' => false,
-                'error' => implode(' ', $errors),
-                'errors' => $errors,
-            ]);
-        }
-
-        $count = 0;
-        $transaction = Craft::$app->getDb()->beginTransaction();
-
-        try {
-            foreach ($indices as $index) {
-                if ($index->delete()) {
-                    $count++;
-                    continue;
+        return $this->bulkDeleteAllOrNothing(
+            $indexIds,
+            static fn(mixed $id): ?object => SearchIndex::findByIdOrHandle($id),
+            static function(object $index): ?string {
+                if (!$index instanceof SearchIndex) {
+                    return null;
                 }
 
-                $errors[] = Craft::t('search-manager', 'Could not delete index');
-            }
+                if (!$index->canEdit()) {
+                    return Craft::t('search-manager', 'This index is defined in config and cannot be deleted.');
+                }
 
-            if ($errors !== []) {
-                $transaction->rollBack();
-                return $this->asJson([
-                    'success' => false,
-                    'error' => implode(' ', $errors),
-                    'errors' => $errors,
-                ]);
-            }
+                $usages = SearchManager::$plugin->dependencies->getIndexUsages($index->handle);
+                if ($usages !== []) {
+                    return SearchManager::$plugin->dependencies->formatInUseError($index->name, $usages);
+                }
 
-            $transaction->commit();
-        } catch (\Throwable $e) {
-            $transaction->rollBack();
-            throw $e;
-        }
-
-        return $this->asJson([
-            'success' => true,
-            'count' => $count,
-        ]);
+                return null;
+            },
+            static fn(object $index): bool => $index instanceof SearchIndex && $index->delete(),
+        );
     }
 }

@@ -315,6 +315,13 @@
                     }
                     return;
                 }
+
+                const count = response.data.count || 0;
+                if (count <= 0) {
+                    Craft.cp.displayError(response.data.error || errorFallback);
+                    return;
+                }
+
                 window.location.reload();
             })
             .catch(function(response) {

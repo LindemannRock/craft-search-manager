@@ -239,7 +239,6 @@ return [
     'Cannot delete default backend "{name}". Set another backend as default first.' => 'デフォルトバックエンド「{name}」を削除できません。先に別のバックエンドをデフォルトに設定してください。',
     'Cannot delete the default backend. Set another backend as default first.' => 'デフォルトバックエンドを削除できません。先に別のバックエンドをデフォルトに設定してください。',
     'Cannot delete the default widget. Set another widget as default first.' => 'デフォルトウィジェットを削除できません。先に別のウィジェットをデフォルトに設定してください。',
-    'Cannot delete "{name}" because it is the default widget.' => '「{name}」はデフォルトウィジェットのため削除できません。',
     'Cannot disable default backend "{name}"' => 'デフォルトバックエンド「{name}」を無効にできません',
     'Cannot disable "{name}" because it is the default widget.' => '「{name}」はデフォルトウィジェットのため無効にできません。',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'デフォルトバックエンドを無効にできません。先に設定でデフォルトバックエンドを変更してください。',

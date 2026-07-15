@@ -239,7 +239,6 @@ return [
     'Cannot delete default backend "{name}". Set another backend as default first.' => 'Kan ikke slette standardbackend "{name}". Angi en annen backend som standard først.',
     'Cannot delete the default backend. Set another backend as default first.' => 'Kan ikke slette standardbackend. Angi en annen backend som standard først.',
     'Cannot delete the default widget. Set another widget as default first.' => 'Kan ikke slette standardwidget. Angi en annen widget som standard først.',
-    'Cannot delete "{name}" because it is the default widget.' => 'Kan ikke slette "{name}" fordi det er standardwidgeten.',
     'Cannot disable default backend "{name}"' => 'Kan ikke deaktivere standardbackend "{name}"',
     'Cannot disable "{name}" because it is the default widget.' => 'Kan ikke deaktivere "{name}" fordi det er standardwidgeten.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Kan ikke deaktivere standardbackend. Endre standardbackend i Innstillinger først.',

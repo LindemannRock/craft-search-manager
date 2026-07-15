@@ -239,7 +239,6 @@ return [
     'Cannot delete default backend "{name}". Set another backend as default first.' => 'Impossible de supprimer le backend par défaut « {name} ». Définissez d\'abord un autre backend par défaut.',
     'Cannot delete the default backend. Set another backend as default first.' => 'Impossible de supprimer le backend par défaut. Définissez d\'abord un autre backend par défaut.',
     'Cannot delete the default widget. Set another widget as default first.' => 'Impossible de supprimer le widget par défaut. Définissez d\'abord un autre widget par défaut.',
-    'Cannot delete "{name}" because it is the default widget.' => 'Impossible de supprimer « {name} » car c\'est le widget par défaut.',
     'Cannot disable default backend "{name}"' => 'Impossible de désactiver le backend par défaut « {name} »',
     'Cannot disable "{name}" because it is the default widget.' => 'Impossible de désactiver « {name} » car c\'est le widget par défaut.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Impossible de désactiver le backend par défaut. Changez d\'abord le backend par défaut dans les paramètres.',

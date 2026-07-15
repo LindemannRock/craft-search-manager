@@ -33,6 +33,7 @@ use yii\web\Response;
  */
 class WidgetsController extends Controller
 {
+    use BulkDeleteTrait;
     use LoggingTrait;
 
     private const PLUGIN_HANDLE = 'search-manager';
@@ -661,27 +662,25 @@ class WidgetsController extends Controller
 
         $configIds = Craft::$app->getRequest()->getRequiredBodyParam('configIds');
         $settings = SearchManager::$plugin->getSettings();
-        $count = 0;
-        $errors = [];
 
-        foreach ($configIds as $configId) {
-            $widgetConfig = SearchManager::$plugin->widgetConfigs->getById((int)$configId);
-            if (!$widgetConfig) {
-                continue;
-            }
+        return $this->bulkDeleteAllOrNothing(
+            $configIds,
+            static fn(mixed $id): ?object => SearchManager::$plugin->widgetConfigs->getById((int)$id),
+            static function(object $widgetConfig) use ($settings): ?string {
+                if (!$widgetConfig instanceof WidgetConfig) {
+                    return null;
+                }
 
-            // Skip the default widget
-            if ($settings->defaultWidgetHandle === $widgetConfig->handle) {
-                $errors[] = Craft::t('search-manager', 'Cannot delete "{name}" because it is the default widget.', ['name' => $widgetConfig->name]);
-                continue;
-            }
+                if ($settings->defaultWidgetHandle === $widgetConfig->handle) {
+                    return Craft::t('search-manager', 'Cannot delete the default widget. Set another widget as default first.');
+                }
 
-            if (SearchManager::$plugin->widgetConfigs->deleteById((int)$configId)) {
-                $count++;
-            }
-        }
-
-        return $this->asJson(['success' => true, 'count' => $count, 'errors' => $errors]);
+                return null;
+            },
+            static fn(object $widgetConfig): bool => $widgetConfig instanceof WidgetConfig
+                && $widgetConfig->id !== null
+                && SearchManager::$plugin->widgetConfigs->deleteById($widgetConfig->id),
+        );
     }
 
     // =========================================================================
@@ -1017,6 +1016,44 @@ class WidgetsController extends Controller
 
         Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Widget style deleted'));
         return $this->redirect('search-manager/widgets/styles');
+    }
+
+    /**
+     * Bulk delete widget styles
+     *
+     * @since 5.53.0
+     */
+    public function actionBulkDeleteStyle(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+        $this->requirePermission('searchManager:deleteWidgetStyles');
+
+        $styleIds = Craft::$app->getRequest()->getRequiredBodyParam('styleIds');
+
+        return $this->bulkDeleteAllOrNothing(
+            $styleIds,
+            static fn(mixed $id): ?object => SearchManager::$plugin->widgetStyles->getById((int)$id),
+            static function(object $widgetStyle): ?string {
+                if (!$widgetStyle instanceof WidgetStyle) {
+                    return null;
+                }
+
+                if (!$widgetStyle->canEdit()) {
+                    return Craft::t('search-manager', 'Could not delete widget style');
+                }
+
+                $usages = SearchManager::$plugin->dependencies->getStyleUsages($widgetStyle->handle);
+                if ($usages !== []) {
+                    return SearchManager::$plugin->dependencies->formatInUseError($widgetStyle->name, $usages);
+                }
+
+                return null;
+            },
+            static fn(object $widgetStyle): bool => $widgetStyle instanceof WidgetStyle
+                && $widgetStyle->id !== null
+                && SearchManager::$plugin->widgetStyles->delete($widgetStyle->id),
+        );
     }
 
     /**

@@ -239,7 +239,6 @@ return [
     'Cannot delete default backend "{name}". Set another backend as default first.' => 'Cannot delete default backend "{name}". Set another backend as default first.',
     'Cannot delete the default backend. Set another backend as default first.' => 'Cannot delete the default backend. Set another backend as default first.',
     'Cannot delete the default widget. Set another widget as default first.' => 'Cannot delete the default widget. Set another widget as default first.',
-    'Cannot delete "{name}" because it is the default widget.' => 'Cannot delete "{name}" because it is the default widget.',
     'Cannot disable default backend "{name}"' => 'Cannot disable default backend "{name}"',
     'Cannot disable "{name}" because it is the default widget.' => 'Cannot disable "{name}" because it is the default widget.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Cannot disable the default backend. Change the default backend in Settings first.',

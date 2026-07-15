@@ -492,18 +492,23 @@
             Craft.sendActionRequest('POST', endpoint, {
                 data: { backendIds: ids },
             }).then(function(response) {
+                if (response.data.success === false) {
+                    if (Array.isArray(response.data.errors)) {
+                        response.data.errors.forEach(function(err) { Craft.cp.displayError(err); });
+                    } else {
+                        Craft.cp.displayError(response.data.error || errorFallback);
+                    }
+                    return;
+                }
+
                 const count = response.data.count || 0;
                 if (count > 0) {
                     Craft.cp.displayNotice(successTemplate.replace('{count}', count));
-                }
-                if (Array.isArray(response.data.errors)) {
-                    response.data.errors.forEach(function(err) { Craft.cp.displayError(err); });
-                } else if (response.data.error) {
-                    Craft.cp.displayError(response.data.error);
-                }
-                if (count > 0) {
                     setTimeout(function() { window.location.reload(); }, 1000);
+                    return;
                 }
+
+                Craft.cp.displayError(response.data.error || errorFallback);
             }).catch(function() {
                 Craft.cp.displayError(errorFallback);
             });

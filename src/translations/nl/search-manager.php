@@ -239,7 +239,6 @@ return [
     'Cannot delete default backend "{name}". Set another backend as default first.' => 'Kan standaardbackend "{name}" niet verwijderen. Stel eerst een andere backend in als standaard.',
     'Cannot delete the default backend. Set another backend as default first.' => 'Kan de standaardbackend niet verwijderen. Stel eerst een andere backend in als standaard.',
     'Cannot delete the default widget. Set another widget as default first.' => 'Kan de standaardwidget niet verwijderen. Stel eerst een andere widget in als standaard.',
-    'Cannot delete "{name}" because it is the default widget.' => 'Kan "{name}" niet verwijderen omdat het de standaardwidget is.',
     'Cannot disable default backend "{name}"' => 'Kan standaardbackend "{name}" niet uitschakelen',
     'Cannot disable "{name}" because it is the default widget.' => 'Kan "{name}" niet uitschakelen omdat het de standaardwidget is.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Kan de standaardbackend niet uitschakelen. Wijzig eerst de standaardbackend in de instellingen.',

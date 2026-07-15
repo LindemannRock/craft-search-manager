@@ -12,6 +12,7 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\controllers\AnalyticsController;
 use lindemannrock\searchmanager\controllers\BackendsController;
+use lindemannrock\searchmanager\controllers\BulkDeleteTrait;
 use lindemannrock\searchmanager\controllers\IndicesController;
 use lindemannrock\searchmanager\controllers\PromotionsController;
 use lindemannrock\searchmanager\controllers\QueryRulesController;
@@ -27,6 +28,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(QueryRulesController::class)]
 #[CoversClass(AnalyticsController::class)]
 #[CoversClass(BackendsController::class)]
+#[CoversClass(BulkDeleteTrait::class)]
 #[CoversClass(IndicesController::class)]
 #[CoversClass(SettingsController::class)]
 #[CoversClass(UtilitiesController::class)]
@@ -134,8 +136,8 @@ final class ControllerMessageI18nTest extends TestCase
             "Craft::t('search-manager', 'Unknown error')",
         );
         $this->assertControllerMethodContains(
-            'BackendsController.php',
-            'actionBulkDelete',
+            'BulkDeleteTrait.php',
+            'bulkDeleteAllOrNothing',
             "Craft::t('search-manager', 'Unknown error')",
         );
         $this->assertControllerMethodNotContains(
@@ -144,8 +146,8 @@ final class ControllerMessageI18nTest extends TestCase
             ": 'Unknown error'",
         );
         $this->assertControllerMethodNotContains(
-            'BackendsController.php',
-            'actionBulkDelete',
+            'BulkDeleteTrait.php',
+            'bulkDeleteAllOrNothing',
             ": 'Unknown error'",
         );
     }

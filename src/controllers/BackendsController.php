@@ -28,6 +28,7 @@ use yii\web\Response;
  */
 class BackendsController extends Controller
 {
+    use BulkDeleteTrait;
     use LoggingTrait;
 
     private const PLUGIN_HANDLE = 'search-manager';
@@ -710,67 +711,28 @@ class BackendsController extends Controller
 
         $backendIds = Craft::$app->getRequest()->getBodyParam('backendIds', []);
         $settings = SearchManager::$plugin->getSettings();
-        $backends = [];
-        $errors = [];
 
-        foreach ($backendIds as $id) {
-            $backend = ConfiguredBackend::findById((int)$id);
-            if ($backend) {
-                // Cannot delete default backend
-                if ($settings->defaultBackendHandle === $backend->handle) {
-                    $errors[] = Craft::t('search-manager', 'Cannot delete default backend "{name}". Set another backend as default first.', ['name' => $backend->name]);
-                    continue;
+        return $this->bulkDeleteAllOrNothing(
+            $backendIds,
+            static fn(mixed $id): ?object => ConfiguredBackend::findById((int)$id),
+            static function(object $backend) use ($settings): ?string {
+                if (!$backend instanceof ConfiguredBackend) {
+                    return null;
                 }
+
+                if ($settings->defaultBackendHandle === $backend->handle) {
+                    return Craft::t('search-manager', 'Cannot delete the default backend. Set another backend as default first.');
+                }
+
                 $usages = SearchManager::$plugin->dependencies->getBackendUsages($backend->handle);
                 if ($usages !== []) {
-                    $errors[] = SearchManager::$plugin->dependencies->formatInUseError($backend->name, $usages);
-                    continue;
-                }
-                $backends[] = $backend;
-            }
-        }
-
-        if ($errors !== []) {
-            return $this->asJson([
-                'success' => false,
-                'error' => implode(' ', $errors),
-                'errors' => $errors,
-            ]);
-        }
-
-        $count = 0;
-        $transaction = Craft::$app->getDb()->beginTransaction();
-
-        try {
-            foreach ($backends as $backend) {
-                if ($backend->delete()) {
-                    $count++;
-                    continue;
+                    return SearchManager::$plugin->dependencies->formatInUseError($backend->name, $usages);
                 }
 
-                $backendErrors = $backend->getErrors();
-                $errorMessage = !empty($backendErrors['handle'])
-                    ? $backendErrors['handle'][0]
-                    : Craft::t('search-manager', 'Unknown error');
-                $errors[] = "{$backend->name}: {$errorMessage}";
-            }
-
-            if ($errors !== []) {
-                $transaction->rollBack();
-                return $this->asJson([
-                    'success' => false,
-                    'error' => implode(' ', $errors),
-                    'errors' => $errors,
-                ]);
-            }
-
-            $transaction->commit();
-        } catch (\Throwable $e) {
-            $transaction->rollBack();
-            throw $e;
-        }
-
-        return $this->asJson(['success' => true, 'count' => $count]);
+                return null;
+            },
+            static fn(object $backend): bool => $backend instanceof ConfiguredBackend && $backend->delete(),
+        );
     }
 
     /**

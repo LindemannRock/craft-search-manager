@@ -239,7 +239,6 @@ return [
     'Cannot delete default backend "{name}". Set another backend as default first.' => 'Standard-Backend „{name}" kann nicht gelöscht werden. Zuerst ein anderes Backend als Standard festlegen.',
     'Cannot delete the default backend. Set another backend as default first.' => 'Das Standard-Backend kann nicht gelöscht werden. Zuerst ein anderes Backend als Standard festlegen.',
     'Cannot delete the default widget. Set another widget as default first.' => 'Das Standard-Widget kann nicht gelöscht werden. Zuerst ein anderes Widget als Standard festlegen.',
-    'Cannot delete "{name}" because it is the default widget.' => '„{name}" kann nicht gelöscht werden, da es das Standard-Widget ist.',
     'Cannot disable default backend "{name}"' => 'Standard-Backend „{name}" kann nicht deaktiviert werden',
     'Cannot disable "{name}" because it is the default widget.' => '„{name}" kann nicht deaktiviert werden, da es das Standard-Widget ist.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Das Standard-Backend kann nicht deaktiviert werden. Zuerst das Standard-Backend in den Einstellungen ändern.',

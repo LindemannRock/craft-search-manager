@@ -298,11 +298,23 @@
 		Craft.sendActionRequest('POST', endpoint, {
 			data: { styleIds: ids },
 		}).then(function(response) {
+			if (response.data.success === false) {
+				if (Array.isArray(response.data.errors)) {
+					response.data.errors.forEach(function(err) { Craft.cp.displayError(err); });
+				} else {
+					Craft.cp.displayError(response.data.error || errorFallback);
+				}
+				return;
+			}
+
 			const count = response.data.count || 0;
 			if (count > 0) {
 				Craft.cp.displayNotice(successTemplate.replace('{count}', count));
 				setTimeout(function() { window.location.reload(); }, 500);
+				return;
 			}
+
+			Craft.cp.displayError(response.data.error || errorFallback);
 		}).catch(function() {
 			Craft.cp.displayError(errorFallback);
 		});
@@ -360,33 +372,7 @@
 		const confirmTemplate = ids.length === 1 ? T.bulkDeleteConfirmSingular : T.bulkDeleteConfirmPlural;
 		if (!confirm(confirmTemplate.replace('{count}', ids.length))) return;
 
-		// `delete-style` is a single-row endpoint; for bulk we fan out per id
-		// and aggregate successes/failures client-side. Acceptable today since
-		// the user-controlled selection is bounded by the page-size limit;
-		// promote to a server-side bulk-delete endpoint if that ceiling rises.
-		let deleted = 0;
-		const errors = [];
-		const promises = ids.map(function(id) {
-			return deleteStyle(id).then(function(response) {
-				if (response.data.success) {
-					deleted++;
-				} else {
-					errors.push(response.data.error || T.deleteFailed);
-				}
-			}).catch(function() {
-				errors.push(T.deleteFailed);
-			});
-		});
-
-		Promise.all(promises).then(function() {
-			if (deleted > 0) {
-				Craft.cp.displayNotice(T.bulkDeletedTemplate.replace('{count}', deleted));
-			}
-			errors.forEach(function(err) { Craft.cp.displayError(err); });
-			if (deleted > 0) {
-				setTimeout(function() { window.location.reload(); }, 500);
-			}
-		});
+		runBulkStatus('search-manager/widgets/bulk-delete-style', T.bulkDeletedTemplate, T.deleteFailed);
 	});
 
 	const collisionHandles = {{ collisionHandles is defined ? collisionHandles|json_encode|raw : '[]' }};

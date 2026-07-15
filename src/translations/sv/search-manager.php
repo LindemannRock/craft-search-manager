@@ -239,7 +239,6 @@ return [
     'Cannot delete default backend "{name}". Set another backend as default first.' => 'Kan inte radera standardbackend "{name}". Ange en annan backend som standard först.',
     'Cannot delete the default backend. Set another backend as default first.' => 'Kan inte radera standardbackend. Ange en annan backend som standard först.',
     'Cannot delete the default widget. Set another widget as default first.' => 'Kan inte radera standardwidget. Ange en annan widget som standard först.',
-    'Cannot delete "{name}" because it is the default widget.' => 'Kan inte radera "{name}" eftersom det är standardwidgeten.',
     'Cannot disable default backend "{name}"' => 'Kan inte inaktivera standardbackend "{name}"',
     'Cannot disable "{name}" because it is the default widget.' => 'Kan inte inaktivera "{name}" eftersom det är standardwidgeten.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Kan inte inaktivera standardbackend. Ändra standardbackend i Inställningar först.',
