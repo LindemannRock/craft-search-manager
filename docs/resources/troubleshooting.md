@@ -28,6 +28,14 @@ Search Manager blocks backend deletion when an index still references that backe
 
 **Fix:** Edit the listed indices and either choose another backend or leave the backend field empty to use the default backend. Rebuild those indices after changing backend storage so the new backend has current search data. Once no resolved index uses the backend, the backend can be deleted.
 
+## Index Cannot Be Deleted
+
+Search Manager blocks index deletion when a widget or a specifically scoped API key still references that index. The error lists each dependency as `Widget: Name` or `API key: Name`.
+
+API keys set to **All indices (current and future)** do not block index deletion because they do not depend on a specific index handle.
+
+**Fix:** Edit the listed widgets and remove the index from their Search Indices setting, or update the listed API keys so the index is no longer allowed. Once no resolved widget or API key uses the index, the index can be deleted.
+
 ## Element Stays in Index After Editor Change
 
 **Symptom:** An editor changes a field that the index's criteria filter depends on (e.g. marks a product `sold`, flips a custom status, sets an expiry date), but the element still appears in search results. Running a full rebuild removes it; the next edit of the same kind brings the problem back.

@@ -10,7 +10,9 @@ namespace lindemannrock\searchmanager\services;
 
 use Craft;
 use craft\base\Component;
+use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\SearchManager;
 
 /**
  * Resolves Search Manager entity dependencies for destructive action guards.
@@ -34,6 +36,38 @@ class DependencyService extends Component
             $usages[] = [
                 'type' => Craft::t('search-manager', 'Index'),
                 'label' => $index->name,
+            ];
+        }
+
+        return $usages;
+    }
+
+    /**
+     * @return array<int, array{type: string, label: string}>
+     */
+    public function getIndexUsages(string $handle): array
+    {
+        $usages = [];
+
+        foreach (SearchManager::$plugin->widgetConfigs->getAll() as $widgetConfig) {
+            if (!in_array($handle, $widgetConfig->getIndexHandles(), true)) {
+                continue;
+            }
+
+            $usages[] = [
+                'type' => Craft::t('search-manager', 'Widget'),
+                'label' => $widgetConfig->name,
+            ];
+        }
+
+        foreach (ApiKey::findAll() as $apiKey) {
+            if (!in_array($handle, $apiKey->allowedIndices, true)) {
+                continue;
+            }
+
+            $usages[] = [
+                'type' => Craft::t('search-manager', 'API key'),
+                'label' => $apiKey->name,
             ];
         }
 

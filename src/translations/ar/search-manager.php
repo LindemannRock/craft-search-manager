@@ -26,6 +26,7 @@ return [
     'Backends' => 'الواجهات الخلفية',
     'Promotions' => 'العروض الترويجية',
     'Query Rules' => 'قواعد الاستعلام',
+    'Widget' => 'الأداة',
     'Widgets' => 'الأدوات',
     'API Keys' => 'مفاتيح API',
     'Analytics' => 'التحليلات',

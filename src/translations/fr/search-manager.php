@@ -26,6 +26,7 @@ return [
     'Backends' => 'Backends',
     'Promotions' => 'Promotions',
     'Query Rules' => 'Règles de requêtes',
+    'Widget' => 'Widget',
     'Widgets' => 'Widgets',
     'API Keys' => 'Clés API',
     'Analytics' => 'Analytiques',

@@ -731,7 +731,11 @@ class BackendsController extends Controller
         }
 
         if ($errors !== []) {
-            return $this->asJson(['success' => false, 'errors' => $errors]);
+            return $this->asJson([
+                'success' => false,
+                'error' => implode(' ', $errors),
+                'errors' => $errors,
+            ]);
         }
 
         $count = 0;
@@ -753,7 +757,11 @@ class BackendsController extends Controller
 
             if ($errors !== []) {
                 $transaction->rollBack();
-                return $this->asJson(['success' => false, 'errors' => $errors]);
+                return $this->asJson([
+                    'success' => false,
+                    'error' => implode(' ', $errors),
+                    'errors' => $errors,
+                ]);
             }
 
             $transaction->commit();

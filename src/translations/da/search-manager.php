@@ -26,6 +26,7 @@ return [
     'Backends' => 'Backends',
     'Promotions' => 'Kampagner',
     'Query Rules' => 'Forespørgselsregler',
+    'Widget' => 'Widget',
     'Widgets' => 'Widgets',
     'API Keys' => 'API-nøgler',
     'Analytics' => 'Analyser',

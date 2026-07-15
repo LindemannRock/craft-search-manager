@@ -468,6 +468,13 @@
             if (count > 0) {
                 Craft.cp.displayNotice(successTemplate.replace('{count}', count));
                 setTimeout(function() { window.location.reload(); }, 1000);
+                return;
+            }
+
+            if (Array.isArray(response.data.errors)) {
+                response.data.errors.forEach(function(err) { Craft.cp.displayError(err); });
+            } else if (response.data.error) {
+                Craft.cp.displayError(response.data.error);
             }
         }).catch(function() {
             Craft.cp.displayError(errorFallback);

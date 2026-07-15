@@ -592,6 +592,16 @@ class IndicesController extends Controller
             return $this->redirect('search-manager/indices');
         }
 
+        $usages = SearchManager::$plugin->dependencies->getIndexUsages($index->handle);
+        if ($usages !== []) {
+            $error = SearchManager::$plugin->dependencies->formatInUseError($index->name, $usages);
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
+            return $this->redirect('search-manager/indices');
+        }
+
         if ($index->delete()) {
             $message = Craft::t('search-manager', 'Index deleted');
             if ($acceptsJson) {
@@ -919,14 +929,64 @@ class IndicesController extends Controller
         $this->requireAcceptsJson();
 
         $indexIds = Craft::$app->getRequest()->getRequiredBodyParam('indexIds');
-        $count = 0;
+        $indices = [];
+        $errors = [];
 
         foreach ($indexIds as $id) {
             $index = SearchIndex::findByIdOrHandle($id);
 
-            if ($index && $index->canEdit() && $index->delete()) {
-                $count++;
+            if (!$index) {
+                continue;
             }
+
+            if (!$index->canEdit()) {
+                $errors[] = Craft::t('search-manager', 'This index is defined in config and cannot be deleted.');
+                continue;
+            }
+
+            $usages = SearchManager::$plugin->dependencies->getIndexUsages($index->handle);
+            if ($usages !== []) {
+                $errors[] = SearchManager::$plugin->dependencies->formatInUseError($index->name, $usages);
+                continue;
+            }
+
+            $indices[] = $index;
+        }
+
+        if ($errors !== []) {
+            return $this->asJson([
+                'success' => false,
+                'error' => implode(' ', $errors),
+                'errors' => $errors,
+            ]);
+        }
+
+        $count = 0;
+        $transaction = Craft::$app->getDb()->beginTransaction();
+
+        try {
+            foreach ($indices as $index) {
+                if ($index->delete()) {
+                    $count++;
+                    continue;
+                }
+
+                $errors[] = Craft::t('search-manager', 'Could not delete index');
+            }
+
+            if ($errors !== []) {
+                $transaction->rollBack();
+                return $this->asJson([
+                    'success' => false,
+                    'error' => implode(' ', $errors),
+                    'errors' => $errors,
+                ]);
+            }
+
+            $transaction->commit();
+        } catch (\Throwable $e) {
+            $transaction->rollBack();
+            throw $e;
         }
 
         return $this->asJson([
