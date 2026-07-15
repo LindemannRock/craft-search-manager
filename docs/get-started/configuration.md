@@ -80,7 +80,7 @@ These settings control how content gets indexed.
 | `indexPrefix` | `?string` | `null` | Prefix for index names (useful for multi-environment setups). Use only letters, numbers, underscores, and hyphens |
 
 > [!NOTE]
-> Search Manager registers its save/delete listeners at plugin bootstrap, then checks the current `autoIndex` value each time an element event fires. Turning `autoIndex` off stops those listeners from adding pending sync rows. Turning `autoIndex` back on resumes listener queueing on the next event.
+> Search Manager registers its save/delete listeners at plugin bootstrap, then checks the current `autoIndex` value each time an element event fires. Turning `autoIndex` off stops all automatic Search Manager element content-sync, including saves, deletes, status changes, and the native-search adapter path used when `replaceNativeSearch` is enabled. While it is off, element changes reach search only after a manual rebuild. Saving or editing an index config still queues its automatic rebuild.
 
 > [!NOTE]
 > When `replaceNativeSearch` is enabled, front-end template `.search()` queries can use Search Manager when a full-coverage index exists for the element type and site scope. Control Panel searches always stay on Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.

@@ -173,37 +173,16 @@ class CraftSearchAdapter extends \craft\services\Search
             return parent::indexElementAttributes($element, $fieldHandles);
         }
 
-        // When autoIndex is enabled, Search Manager's EVENT_AFTER_SAVE_ELEMENT
-        // listener routes the save through PendingSyncRepository → BatchSyncJob.
-        // Craft still needs its own searchindex table refreshed for native
-        // fallback coverage and for instantly reversible replacement.
-        $settings = SearchManager::$plugin->getSettings();
-        if ($settings->autoIndex) {
-            $this->logDebug('Refreshing Craft native searchindex while autoIndex handles Search Manager storage', [
-                'elementId' => $element->id,
-            ]);
-            return parent::indexElementAttributes($element, $fieldHandles);
-        }
-
-        $this->logDebug('Craft requested element indexing', [
+        // Search Manager content sync is controlled only by the autoIndex-gated
+        // element listeners. This adapter refreshes Craft's native searchindex
+        // for fallback coverage and reversible native-search replacement.
+        $this->logDebug('Refreshing Craft native searchindex through Search Manager adapter', [
             'elementId' => $element->id,
             'elementType' => get_class($element),
             'fieldHandles' => $fieldHandles,
         ]);
 
-        $nativeIndexed = parent::indexElementAttributes($element, $fieldHandles);
-        if (!$nativeIndexed) {
-            $this->logWarning('Craft native searchindex refresh failed while Search Manager indexing continues', [
-                'elementId' => $element->id,
-                'elementType' => get_class($element),
-            ]);
-        }
-
-        // Delegate to our indexing service
-        // Note: We index all fields via transformers, not specific fieldHandles
-        $searchManagerIndexed = SearchManager::$plugin->indexing->indexElement($element);
-
-        return $nativeIndexed || $searchManagerIndexed;
+        return parent::indexElementAttributes($element, $fieldHandles);
     }
 
     /**

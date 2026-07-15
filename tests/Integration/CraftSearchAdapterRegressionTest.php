@@ -22,7 +22,6 @@ use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
-use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -236,7 +235,7 @@ final class CraftSearchAdapterRegressionTest extends TestCase
         }
     }
 
-    public function testManualIndexingRefreshesCraftNativeSearchIndexAndQueuesPendingSync(): void
+    public function testNativeSearchAdapterRefreshesCraftSearchIndexWithoutPendingSyncWhenAutoIndexIsDisabled(): void
     {
         $fixture = $this->findWorkingIndexAndElement();
         if ($fixture === null) {
@@ -246,7 +245,9 @@ final class CraftSearchAdapterRegressionTest extends TestCase
         [$index, $element] = $fixture;
         $settings = SearchManager::$plugin->getSettings();
         $originalAutoIndex = $settings->autoIndex;
+        $originalReplaceNativeSearch = $settings->replaceNativeSearch;
         $settings->autoIndex = false;
+        $settings->replaceNativeSearch = true;
 
         $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), ['hits' => []]);
         $this->swapPluginComponent('search-manager', 'backend', $backend);
@@ -272,13 +273,17 @@ final class CraftSearchAdapterRegressionTest extends TestCase
 
             self::assertTrue($indexed);
             self::assertGreaterThan(0, $this->nativeSearchIndexRowCount($condition));
+            self::assertSame([], $backend->backendForIndexCalls);
+            self::assertSame([], $backend->searchCalls);
 
-            $pendingRow = $this->fetchPendingRow($index->handle, (int)$element->id, (int)$element->siteId);
-            self::assertNotNull($pendingRow);
-            self::assertSame(PendingSyncRepository::OP_UPSERT, $pendingRow['op']);
-            self::assertSame(PendingSyncRepository::STATUS_PENDING, $pendingRow['status']);
+            self::assertSame(0, $this->countPendingRows([
+                'indexHandle' => $index->handle,
+                'elementId' => (int)$element->id,
+                'siteId' => (int)$element->siteId,
+            ]));
         } finally {
             $settings->autoIndex = $originalAutoIndex;
+            $settings->replaceNativeSearch = $originalReplaceNativeSearch;
         }
     }
 

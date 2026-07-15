@@ -101,7 +101,10 @@ return [
         // ========================================
 
         /**
-         * Automatically index elements when saved
+         * Automatically index elements when they're saved, deleted, or change
+         * status. When false, element changes reach search only after a manual
+         * rebuild. Saving or editing an index config still rebuilds it
+         * automatically.
          * Default: true
          */
         // 'autoIndex' => true,

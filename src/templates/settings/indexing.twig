@@ -37,7 +37,7 @@
 
 		{{ forms.lightswitchField({
             label: 'Auto-Index Elements'|t('search-manager'),
-            instructions: 'Automatically index elements when they are saved'|t('search-manager'),
+            instructions: "Automatically index elements when they're saved, deleted, or change status. When off, element changes reach search only after a manual rebuild. (Saving or editing an index config still rebuilds it automatically.)"|t('search-manager'),
             id: 'autoIndex',
             name: 'settings[autoIndex]',
             on: settings.autoIndex,
@@ -45,6 +45,15 @@
             warning: settings.isOverriddenByConfig('autoIndex') ?
                 "This is being overridden by the <code>autoIndex</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
+
+		{% include 'lindemannrock-base/_components/info-box' with {
+			message: "Auto-Index is off — new, edited, or deleted element content won't appear in search until you rebuild the affected indices, across all surfaces (templates, REST, GraphQL, widgets). Saving or editing an index config still rebuilds it automatically; only element content-sync is paused."|t('search-manager'),
+			type: 'warning',
+			variant: 'colored',
+			margin: 'bottom',
+			boxId: 'search-manager-auto-index-warning',
+			hidden: settings.autoIndex,
+		} %}
 
 		{{ forms.textField({
             label: 'Batch Size'|t('search-manager'),
@@ -161,3 +170,46 @@
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
+
+{% js %}
+(() => {
+    const warning = document.getElementById('search-manager-auto-index-warning');
+    const field = document.getElementById('autoIndex-field');
+
+    if (!warning || !field) {
+        return;
+    }
+
+    const lightswitch = field.querySelector('.lightswitch');
+    const input = field.querySelector('input[type="hidden"][name="settings[autoIndex]"]');
+
+    const isAutoIndexOn = () => {
+        if (input) {
+            return input.value === '1';
+        }
+
+        return lightswitch?.classList.contains('on') === true
+            || lightswitch?.getAttribute('aria-checked') === 'true';
+    };
+
+    const syncWarning = () => {
+        warning.classList.toggle('is-hidden', isAutoIndexOn());
+    };
+
+    syncWarning();
+    input?.addEventListener('change', syncWarning);
+    lightswitch?.addEventListener('click', () => setTimeout(syncWarning, 0));
+    lightswitch?.addEventListener('keydown', (event) => {
+        if (event.key === ' ' || event.key === 'Enter') {
+            setTimeout(syncWarning, 0);
+        }
+    });
+
+    if (lightswitch) {
+        new MutationObserver(syncWarning).observe(lightswitch, {
+            attributes: true,
+            attributeFilter: ['class', 'aria-checked'],
+        });
+    }
+})();
+{% endjs %}

@@ -14,7 +14,6 @@ use Craft;
 use craft\events\ElementEvent;
 use craft\services\Elements;
 use lindemannrock\searchmanager\adapters\CraftSearchAdapter;
-use lindemannrock\searchmanager\jobs\BatchSyncJob;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 use yii\base\Event;
@@ -73,7 +72,7 @@ final class SyncBufferAutoIndexTest extends TestCase
                 Elements::EVENT_AFTER_SAVE_ELEMENT,
                 new ElementEvent(['element' => $element]),
             );
-        });
+        }, true);
 
         $this->assertGreaterThanOrEqual(
             1,
@@ -112,64 +111,66 @@ final class SyncBufferAutoIndexTest extends TestCase
         );
     }
 
-    public function testNativeSearchSavePathQueuesOnePendingRowWhenAutoIndexIsDisabled(): void
+    public function testNativeSearchAdapterDoesNotQueueWhenAutoIndexIsDisabledAndReplaceNativeSearchIsEnabled(): void
     {
         $pair = $this->findWorkingIndexAndElement();
         $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
 
         [$index, $element] = $pair;
-        $backend = $this->installStubBackend();
         $adapter = new CraftSearchAdapter();
         $existingBatchJobs = $this->countQueueRows('BatchSyncJob');
+        $nativeCondition = [
+            'elementId' => (int) $element->id,
+            'siteId' => (int) $element->siteId,
+        ];
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%searchindex}}', $nativeCondition)
+            ->execute();
+
+        $this->assertSame(0, $this->nativeSearchIndexRowCount($nativeCondition));
 
         $this->withAutoIndex(false, function() use ($adapter, $element): void {
             $this->assertTrue($adapter->indexElementAttributes($element));
             $this->assertTrue($adapter->indexElementAttributes($element));
-        });
+        }, true);
 
+        $this->assertGreaterThan(0, $this->nativeSearchIndexRowCount($nativeCondition));
         $this->assertSame(
-            1,
+            0,
             $this->countPendingRows([
                 'indexHandle' => $index->handle,
                 'elementId' => (int) $element->id,
                 'siteId' => (int) $element->siteId,
             ]),
-            'Two rapid native-search save callbacks must collapse into one pending-sync row.',
+            'Native-search save callbacks must not queue pending-sync rows while autoIndex is disabled.',
         );
-        $this->assertLessThanOrEqual(
-            1,
+        $this->assertSame(
+            0,
             $this->countQueueRows('BatchSyncJob') - $existingBatchJobs,
-            'Two rapid native-search save callbacks must not enqueue two BatchSyncJob rows.',
+            'Native-search save callbacks must not enqueue BatchSyncJob rows while autoIndex is disabled.',
         );
-
-        (new BatchSyncJob())->execute(Craft::$app->queue);
-
-        $this->assertNull(
-            $this->fetchPendingRow($index->handle, (int) $element->id, (int) $element->siteId),
-            'BatchSyncJob must drain the pending row from the native-search save path.',
-        );
-        $this->assertNotEmpty(
-            array_filter(
-                $backend->calls,
-                static fn(array $call): bool => $call['method'] === 'batchIndex' && $call['indexName'] === $index->handle,
-            ),
-            'BatchSyncJob must process the queued row through the backend batch writer.',
-        );
+        $this->assertNull($this->fetchPendingRow($index->handle, (int) $element->id, (int) $element->siteId));
     }
 
     /**
      * @param callable(): void $callback
      */
-    private function withAutoIndex(bool $enabled, callable $callback): void
+    private function withAutoIndex(bool $enabled, callable $callback, ?bool $replaceNativeSearch = null): void
     {
         $settings = SearchManager::$plugin->getSettings();
-        $original = $settings->autoIndex;
+        $originalAutoIndex = $settings->autoIndex;
+        $originalReplaceNativeSearch = $settings->replaceNativeSearch;
         $settings->autoIndex = $enabled;
+        if ($replaceNativeSearch !== null) {
+            $settings->replaceNativeSearch = $replaceNativeSearch;
+        }
 
         try {
             $callback();
         } finally {
-            $settings->autoIndex = $original;
+            $settings->autoIndex = $originalAutoIndex;
+            $settings->replaceNativeSearch = $originalReplaceNativeSearch;
         }
     }
 
@@ -181,6 +182,17 @@ final class SyncBufferAutoIndexTest extends TestCase
             ->andWhere(['like', 'job', $jobClass])
             ->andWhere(['fail' => false])
             ->andWhere(['timeUpdated' => null])
+            ->count();
+    }
+
+    /**
+     * @param array<string, int> $condition
+     */
+    private function nativeSearchIndexRowCount(array $condition): int
+    {
+        return (int) (new \craft\db\Query())
+            ->from('{{%searchindex}}')
+            ->where($condition)
             ->count();
     }
 }

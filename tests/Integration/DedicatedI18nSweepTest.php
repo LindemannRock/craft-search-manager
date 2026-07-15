@@ -161,6 +161,8 @@ final class DedicatedI18nSweepTest extends TestCase
             'Manual override: {language}',
             'Redirected to another page', 'Synonyms used', 'Not configured',
             '{count} row', '{count} rows', '{count} key', '{count} keys', '{count} file', '{count} files',
+            'Automatically index elements when they\'re saved, deleted, or change status. When off, element changes reach search only after a manual rebuild. (Saving or editing an index config still rebuilds it automatically.)',
+            'Auto-Index is off — new, edited, or deleted element content won\'t appear in search until you rebuild the affected indices, across all surfaces (templates, REST, GraphQL, widgets). Saving or editing an index config still rebuilds it automatically; only element content-sync is paused.',
         ];
         $locales = ['en', 'de', 'fr', 'nl', 'es', 'ar', 'it', 'pt', 'ja', 'sv', 'da', 'no'];
         foreach ($locales as $locale) {
