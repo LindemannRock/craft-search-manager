@@ -10,10 +10,12 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\searchmanager\backends\AlgoliaBackend;
 use lindemannrock\searchmanager\backends\BaseBackend;
 use lindemannrock\searchmanager\backends\MeilisearchBackend;
 use lindemannrock\searchmanager\backends\TypesenseBackend;
+use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -81,6 +83,54 @@ final class AuditItems365366RegressionTest extends TestCase
         self::assertNull(TypesenseBackend::siteIdFilter(null, 'type:=doc)'));
         self::assertSame('siteId:=5', TypesenseBackend::siteIdFilter(5, 'type:=doc) || siteId:=1'));
         self::assertSame('siteId:=5', TypesenseBackend::siteIdFilter(5, '(type:=doc'));
+    }
+
+    public function testGraphqlMalformedFiltersAreRejectedBeforeBackendMerge(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        if ($pair === null) {
+            $this->markTestSkipped('No enabled entry index available.');
+        }
+
+        $index = $pair[0];
+        $stub = $this->installStubBackend();
+
+        $response = SearchResolver::resolveSearch(null, [
+            'query' => 'coffee',
+            'indexHandles' => [$index->handle],
+            'filters' => 'type:entry) OR siteId:1',
+        ], null, $this->createMock(ResolveInfo::class));
+
+        self::assertSame(0, $response['total']);
+        self::assertSame([], $response['hits']);
+        self::assertSame('The filters argument is not a valid filter expression.', $response['error']);
+        self::assertSame([], $stub->callsFor('search'));
+        self::assertSame([], $stub->callsFor('searchMultiple'));
+    }
+
+    public function testGraphqlValidFilterExpressionsStillReachBackend(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        if ($pair === null) {
+            $this->markTestSkipped('No enabled entry index available.');
+        }
+
+        $index = $pair[0];
+        $stub = $this->installStubBackend();
+        $stub->searchResponse = ['hits' => [], 'total' => 0];
+
+        $response = SearchResolver::resolveSearch(null, [
+            'query' => 'coffee',
+            'indexHandles' => [$index->handle],
+            'filters' => 'title:"ACME ) Demo"',
+        ], null, $this->createMock(ResolveInfo::class));
+
+        self::assertArrayNotHasKey('error', $response);
+        $calls = $stub->callsFor('search');
+        self::assertCount(1, $calls);
+        $options = $calls[0]['items'][0]['options'];
+        $filterOptions = array_intersect_key($options, array_flip(['filters', 'filter', 'filter_by']));
+        self::assertSame(['title:"ACME ) Demo"'], array_values($filterOptions));
     }
 
     public function testBackendSourcesUseSharedFilterEscapingAndMergeHelpers(): void

@@ -13,6 +13,7 @@ use craft\gql\base\Resolver;
 use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\base\helpers\GqlHelper;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
+use lindemannrock\searchmanager\helpers\SearchFilterExpressionHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
@@ -89,6 +90,17 @@ class SearchResolver extends Resolver
                 'resultsLimit' => $limit,
                 'totalPages' => 0,
                 'error' => Craft::t('search-manager', 'The filters argument requires a single index.'),
+            ];
+        }
+        if ($filters !== null && SearchFilterExpressionHelper::normalizeExpression($filters) === null) {
+            return [
+                'hits' => [],
+                'total' => 0,
+                'query' => $query,
+                'page' => $page,
+                'resultsLimit' => $limit,
+                'totalPages' => 0,
+                'error' => Craft::t('search-manager', 'The filters argument is not a valid filter expression.'),
             ];
         }
 

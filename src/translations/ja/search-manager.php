@@ -349,6 +349,7 @@ return [
     'Search rate limit exceeded. Try again in a moment.' => '検索レート制限を超えました。しばらくしてからもう一度お試しください。',
     'Search requires an API key.' => '検索には API キーが必要です。',
     'The active GraphQL schema is not allowed to query the requested site.' => 'アクティブな GraphQL スキーマでは、リクエストされたサイトをクエリできません。',
+    'The filters argument is not a valid filter expression.' => 'filters 引数は有効なフィルター式ではありません。',
     'The filters argument requires a single index.' => 'filters 引数には単一のインデックスが必要です。',
     'The requested site is outside the scope of index "{handle}".' => 'リクエストされたサイトはインデックス {handle} のスコープ外です。',
     'This API key cannot access this search.' => 'この API キーではこの検索にアクセスできません。',

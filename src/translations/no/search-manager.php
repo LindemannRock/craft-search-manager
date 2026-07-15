@@ -349,6 +349,7 @@ return [
     'Search rate limit exceeded. Try again in a moment.' => 'Hastighetsgrensen for søk er overskredet. Prøv igjen om et øyeblikk.',
     'Search requires an API key.' => 'Søk krever en API-nøkkel.',
     'The active GraphQL schema is not allowed to query the requested site.' => 'Det aktive GraphQL-skjemaet har ikke tillatelse til å spørre det forespurte nettstedet.',
+    'The filters argument is not a valid filter expression.' => 'Argumentet filters er ikke et gyldig filteruttrykk.',
     'The filters argument requires a single index.' => 'Argumentet filters krever én enkelt indeks.',
     'The requested site is outside the scope of index "{handle}".' => 'Det forespurte nettstedet er utenfor omfanget til indeks "{handle}".',
     'This API key cannot access this search.' => 'Denne API-nøkkelen har ikke tilgang til dette søket.',

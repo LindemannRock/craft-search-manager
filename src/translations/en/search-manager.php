@@ -349,6 +349,7 @@ return [
     'Search rate limit exceeded. Try again in a moment.' => 'Search rate limit exceeded. Try again in a moment.',
     'Search requires an API key.' => 'Search requires an API key.',
     'The active GraphQL schema is not allowed to query the requested site.' => 'The active GraphQL schema is not allowed to query the requested site.',
+    'The filters argument is not a valid filter expression.' => 'The filters argument is not a valid filter expression.',
     'The filters argument requires a single index.' => 'The filters argument requires a single index.',
     'The requested site is outside the scope of index "{handle}".' => 'The requested site is outside the scope of index "{handle}".',
     'This API key cannot access this search.' => 'This API key cannot access this search.',

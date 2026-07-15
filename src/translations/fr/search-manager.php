@@ -349,6 +349,7 @@ return [
     'Search rate limit exceeded. Try again in a moment.' => 'Limite de débit de recherche dépassée. Réessayez dans un instant.',
     'Search requires an API key.' => 'La recherche nécessite une clé API.',
     'The active GraphQL schema is not allowed to query the requested site.' => 'Le schéma GraphQL actif n\'est pas autorisé à interroger le site demandé.',
+    'The filters argument is not a valid filter expression.' => 'L\'argument filters n\'est pas une expression de filtre valide.',
     'The filters argument requires a single index.' => 'L\'argument filters nécessite un seul index.',
     'The requested site is outside the scope of index "{handle}".' => 'Le site demandé est hors du périmètre de l\'index "{handle}".',
     'This API key cannot access this search.' => 'Cette clé API ne peut pas accéder à cette recherche.',
