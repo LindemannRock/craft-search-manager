@@ -543,7 +543,7 @@ return [
     'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.' => 'BM25 (Best Matching 25) هو خوارزمية ترتيب قياسية في الصناعة تستخدمها Elasticsearch و Solr ومحركات البحث الأخرى. تتحكم هذه المعاملات في كيفية تسجيل نتائج البحث وترتيبها.',
     'Learn about BM25' => 'تعرف على BM25',
     'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.' => 'تضرب عوامل التعزيز درجة الصلة لأنواع المطابقة المحددة. القيم الأعلى ترفع تلك المطابقات في النتائج.',
-    'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".' => 'يتيح المطابقة الضبابية تحمّل الأخطاء المطبعية باستخدام تشابه n-gram. يمكن لعمليات بحث مثل "tst" إيجاد "test"، و"javascirpt" تجد "javascript".',
+    'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".' => 'تتيح المطابقة التقريبية تحمّل الأخطاء المطبعية باستخدام تشابه n-gram. يمكن لعمليات بحث مثل "tst" إيجاد "test"، و"javascirpt" تجد "javascript".',
     'It always expands each word with its closest indexed variants (ranked below exact matches), with full typo-recovery when a word matches nothing.' => 'يتم دائمًا توسيع كل كلمة بأقرب متغيراتها المفهرسة (بترتيب أدنى من المطابقات التامة)، مع استرداد كامل للأخطاء المطبعية عندما لا تطابق الكلمة أي نتيجة.',
 
     // Settings: Autocomplete
