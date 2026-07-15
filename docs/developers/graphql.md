@@ -101,6 +101,7 @@ Search arguments:
 | `filters` | `String` | Optional backend-specific filter expression. Requires exactly one `indexHandles` value. |
 | `retrievableFields` | `[String]` | Optional custom field handles to return under `fields`. This can narrow each index's `retrievableFields` setting but cannot widen it. Pass `["*", "-wysiwyg"]` to return all fields except `wysiwyg`, or an empty list to return no custom fields. |
 | `language` | `String` | Optional language code for localized operators. |
+| `lang` | `String` | Alias for `language`. |
 | `analyticsSource` | `String` | Analytics source. Defaults to `graphql`. |
 | `platform` | `String` | Optional analytics platform label. |
 | `appVersion` | `String` | Optional analytics app version label. |
@@ -109,11 +110,23 @@ Search arguments:
 | `snippetMaxLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
 | `snippetIncludeCodeBlocks` | `Boolean` | Allow snippets to use block-level code from page or section bodies. Inline code text is always preserved. |
 | `snippetCleanMarkdown` | `Boolean` | Clean Markdown markers from page and section snippet display text without changing indexed content. |
-| `highlightTag` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
-| `highlightClass` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
+| `highlightTag` / `highlightClass` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
+| `highlightResultsEnabled`, `highlightDestinationEnabled`, `highlightDestinationPersistQuery`, `highlightDestinationQueryParam`, `highlightDestinationContentSelector` | mixed | Also reserved for client renderers — accepted but not used server-side. |
 | `resultsRequireUrl` | `Boolean` | Exclude indexed results that do not have a URL. |
 
 Like the REST search endpoint, GraphQL search records analytics unless `skipAnalytics: true` is passed. This makes an executed search behave like a real frontend search while still letting typeahead or background callers opt out.
+
+> [!NOTE]
+> Query strings are capped at 256 characters — longer queries return an `error` instead of results. Up to 5 `indexHandles` are searched per query; extra handles beyond 5 are silently dropped.
+
+Beyond `total`, `page`, `resultsLimit`, `totalPages`, `hits`, and `indices`, the response also exposes:
+
+| Field | Notes |
+|-------|-------|
+| `error` | Validation failure message, set instead of results when the query exceeds 256 characters, when `filters` is used with more than one index, or when no indices are configured. |
+| `redirect` | Redirect URL when a [query rule](../feature-tour/query-rules.md) redirect matched the query — send the user there instead of rendering hits. |
+| `query` | Echo of the executed query string. |
+| `meta` | Backend/cache metadata for diagnostics. |
 
 GraphQL exposes retrievable custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data. AutoTransformer adds Craft custom fields to the internal source map only when the field's **Use this field's values as search keywords** setting is enabled, including rich-text and body-source fields that also feed snippets, headings, and Split Sections; the index's `retrievableFields` setting decides which of those values are returned publicly. Exclusions use the same `-attr` convention as Algolia's `attributesToRetrieve`, so `["*", "-wysiwyg"]` returns all fields except `wysiwyg`.
 
@@ -166,9 +179,11 @@ Common hit fields:
 | `matchedPhrases` | Exact phrases matched by phrase queries. Empty lists resolve as `[]`. |
 | `snippet` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body, or a leading fallback preview when the hit has eligible snippet text but no query-term context. |
 | `headings` | Non-null list of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. Split section hits return an empty list. |
+| `dateCreated` / `dateUpdated` | Indexed element creation/update times as Unix timestamps. |
+| `position` | Pinned position when the hit was injected by a [Promotion](../feature-tour/promotions.md); `null` for organic hits. |
 | `boosted` / `promoted` | Query-rule boost and promotion flags when present. |
 
-Scores are useful for debugEnabled displays and single-backend ordering, but they are not portable across backend types. Do not compare an Algolia result's position or missing score directly against a Meilisearch, Typesense, or built-in backend score.
+Scores are useful for debug displays and single-backend ordering, but they are not portable across backend types. Do not compare an Algolia result's position or missing score directly against a Meilisearch, Typesense, or built-in backend score.
 
 Asset documents add `assetKind` and `extension` to searchable content at indexing time, so a query such as `pricing pdf` can match PDF assets. Filename is not added a second time because Craft assets normally use the filename as the asset title, and Search Manager already indexes titles.
 
@@ -454,6 +469,7 @@ Autocomplete arguments:
 | `only` | `String` | Use `suggestions` or `results` to limit the response. |
 | `type` | `String` | Optional element type filter for result suggestions. |
 | `language` | `String` | Optional language code. |
+| `lang` | `String` | Alias for `language`. |
 
 Autocomplete does not record search analytics.
 When multiple indices return the same element suggestion, Search Manager keeps the first result per `siteId`, element `id`, and `type`.

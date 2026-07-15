@@ -17,7 +17,7 @@ The most basic search — query an index and display results:
     {% for hit in results.hits %}
         <article>
             <h3><a href="{{ hit.url }}">{{ hit.title }}</a></h3>
-            <p>{{ hit.excerpt ?? '' }}</p>
+            <p>{{ hit.snippet ?? '' }}</p>
             {% if hit.score is defined and hit.score is not null %}
                 <small>Score: {{ hit.score|number_format(2) }}</small>
             {% endif %}
@@ -65,8 +65,8 @@ A complete search results template:
             {% for hit in results.hits %}
                 <article>
                     <h3><a href="{{ hit.url }}">{{ hit.title }}</a></h3>
-                    {% if hit.excerpt is defined %}
-                        <p>{{ hit.excerpt }}</p>
+                    {% if hit.snippet %}
+                        <p>{{ hit.snippet }}</p>
                     {% endif %}
                 </article>
             {% endfor %}

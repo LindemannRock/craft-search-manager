@@ -109,7 +109,7 @@ ddev craft search-manager/index/clear --handle=entries-en
 
 ### `search-manager/maintenance/status`
 
-Show the current state of all backend storage types (database, Redis, and file). Displays document counts, key counts, and file counts for each storage type.
+Show the current state of all backend storage types (database, Redis, and file). Displays document counts, key counts, and file counts for each storage type. When external backends (Algolia, Meilisearch, Typesense) are configured, an External Backends section also shows connection status, capabilities, and index lists.
 
 ```bash title="PHP"
 php craft search-manager/maintenance/status

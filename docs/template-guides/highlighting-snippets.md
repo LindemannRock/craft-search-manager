@@ -334,7 +334,9 @@ Parse a search query into an array of highlight-ready terms. Handles quoted phra
 
 ```javascript
 SearchManagerHighlighter.parseQuery('"craft cms" OR templates NOT draft');
-// → ['craft cms', 'templates']
+// → ['craft cms', 'templates', 'draft']
+// Operator keywords (OR, NOT) are removed, but the highlighter has no negation
+// semantics — the term after NOT is still returned and would still be highlighted.
 
 SearchManagerHighlighter.parseQuery('title:blog test^2 search*');
 // → ['blog', 'test', 'search']
@@ -363,7 +365,7 @@ The JavaScript highlighter includes several smart features:
 
 - **CamelCase splitting**: Searching "date" will highlight the "Date" part in "DateRangeHelper"
 - **Longest-first matching**: Prevents nested/overlapping tags when longer and shorter terms overlap
-- **Range merging**: Adjacent or overlapping matches are merged into a single highlighted span
+- **Overlap resolution**: When candidate matches overlap, the earliest match wins (the longest on ties) and the overlapping candidate is dropped — each match gets its own highlight tag
 - **HTML escaping**: All text is escaped before inserting highlight tags, preventing XSS
 
 ### Example: Custom Search UI
@@ -379,20 +381,15 @@ document.getElementById('search-input').addEventListener('input', async function
     const query = this.value.trim();
     if (query.length < 2) return;
 
-    const response = await fetch('/actions/search-manager/api/search', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': '{{ craft.app.request.csrfToken }}',
-        },
-        body: JSON.stringify({ query, indexHandle: 'entries-en' }),
-    });
+    const response = await fetch(
+        `/actions/search-manager/api/search?q=${encodeURIComponent(query)}&indexHandles=entries-en`
+    );
     const data = await response.json();
 
     document.getElementById('results').innerHTML = data.hits.map(hit =>
         `<div class="result">
             <h3>${SearchManagerHighlighter.highlight(hit.title, query)}</h3>
-            <p>${SearchManagerHighlighter.highlight(hit.excerpt || '', query)}</p>
+            <p>${SearchManagerHighlighter.highlight(hit.snippet || '', query)}</p>
         </div>`
     ).join('');
 });

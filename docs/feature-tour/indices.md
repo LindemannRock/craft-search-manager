@@ -131,6 +131,7 @@ Config-defined indices show a "Config" badge and cannot be edited in the CP. Dat
 | `language` | `string` | `null` | Language code (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`). `null` = auto-detect from site locale |
 | `headingLevels` | `array` | `null` | Heading levels to extract for heading matching (e.g., `[2, 3, 4]`) |
 | `splitSections` | `bool` | `false` | For SourceDoc/DocsManagerTransformer-family or AutoTransformer-family indices, index intro and heading sections as separate hits when headings are present |
+| `retrievableFields` | `array` | `['*']` | Which custom-field values public hits return. `['*']` = all, `[]` = none, or list handles — see [Retrievable Fields](#retrievable-fields) |
 | `disableStopWords` | `bool` | `false` | Disable stop word filtering for this index |
 | `skipEntriesWithoutUrl` | `bool` | `false` | Skip entries that don't have a URL |
 | `enableAnalytics` | `bool` | `true` | Whether to track analytics for searches on this index |

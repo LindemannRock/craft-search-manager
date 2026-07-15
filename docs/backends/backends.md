@@ -40,13 +40,13 @@ The built-in backends (MySQL, PostgreSQL, Redis, File) all share the same featur
 - Fuzzy matching with n-gram similarity
 - Stop words filtering in 12 languages
 - Localized boolean operators in 12 languages
-- Native search replacement (CP search, `Entry::find()->search()`)
+- Native search replacement (front-end `Entry::find()->search()` template queries only — Control Panel search always uses Craft's native search)
 
 The external backends (Algolia, Meilisearch, Typesense) use their own ranking and search capabilities, plus:
 
-- `browse()` — iterate through all documents in an index
-- `multipleQueries()` — batch search across multiple indices in a single request
-- `parseFilters()` — generate backend-specific filter syntax automatically
+- `browse()` — iterate through all documents in an index (external backends only; built-in backends return an empty result)
+- `multipleQueries()` — batch search across multiple indices in a single native request (built-in backends fall back to sequential per-index searches)
+- `parseFilters()` — generate backend-specific filter syntax (built-in backends use a generic SQL-like syntax)
 - Native search replacement is **not available** for external backends
 
 ### Result Scores
@@ -102,7 +102,7 @@ Set your default backend via `defaultBackendHandle`:
 ],
 ```
 
-If the default backend is deleted or disabled, another enabled backend is automatically assigned.
+If the default backend is deleted, another enabled backend is automatically assigned. The Control Panel prevents disabling the default backend — assign a different default first. Disabling a config-defined default directly in `config/search-manager.php` bypasses that check and leaves the plugin without an active backend, so switch `defaultBackendHandle` first.
 
 ## Multiple Backends
 

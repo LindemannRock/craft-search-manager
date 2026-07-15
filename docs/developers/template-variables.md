@@ -84,9 +84,9 @@ Get autocomplete suggestions for a partial query.
 |-----------|------|---------|-------------|
 | `query` | `string` | — | Partial search query |
 | `indexHandle` | `string` | `'all-sites'` | Index to search |
-| `options` | `array` | `[]` | Options: `limit`, `minLength`, `fuzzy`, `language` |
+| `options` | `array` | `[]` | Options: `limit`, `minLength`, `fuzzy`, `language`, `includeMeta` |
 
-**Returns:** `array` of suggestion strings.
+**Returns:** `array` of suggestion strings. With `includeMeta: true`, returns `{ suggestions: [...], meta: { cached, cacheEnabled, cacheDriver } }` instead.
 
 ## Highlighting
 
@@ -98,6 +98,7 @@ Register the standalone `SearchManagerHighlighter` JavaScript utility. After cal
 - `escapeHtml(text)` — escape HTML special characters
 - `escapeRegex(string)` — escape regex special characters
 - `create(options)` — create a reusable highlighter function with preset options
+- `parseQuery(query)` — parse a query string into highlight-ready terms (returns a string array)
 
 ```twig
 {% do craft.searchManager.registerHighlighter() %}
@@ -280,3 +281,5 @@ Get the plugin instance.
 ```twig
 {% set plugin = craft.searchManager.getPlugin() %}
 ```
+
+One additional public method, `getFileBackendStoragePathDisplay()`, exists for the plugin's own Control Panel forms (it renders the resolved File-backend storage path). It is CP-internal plumbing, not intended for site templates.

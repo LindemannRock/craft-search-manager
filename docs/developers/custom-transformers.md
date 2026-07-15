@@ -62,7 +62,7 @@ The extension path controls how much Search Manager does for you:
 - **`TransformerInterface` directly** is an advanced/minimal path. It passes validation when the class is autoloadable and zero-argument constructible, but it does not receive BaseTransformer helpers, stable document-kind defaults, prose-only body handling, or heading-level behavior unless you implement those pieces yourself.
 - **`CommerceTransformer`** is built-in Commerce integration code. Product and Variant indices use it automatically when the transformer is blank. If you need a different Commerce document shape, prefer `BaseTransformer`, `AutoTransformer`, or `EVENT_AFTER_TRANSFORM`; extend `CommerceTransformer` only when you intentionally want to post-process its internal Commerce metadata output.
 
-Split Sections follows the same transformer-family boundary. An index can split rich-text sections when its resolved transformer is `AutoTransformer` or a subclass, including project-level subclasses such as `modules\search\transformers\ProductTransformer`. The section slicer uses the automatic searchable rich-text field sources, keeps non-section prose on the intro record, and keeps fields from crossing into each other. Transformers that extend `BaseTransformer` directly keep full control over their document shape, but they do not opt into automatic rich-text section slicing.
+Split Sections follows the same transformer-family boundary. An index can split rich-text sections when its resolved transformer is `AutoTransformer` or a subclass, including project-level subclasses such as `modules\search\transformers\ProductTransformer`. The section slicer uses the automatic searchable rich-text field sources, keeps non-section prose on the intro record, and keeps fields from crossing into each other. The built-in `DocsManagerTransformer` (for SourceDoc indices) is the one explicitly supported exception — it extends `BaseTransformer` directly and has its own split-section path. Any other transformer that extends `BaseTransformer` directly keeps full control over its document shape but does not opt into automatic rich-text section slicing.
 
 ## Creating a Transformer
 
@@ -193,8 +193,11 @@ Returns a base array with standard element fields:
     'backendId' => '123_1',
     'type' => 'entry',
     'title' => 'My Entry',
+    'slug' => 'my-entry',
     'url' => 'https://example.com/my-entry',
     'siteId' => 1,
+    'site' => 'default',
+    'language' => 'en-US',
     'dateCreated' => 1706112000,  // Unix timestamp
     'dateUpdated' => 1706112000,
 ]

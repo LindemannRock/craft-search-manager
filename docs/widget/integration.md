@@ -272,6 +272,8 @@ Control how snippets are extracted from eligible fields, page bodies, and split 
 
 | Mode | Description |
 |------|-------------|
-| `early` | First match — shows the first occurrence of the search term |
-| `balanced` | Best match — shows the most relevant occurrence |
-| `deep` | All matches — shows all occurrences |
+| `early` | Minimal leading context — the matched term appears near the start of the snippet |
+| `balanced` | Moderate leading context before the matched term (default) |
+| `deep` | More leading context — the matched term appears deeper in the snippet |
+
+Each mode returns one snippet per hit; the mode only controls how much text is shown before the matched position.

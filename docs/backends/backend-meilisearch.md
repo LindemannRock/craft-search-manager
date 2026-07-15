@@ -60,15 +60,19 @@ MEILISEARCH_SEARCH_API_KEY=your-search-key
 
 ## Key Behaviors
 
-- **Schemaless** — Meilisearch indexes all fields in your transformer output automatically. No schema definition needed.
-- **Searches all fields** by default
+- **Schemaless storage** — Meilisearch stores all fields in your transformer output automatically. No schema definition needed.
+- **Managed searchable attributes** — Search Manager pins the index's searchable attributes to `title`, `content`, `_bodyClean`, `url` (in that order) and resets them automatically if they drift, so queries match the same fields as every other backend. Changing searchable attributes in the Meilisearch dashboard is reverted on the next indexing or search call.
 - **Index clearing** uses `deleteAllDocuments()` to clear an index
+
+## Autocomplete
+
+Meilisearch supports autocomplete natively: Search Manager runs a small prefix search against the index and extracts unique result titles as suggestions. This differs from the built-in backends, which suggest indexed terms from their own term index.
 
 ## Result Scores
 
 Search Manager requests Meilisearch ranking scores and maps `_rankingScore` to the public `score` field when Meilisearch returns it. That value reflects Meilisearch's ranking rules, not Search Manager's BM25 algorithm.
 
-Tune relevance in Meilisearch with ranking rules, searchable attribute order, typo tolerance, synonyms, and custom ranking rules. Do not compare Meilisearch scores directly with built-in backend, Algolia, or Typesense scores.
+Tune relevance in Meilisearch with ranking rules, typo tolerance, synonyms, and custom ranking rules. Searchable attribute order is the exception — Search Manager manages it (see Key Behaviors above). Do not compare Meilisearch scores directly with built-in backend, Algolia, or Typesense scores.
 
 ## Limitations
 

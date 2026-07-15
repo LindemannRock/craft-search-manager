@@ -22,7 +22,7 @@ Clear ALL search index data from a specific storage type. The dropdown shows thr
 
 | Storage Type | What It Clears |
 |---|---|
-| **Database** (MySQL/PostgreSQL) | All rows from search tables (`search_documents`, `search_terms`, `search_titles`, `search_ngrams`, etc.) |
+| **Database** (MySQL/PostgreSQL) | All rows from Search Manager index tables (`searchmanager_search_documents`, `searchmanager_search_terms`, `searchmanager_search_titles`, `searchmanager_search_ngrams`, etc.) |
 | **Redis** | All Search Manager keys (`sm:idx:*`) from the configured Redis database |
 | **File** | All index files from the default runtime path and configured File backend storage paths |
 
@@ -71,7 +71,7 @@ See [Caching](caching.md) for configuration details.
 
 ## Analytics Data Management
 
-Permanently deletes all search analytics tracking data (queries, clicks, performance metrics). This cannot be undone.
+Permanently deletes all search analytics tracking data (queries, performance metrics). This cannot be undone.
 
 Use this when:
 - Resetting analytics after testing

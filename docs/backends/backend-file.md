@@ -16,7 +16,7 @@ The File backend stores search data as files in Craft's storage directory. It's 
 - Fuzzy matching with n-gram similarity
 - Stop words filtering in 12 languages
 - Localized boolean operators in 12 languages
-- Native search replacement (CP search + `Entry::find()->search()`)
+- Native search replacement (front-end `Entry::find()->search()` template queries only — Control Panel search always uses Craft's native search)
 - No external dependencies whatsoever
 
 ## Storage Location
@@ -27,12 +27,14 @@ Index data is stored in:
 storage/runtime/search-manager/indices/
 ```
 
-Search and autocomplete caches are stored in:
+Search and autocomplete result caches are stored in:
 
 ```text
 storage/runtime/search-manager/cache/search/
 storage/runtime/search-manager/cache/autocomplete/
 ```
+
+These cache folders belong to Search Manager's general result-cache layer (used whenever the `cacheStorageMethod` setting is `file`, the default) — they exist regardless of which search backend you choose, not just with the File backend.
 
 These directories are created automatically and can be safely deleted — they'll be recreated on the next index rebuild.
 

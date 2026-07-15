@@ -12,7 +12,7 @@ For example: when someone searches for "laptop", also include results for "noteb
 
 ## Creating Query Rules
 
-Go to Search Manager > Query Rules and click "New Query Rule". You can also manage rules through the REST API.
+Go to Search Manager > Query Rules and click "New Query Rule". Rules can also be managed programmatically via the PHP service API (see [API Reference](../developers/api-reference.md)).
 
 ## Action Types
 
@@ -53,7 +53,7 @@ Multiplier: 2.0
 
 News articles rank 2x higher when the query contains "election".
 
-Section boosts use the `sectionHandle` stored on each indexed hit. If an older document does not have that metadata, the section boost is skipped for that hit and Search Manager logs a warning.
+Section boosts use the `entrySectionHandle` stored on each indexed hit. If an older document does not have that metadata, the section boost is skipped for that hit and Search Manager logs a warning.
 
 ### Boost Category
 
@@ -158,7 +158,7 @@ Each rule can be scoped to:
 
 Boost execution depends on metadata already stored in search documents:
 
-- Rebuild affected entry indices so section boosts can read `sectionHandle` from existing documents.
+- Rebuild affected entry indices so section boosts can read `entrySectionHandle` from existing documents.
 - Rebuild indices that should participate in related-category boosts so documents include `_categoryIds`.
 - Rebuild after changing category relations if those changes are not captured by normal element sync.
 - Redirect rules do not require reindexing because they resolve their URL target directly from Craft.
@@ -187,7 +187,7 @@ When rules are applied, they appear in the search response metadata:
                 "id": 5,
                 "name": "Laptop synonyms",
                 "actionType": "synonym",
-                "actionValue": ["notebook", "computer"]
+                "actionValue": {"terms": ["notebook", "computer"]}
             }
         ]
     }
@@ -195,8 +195,8 @@ When rules are applied, they appear in the search response metadata:
 ```
 
 The `actionValue` format varies by action type:
-- **synonym**: `["notebook", "computer", "laptop"]`
+- **synonym**: `{"terms": ["notebook", "computer", "laptop"]}`
 - **boost_section**: `{"sectionHandle": "products", "multiplier": 2.0}`
 - **boost_category**: `{"categoryId": 5, "multiplier": 1.5}`
 - **boost_element**: `{"elementId": 123, "elementType": "craft\\elements\\Entry", "multiplier": 2.0}`
-- **redirect**: `"/sale-page"`
+- **redirect**: `{"url": "/sale-page"}` for custom URLs, or `{"elementId": 123, "elementType": "craft\\elements\\Entry"}` for element-based redirects

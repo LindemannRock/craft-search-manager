@@ -24,6 +24,14 @@ Search Manager registers granular permissions that can be assigned to user group
 | └─ `searchManager:rebuildIndices` | Rebuild indices |
 | └─ `searchManager:clearIndices` | Clear index data |
 
+### Pending Syncs
+
+| Permission | Description |
+|------------|-------------|
+| **`searchManager:managePendingSyncs`** | Access the [Pending Syncs](../feature-tour/pending-syncs.md) section (view and access) |
+| └─ `searchManager:retryPendingSyncs` | Retry failed or abandoned pending syncs |
+| └─ `searchManager:purgePendingSyncs` | Delete pending sync rows and purge abandoned entries |
+
 ### Promotions
 
 | Permission | Description |

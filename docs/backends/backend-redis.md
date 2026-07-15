@@ -21,7 +21,7 @@ The Redis backend stores search data in-memory for fast access. It's ideal for m
 - Fuzzy matching with n-gram similarity
 - Stop words filtering in 12 languages
 - Localized boolean operators in 12 languages
-- Native search replacement (CP search + `Entry::find()->search()`)
+- Native search replacement (front-end `Entry::find()->search()` template queries only — Control Panel search always uses Craft's native search)
 - In-memory speed with optional persistence
 
 ## Configuration
@@ -77,9 +77,7 @@ When you explicitly set the `database` value, that exact number is used — no a
 
 ## Database Isolation
 
-The automatic database offset (+1) only applies when:
-- Using Craft's Redis cache fallback (no explicit `host` configured), AND
-- No explicit `database` value is set
+The automatic database offset (+1) applies whenever no explicit `database` value is set and Craft's cache is Redis-backed — both when reusing Craft's Redis connection and when a dedicated `host` is configured. Setting an explicit `database` always disables the offset.
 
 If your hosting platform uses `FLUSHALL` instead of `FLUSHDB` when clearing cache, the automatic isolation won't help — consider setting an explicit database number or using a different backend.
 

@@ -44,6 +44,7 @@ $plugin->promotions;       // Search promotions
 $plugin->queryRules;       // Query rules management
 $plugin->deviceDetection;  // Device detection for analytics
 $plugin->transformers;     // Document transformer management
+$plugin->indexedSnippets;  // Snippets and headings from indexed hit data
 ```
 
 See [API Reference](api-reference.md) for full method documentation.

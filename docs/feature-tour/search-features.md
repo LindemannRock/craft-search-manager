@@ -172,8 +172,8 @@ Boolean operators work in all 12 supported languages:
 | Spanish | Y | O | NO |
 | Arabic | و | أو / او | ليس / لا |
 | Italian | E | O | NON |
-| Portuguese | E | OU | NÃO |
-| Japanese | かつ | または | でない / ではない |
+| Portuguese | E | OU | NÃO / NAO |
+| Japanese | かつ | または / もしくは | でない / ではない |
 | Swedish | OCH | ELLER | INTE |
 | Danish | OG | ELLER | IKKE |
 | Norwegian | OG | ELLER | IKKE / IKKJE |

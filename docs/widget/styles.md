@@ -27,7 +27,7 @@ Go to **Search Manager > Widgets > Styles** and click "New Style". The editor is
 - **Input** — search header (container background, border, padding) and search input (font size, colors, borders, padding)
 - **Results** — gap, border radius, padding, resting/active/selected colors
 - **Controls** — trigger button styling (border radius, padding, font size, colors, hover states), keyboard badge styling (border radius, colors)
-- **Highlights** — highlighting background and text colors for light and dark modes
+- **Result Highlighting** — highlighting background and text colors for light and dark modes
 
 ### Via Config File
 

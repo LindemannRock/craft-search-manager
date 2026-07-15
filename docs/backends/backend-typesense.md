@@ -64,13 +64,14 @@ Unlike Algolia and Meilisearch which are schemaless, Typesense requires explicit
 
 ### Search Fields (`query_by`)
 
-Typesense requires a `query_by` parameter specifying which fields to search. By default, Search Manager searches: `title`, `content`, `url`.
+Typesense requires a `query_by` parameter specifying which fields to search. By default, Search Manager searches `title`, `content`, `_bodyClean`, `url` with weights `5, 3, 1, 1` — titles rank highest, body text lowest.
 
-If your custom transformer adds additional fields you want to be searchable, pass them in search options:
+If your custom transformer adds additional fields you want to be searchable, pass them in search options. An explicit `query_by` replaces the default entirely, so include the default fields (and supply `query_by_weights` if you still want weighting):
 
 ```twig
 {% set results = craft.searchManager.search('products', 'laptop', {
-    query_by: 'title,content,url,description,category'
+    query_by: 'title,content,_bodyClean,url,description,category',
+    query_by_weights: '5,3,1,1,2,2'
 }) %}
 ```
 
@@ -79,6 +80,10 @@ If your custom transformer adds additional fields you want to be searchable, pas
 - Collections are auto-created with a flexible schema on first index
 - Index clearing works by deleting and recreating the collection
 - Multi-site uses composite document IDs (`{elementId}_{siteId}`)
+
+## Autocomplete
+
+Typesense supports autocomplete natively: Search Manager runs a small prefix search and extracts unique result titles as suggestions. Autocomplete queries search `title` and `content` only (not the full main-search field set).
 
 ## Result Scores
 
@@ -90,4 +95,4 @@ Tune relevance in Typesense with `query_by`, `query_by_weights`, `sort_by`, `_te
 
 - Requires hosting a Typesense server
 - Native search replacement is not available
-- Must specify `query_by` for custom fields beyond title/content/url
+- Must specify `query_by` for custom fields beyond the default `title,content,_bodyClean,url` set

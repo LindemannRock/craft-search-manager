@@ -8,15 +8,15 @@ Complete [Installation & Setup](installation.md#post-install-setup) first. The s
 
 ## 1. Choose a backend
 
-Go to **Search Manager > Settings > Search Backend** and select a backend. For a quick local setup, **MySQL** or **PostgreSQL** works out of the box — no external services needed.
+Go to **Search Manager > Backends**, click **New Backend**, and create one. For a quick local setup, **MySQL** or **PostgreSQL** works out of the box — no external services needed. The first backend you create becomes the default; you can change the default later under **Settings > General**.
 
 ## 2. Create an index
 
 1. Go to **Search Manager > Indices**
 2. Click **New Index**
 3. Give it a name (e.g. "Main") — the handle is auto-generated from the name (e.g. `main`)
-4. Select the sections and entry types you want to index
-5. Click **Save**, then click **Rebuild** to index existing content
+4. Select the sections you want to index
+5. Click **Save** — the first full rebuild is queued automatically, so existing content starts indexing right away
 
 ## 3. Search from a template
 
@@ -30,7 +30,7 @@ Add a basic search form to any Twig template:
 {% endfor %}
 ```
 
-Replace `'main'` with the handle of the index you created in step 3. Load a page with this template — you should see matching entries from your index.
+Replace `'main'` with the handle of the index you created in step 2. Load a page with this template — you should see matching entries from your index.
 
 ## What's next
 

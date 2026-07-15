@@ -57,7 +57,7 @@ The Analytics dashboard is organized into tabs:
 ### Overview
 
 Summary statistics and trends:
-- Total searches, unique queries, average hits
+- Total searches, hits vs. zero-hit split, and success rate
 - Search trends over time
 - Intent and source breakdown charts
 - Top queries
@@ -66,7 +66,7 @@ Summary statistics and trends:
 ### Recent Searches
 
 Detailed log of individual searches with columns for:
-- Query, hits, execution time
+- Date, query, site, hits
 - Synonyms expanded, rules matched, promotions shown
 - Source, device, location
 - Filterable and exportable
@@ -149,7 +149,7 @@ You can also pass a custom source for mobile apps or integrations:
 Or via the REST API:
 
 ```text
-GET /actions/search-manager/api/search?q=shoes&source=ios-app&platform=iOS%2017.2&appVersion=2.1.0
+GET /actions/search-manager/api/search?q=shoes&analyticsSource=ios-app&platform=iOS%2017.2&appVersion=2.1.0
 ```
 
 ## API Key Attribution
@@ -168,7 +168,7 @@ The **API Key Usage** table on the Overview tab groups keyed searches by key, wi
 
 ## Export
 
-Analytics can be exported as CSV, JSON, or Excel from the Recent Searches tab. Exports include all columns with clean headers (Hits, Synonyms, Rules, Promotions, Redirected, and — when keyed traffic exists — API Key and API Key Type).
+Analytics can be exported as CSV, JSON, or Excel from the Export button in the page toolbar — one export bundles every section (Recent Searches, Trending, Query Rules, Promotions, Performance, Traffic & Devices, Geographic, and Content Gaps). Exports include all columns with clean headers (Hits, Synonyms, Rules, Promotions, Redirected, and — when keyed traffic exists — API Key and API Key Type).
 
 ## Retention
 

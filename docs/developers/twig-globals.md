@@ -13,6 +13,7 @@ Search Manager provides the following global variables in your Twig templates.
 | `searchHelper.fullName` | Full plugin name (as configured) |
 | `searchHelper.lowerDisplayName` | Lowercase display name (singular) |
 | `searchHelper.pluralLowerDisplayName` | Lowercase plural display name |
+| `searchHelper.cacheBasePath` | Base runtime cache path for the plugin (also `searchHelper.getCachePath(type)` for a per-type subfolder path) |
 
 ### Examples
 

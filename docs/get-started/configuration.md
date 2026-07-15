@@ -27,7 +27,7 @@ return [
     ],
 
     'dev' => [
-        'logLevel' => 'debugEnabled',
+        'logLevel' => 'debug',
         'indexPrefix' => 'local_',
     ],
 
@@ -53,7 +53,8 @@ Settings are grouped by area. All settings can be set in the config file or mana
 | `pluginName` | `string` | `'Search Manager'` | Custom display name in the CP sidebar |
 | `defaultBackendHandle` | `?string` | `null` | Handle of the default backend (must match a key in `backends`) |
 | `defaultWidgetHandle` | `?string` | `null` | Handle of the default widget configuration |
-| `logLevel` | `string` | `'error'` | Log level: `debugEnabled`, `info`, `warning`, `error` |
+| `requireApiKey` | `bool` | `false` | Require an API key on the public search/autocomplete endpoints (CP: Settings → General → API Access) — see [API Keys](../feature-tour/api-keys.md) |
+| `logLevel` | `string` | `'error'` | Log level: `debug`, `info`, `warning`, `error` |
 
 ### Interface
 **CP:** Settings → Interface
@@ -136,7 +137,7 @@ These settings apply to `craft.searchManager.snippets()` and `craft.searchManage
 See [Highlighting](../feature-tour/highlighting.md) and the [Highlighting & Snippets](../template-guides/highlighting-snippets.md) template guide.
 
 ### Autocomplete
-**CP:** Settings → Highlighting & Autocomplete
+**CP:** Settings → Highlighting
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -289,10 +290,10 @@ Widget configurations define how the frontend search widget appears and behaves:
                 'placeholder' => 'Search...',
             ],
             'behavior' => [
-                'debounce' => 200,
-                'minChars' => 2,
+                'searchDebounceMs' => 200,
+                'searchMinChars' => 2,
                 'resultsLimit' => 10,
-                'hotkey' => 'k',
+                'triggerHotkey' => 'k',
                 'resultsLayout' => 'default',      // 'default' or 'hierarchical'
                 'hierarchyGroupBy' => '',          // Empty = source -> entrySection -> type
                 'hierarchyStyle' => 'tree',        // 'tree', 'flat', or 'none'
@@ -303,7 +304,7 @@ Widget configurations define how the frontend search widget appears and behaves:
                 'snippetCleanMarkdown' => false,  // Clean Markdown markers from snippet display text
             ],
             'analytics' => [
-                'source' => 'header-search',
+                'analyticsSource' => 'header-search',
                 'analyticsIdleTimeoutMs' => 1500,
             ],
         ],
@@ -461,11 +462,11 @@ return [
                     ],
                     'behavior' => [
                         'resultsLimit' => 10,
-                        'hotkey' => 'k',
+                        'triggerHotkey' => 'k',
                         'resultsGroupingEnabled' => true,
                     ],
                     'analytics' => [
-                        'source' => 'header-search',
+                        'analyticsSource' => 'header-search',
                     ],
                 ],
             ],
@@ -491,7 +492,7 @@ return [
     ],
 
     'dev' => [
-        'logLevel' => 'debugEnabled',
+        'logLevel' => 'debug',
         'defaultCountry' => App::env('SEARCH_MANAGER_DEFAULT_COUNTRY'),
         'defaultCity' => App::env('SEARCH_MANAGER_DEFAULT_CITY'),
     ],
@@ -536,7 +537,7 @@ MEILISEARCH_SEARCH_API_KEY=your-search-key
 REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_PASSWORD=
-REDIS_SEARCH_DATABASE=1
+REDIS_SEARCH_DATABASE=1   # reference from config as 'database' => '$REDIS_SEARCH_DATABASE'
 
 # Typesense
 TYPESENSE_API_KEY=your-api-key

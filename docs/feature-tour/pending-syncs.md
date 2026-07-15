@@ -137,4 +137,4 @@ Fix the upstream cause first. Bulk-retry the abandoned rows. If they keep failin
 - [Indexing settings](../get-started/configuration.md#indexing) — `batchFlushInterval`, `batchMaxAttempts`, `syncBatchSize`, `pendingMaxAge`.
 - [Troubleshooting → Pending Syncs Are Not Draining](../resources/troubleshooting.md#pending-syncs-are-not-draining).
 - [Troubleshooting → `autoIndex` Is Off but Rows Still Appear](../resources/troubleshooting.md#autoindex-is-off-but-rows-still-appear).
-- [Changelog](https://github.com/LindemannRock/craft-search-manager/blob/main/CHANGELOG.md) — buffer + Pending Syncs view shipped in 5.45.0.
+- [Changelog](https://github.com/LindemannRock/craft-search-manager/blob/main/CHANGELOG.md) — buffer + Pending Syncs view shipped in 5.46.0.

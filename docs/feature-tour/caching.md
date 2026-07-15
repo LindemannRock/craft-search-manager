@@ -34,7 +34,7 @@ Caches parsed user-agent strings to avoid re-parsing:
 'deviceDetectionCacheDuration' => 3600,  // 1 hour
 ```
 
-Device cache is always stored as files at `@storage/runtime/search-manager/cache/device/`.
+Device cache follows the same `cacheStorageMethod` setting as the search and autocomplete caches — files at `@storage/runtime/search-manager/cache/device/` by default, or Redis when `cacheStorageMethod` is `redis`.
 
 ## Storage Options
 
@@ -64,7 +64,7 @@ If Redis cache storage is selected but Craft's `cache` component is not Redis-ba
 Search Manager caches each unique search result until its TTL expires or the cache is cleared. On busy sites, storage limits are best handled by the cache layer rather than delaying cache writes inside Search Manager.
 
 > [!NOTE]
-> For Redis-backed cache storage, set a Redis `maxmemory` limit with an `allkeys-lfu` or `allkeys-lru` eviction policy so frequently-used entries stay hot while long-tail queries are evicted under memory pressure. File and database cache storage are bounded by `cacheDuration` TTL and normal cache clearing.
+> For Redis-backed cache storage, set a Redis `maxmemory` limit with an `allkeys-lfu` or `allkeys-lru` eviction policy so frequently-used entries stay hot while long-tail queries are evicted under memory pressure. File cache storage is bounded by `cacheDuration` TTL and normal cache clearing.
 
 ## Cache Invalidation
 
@@ -100,7 +100,7 @@ Valid types: `database`, `redis`, `file`.
 
 ### Craft Integration
 
-Search Manager registers its caches in Craft's Clear Caches utility. Clearing from there is safe — caches auto-regenerate on the next search.
+Search Manager registers a cache option in Craft's Clear Caches utility. That entry clears the **search-results cache only** — to also clear the autocomplete and device-detection caches, use Search Manager > Settings > Cache (saving that page clears all three) or the CLI `clear-storage` command. Clearing is always safe — caches auto-regenerate on the next search.
 
 ## Cache Warming
 
@@ -108,7 +108,7 @@ After an index rebuild, popular queries can be pre-cached automatically:
 
 ```php
 'enableCacheWarming' => true,
-'cacheWarmingQueryCount' => 50,  // Number of queries to warm (10–200)
+'cacheWarmingQueryCount' => 50,  // Number of queries to warm (validated 1–200; the CP dropdown offers 10–200)
 ```
 
 Cache warming:

@@ -139,12 +139,14 @@ This query:
 {% set results = craft.searchManager.search('blog', query ~ ' NOT archived NOT draft') %}
 ```
 
-### Product Search with Category Focus
+### Product Search Restricted to Titles
 
 ```twig
-{# Boost "title" matches for product search #}
+{# Only match products whose TITLE contains the query — body-only matches are excluded #}
 {% set results = craft.searchManager.search('products', 'title:' ~ query) %}
 ```
+
+`title:` is a hard filter, not a boost — results that match only in body content are dropped entirely. Title matches are already boosted automatically in relevance ranking (the `titleBoostFactor` setting), so you don't need `title:` to make titles rank higher.
 
 ### Multi-Language Search Form
 

@@ -12,8 +12,8 @@ Search across multiple indices at once and get one merged result set.
 {% for hit in results.hits %}
     {% set element = craft.entries.id(hit.elementId).one() %}
     {% if element %}
-        <article class="result result--{{ hit._index }}">
-            <span class="source">{{ hit._index }}</span>
+        <article class="result result--{{ hit.index }}">
+            <span class="source">{{ hit.index }}</span>
             <h3><a href="{{ element.url }}">{{ element.title }}</a></h3>
         </article>
     {% endif %}
@@ -25,8 +25,8 @@ Search across multiple indices at once and get one merged result set.
 ```php
 [
     'hits' => [
-        ['elementId' => 123, 'backendId' => '123_1', 'score' => 45.2, '_index' => 'products'],
-        ['elementId' => 456, 'backendId' => '456_1', 'score' => 38.1, '_index' => 'blog'],
+        ['elementId' => 123, 'backendId' => '123_1', 'score' => 45.2, 'index' => 'products'],
+        ['elementId' => 456, 'backendId' => '456_1', 'score' => 38.1, 'index' => 'blog'],
         // Merged using each backend's relevance signal when available
     ],
     'total' => 150,
@@ -38,7 +38,7 @@ Search across multiple indices at once and get one merged result set.
 ```
 
 - Results are merged using each backend's relevance signal when available
-- Each hit includes `_index` to identify its source
+- Each hit includes `index` to identify its source index
 - `indices` provides per-index result counts
 
 Scores are backend-specific. Built-in backends use Search Manager's BM25 score, Meilisearch and Typesense can expose provider ranking values, Algolia may not include a comparable numeric score, and promoted results can use `score: null`. Do not compare scores across different backend types.
@@ -69,7 +69,7 @@ Group results by their source index:
 
 {% set grouped = {} %}
 {% for hit in results.hits %}
-    {% set grouped = grouped|merge({(hit._index): (grouped[hit._index] ?? [])|merge([hit])}) %}
+    {% set grouped = grouped|merge({(hit.index): (grouped[hit.index] ?? [])|merge([hit])}) %}
 {% endfor %}
 
 {% for indexName, hits in grouped %}
@@ -98,6 +98,9 @@ By default, multi-index search uses the default backend. To query a specific bac
 {% set algolia = craft.searchManager.withBackend('production-algolia') %}
 {% set results = algolia.search('products', query) %}
 ```
+
+> [!WARNING]
+> Unlike `craft.searchManager.search()` and `searchMultiple()`, the `withBackend()` proxy returns **raw backend hits** — they are not run through the public presentation pipeline. Raw hits keep backend-internal keys (`id`, `objectID`, `_index`, underscore-prefixed fields) and do not include presented fields like `snippet`, `headings`, or `index`. Use it for backend-level operations (browse, batch queries, diagnostics), not for rendering public search results.
 
 The `withBackend()` proxy supports all the same methods:
 
@@ -138,8 +141,12 @@ For Algolia, Meilisearch, and Typesense, `multipleQueries()` sends all queries i
 
 {% for result in results.results %}
     <h3>Results from query {{ loop.index }}</h3>
-    <p>{{ result.nbHits ?? result.total }} hits</p>
+    {# Each provider names its total differently in raw batch results #}
+    <p>{{ result.nbHits ?? result.estimatedTotalHits ?? result.found ?? result.total }} hits</p>
 {% endfor %}
 ```
 
 Built-in backends fall back to sequential queries automatically.
+
+> [!NOTE]
+> `multipleQueries()` returns each provider's raw response, so the totals field differs per backend: Algolia uses `nbHits`, Meilisearch uses `estimatedTotalHits`, Typesense uses `found`, and the built-in backends use `total`.

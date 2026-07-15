@@ -55,7 +55,7 @@ ALGOLIA_SEARCH_API_KEY=your-search-key
 |---------|------|---------|-------------|
 | `applicationId` | `string` | (required) | Your Algolia Application ID |
 | `adminApiKey` | `string` | (required) | Admin API key (for indexing) |
-| `searchApiKey` | `string` | (optional) | Search-only API key (for frontend) |
+| `searchApiKey` | `string` | (optional) | Search-only API key. Accepted and stored, but currently unused — the Algolia adapter performs all operations (indexing and search) with `adminApiKey` |
 
 ## Multi-Site Support
 
@@ -65,7 +65,7 @@ Algolia uses composite document IDs formatted as `{elementId}_{siteId}` (e.g., `
 
 Search Manager handles the connection, indexing, document IDs, search calls, and the built-in Search Manager filters. Algolia still owns Algolia-specific index configuration.
 
-An Algolia index is searchable as soon as Search Manager has indexed records into it. By default, Algolia searches all searchable attributes in the records, so a basic query works without extra setup.
+An Algolia index is searchable as soon as Search Manager has indexed records into it. Search Manager configures the searchable attributes (`title`, `content`, `_bodyClean`, `url`) automatically, so a basic query works without extra setup.
 
 Algolia also enforces record-size limits. Build plan indices have a 10 KB hard per-record limit. Elevate/Grow indices allow larger individual records, but still have a 100 KB per-record limit and a 10 KB average record-size limit across the index. These limits matter for documentation pages because page-mode docs records can include long body text, heading metadata, and stored snippet sources.
 
@@ -73,9 +73,11 @@ For Docs Manager, long-form Entry, and rich Commerce Product indices on Algolia,
 
 For production relevance, configure Algolia's index settings in Algolia:
 
-- `searchableAttributes` — choose which record fields Algolia searches, and in what priority order.
 - `customRanking` and ranking settings — tune business relevance such as popularity, rating, recency, availability, or featured flags.
 - typo tolerance, rules, synonyms, replicas, and sort replicas — use Algolia's native controls for those behaviours.
+
+> [!WARNING]
+> `searchableAttributes` is managed by Search Manager and is not dashboard-tunable. Search Manager keeps it pinned to `title`, `content`, `_bodyClean`, `url` (in that order) and resets it automatically whenever it drifts, so dashboard changes to it are reverted on the next indexing or search call. Facet attributes are different: Search Manager merges its required `attributesForFaceting` (`siteId`, `elementId`, `type`) with yours, so custom facet attributes are safe to add.
 
 Search Manager does not currently expose these relevance settings in the backend configuration form. Configure them in the Algolia dashboard or with Algolia's API.
 

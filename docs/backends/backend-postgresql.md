@@ -6,7 +6,7 @@ The PostgreSQL backend uses your Craft database for search storage, just like th
 
 - Your Craft site uses PostgreSQL as its database
 - You want zero-configuration search
-- You need all built-in search features including native search replacement
+- You need all built-in search features including native search replacement for front-end template queries
 
 ## Features
 
@@ -15,7 +15,7 @@ The PostgreSQL backend uses your Craft database for search storage, just like th
 - Fuzzy matching with n-gram similarity
 - Stop words filtering in 12 languages
 - Localized boolean operators in 12 languages
-- Native search replacement (CP search + `Entry::find()->search()`)
+- Native search replacement (front-end `Entry::find()->search()` template queries only — Control Panel search always uses Craft's native search)
 - No external dependencies
 
 ## Configuration

@@ -68,7 +68,7 @@ Event::on(
 | Property | Type | BEFORE | AFTER | Description |
 |----------|------|--------|-------|-------------|
 | `element` | `ElementInterface\|null` | Yes | Yes | The element being indexed |
-| `document` | `array\|null` | — | Yes | The transformed document data |
+| `document` | `array\|null` | — | Yes | The transformed document data. For indices with Split Sections enabled, this is a list of section document records instead of one flat document |
 | `indexHandle` | `string\|null` | — | Yes | The index handle (e.g., `'entries-en'`) |
 | `isValid` | `bool` | Yes | — | Set to `false` to cancel indexing |
 

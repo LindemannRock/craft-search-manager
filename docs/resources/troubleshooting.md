@@ -19,7 +19,7 @@ Common issues and solutions for Search Manager.
 **Debugging tips:**
 
 - Check plugin logs at Search Manager > Logs (or `storage/logs/search-manager.log`)
-- Enable debugEnabled logging: set `logLevel` to `'debugEnabled'` in your config
+- Enable debug logging: set `logLevel` to `'debug'` in your config
 - If using `replaceNativeSearch`, verify it only works with built-in backends (MySQL, PostgreSQL, Redis, File)
 
 ## Element Stays in Index After Editor Change
@@ -292,6 +292,6 @@ Heading snippets are plain text and are highlighted by the frontend when highlig
 ## Getting Help
 
 - Check plugin logs: Search Manager > Logs
-- Enable debugEnabled logging: `'logLevel' => 'debugEnabled'` in config
+- Enable debug logging: `'logLevel' => 'debug'` in config
 - Check Craft's general logs: `storage/logs/web.log`
 - For persistent issues, include your Search Manager version, backend type, and relevant log entries when reporting

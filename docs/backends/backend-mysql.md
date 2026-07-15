@@ -7,7 +7,7 @@ The MySQL backend stores search data directly in your Craft database. It's the s
 - You want zero-configuration search out of the box
 - Your site runs on MySQL (most Craft installations)
 - You don't want to manage additional services
-- You need all search features including native search replacement
+- You need all search features including native search replacement for front-end template queries
 
 ## Features
 
@@ -16,7 +16,7 @@ The MySQL backend stores search data directly in your Craft database. It's the s
 - Fuzzy matching with n-gram similarity
 - Stop words filtering in 12 languages
 - Localized boolean operators in 12 languages
-- Native search replacement (CP search + `Entry::find()->search()`)
+- Native search replacement (front-end `Entry::find()->search()` template queries only — Control Panel search always uses Craft's native search)
 - No external dependencies
 
 ## How It Works

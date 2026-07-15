@@ -18,7 +18,7 @@ The output depends on your active backend:
 |---------|--------|
 | Algolia | `(category:"Electronics" OR category:"Computers") AND (inStock:"true") AND (brand:"Apple")` |
 | Meilisearch | `(category = "Electronics" OR category = "Computers") AND inStock = "true" AND brand = "Apple"` |
-| Typesense | `category:=[\`Electronics\`, \`Computers\`] && inStock:=\`true\` && brand:=\`Apple\`` |
+| Typesense | `category:=[\`Electronics\`, \`Computers\`] && inStock:=true && brand:=\`Apple\`` |
 | MySQL/PostgreSQL/Redis/File | SQL-like filter |
 
 Backend setup still matters. Search Manager can generate the right filter syntax, but external providers require the filtered fields to be configured in the provider:
@@ -61,7 +61,7 @@ Combine filters with a search query:
 
 ## Document Type Filtering
 
-The API supports filtering by stable document kind. Use lowercase values:
+The API supports filtering by stable document kind. Use lowercase values — for example
 `entry`, `product`, `variant`, `asset`, `category`, or `user`.
 
 ```twig
@@ -80,9 +80,11 @@ Entry section metadata is separate from the document kind:
 | Field | Meaning |
 |-------|---------|
 | `type` | Stable document kind, for example `entry` |
-| `section` | Human-readable section name |
-| `sectionHandle` | Entry section handle |
-| `sectionType` | Entry section type: `single`, `channel`, or `structure` |
+| `entrySection` | Human-readable section name |
+| `entrySectionHandle` | Entry section handle |
+| `entrySectionType` | Entry section type: `single`, `channel`, or `structure` |
+
+(The similarly named `sectionType` hit field is unrelated — it appears only on split-section hits and identifies the split-record kind: `intro`, `heading`, or `promoted-page`.)
 
 Commerce metadata is also separate from the document kind:
 
@@ -111,7 +113,7 @@ Filter results to a specific site:
 }) %}
 
 {# Via API — use per-site index handles instead of siteId #}
-{# GET /actions/search-manager/api/search?q=test&indices=entries-en #}
+{# GET /actions/search-manager/api/search?q=test&indexHandles=entries-en #}
 ```
 
 ## Complete Filtered Search Page

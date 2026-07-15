@@ -50,17 +50,19 @@ widget.addEventListener('search-open', (e) => {
 });
 ```
 
-**Detail:** `{ source: 'programmatic' | 'hotkey' | 'trigger' }`
+**Detail:** `{ source: 'programmatic' | 'hotkey' | 'trigger' | 'toggle' | 'external-trigger' }`
 
 ### `search-close`
 
 Fired when the modal closes.
 
 ```javascript
-widget.addEventListener('search-close', () => {
-    console.log('Search closed');
+widget.addEventListener('search-close', (e) => {
+    console.log('Search closed', e.detail.reason);
 });
 ```
+
+**Detail:** `{ reason: string, source: string }` — `reason` identifies what closed the modal (`close-button`, `escape`, `backdrop`, `result-selected`, `toggle`, `programmatic`, `replace`, or `disconnect`)
 
 ### `search-search`
 
@@ -86,7 +88,7 @@ widget.addEventListener('search-result-click', (e) => {
 });
 ```
 
-**Detail:** `{ id: string, title: string, url: string, query: string, isRecent: boolean }`
+**Detail:** `{ id: string, elementId: string, title: string, url: string, query: string, isRecent: boolean }` — `id` is the backend document identity (`backendId`); `elementId` is the Craft element ID
 
 ### `search-error`
 
@@ -162,7 +164,7 @@ The widget registers a global keyboard listener for the configurable hotkey (def
 
 | Key | Action |
 |-----|--------|
-| CMD+K / Ctrl+K | Toggle modal (configurable via `hotkey`) |
+| CMD+K / Ctrl+K | Toggle modal (configurable via `trigger-hotkey`) |
 | Arrow Up/Down | Navigate results |
 | Enter | Select highlighted result |
 | Escape | Close modal |

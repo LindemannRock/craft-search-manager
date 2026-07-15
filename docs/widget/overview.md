@@ -10,7 +10,7 @@ Search Manager includes a ready-to-use search widget for your frontend. It's bui
 - **Light & dark themes** — built-in theme support with customizable colors
 - **Reusable style presets** — define [Widget Styles](styles.md) once and share across configs
 - **Recent searches** — optional search history stored locally
-- **Grouped results** — group flat results by source, Entry section, type, or another public hit field
+- **Grouped results** — group flat results by source, Entry section, or type; hierarchical layouts can group by any public hit field via `hierarchyGroupBy`
 - **Heading matching** — show matched headings under results for documentation sites
 - **Split section rendering** — split SourceDoc and AutoTransformer-family hits can render as parent rows with matched heading children in hierarchical layouts
 - **Snippet modes** — early, balanced, or deep snippet extraction
@@ -64,16 +64,19 @@ See [Widget Configuration](configuration.md) for all parameters.
 
 ## CP Widget Management
 
-Widget configurations can be managed at Search Manager > Widgets. Each config has six tabs:
+Widget configurations can be managed at Search Manager > Widgets. Each config uses these sections:
 
 - **General** — name, handle, search indices
-- **Behavior** — placeholder, debounce, min chars, hotkey, scroll lock, loading indicator, recent searches, trigger button
-- **Results** — max results, hide no-URL results, result layout (default/hierarchical), hierarchy options, line clamping
+- **Search Input** — placeholder, debounce, minimum characters, loading indicator
+- **Modal & Trigger** — hotkey, trigger button, scroll lock, backdrop behavior
+- **Recent Searches** — recent-search history and limit
+- **Results** — result limit, grouping, URL requirement, line clamping
+- **Hierarchy** — result layout, grouping field, hierarchy style, heading limit
 - **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
-- **Highlights** — destination page highlighting, persist query in URL, query param name, content selector
+- **Destination Highlighting** — destination-page highlight toggle, persisted query, query param, content selector
 - **Analytics** — source identifier, idle timeout
 
-Visual appearance is controlled via the **Widget Style** selector in the sidebar, not a dedicated tab. The sidebar also shows a live preview of the widget in light and dark mode.
+Visual appearance and result highlighting are controlled via the **Widget Style** selector in the sidebar, not a dedicated tab. The sidebar also shows a live preview of the widget in light and dark mode.
 
 ## Default Widget
 

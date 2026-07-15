@@ -122,7 +122,7 @@ SearchManager::$plugin->indexing->indexElementNow($entry);
 
 ### `rebuildIndex(indexHandle)`
 
-Rebuild a specific index — clears all data and re-indexes all matching elements.
+Rebuild a specific index. This queues a background `RebuildIndexJob` and returns immediately — `true` means the job was queued, not that the rebuild finished. The job clears the index data and re-indexes all matching elements.
 
 ```php
 SearchManager::$plugin->indexing->rebuildIndex('entries-en');
@@ -254,7 +254,7 @@ SearchManager::$plugin->widgetStyles->save($style);
 
 ### `getUsageCountsByHandle()`
 
-Get how many widget configs reference each style.
+Get how many database-defined widget configs reference each style. Config-file-defined widgets are not counted.
 
 ```php
 $counts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
@@ -296,12 +296,15 @@ Use these service methods for promotion writes; successful saves and deletes cle
 
 ```php
 $promotion = new Promotion();
+$promotion->title = 'Craft CMS';
 $promotion->query = 'craft cms';
 $promotion->indexHandle = 'entries-en';
 $promotion->elementId = 123;
 SearchManager::$plugin->promotions->save($promotion);
 SearchManager::$plugin->promotions->delete($promotion);
 ```
+
+`title`, `query`, and `elementId` are required — `save()` validates first and returns `false` (with errors on the model) when any of them is missing.
 
 ### `getPromotionCount(enabledOnly)`
 
@@ -357,12 +360,15 @@ Use these service methods for query-rule writes; successful saves and deletes cl
 
 ```php
 $rule = new QueryRule();
-$rule->query = 'laptop';
+$rule->name = 'Laptop synonyms';
+$rule->matchValue = 'laptop';
 $rule->actionType = QueryRule::ACTION_SYNONYM;
-$rule->actionValue = 'notebook,portable computer';
+$rule->actionValue = ['terms' => ['notebook', 'portable computer']];
 SearchManager::$plugin->queryRules->save($rule);
 SearchManager::$plugin->queryRules->delete($rule);
 ```
+
+`name`, `matchValue`, and `actionType` are required, and `actionValue` is a typed array whose shape depends on the action type — see [Query Rules → API Response](../feature-tour/query-rules.md#api-response) for the per-action shapes.
 
 ### `getQueryRuleCount(enabledOnly)`
 

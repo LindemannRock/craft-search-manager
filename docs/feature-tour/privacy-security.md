@@ -22,7 +22,7 @@ The command adds `SEARCH_MANAGER_IP_SALT` to your `.env` file automatically.
 
 1. Visitor makes a search request
 2. Search Manager reads their IP
-3. Country/city are extracted via geo-lookup (if enabled)
+3. The IP is kept aside for asynchronous geo-lookup (if enabled) — country/city resolve later in a background queue job
 4. IP is hashed with salt: `hash('sha256', $ip . $salt)`
 5. Only the hash is stored — original IP is discarded
 6. Same IP always produces the same hash (for unique visitor tracking)

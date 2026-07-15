@@ -29,7 +29,7 @@ These settings control the default behavior. You can override them per-call in y
 {% set results = craft.searchManager.search('entries', 'craft cms') %}
 
 {% for hit in results.hits %}
-    {% set entry = craft.entries.id(hit.objectID).one() %}
+    {% set entry = craft.entries.id(hit.elementId).one() %}
 
     {# Highlight matched terms in the title #}
     <h2>{{ craft.searchManager.highlight(entry.title, 'craft cms')|raw }}</h2>
