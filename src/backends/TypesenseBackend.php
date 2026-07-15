@@ -8,6 +8,7 @@
 
 namespace lindemannrock\searchmanager\backends;
 
+use lindemannrock\searchmanager\helpers\SearchFilterExpressionHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
@@ -290,14 +291,14 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
         $siteScope = SearchSiteScopeHelper::normalize($siteId);
 
         if ($siteScope === SearchSiteScopeHelper::ALL_SITES) {
-            return $existing;
+            return SearchFilterExpressionHelper::normalizeExpression($existing);
         }
 
         $site = is_array($siteScope)
             ? 'siteId:=[' . implode(',', $siteScope) . ']'
             : 'siteId:=' . $siteScope;
 
-        return $existing === null ? $site : '(' . $existing . ') && ' . $site;
+        return SearchFilterExpressionHelper::mergeWithRequiredFilter($existing, $site, '&&');
     }
 
     /**
@@ -308,19 +309,19 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
         $existing = ($existing === null || $existing === '') ? null : $existing;
 
         if ($type === null || $type === '') {
-            return $existing;
+            return SearchFilterExpressionHelper::normalizeExpression($existing);
         }
 
         $types = is_array($type) ? $type : explode(',', (string) $type);
         $types = array_values(array_filter(array_map('trim', $types), static fn(string $value): bool => $value !== ''));
 
         if ($types === []) {
-            return $existing;
+            return SearchFilterExpressionHelper::normalizeExpression($existing);
         }
 
         $typeFilter = $this->parseFilters(['type' => $types]);
 
-        return $existing === null ? $typeFilter : '(' . $existing . ') && ' . $typeFilter;
+        return SearchFilterExpressionHelper::mergeWithRequiredFilter($existing, $typeFilter, '&&');
     }
 
     /** @inheritdoc */
@@ -339,9 +340,14 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
             $searchParams['include_fields'] = $searchParams['include_fields']
                 ?? implode(',', SearchRecordProjectionHelper::searchProjectionFields($this->retrievableFieldsForIndex($indexName, $options)));
 
-            $existingFilter = isset($searchParams['filter_by']) && is_string($searchParams['filter_by'])
-                ? $searchParams['filter_by']
-                : null;
+            $existingFilter = SearchFilterExpressionHelper::normalizeExpression(
+                isset($searchParams['filter_by']) && is_string($searchParams['filter_by']) ? $searchParams['filter_by'] : null,
+            );
+            if ($existingFilter === null) {
+                unset($searchParams['filter_by']);
+            } else {
+                $searchParams['filter_by'] = $existingFilter;
+            }
             $typeFilter = $this->typeFilter($options['type'] ?? null, $existingFilter);
             if ($typeFilter !== null) {
                 $searchParams['filter_by'] = $typeFilter;
@@ -650,7 +656,7 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
                     if (is_bool($v)) {
                         return $v ? 'true' : 'false';
                     }
-                    return '`' . str_replace('`', '\\`', (string) $v) . '`';
+                    return '`' . SearchFilterExpressionHelper::escapeDelimitedValue($v, '`') . '`';
                 }, $value);
                 $filterParts[] = $key . ':=[' . implode(', ', $values) . ']';
             } else {
@@ -658,7 +664,7 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
                     $value = $value ? 'true' : 'false';
                     $filterParts[] = $key . ':=' . $value;
                 } else {
-                    $filterParts[] = $key . ':=`' . str_replace('`', '\\`', (string) $value) . '`';
+                    $filterParts[] = $key . ':=`' . SearchFilterExpressionHelper::escapeDelimitedValue($value, '`') . '`';
                 }
             }
         }

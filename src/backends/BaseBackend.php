@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\backends;
 
 use Craft;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SearchFilterExpressionHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -447,12 +448,12 @@ abstract class BaseBackend extends Component implements BackendInterface
             if (is_array($value)) {
                 // Multiple values = OR condition
                 $orParts = array_map(function($v) use ($key) {
-                    $v = is_bool($v) ? ($v ? 'true' : 'false') : str_replace('"', '\\"', (string) $v);
+                    $v = is_bool($v) ? ($v ? 'true' : 'false') : SearchFilterExpressionHelper::escapeDelimitedValue($v, '"');
                     return $key . ' = "' . $v . '"';
                 }, $value);
                 $filterParts[] = '(' . implode(' OR ', $orParts) . ')';
             } else {
-                $value = is_bool($value) ? ($value ? 'true' : 'false') : str_replace('"', '\\"', (string) $value);
+                $value = is_bool($value) ? ($value ? 'true' : 'false') : SearchFilterExpressionHelper::escapeDelimitedValue($value, '"');
                 $filterParts[] = $key . ' = "' . $value . '"';
             }
         }

@@ -9,6 +9,7 @@
 namespace lindemannrock\searchmanager\backends;
 
 use Craft;
+use lindemannrock\searchmanager\helpers\SearchFilterExpressionHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
@@ -341,7 +342,7 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
         $siteScope = SearchSiteScopeHelper::normalize($siteId);
 
         if ($siteScope === SearchSiteScopeHelper::ALL_SITES) {
-            return $existing;
+            return SearchFilterExpressionHelper::normalizeExpression($existing);
         }
 
         if (is_array($siteScope)) {
@@ -350,7 +351,7 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             $site = 'siteId = ' . $siteScope;
         }
 
-        return $existing === null ? $site : '(' . $existing . ') AND ' . $site;
+        return SearchFilterExpressionHelper::mergeWithRequiredFilter($existing, $site, 'AND');
     }
 
     /**
@@ -361,19 +362,19 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
         $existing = ($existing === null || $existing === '') ? null : $existing;
 
         if ($type === null || $type === '') {
-            return $existing;
+            return SearchFilterExpressionHelper::normalizeExpression($existing);
         }
 
         $types = is_array($type) ? $type : explode(',', (string) $type);
         $types = array_values(array_filter(array_map('trim', $types), static fn(string $value): bool => $value !== ''));
 
         if ($types === []) {
-            return $existing;
+            return SearchFilterExpressionHelper::normalizeExpression($existing);
         }
 
         $typeFilter = $this->parseFilters(['type' => $types]);
 
-        return $existing === null ? $typeFilter : '(' . $existing . ') AND ' . $typeFilter;
+        return SearchFilterExpressionHelper::mergeWithRequiredFilter($existing, $typeFilter, 'AND');
     }
 
     /** @inheritdoc */
@@ -406,8 +407,11 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
                     $this->retrievableFieldsForIndex($indexName, $options),
                 );
             }
-            if (isset($options['filter']) && is_string($options['filter']) && trim($options['filter']) !== '') {
-                $searchParams['filter'] = trim($options['filter']);
+            $existingFilter = SearchFilterExpressionHelper::normalizeExpression(
+                isset($options['filter']) && is_string($options['filter']) ? $options['filter'] : null,
+            );
+            if ($existingFilter !== null) {
+                $searchParams['filter'] = $existingFilter;
             }
 
             $typeFilter = $this->typeFilter($options['type'] ?? null, $searchParams['filter'] ?? null);
@@ -702,12 +706,12 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             if (is_array($value)) {
                 // Multiple values = OR condition
                 $orParts = array_map(function($v) use ($key) {
-                    $v = is_bool($v) ? ($v ? 'true' : 'false') : str_replace('"', '\\"', (string) $v);
+                    $v = is_bool($v) ? ($v ? 'true' : 'false') : SearchFilterExpressionHelper::escapeDelimitedValue($v, '"');
                     return $key . ' = "' . $v . '"';
                 }, $value);
                 $filterParts[] = '(' . implode(' OR ', $orParts) . ')';
             } else {
-                $value = is_bool($value) ? ($value ? 'true' : 'false') : str_replace('"', '\\"', (string) $value);
+                $value = is_bool($value) ? ($value ? 'true' : 'false') : SearchFilterExpressionHelper::escapeDelimitedValue($value, '"');
                 $filterParts[] = $key . ' = "' . $value . '"';
             }
         }

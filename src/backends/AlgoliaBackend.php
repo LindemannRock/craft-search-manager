@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\backends;
 use Algolia\AlgoliaSearch\Api\SearchClient;
 use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
 use Craft;
+use lindemannrock\searchmanager\helpers\SearchFilterExpressionHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
@@ -321,7 +322,7 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
         $siteScope = SearchSiteScopeHelper::normalize($siteId);
 
         if ($siteScope === SearchSiteScopeHelper::ALL_SITES) {
-            return $existing;
+            return SearchFilterExpressionHelper::normalizeExpression($existing);
         }
 
         if (is_array($siteScope)) {
@@ -330,7 +331,7 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             $site = 'siteId:' . $siteScope;
         }
 
-        return $existing === null ? $site : '(' . $existing . ') AND ' . $site;
+        return SearchFilterExpressionHelper::mergeWithRequiredFilter($existing, $site, 'AND');
     }
 
     /**
@@ -341,19 +342,19 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
         $existing = ($existing === null || $existing === '') ? null : $existing;
 
         if ($type === null || $type === '') {
-            return $existing;
+            return SearchFilterExpressionHelper::normalizeExpression($existing);
         }
 
         $types = is_array($type) ? $type : explode(',', (string) $type);
         $types = array_values(array_filter(array_map('trim', $types), static fn(string $value): bool => $value !== ''));
 
         if ($types === []) {
-            return $existing;
+            return SearchFilterExpressionHelper::normalizeExpression($existing);
         }
 
         $typeFilter = $this->parseFilters(['type' => $types]);
 
-        return $existing === null ? $typeFilter : '(' . $existing . ') AND ' . $typeFilter;
+        return SearchFilterExpressionHelper::mergeWithRequiredFilter($existing, $typeFilter, 'AND');
     }
 
     /** @inheritdoc */
@@ -371,9 +372,14 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             $searchParams['attributesToRetrieve'] = $searchParams['attributesToRetrieve']
                 ?? SearchRecordProjectionHelper::searchProjectionFields($this->retrievableFieldsForIndex($indexName, $options));
 
-            $existingFilters = isset($searchParams['filters']) && is_string($searchParams['filters'])
-                ? $searchParams['filters']
-                : null;
+            $existingFilters = SearchFilterExpressionHelper::normalizeExpression(
+                isset($searchParams['filters']) && is_string($searchParams['filters']) ? $searchParams['filters'] : null,
+            );
+            if ($existingFilters === null) {
+                unset($searchParams['filters']);
+            } else {
+                $searchParams['filters'] = $existingFilters;
+            }
             $typeFilter = $this->typeFilter($options['type'] ?? null, $existingFilters);
             if ($typeFilter !== null) {
                 $searchParams['filters'] = $typeFilter;
@@ -594,7 +600,7 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
 
             // Build OR group for multiple values within same filter
             $orParts = array_map(function($item) use ($group) {
-                $item = str_replace('"', '\\"', (string) $item);
+                $item = SearchFilterExpressionHelper::escapeDelimitedValue($item, '"');
                 return $group . ':"' . $item . '"';
             }, $items);
 
