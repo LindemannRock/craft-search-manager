@@ -10,6 +10,8 @@ By default the public API endpoints are anonymous — no key required. When **Re
 X-Search-Manager-Key: sm_pub_a1b2c3d4e5f6...
 ```
 
+Before you debug a client request, try the same index and query in [Testing tools](../resources/testing-tools.md). The Control Panel tester can show the backend, cache state, snippets, matched promotions, matched query rules, and optional debug metadata before you compare the REST response.
+
 Rejections (returned as the endpoint's JSON error, in English):
 
 | Status | When |

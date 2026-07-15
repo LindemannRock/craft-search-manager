@@ -23,6 +23,7 @@ Search Manager follows a modular architecture:
 | Query search from a SPA | Craft GraphQL queries | [GraphQL](graphql.md) |
 | Manage from CLI | Console commands | [Console Commands](console-commands.md) |
 | Control access | Permissions | [Permissions](permissions.md) |
+| Test configured search behavior | Settings → Test | [Testing tools](../resources/testing-tools.md) |
 | Base plugin utilities | Shared features from lindemannrock-base | [Shared Features](shared-features.md) |
 
 ## Quick Reference

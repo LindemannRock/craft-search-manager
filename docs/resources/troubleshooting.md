@@ -2,6 +2,8 @@
 
 Common issues and solutions for Search Manager.
 
+Before changing templates or client code, reproduce the same index and query in [Testing tools](testing-tools.md). **Search Manager → Settings → Test** shows the backend, cache state, snippets, promotions, query rules, and debug metadata, which helps separate indexing problems from frontend integration problems.
+
 ## Search Returns No Results
 
 **Check the basics first:**

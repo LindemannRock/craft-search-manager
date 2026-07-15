@@ -94,6 +94,7 @@
     "open": false,
     "children": [
       "resources/logging",
+      "resources/testing-tools",
       "resources/troubleshooting",
       "resources/translations"
     ]

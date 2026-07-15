@@ -80,7 +80,7 @@ Use this when:
 
 ## Developer Resources
 
-Download the bundled Postman collection and environment from the Utilities page, or from **Settings > Test**. The ZIP contains the collection, environment template, and README so developers can test the Search Manager API outside Craft.
+Download the bundled Postman collection and environment from the Utilities page, or from **Settings → Test**. The ZIP contains the collection, environment template, and README so developers can test the Search Manager API outside Craft. See [Testing tools](../resources/testing-tools.md) for the full Settings → Test workflow, including live search, autocomplete, promotions, query rules, debug metadata, and backend diagnostics.
 
 ## Permissions
 

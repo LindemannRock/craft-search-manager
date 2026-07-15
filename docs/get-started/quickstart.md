@@ -36,3 +36,4 @@ Replace `'main'` with the handle of the index you created in step 2. Load a page
 
 - [Configuration](configuration.md) — tune caching, BM25 ranking, and analytics
 - [Feature Tour](../feature-tour/overview.md) — explore backends, query rules, promotions, and the frontend widget
+- [Testing tools](../resources/testing-tools.md) — run the same query from the Control Panel before wiring it into a template
