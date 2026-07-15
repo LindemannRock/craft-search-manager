@@ -242,7 +242,7 @@ return [
     'Cannot disable default backend "{name}"' => 'デフォルトバックエンド「{name}」を無効にできません',
     'Cannot disable "{name}" because it is the default widget.' => '「{name}」はデフォルトウィジェットのため無効にできません。',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'デフォルトバックエンドを無効にできません。先に設定でデフォルトバックエンドを変更してください。',
-    'Cannot delete: {count} indices are using this backend.' => '削除できません: {count} 件のインデックスがこのバックエンドを使用しています。',
+    'Cannot delete “{name}” — it is in use by: {usages}.' => '「{name}」は削除できません — 使用されています: {usages}。',
     'Selected backend does not exist.' => '選択されたバックエンドは存在しません。',
     'Selected backend is disabled.' => '選択されたバックエンドは無効です。',
     'Selected widget does not exist.' => '選択されたウィジェットは存在しません。',

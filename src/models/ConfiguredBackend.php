@@ -694,17 +694,6 @@ class ConfiguredBackend extends Model
         }
 
         try {
-            // Check if any indices are using this backend
-            $usageCount = (new Query())
-                ->from('{{%searchmanager_indices}}')
-                ->where(['backend' => $this->handle])
-                ->count();
-
-            if ($usageCount > 0) {
-                $this->addError('handle', Craft::t('search-manager', 'Cannot delete: {count} indices are using this backend.', ['count' => $usageCount]));
-                return false;
-            }
-
             // Check if this is the default backend
             $plugin = \lindemannrock\searchmanager\SearchManager::$plugin;
             $settings = $plugin->getSettings();

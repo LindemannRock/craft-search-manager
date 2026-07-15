@@ -22,6 +22,12 @@ Common issues and solutions for Search Manager.
 - Enable debug logging: set `logLevel` to `'debug'` in your config
 - If using `replaceNativeSearch`, verify it only works with built-in backends (MySQL, PostgreSQL, Redis, File)
 
+## Backend Cannot Be Deleted
+
+Search Manager blocks backend deletion when an index still references that backend. The error lists each dependency as `Index: Name`.
+
+**Fix:** Edit the listed indices and either choose another backend or leave the backend field empty to use the default backend. Rebuild those indices after changing backend storage so the new backend has current search data. Once no resolved index uses the backend, the backend can be deleted.
+
 ## Element Stays in Index After Editor Change
 
 **Symptom:** An editor changes a field that the index's criteria filter depends on (e.g. marks a product `sold`, flips a custom status, sets an expiry date), but the element still appears in search results. Running a full rebuild removes it; the next edit of the same kind brings the problem back.

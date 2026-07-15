@@ -242,7 +242,7 @@ return [
     'Cannot disable default backend "{name}"' => 'Não é possível desativar o backend predefinido «{name}»',
     'Cannot disable "{name}" because it is the default widget.' => 'Não é possível desativar «{name}» porque é o widget predefinido.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Não é possível desativar o backend predefinido. Altere primeiro o backend predefinido nas definições.',
-    'Cannot delete: {count} indices are using this backend.' => 'Não é possível eliminar: {count} índices estão a utilizar este backend.',
+    'Cannot delete “{name}” — it is in use by: {usages}.' => 'Não é possível eliminar “{name}” — está em uso por: {usages}.',
     'Selected backend does not exist.' => 'O backend selecionado não existe.',
     'Selected backend is disabled.' => 'O backend selecionado está desativado.',
     'Selected widget does not exist.' => 'O widget selecionado não existe.',

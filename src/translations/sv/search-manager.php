@@ -242,7 +242,7 @@ return [
     'Cannot disable default backend "{name}"' => 'Kan inte inaktivera standardbackend "{name}"',
     'Cannot disable "{name}" because it is the default widget.' => 'Kan inte inaktivera "{name}" eftersom det är standardwidgeten.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Kan inte inaktivera standardbackend. Ändra standardbackend i Inställningar först.',
-    'Cannot delete: {count} indices are using this backend.' => 'Kan inte radera: {count} index använder denna backend.',
+    'Cannot delete “{name}” — it is in use by: {usages}.' => 'Det går inte att ta bort «{name}» — används av: {usages}.',
     'Selected backend does not exist.' => 'Vald backend finns inte.',
     'Selected backend is disabled.' => 'Vald backend är inaktiverad.',
     'Selected widget does not exist.' => 'Vald widget finns inte.',

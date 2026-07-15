@@ -242,7 +242,7 @@ return [
     'Cannot disable default backend "{name}"' => 'Standard-Backend „{name}" kann nicht deaktiviert werden',
     'Cannot disable "{name}" because it is the default widget.' => '„{name}" kann nicht deaktiviert werden, da es das Standard-Widget ist.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Das Standard-Backend kann nicht deaktiviert werden. Zuerst das Standard-Backend in den Einstellungen ändern.',
-    'Cannot delete: {count} indices are using this backend.' => 'Löschen nicht möglich: {count} Indizes verwenden dieses Backend.',
+    'Cannot delete “{name}” — it is in use by: {usages}.' => '„{name}“ kann nicht gelöscht werden — es wird verwendet von: {usages}.',
     'Selected backend does not exist.' => 'Das ausgewählte Backend existiert nicht.',
     'Selected backend is disabled.' => 'Das ausgewählte Backend ist deaktiviert.',
     'Selected widget does not exist.' => 'Das ausgewählte Widget existiert nicht.',

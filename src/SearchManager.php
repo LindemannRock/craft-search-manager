@@ -58,6 +58,7 @@ use lindemannrock\searchmanager\services\AnalyticsService;
 use lindemannrock\searchmanager\services\ApiKeyService;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\services\BackendService;
+use lindemannrock\searchmanager\services\DependencyService;
 use lindemannrock\searchmanager\services\DeviceDetectionService;
 use lindemannrock\searchmanager\services\IndexedSnippetService;
 use lindemannrock\searchmanager\services\IndexingService;
@@ -85,6 +86,7 @@ use yii\base\Event;
  * Supports: Algolia, Meilisearch, MySQL, and Typesense
  *
  * @property-read BackendService $backend
+ * @property-read DependencyService $dependencies
  * @property-read IndexingService $indexing
  * @property-read TransformerService $transformers
  * @property-read AnalyticsService $analytics
@@ -286,6 +288,7 @@ class SearchManager extends Plugin
             'apiKeys' => ApiKeyService::class,
             'autocomplete' => AutocompleteService::class,
             'backend' => BackendService::class,
+            'dependencies' => DependencyService::class,
             'deviceDetection' => DeviceDetectionService::class,
             'indexedSnippets' => IndexedSnippetService::class,
             'indexing' => IndexingService::class,

@@ -242,7 +242,7 @@ return [
     'Cannot disable default backend "{name}"' => 'Kan ikke deaktivere standardbackend "{name}"',
     'Cannot disable "{name}" because it is the default widget.' => 'Kan ikke deaktivere "{name}" fordi det er standardwidgeten.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Kan ikke deaktivere standardbackend. Ændr standardbackend i Indstillinger først.',
-    'Cannot delete: {count} indices are using this backend.' => 'Kan ikke slette: {count} indekser bruger denne backend.',
+    'Cannot delete “{name}” — it is in use by: {usages}.' => 'Kan ikke slette «{name}» — bruges af: {usages}.',
     'Selected backend does not exist.' => 'Valgt backend findes ikke.',
     'Selected backend is disabled.' => 'Valgt backend er deaktiveret.',
     'Selected widget does not exist.' => 'Valgt widget findes ikke.',

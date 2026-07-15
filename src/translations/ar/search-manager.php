@@ -242,7 +242,7 @@ return [
     'Cannot disable default backend "{name}"' => 'لا يمكن تعطيل الواجهة الخلفية الافتراضية "{name}"',
     'Cannot disable "{name}" because it is the default widget.' => 'لا يمكن تعطيل "{name}" لأنها الأداة الافتراضية.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'لا يمكن تعطيل الواجهة الخلفية الافتراضية. قم بتغيير الواجهة الخلفية الافتراضية في الإعدادات أولاً.',
-    'Cannot delete: {count} indices are using this backend.' => 'لا يمكن الحذف: {count} فهارس تستخدم هذه الواجهة الخلفية.',
+    'Cannot delete “{name}” — it is in use by: {usages}.' => 'لا يمكن حذف “{name}” — قيد الاستخدام بواسطة: {usages}.',
     'Selected backend does not exist.' => 'الواجهة الخلفية المحددة غير موجودة.',
     'Selected backend is disabled.' => 'الواجهة الخلفية المحددة معطلة.',
     'Selected widget does not exist.' => 'الأداة المحددة غير موجودة.',

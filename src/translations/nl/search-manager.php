@@ -242,7 +242,7 @@ return [
     'Cannot disable default backend "{name}"' => 'Kan standaardbackend "{name}" niet uitschakelen',
     'Cannot disable "{name}" because it is the default widget.' => 'Kan "{name}" niet uitschakelen omdat het de standaardwidget is.',
     'Cannot disable the default backend. Change the default backend in Settings first.' => 'Kan de standaardbackend niet uitschakelen. Wijzig eerst de standaardbackend in de instellingen.',
-    'Cannot delete: {count} indices are using this backend.' => 'Kan niet verwijderen: {count} indexen gebruiken deze backend.',
+    'Cannot delete “{name}” — it is in use by: {usages}.' => 'Kan “{name}” niet verwijderen — in gebruik door: {usages}.',
     'Selected backend does not exist.' => 'Geselecteerde backend bestaat niet.',
     'Selected backend is disabled.' => 'Geselecteerde backend is uitgeschakeld.',
     'Selected widget does not exist.' => 'Geselecteerde widget bestaat niet.',

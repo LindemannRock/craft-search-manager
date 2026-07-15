@@ -405,11 +405,12 @@ class BackendsController extends Controller
         $this->requirePermission('searchManager:deleteBackends');
         $this->requirePostRequest();
 
-        $backendId = Craft::$app->getRequest()->getRequiredBodyParam('backendId');
+        $request = Craft::$app->getRequest();
+        $backendId = $request->getRequiredBodyParam('backendId');
         $backend = ConfiguredBackend::findById((int)$backendId);
 
         if (!$backend) {
-            if (Craft::$app->getRequest()->getAcceptsJson()) {
+            if ($request->getAcceptsJson()) {
                 return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Backend not found')]);
             }
             throw new NotFoundHttpException(Craft::t('search-manager', 'Backend not found'));
@@ -419,7 +420,17 @@ class BackendsController extends Controller
         $settings = SearchManager::$plugin->getSettings();
         if ($settings->defaultBackendHandle === $backend->handle) {
             $error = Craft::t('search-manager', 'Cannot delete the default backend. Set another backend as default first.');
-            if (Craft::$app->getRequest()->getAcceptsJson()) {
+            if ($request->getAcceptsJson()) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
+            return $this->redirect('search-manager/backends');
+        }
+
+        $usages = SearchManager::$plugin->dependencies->getBackendUsages($backend->handle);
+        if ($usages !== []) {
+            $error = SearchManager::$plugin->dependencies->formatInUseError($backend->name, $usages);
+            if ($request->getAcceptsJson()) {
                 return $this->asJson(['success' => false, 'error' => $error]);
             }
             Craft::$app->getSession()->setError($error);
@@ -427,7 +438,7 @@ class BackendsController extends Controller
         }
 
         if ($backend->delete()) {
-            if (Craft::$app->getRequest()->getAcceptsJson()) {
+            if ($request->getAcceptsJson()) {
                 return $this->asJson(['success' => true]);
             }
             Craft::$app->getSession()->setNotice(
@@ -439,7 +450,7 @@ class BackendsController extends Controller
             if ($errors !== []) {
                 $error .= ': ' . reset($errors);
             }
-            if (Craft::$app->getRequest()->getAcceptsJson()) {
+            if ($request->getAcceptsJson()) {
                 return $this->asJson(['success' => false, 'error' => $error]);
             }
             Craft::$app->getSession()->setError($error);
@@ -699,7 +710,7 @@ class BackendsController extends Controller
 
         $backendIds = Craft::$app->getRequest()->getBodyParam('backendIds', []);
         $settings = SearchManager::$plugin->getSettings();
-        $count = 0;
+        $backends = [];
         $errors = [];
 
         foreach ($backendIds as $id) {
@@ -710,27 +721,48 @@ class BackendsController extends Controller
                     $errors[] = Craft::t('search-manager', 'Cannot delete default backend "{name}". Set another backend as default first.', ['name' => $backend->name]);
                     continue;
                 }
-                if ($backend->delete()) {
-                    $count++;
-                } else {
-                    $backendErrors = $backend->getErrors();
-                    $errorMessage = !empty($backendErrors['handle'])
-                        ? $backendErrors['handle'][0]
-                        : Craft::t('search-manager', 'Unknown error');
-                    $errors[] = "{$backend->name}: {$errorMessage}";
+                $usages = SearchManager::$plugin->dependencies->getBackendUsages($backend->handle);
+                if ($usages !== []) {
+                    $errors[] = SearchManager::$plugin->dependencies->formatInUseError($backend->name, $usages);
+                    continue;
                 }
+                $backends[] = $backend;
             }
         }
 
-        if ($count > 0 && empty($errors)) {
-            return $this->asJson(['success' => true, 'count' => $count]);
+        if ($errors !== []) {
+            return $this->asJson(['success' => false, 'errors' => $errors]);
         }
 
-        if ($count > 0) {
-            return $this->asJson(['success' => true, 'count' => $count, 'errors' => $errors]);
+        $count = 0;
+        $transaction = Craft::$app->getDb()->beginTransaction();
+
+        try {
+            foreach ($backends as $backend) {
+                if ($backend->delete()) {
+                    $count++;
+                    continue;
+                }
+
+                $backendErrors = $backend->getErrors();
+                $errorMessage = !empty($backendErrors['handle'])
+                    ? $backendErrors['handle'][0]
+                    : Craft::t('search-manager', 'Unknown error');
+                $errors[] = "{$backend->name}: {$errorMessage}";
+            }
+
+            if ($errors !== []) {
+                $transaction->rollBack();
+                return $this->asJson(['success' => false, 'errors' => $errors]);
+            }
+
+            $transaction->commit();
+        } catch (\Throwable $e) {
+            $transaction->rollBack();
+            throw $e;
         }
 
-        return $this->asJson(['success' => false, 'errors' => $errors]);
+        return $this->asJson(['success' => true, 'count' => $count]);
     }
 
     /**
