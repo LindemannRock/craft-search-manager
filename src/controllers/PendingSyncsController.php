@@ -23,7 +23,7 @@ use yii\web\Response;
  * Operator surface for the L3 pending-sync buffer. View-only by default —
  * destructive actions require explicit nested permissions.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 class PendingSyncsController extends Controller
 {

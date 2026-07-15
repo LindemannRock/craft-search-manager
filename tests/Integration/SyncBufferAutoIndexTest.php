@@ -28,7 +28,7 @@ use yii\base\Event;
  *   - When `autoIndex` is disabled in the same booted process, the listener
  *     returns before queueing work.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 final class SyncBufferAutoIndexTest extends TestCase
 {

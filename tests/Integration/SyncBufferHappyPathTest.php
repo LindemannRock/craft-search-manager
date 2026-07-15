@@ -19,7 +19,7 @@ use lindemannrock\searchmanager\tests\TestCase;
 /**
  * Happy-path coverage for the L3 pending-sync pipeline.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 final class SyncBufferHappyPathTest extends TestCase
 {

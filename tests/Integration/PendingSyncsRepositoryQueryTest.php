@@ -29,7 +29,7 @@ use lindemannrock\searchmanager\tests\TestCase;
  *   - `purgeByStatus()` removes every row at a given status and validates
  *     the status value (defence against an unsanitised CP request).
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 final class PendingSyncsRepositoryQueryTest extends TestCase
 {

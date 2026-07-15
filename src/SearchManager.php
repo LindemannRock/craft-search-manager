@@ -542,7 +542,6 @@ class SearchManager extends Plugin
                     'search-manager/settings/test' => 'search-manager/settings/test',
                     'search-manager/settings/download-postman-collection' => 'search-manager/settings/download-postman-collection',
                     'search-manager/utilities/rebuild-all-indices' => 'search-manager/utilities/rebuild-all-indices',
-                    'search-manager/utilities/clear-backend-storage' => 'search-manager/utilities/clear-backend-storage',
                     'search-manager/utilities/clear-device-cache' => 'search-manager/utilities/clear-device-cache',
                     'search-manager/utilities/clear-search-cache' => 'search-manager/utilities/clear-search-cache',
                     'search-manager/utilities/clear-all-caches' => 'search-manager/utilities/clear-all-caches',

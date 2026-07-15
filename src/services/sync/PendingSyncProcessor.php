@@ -24,7 +24,7 @@ use yii\base\Component;
  *
  * Converts pending sync rows into search backend batch operations.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 class PendingSyncProcessor extends Component
 {

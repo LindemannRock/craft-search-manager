@@ -31,7 +31,7 @@ use lindemannrock\searchmanager\tests\TestCase;
  * cleanup-pass bug caught during L3 close-out — a regression here means
  * stale documents accumulate in backends with no signal in the queue.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 final class SyncBufferDeleteFanoutTest extends TestCase
 {

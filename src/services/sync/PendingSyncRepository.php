@@ -26,7 +26,7 @@ use yii\db\Expression;
  *
  * Persistence layer for pending element sync rows.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 class PendingSyncRepository extends Component
 {

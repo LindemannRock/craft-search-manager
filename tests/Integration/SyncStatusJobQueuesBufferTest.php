@@ -28,7 +28,7 @@ use lindemannrock\searchmanager\tests\TestCase;
  * paths now flow through `PendingSyncRepository::queueForElement()` so the
  * `BatchSyncJob` drains a single buffer.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 final class SyncStatusJobQueuesBufferTest extends TestCase
 {

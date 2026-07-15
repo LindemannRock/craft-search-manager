@@ -32,7 +32,7 @@ use yii\base\Event;
  *
  * This was a regression caught during L3 close-out before commit.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 final class SyncBufferEventParityTest extends TestCase
 {

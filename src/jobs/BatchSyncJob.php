@@ -21,7 +21,7 @@ use yii\queue\RetryableJobInterface;
  *
  * Drains pending element sync rows in batches.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 class BatchSyncJob extends BaseJob implements RetryableJobInterface
 {
@@ -53,7 +53,7 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
      * huge backlogs (Feed Me bulk imports, 10k+ rows) will exhaust the budget
      * on the first pass, drop a continuation job on the queue, and resume.
      *
-     * @since 5.45.0
+     * @since 5.46.0
      */
     private const TIME_BUDGET_SECONDS = 25;
 

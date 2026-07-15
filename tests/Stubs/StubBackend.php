@@ -21,7 +21,7 @@ use lindemannrock\searchmanager\services\BackendService;
  * `SearchManager::$plugin->backend` for the duration of one test and the base
  * class restores the original in tearDown().
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 final class StubBackend extends BackendService
 {

@@ -32,7 +32,7 @@ use lindemannrock\searchmanager\tests\TestCase;
  * stuck row burns workers forever — exactly the kind of thing that's
  * invisible until production capacity drops.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 final class SyncBufferFailureTest extends TestCase
 {

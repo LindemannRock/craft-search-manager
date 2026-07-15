@@ -35,7 +35,7 @@ use lindemannrock\searchmanager\tests\Stubs\StubBackend;
  * Subclasses can override `setUp()` for additional fixture work but should
  * call `parent::setUp()` to keep buffer isolation.
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 abstract class TestCase extends IntegrationTestCase
 {
