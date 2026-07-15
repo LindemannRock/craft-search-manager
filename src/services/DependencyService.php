@@ -92,6 +92,27 @@ class DependencyService extends Component
     }
 
     /**
+     * @return array<int, array{type: string, label: string}>
+     */
+    public function getStyleUsages(string $handle): array
+    {
+        $usages = [];
+
+        foreach (SearchManager::$plugin->widgetConfigs->getAll() as $widgetConfig) {
+            if ($widgetConfig->styleHandle !== $handle) {
+                continue;
+            }
+
+            $usages[] = [
+                'type' => Craft::t('search-manager', 'Widget'),
+                'label' => $widgetConfig->name,
+            ];
+        }
+
+        return $usages;
+    }
+
+    /**
      * @param array<int, array{type: string, label: string}> $usages
      */
     public function formatInUseError(string $name, array $usages): string

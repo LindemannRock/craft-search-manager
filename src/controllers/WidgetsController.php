@@ -989,6 +989,19 @@ class WidgetsController extends Controller
         $acceptsJson = Craft::$app->getRequest()->getAcceptsJson();
         $styleId = Craft::$app->getRequest()->getRequiredBodyParam('styleId');
 
+        $style = SearchManager::$plugin->widgetStyles->getById((int) $styleId);
+        if ($style !== null) {
+            $usages = SearchManager::$plugin->dependencies->getStyleUsages($style->handle);
+            if ($usages !== []) {
+                $error = SearchManager::$plugin->dependencies->formatInUseError($style->name, $usages);
+                if ($acceptsJson) {
+                    return $this->asJson(['success' => false, 'error' => $error]);
+                }
+                Craft::$app->getSession()->setError($error);
+                return $this->redirect('search-manager/widgets/styles');
+            }
+        }
+
         if (!SearchManager::$plugin->widgetStyles->delete((int) $styleId)) {
             $error = Craft::t('search-manager', 'Could not delete widget style');
             if ($acceptsJson) {
