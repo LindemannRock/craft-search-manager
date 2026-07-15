@@ -686,24 +686,7 @@ class SearchIndex extends Model
         $configData = self::loadConfigForHandle($handle);
 
         if ($configData) {
-            // This is a config index - build from config (source of truth)
-            $model = new self();
-            $model->handle = $handle;
-            $model->name = $configData['name'] ?? $handle;
-            $model->elementType = $configData['elementType'] ?? \craft\elements\Entry::class;
-            $model->siteId = isset($configData['siteId']) ? self::normalizeSiteIdValue($configData['siteId']) : null;
-            $model->criteria = $configData['criteria'] ?? [];
-            $model->transformerClass = $configData['transformer'] ?? null;
-            $model->language = $configData['language'] ?? null;
-            $model->headingLevels = $configData['headingLevels'] ?? null;
-            $model->backend = $configData['backend'] ?? null;
-            $model->enabled = $configData['enabled'] ?? true;
-            $model->enableAnalytics = $configData['enableAnalytics'] ?? true;
-            $model->disableStopWords = $configData['disableStopWords'] ?? false;
-            $model->skipEntriesWithoutUrl = $configData['skipEntriesWithoutUrl'] ?? false;
-            $model->splitSections = (bool)($configData['splitSections'] ?? false);
-            $model->retrievableFields = self::normalizeRetrievableFields($configData['retrievableFields'] ?? null);
-            $model->source = 'config';
+            $model = self::buildConfigIndexModel($handle, $configData);
 
             // Load stats from database if metadata record exists
             try {
@@ -859,23 +842,7 @@ class SearchIndex extends Model
                 ->all();
 
             foreach ($configIndices as $handle => $indexConfig) {
-                $model = new self();
-                $model->handle = $handle;
-                $model->name = $indexConfig['name'] ?? $handle;
-                $model->elementType = $indexConfig['elementType'] ?? \craft\elements\Entry::class;
-                $model->siteId = isset($indexConfig['siteId']) ? self::normalizeSiteIdValue($indexConfig['siteId']) : null;
-                $model->criteria = $indexConfig['criteria'] ?? [];
-                $model->transformerClass = $indexConfig['transformer'] ?? null;
-                $model->language = $indexConfig['language'] ?? null;
-                $model->headingLevels = $indexConfig['headingLevels'] ?? null;
-                $model->backend = $indexConfig['backend'] ?? null;
-                $model->enabled = $indexConfig['enabled'] ?? true;
-                $model->enableAnalytics = $indexConfig['enableAnalytics'] ?? true;
-                $model->disableStopWords = $indexConfig['disableStopWords'] ?? false;
-                $model->skipEntriesWithoutUrl = $indexConfig['skipEntriesWithoutUrl'] ?? false;
-                $model->splitSections = (bool)($indexConfig['splitSections'] ?? false);
-                $model->retrievableFields = self::normalizeRetrievableFields($indexConfig['retrievableFields'] ?? null);
-                $model->source = 'config';
+                $model = self::buildConfigIndexModel($handle, $indexConfig);
 
                 // Check if database metadata exists for this config index (array lookup)
                 if (isset($allMetadata[$handle])) {
@@ -931,6 +898,51 @@ class SearchIndex extends Model
     private static function loadConfigForHandle(string $handle): ?array
     {
         return BaseConfigFileHelper::getConfigByHandle(self::PLUGIN_HANDLE, 'indices', $handle);
+    }
+
+    /**
+     * Build a config-backed index model from the source-of-truth config array.
+     *
+     * @param array<string, mixed> $configData
+     */
+    private static function buildConfigIndexModel(string $handle, array $configData): self
+    {
+        $model = new self();
+        $model->handle = $handle;
+        $model->name = $configData['name'] ?? $handle;
+        $model->elementType = $configData['elementType'] ?? Entry::class;
+        $model->siteId = isset($configData['siteId']) ? self::normalizeSiteIdValue($configData['siteId']) : null;
+        $model->criteria = self::normalizeConfigCriteria($handle, $configData['criteria'] ?? []);
+        $model->transformerClass = $configData['transformer'] ?? null;
+        $model->language = $configData['language'] ?? null;
+        $model->headingLevels = $configData['headingLevels'] ?? null;
+        $model->backend = $configData['backend'] ?? null;
+        $model->enabled = $configData['enabled'] ?? true;
+        $model->enableAnalytics = $configData['enableAnalytics'] ?? true;
+        $model->disableStopWords = $configData['disableStopWords'] ?? false;
+        $model->skipEntriesWithoutUrl = $configData['skipEntriesWithoutUrl'] ?? false;
+        $model->splitSections = (bool)($configData['splitSections'] ?? false);
+        $model->retrievableFields = self::normalizeRetrievableFields($configData['retrievableFields'] ?? null);
+        $model->source = 'config';
+
+        return $model;
+    }
+
+    /**
+     * @return array|\Closure
+     */
+    private static function normalizeConfigCriteria(string $handle, mixed $criteria): array|\Closure
+    {
+        if (is_array($criteria) || $criteria instanceof \Closure) {
+            return $criteria;
+        }
+
+        LoggingService::log('Invalid criteria value in config index; using empty criteria', 'warning', 'search-manager', [
+            'handle' => $handle,
+            'type' => get_debug_type($criteria),
+        ]);
+
+        return [];
     }
 
     /**
