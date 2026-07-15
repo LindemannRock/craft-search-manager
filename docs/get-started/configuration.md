@@ -530,7 +530,7 @@ ALGOLIA_SEARCH_API_KEY=your-search-key
 
 # Meilisearch
 MEILISEARCH_HOST=http://localhost:7700
-MEILISEARCH_ADMIN_API_KEY=your-master-key
+MEILISEARCH_ADMIN_API_KEY=your-admin-api-key
 MEILISEARCH_SEARCH_API_KEY=your-search-key
 
 # Redis
@@ -540,7 +540,8 @@ REDIS_PASSWORD=
 REDIS_SEARCH_DATABASE=1   # reference from config as 'database' => '$REDIS_SEARCH_DATABASE'
 
 # Typesense
-TYPESENSE_API_KEY=your-api-key
+TYPESENSE_ADMIN_API_KEY=your-admin-api-key
+TYPESENSE_SEARCH_API_KEY=your-search-key
 ```
 
 ## Translations

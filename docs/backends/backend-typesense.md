@@ -11,7 +11,8 @@ The Typesense backend connects to a self-hosted Typesense server. Typesense is a
 ## Requirements
 
 - Running Typesense server
-- API key for authentication
+- Admin API key with write access for indexing
+- Optional search-only API key for search queries
 
 ## Features
 
@@ -36,7 +37,8 @@ Everything from the built-in backends, plus:
             'host' => 'localhost',
             'port' => '8108',
             'protocol' => 'http',
-            'apiKey' => App::env('TYPESENSE_API_KEY'),
+            'adminApiKey' => App::env('TYPESENSE_ADMIN_API_KEY'),
+            'searchApiKey' => App::env('TYPESENSE_SEARCH_API_KEY'),
             'connectionTimeout' => 5,
         ],
     ],
@@ -45,7 +47,8 @@ Everything from the built-in backends, plus:
 
 ```bash
 # .env
-TYPESENSE_API_KEY=your-api-key
+TYPESENSE_ADMIN_API_KEY=your-admin-api-key
+TYPESENSE_SEARCH_API_KEY=your-search-key
 ```
 
 ### Settings
@@ -55,7 +58,8 @@ TYPESENSE_API_KEY=your-api-key
 | `host` | `string` | (required) | Typesense server hostname |
 | `port` | `string` | `'8108'` | Server port |
 | `protocol` | `string` | `'http'` | Protocol (`http` or `https`) |
-| `apiKey` | `string` | (required) | API key for authentication |
+| `adminApiKey` | `string` | (required) | Admin API key with write access for indexing. In Typesense Cloud, use Generate API Keys. Do not use the bootstrap key (`--api-key`) in production. |
+| `searchApiKey` | `string` | (optional) | Search-only API key for search queries, autocomplete, and multi-search. Falls back to `adminApiKey` when empty. |
 | `connectionTimeout` | `int` | `5` | Connection timeout in seconds |
 
 ## Schema-Based Indexing

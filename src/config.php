@@ -50,6 +50,12 @@ return [
          */
         // 'itemsPerPage' => 100,
 
+        /**
+         * Require API keys for public Search Manager endpoints
+         * Default: false
+         */
+        // 'requireApiKey' => true,
+
         // ========================================
         // BASE SETTINGS OVERRIDES
         // ========================================
@@ -515,7 +521,7 @@ return [
             //     'settings' => [
             //         'host' => App::env('MEILISEARCH_HOST') ?: 'http://localhost:7700',
             //         'adminApiKey' => App::env('MEILISEARCH_ADMIN_API_KEY'),
-            //         'searchApiKey' => App::env('MEILISEARCH_SEARCH_API_KEY'), // Optional: for frontend
+            //         'searchApiKey' => App::env('MEILISEARCH_SEARCH_API_KEY'), // Optional, falls back to admin.
             //     ],
             // ],
 
@@ -528,7 +534,8 @@ return [
             //         'host' => App::env('TYPESENSE_HOST'),
             //         'port' => App::env('TYPESENSE_PORT') ?: 8108,
             //         'protocol' => 'https',
-            //         'apiKey' => App::env('TYPESENSE_API_KEY'),
+            //         'adminApiKey' => App::env('TYPESENSE_ADMIN_API_KEY'),
+            //         'searchApiKey' => App::env('TYPESENSE_SEARCH_API_KEY'), // Optional, falls back to admin.
             //     ],
             // ],
 

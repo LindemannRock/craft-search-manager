@@ -45,6 +45,7 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
     ];
 
     private ?Client $_client = null;
+    private ?Client $_searchClient = null;
 
     /** @inheritdoc */
     public function getName(): string
@@ -57,7 +58,7 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
     {
         $settings = $this->getBackendSettings();
 
-        if (empty($settings['host']) || empty($settings['apiKey'])) {
+        if (empty($settings['host']) || empty($settings['adminApiKey'])) {
             return false;
         }
 
@@ -81,7 +82,7 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
         return [
             'name' => 'Typesense',
             'enabled' => $this->isEnabledInConfig(),
-            'configured' => !empty($settings['host']) && !empty($settings['apiKey']),
+            'configured' => !empty($settings['host']) && !empty($settings['adminApiKey']),
             'available' => $this->isAvailable(),
         ];
     }
@@ -328,7 +329,7 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getSearchClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
             // Filter out Search Manager internal options that Typesense doesn't understand.
@@ -426,7 +427,7 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
         }
 
         try {
-            $client = $this->getClient();
+            $client = $this->getSearchClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
             if ($siteId !== null && !(SearchIndex::findByHandle($indexName)?->usesSplitSections() ?? false)) {
@@ -605,7 +606,7 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
     public function multipleQueries(array $queries = []): array
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getSearchClient();
 
             // Build Typesense multi-search format
             $searchRequests = ['searches' => []];
@@ -798,11 +799,31 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
                     'port' => $this->resolveEnvVar($settings['port'] ?? null, '8108'),
                     'protocol' => $this->resolveEnvVar($settings['protocol'] ?? null, 'http'),
                 ]],
-                'api_key' => $this->resolveEnvVar($settings['apiKey'] ?? null, ''),
+                'api_key' => $this->resolveEnvVar($settings['adminApiKey'] ?? null, ''),
                 'connection_timeout_seconds' => (int)$this->resolveEnvVar($settings['connectionTimeout'] ?? null, 5),
             ]);
         }
         return $this->_client;
+    }
+
+    private function getSearchClient(): Client
+    {
+        if ($this->_searchClient === null) {
+            $settings = $this->getBackendSettings();
+            $searchKey = $settings['searchApiKey'] ?? $settings['adminApiKey'] ?? null;
+
+            $this->_searchClient = new Client([
+                'nodes' => [[
+                    'host' => $this->resolveEnvVar($settings['host'] ?? null, 'localhost'),
+                    'port' => $this->resolveEnvVar($settings['port'] ?? null, '8108'),
+                    'protocol' => $this->resolveEnvVar($settings['protocol'] ?? null, 'http'),
+                ]],
+                'api_key' => $this->resolveEnvVar($searchKey, ''),
+                'connection_timeout_seconds' => (int)$this->resolveEnvVar($settings['connectionTimeout'] ?? null, 5),
+            ]);
+        }
+
+        return $this->_searchClient;
     }
 
     /**

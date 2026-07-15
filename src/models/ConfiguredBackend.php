@@ -92,14 +92,14 @@ class ConfiguredBackend extends Model
             'adminApiKey' => [
                 'type' => 'password',
                 'label' => 'Admin API Key',
-                'instructions' => 'Your Algolia Admin API Key (for indexing)',
+                'instructions' => 'Your Algolia Admin API Key. Used for indexing and other write operations.',
                 'placeholder' => '$ALGOLIA_ADMIN_API_KEY',
                 'required' => true,
             ],
             'searchApiKey' => [
                 'type' => 'password',
-                'label' => 'Search API Key',
-                'instructions' => 'Your Algolia Search-Only API Key (for frontend)',
+                'label' => 'Search-only API Key',
+                'instructions' => 'Your Algolia Search-only API Key. Used for search queries; falls back to the Admin API Key when empty.',
                 'placeholder' => '$ALGOLIA_SEARCH_API_KEY',
                 'required' => false,
             ],
@@ -115,14 +115,14 @@ class ConfiguredBackend extends Model
             'adminApiKey' => [
                 'type' => 'password',
                 'label' => 'Admin API Key',
-                'instructions' => 'Meilisearch Admin/Master Key (for indexing). Required for write operations.',
+                'instructions' => 'Meilisearch Admin API Key — used for indexing and other write operations. Do not use your master key; Meilisearch reserves it for managing API keys.',
                 'placeholder' => '$MEILISEARCH_ADMIN_API_KEY',
                 'required' => false,
             ],
             'searchApiKey' => [
                 'type' => 'password',
                 'label' => 'Search API Key',
-                'instructions' => 'Meilisearch Search-Only API Key (for frontend). If not set, Admin Key is used for search.',
+                'instructions' => 'Meilisearch Search API Key — used for search queries. Falls back to the Admin API Key when empty.',
                 'placeholder' => '$MEILISEARCH_SEARCH_API_KEY',
                 'required' => false,
             ],
@@ -150,12 +150,19 @@ class ConfiguredBackend extends Model
                 'options' => ['http' => 'HTTP', 'https' => 'HTTPS'],
                 'default' => 'http',
             ],
-            'apiKey' => [
+            'adminApiKey' => [
                 'type' => 'password',
-                'label' => 'API Key',
-                'instructions' => 'Typesense API Key',
-                'placeholder' => '$TYPESENSE_API_KEY',
+                'label' => 'Admin API Key',
+                'instructions' => 'Typesense Admin API Key — must permit write access for indexing. In Typesense Cloud use Generate API Keys. Do not use the bootstrap key (--api-key) in production.',
+                'placeholder' => '$TYPESENSE_ADMIN_API_KEY',
                 'required' => true,
+            ],
+            'searchApiKey' => [
+                'type' => 'password',
+                'label' => 'Search-only API Key',
+                'instructions' => 'Typesense Search-only API Key — used for search queries. Falls back to the Admin API Key when empty.',
+                'placeholder' => '$TYPESENSE_SEARCH_API_KEY',
+                'required' => false,
             ],
         ],
         'redis' => [

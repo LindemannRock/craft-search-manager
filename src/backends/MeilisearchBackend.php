@@ -854,8 +854,7 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
         if ($this->_adminClient === null) {
             $settings = $this->getBackendSettings();
 
-            // Support both old 'apiKey' and new 'adminApiKey' for backward compatibility
-            $adminKey = $settings['adminApiKey'] ?? $settings['apiKey'] ?? null;
+            $adminKey = $settings['adminApiKey'] ?? null;
 
             $this->_adminClient = new Client(
                 $this->resolveEnvVar($settings['host'] ?? null, 'http://localhost:7700'),
@@ -876,7 +875,7 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             $settings = $this->getBackendSettings();
 
             // Use search key if set, otherwise fall back to admin key
-            $searchKey = $settings['searchApiKey'] ?? $settings['adminApiKey'] ?? $settings['apiKey'] ?? null;
+            $searchKey = $settings['searchApiKey'] ?? $settings['adminApiKey'] ?? null;
 
             $this->_searchClient = new Client(
                 $this->resolveEnvVar($settings['host'] ?? null, 'http://localhost:7700'),

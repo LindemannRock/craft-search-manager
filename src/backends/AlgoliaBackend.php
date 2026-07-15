@@ -47,6 +47,7 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
     ];
 
     private ?SearchClient $_client = null;
+    private ?SearchClient $_searchClient = null;
 
     /** @inheritdoc */
     public function getName(): string
@@ -361,7 +362,7 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getSearchClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
             $this->ensureFilterableAttributes($fullIndexName);
@@ -453,7 +454,7 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
         }
 
         try {
-            $client = $this->getClient();
+            $client = $this->getSearchClient();
             $fullIndexName = $this->getFullIndexName($indexName);
             $this->ensureFilterableAttributes($fullIndexName);
 
@@ -540,7 +541,7 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
     public function multipleQueries(array $queries = []): array
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getSearchClient();
 
             // Build requests for v4 API
             $requests = [];
@@ -771,6 +772,20 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             );
         }
         return $this->_client;
+    }
+
+    private function getSearchClient(): SearchClient
+    {
+        if ($this->_searchClient === null) {
+            $settings = $this->getBackendSettings();
+            $searchKey = $settings['searchApiKey'] ?? $settings['adminApiKey'] ?? null;
+            $this->_searchClient = SearchClient::create(
+                $this->resolveEnvVar($settings['applicationId'] ?? null, ''),
+                $this->resolveEnvVar($searchKey, '')
+            );
+        }
+
+        return $this->_searchClient;
     }
 
     /**

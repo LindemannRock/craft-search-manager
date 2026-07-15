@@ -12,8 +12,8 @@ The Meilisearch backend connects to a self-hosted Meilisearch instance. It's a p
 ## Requirements
 
 - Running Meilisearch server
-- Admin API key (master key) for indexing
-- Optional search API key for frontend queries
+- Admin API key for indexing and other write operations, unless Meilisearch runs without authentication in development
+- Optional search API key for search queries
 
 ## Features
 
@@ -46,7 +46,7 @@ Everything from the built-in backends, plus:
 ```bash
 # .env
 MEILISEARCH_HOST=http://localhost:7700
-MEILISEARCH_ADMIN_API_KEY=your-master-key
+MEILISEARCH_ADMIN_API_KEY=your-admin-api-key
 MEILISEARCH_SEARCH_API_KEY=your-search-key
 ```
 
@@ -55,8 +55,8 @@ MEILISEARCH_SEARCH_API_KEY=your-search-key
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `host` | `string` | (required) | Meilisearch server URL (can be full URL like `https://meilisearch.example.com`) |
-| `adminApiKey` | `string` | (optional) | Master/admin key for indexing operations. Not required if Meilisearch runs without authentication. |
-| `searchApiKey` | `string` | (optional) | Search-only key for frontend queries |
+| `adminApiKey` | `string` | (optional) | Admin API key for indexing and other write operations. Do not use the Meilisearch master key; Meilisearch reserves it for managing API keys. Not required if Meilisearch runs without authentication. |
+| `searchApiKey` | `string` | (optional) | Search API key for search queries. Falls back to `adminApiKey` when empty. |
 
 ## Key Behaviors
 

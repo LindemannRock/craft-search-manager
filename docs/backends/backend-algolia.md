@@ -54,8 +54,8 @@ ALGOLIA_SEARCH_API_KEY=your-search-key
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `applicationId` | `string` | (required) | Your Algolia Application ID |
-| `adminApiKey` | `string` | (required) | Admin API key (for indexing) |
-| `searchApiKey` | `string` | (optional) | Search-only API key. Accepted and stored, but currently unused — the Algolia adapter performs all operations (indexing and search) with `adminApiKey` |
+| `adminApiKey` | `string` | (required) | Admin API key for indexing and other write operations |
+| `searchApiKey` | `string` | (optional) | Search-only API key for search queries, autocomplete, and multi-query requests. Falls back to `adminApiKey` when empty. |
 
 ## Multi-Site Support
 
