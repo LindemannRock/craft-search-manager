@@ -570,7 +570,6 @@ return [
     'Fuzzy Match Threshold' => 'Seuil de correspondance approximative',
 
     // Settings: Highlighting
-    'Highlighting & Autocomplete' => 'Mise en surbrillance et autocomplétion',
     'Search Result Highlighting' => 'Mise en surbrillance des résultats de recherche',
     'Result Highlighting' => 'Mise en surbrillance de la recherche',
     'Result Highlighting Enabled' => 'Activer la mise en surbrillance',

@@ -570,7 +570,6 @@ return [
     'Fuzzy Match Threshold' => 'Fuzzy-Übereinstimmungsschwelle',
 
     // Settings: Highlighting
-    'Highlighting & Autocomplete' => 'Hervorhebung & Autocomplete',
     'Search Result Highlighting' => 'Suchergebnis-Hervorhebung',
     'Result Highlighting' => 'Such-Hervorhebung',
     'Result Highlighting Enabled' => 'Hervorhebung aktivieren',

@@ -570,7 +570,6 @@ return [
     'Fuzzy Match Threshold' => 'Soglia corrispondenza approssimativa',
 
     // Settings: Highlighting
-    'Highlighting & Autocomplete' => 'Evidenziazione e completamento automatico',
     'Search Result Highlighting' => 'Evidenziazione dei risultati di ricerca',
     'Result Highlighting' => 'Evidenziazione della ricerca',
     'Result Highlighting Enabled' => 'Abilita evidenziazione',

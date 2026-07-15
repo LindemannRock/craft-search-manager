@@ -570,7 +570,6 @@ return [
     'Fuzzy Match Threshold' => 'Fuzzy-matchdrempel',
 
     // Settings: Highlighting
-    'Highlighting & Autocomplete' => 'Markering en automatisch aanvullen',
     'Search Result Highlighting' => 'Markering van zoekresultaten',
     'Result Highlighting' => 'Zoekmarkering',
     'Result Highlighting Enabled' => 'Markering inschakelen',

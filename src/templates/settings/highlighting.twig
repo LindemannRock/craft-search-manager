@@ -1,7 +1,7 @@
 {% extends "search-manager/_layouts/settings" %}
 {% import "_includes/forms" as forms %}
 
-{% set title = "Highlighting & Autocomplete"|t('search-manager') %}
+{% set title = "Highlighting"|t('search-manager') %}
 {% set fullPageForm = true %}
 {% set selectedSettingsItem = 'highlighting' %}
 
@@ -156,67 +156,6 @@
                     </p>
                 </div>
             </div>
-
-        </div>
-
-        <hr>
-
-		<h2>{{ "Autocomplete / Suggestions"|t('search-manager') }}</h2>
-
-        <div class="field">
-            <p class="light">
-                {{ 'Autocomplete provides search-as-you-type suggestions based on indexed terms. Use in templates:'|t('search-manager') }}
-                <code>craft.searchManager.suggest(query)</code>
-            </p>
-        </div>
-
-		{{ forms.lightswitchField({
-            label: 'Enable Autocomplete'|t('search-manager'),
-            instructions: 'Enable search suggestions based on indexed terms'|t('search-manager'),
-            id: 'enableAutocomplete',
-            name: 'settings[enableAutocomplete]',
-            on: settings.enableAutocomplete ?? true,
-            toggle: 'autocomplete-settings',
-            disabled: settings.isOverriddenByConfig('enableAutocomplete'),
-            warning: settings.isOverriddenByConfig('enableAutocomplete') ?
-                "This is being overridden by the <code>enableAutocomplete</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-        }) }}
-
-        <div id="autocomplete-settings" class="{{ not (settings.enableAutocomplete ?? true) ? 'hidden' }}">
-
-            {{ forms.textField({
-                label: 'Minimum Length'|t('search-manager'),
-                instructions: 'Minimum characters before showing suggestions. Range: 1 - 5. Lower = more suggestions but slower performance.'|t('search-manager'),
-                id: 'autocompleteMinLength',
-                name: 'settings[autocompleteMinLength]',
-                value: settings.autocompleteMinLength ?? 2,
-                type: 'number',
-                min: '1',
-                max: '5',
-                required: true,
-                tip: 'Default: 2 characters. User types "te" → shows "test", "testing".'|t('search-manager'),
-                disabled: settings.isOverriddenByConfig('autocompleteMinLength'),
-                warning: settings.isOverriddenByConfig('autocompleteMinLength') ?
-                    "This is being overridden by the <code>autocompleteMinLength</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-                errors: settings.getErrors('autocompleteMinLength')
-            }) }}
-
-            {{ forms.textField({
-                label: 'Suggestion Limit'|t('search-manager'),
-                instructions: 'Maximum suggestions to return. Range: 1 - 50. More = more choice, but can overwhelm users.'|t('search-manager'),
-                id: 'autocompleteLimit',
-                name: 'settings[autocompleteLimit]',
-                value: settings.autocompleteLimit ?? 10,
-                type: 'number',
-                min: '1',
-                max: '50',
-                required: true,
-                tip: 'Default: 10 suggestions. Returns top 10 most frequent/relevant terms.'|t('search-manager'),
-                disabled: settings.isOverriddenByConfig('autocompleteLimit'),
-                warning: settings.isOverriddenByConfig('autocompleteLimit') ?
-                    "This is being overridden by the <code>autocompleteLimit</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-                errors: settings.getErrors('autocompleteLimit')
-            }) }}
 
         </div>
 

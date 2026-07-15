@@ -116,6 +116,20 @@ These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The 
 
 Search Manager supports 12 languages: English, German, French, Dutch, Spanish, Arabic, Italian, Portuguese, Japanese, Swedish, Danish, and Norwegian. Language is auto-detected from each site's locale setting. See [Multi-Language](../feature-tour/multi-language.md) for details.
 
+### Autocomplete
+**CP:** Settings → Autocomplete
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableAutocomplete` | `bool` | `true` | Enable autocomplete suggestions |
+| `autocompleteMinLength` | `int` | `2` | Minimum query length before suggesting |
+| `autocompleteLimit` | `int` | `10` | Maximum suggestions returned |
+
+> [!NOTE]
+> Typo tolerance in autocomplete is controlled by the engine-wide `enableFuzzy` setting (Search Algorithm section) — autocomplete and search always share the same fuzzy behavior.
+
+See [Autocomplete](../feature-tour/autocomplete.md) for details.
+
 ### Highlighting
 **CP:** Settings → Highlighting
 
@@ -136,20 +150,6 @@ These settings apply to `craft.searchManager.snippets()` and `craft.searchManage
 | `maxSnippets` | `int` | `3` | Maximum snippets per result |
 
 See [Highlighting](../feature-tour/highlighting.md) and the [Highlighting & Snippets](../template-guides/highlighting-snippets.md) template guide.
-
-### Autocomplete
-**CP:** Settings → Highlighting
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enableAutocomplete` | `bool` | `true` | Enable autocomplete suggestions |
-| `autocompleteMinLength` | `int` | `2` | Minimum query length before suggesting |
-| `autocompleteLimit` | `int` | `10` | Maximum suggestions returned |
-
-> [!NOTE]
-> Typo tolerance in autocomplete is controlled by the engine-wide `enableFuzzy` setting (Search Algorithm section) — autocomplete and search always share the same fuzzy behavior.
-
-See [Autocomplete](../feature-tour/autocomplete.md) for details.
 
 ### Analytics
 **CP:** Settings → Analytics

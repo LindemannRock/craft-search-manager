@@ -33,7 +33,8 @@ final class SettingsControllerSectionScopeTest extends TestCase
             'analytics' => ['enableAnalytics', 'enableGeoDetection', 'geoProvider', 'geoApiKey', 'anonymizeIpAddress', 'analyticsRetention'],
             'search' => ['replaceNativeSearch', 'bm25K1', 'bm25B', 'titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor', 'enableFuzzy', 'similarityThreshold', 'maxFuzzyCandidates', 'ngramSizes'],
             'language' => ['defaultLanguage', 'enableStopWords'],
-            'highlighting' => ['highlightResultsEnabled', 'highlightTag', 'highlightClass', 'enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit'],
+            'autocomplete' => ['enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit'],
+            'highlighting' => ['highlightResultsEnabled', 'highlightTag', 'highlightClass'],
             'snippets' => ['snippetMaxLength', 'maxSnippets'],
             'cache' => ['cacheStorageMethod', 'enableCache', 'cacheDuration', 'enableAutocompleteCache', 'autocompleteCacheDuration', 'clearCacheOnSave', 'statusSyncInterval', 'enableCacheWarming', 'cacheWarmingQueryCount', 'cacheDeviceDetection', 'deviceDetectionCacheDuration'],
             'interface' => ['itemsPerPage', 'timeFormat', 'monthFormat', 'dateOrder', 'dateSeparator', 'showSeconds', 'defaultDateRange', 'exportsCsv', 'exportsJson', 'exportsExcel'],
@@ -122,7 +123,7 @@ final class SettingsControllerSectionScopeTest extends TestCase
         self::assertLessThan($snippetsRoutePosition, $highlightingRoutePosition);
     }
 
-    public function testReplaceNativeSearchTemplateBlockMovedFromIndexingToTopOfSearch(): void
+    public function testReplaceNativeSearchTemplateBlockLivesAtBottomOfSearchAfterFuzzy(): void
     {
         $indexing = file_get_contents(dirname(__DIR__, 2) . '/src/templates/settings/indexing.twig');
         $search = file_get_contents(dirname(__DIR__, 2) . '/src/templates/settings/search.twig');
@@ -133,18 +134,23 @@ final class SettingsControllerSectionScopeTest extends TestCase
         self::assertStringNotContainsString('Native Search Coverage', $indexing);
         self::assertStringNotContainsString('nativeSearchHasLocalBackend', $indexing);
 
-        $nativeHeadingPosition = strpos($search, "class=\"first\">{{ 'Native Search Replacement'|t('search-manager') }}</h2>");
+        // The page leads with the ranking pipeline (BM25 → Boosts → Fuzzy);
+        // Native Search Replacement is an opt-in integration and sits last.
+        $nativeHeadingPosition = strpos($search, "<h2>{{ 'Native Search Replacement'|t('search-manager') }}</h2>");
         $replaceTogglePosition = strpos($search, "name: 'settings[replaceNativeSearch]'");
         $coveragePosition = strpos($search, 'Native Search Coverage');
-        $bm25Position = strpos($search, '<h2>{{ "BM25 Ranking Algorithm"|t(\'search-manager\') }}</h2>');
+        $bm25Position = strpos($search, '<h2 class="first">{{ "BM25 Ranking Algorithm"|t(\'search-manager\') }}</h2>');
+        $fuzzyPosition = strpos($search, '{{ "Fuzzy Matching"|t(\'search-manager\') }}');
 
         self::assertIsInt($nativeHeadingPosition);
         self::assertIsInt($replaceTogglePosition);
         self::assertIsInt($coveragePosition);
         self::assertIsInt($bm25Position);
+        self::assertIsInt($fuzzyPosition);
+        self::assertLessThan($fuzzyPosition, $bm25Position);
+        self::assertLessThan($nativeHeadingPosition, $fuzzyPosition);
         self::assertLessThan($replaceTogglePosition, $nativeHeadingPosition);
         self::assertLessThan($coveragePosition, $replaceTogglePosition);
-        self::assertLessThan($bm25Position, $coveragePosition);
         self::assertStringContainsString('nativeSearchHasLocalBackend', $search);
         self::assertStringContainsString('Replace Native Search requires a local backend', $search);
         self::assertStringContainsString('<th scope="col" class="lr-text-end">{{ \'Actions\'|t(\'search-manager\') }}</th>', $search);
@@ -154,7 +160,7 @@ final class SettingsControllerSectionScopeTest extends TestCase
         self::assertStringNotContainsString('class="btn small native-search-create-catch-all"', $search);
         self::assertStringContainsString('class="modal fitted native-search-catch-all-confirm"', $search);
         self::assertStringContainsString('max-width: 42rem;', $search);
-        self::assertStringNotContainsString('<h2 class="first">{{ "BM25 Ranking Algorithm"', $search);
+        self::assertStringNotContainsString("<h2 class=\"first\">{{ 'Native Search Replacement'", $search);
     }
 
     public function testSetupCompleteInfoBoxUsesConfiguredPluginName(): void

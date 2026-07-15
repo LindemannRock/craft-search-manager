@@ -570,7 +570,6 @@ return [
     'Fuzzy Match Threshold' => 'Terskel for omtrentlig treff',
 
     // Settings: Highlighting
-    'Highlighting & Autocomplete' => 'Utheving og autofullfør',
     'Search Result Highlighting' => 'Utheving av søkeresultater',
     'Result Highlighting' => 'Søkeutheving',
     'Result Highlighting Enabled' => 'Aktiver utheving',

@@ -570,7 +570,6 @@ return [
     'Fuzzy Match Threshold' => 'Fuzzy Match Threshold',
 
     // Settings: Highlighting
-    'Highlighting & Autocomplete' => 'Highlighting & Autocomplete',
     'Search Result Highlighting' => 'Search Result Highlighting',
     'Result Highlighting' => 'Result Highlighting',
     'Result Highlighting Enabled' => 'Result Highlighting Enabled',

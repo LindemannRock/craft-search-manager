@@ -167,6 +167,19 @@ class SettingsController extends Controller
     /**
      * @since 5.53.0
      */
+    public function actionAutocomplete(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+        $settings = SearchManager::$plugin->getSettings();
+
+        return $this->renderTemplate('search-manager/settings/autocomplete', [
+            'settings' => $settings,
+        ]);
+    }
+
+    /**
+     * @since 5.53.0
+     */
     public function actionSnippets(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -1476,8 +1489,9 @@ class SettingsController extends Controller
             'indexing' => ['autoIndex', 'batchSize', 'lastIndexedDebounceSeconds', 'syncBatchSize', 'batchFlushInterval', 'pendingMaxAge', 'batchMaxAttempts', 'indexPrefix'],
             'analytics' => ['enableAnalytics', 'enableGeoDetection', 'geoProvider', 'geoApiKey', 'anonymizeIpAddress', 'analyticsRetention'],
             'search' => ['replaceNativeSearch', 'bm25K1', 'bm25B', 'titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor', 'enableFuzzy', 'similarityThreshold', 'maxFuzzyCandidates', 'ngramSizes'],
+            'autocomplete' => ['enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit'],
             'language' => ['defaultLanguage', 'enableStopWords'],
-            'highlighting' => ['highlightResultsEnabled', 'highlightTag', 'highlightClass', 'enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit'],
+            'highlighting' => ['highlightResultsEnabled', 'highlightTag', 'highlightClass'],
             'snippets' => ['snippetMaxLength', 'maxSnippets'],
             'cache' => ['cacheStorageMethod', 'enableCache', 'cacheDuration', 'enableAutocompleteCache', 'autocompleteCacheDuration', 'clearCacheOnSave', 'statusSyncInterval', 'enableCacheWarming', 'cacheWarmingQueryCount', 'cacheDeviceDetection', 'deviceDetectionCacheDuration'],
             'interface' => ['itemsPerPage', 'timeFormat', 'monthFormat', 'dateOrder', 'dateSeparator', 'showSeconds', 'defaultDateRange', 'exportsCsv', 'exportsJson', 'exportsExcel'],

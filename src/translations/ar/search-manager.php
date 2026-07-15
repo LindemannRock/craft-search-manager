@@ -570,7 +570,6 @@ return [
     'Fuzzy Match Threshold' => 'حد المطابقة التقريبية',
 
     // Settings: Highlighting
-    'Highlighting & Autocomplete' => 'التظليل والإكمال التلقائي',
     'Search Result Highlighting' => 'تظليل نتائج البحث',
     'Result Highlighting' => 'تظليل البحث',
     'Result Highlighting Enabled' => 'تفعيل التظليل',

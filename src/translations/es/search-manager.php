@@ -570,7 +570,6 @@ return [
     'Fuzzy Match Threshold' => 'Umbral de coincidencia aproximada',
 
     // Settings: Highlighting
-    'Highlighting & Autocomplete' => 'Resaltado y autocompletado',
     'Search Result Highlighting' => 'Resaltado de resultados de búsqueda',
     'Result Highlighting' => 'Resaltado de búsqueda',
     'Result Highlighting Enabled' => 'Activar resaltado',

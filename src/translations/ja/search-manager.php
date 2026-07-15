@@ -570,7 +570,6 @@ return [
     'Fuzzy Match Threshold' => 'ファジーマッチしきい値',
 
     // Settings: Highlighting
-    'Highlighting & Autocomplete' => 'ハイライトとオートコンプリート',
     'Search Result Highlighting' => '検索結果のハイライト',
     'Result Highlighting' => '検索ハイライト',
     'Result Highlighting Enabled' => 'ハイライトを有効化',

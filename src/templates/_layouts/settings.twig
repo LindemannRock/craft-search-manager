@@ -47,6 +47,16 @@
                         {{ 'Language'|t('search-manager') }}
                     </a>
                 </li>
+            {% endif %}
+
+            {# Autocomplete applies to external backends too (native suggestions) #}
+            <li>
+                <a href="{{ url('search-manager/settings/autocomplete') }}" {% if selectedSettingsItem == 'autocomplete' %}class="sel"{% endif %}>
+                    {{ 'Autocomplete'|t('search-manager') }}
+                </a>
+            </li>
+
+            {% if isBuiltinBackend %}
                 <li>
                     <a href="{{ url('search-manager/settings/highlighting') }}" {% if selectedSettingsItem == 'highlighting' %}class="sel"{% endif %}>
                         {{ 'Highlighting'|t('search-manager') }}
