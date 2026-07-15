@@ -686,7 +686,15 @@ class SearchIndex extends Model
         $configData = self::loadConfigForHandle($handle);
 
         if ($configData) {
-            $model = self::buildConfigIndexModel($handle, $configData);
+            try {
+                $model = self::buildConfigIndexModel($handle, $configData);
+            } catch (\Throwable $e) {
+                LoggingService::log('Failed to build config index model', 'warning', 'search-manager', [
+                    'handle' => $handle,
+                    'error' => $e->getMessage(),
+                ]);
+                return null;
+            }
 
             // Load stats from database if metadata record exists
             try {
@@ -977,11 +985,9 @@ class SearchIndex extends Model
         } else {
             $model->siteId = $row['siteId'] ? (int)$row['siteId'] : null;
         }
-        $model->criteria = json_decode($row['criteria'], true) ?? [];
+        $model->criteria = self::normalizeRowCriteria($model->handle, $row['criteria'] ?? null);
         $model->transformerClass = $row['transformerClass'];
-        $model->headingLevels = !empty($row['headingLevels'])
-            ? json_decode($row['headingLevels'], true)
-            : null;
+        $model->headingLevels = self::normalizeRowHeadingLevels($model->handle, $row['headingLevels'] ?? null);
         $model->language = $row['language'] ?? null;
         $model->backend = $row['backend'] ?? null;
         $model->enabled = (bool)$row['enabled'];
@@ -999,6 +1005,61 @@ class SearchIndex extends Model
         $model->documentCount = (int)$row['documentCount'];
 
         return $model;
+    }
+
+    /**
+     * @return array<string|int, mixed>
+     */
+    private static function normalizeRowCriteria(string $handle, mixed $value): array
+    {
+        $decoded = self::decodeRowJson($value, []);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        LoggingService::log('Invalid criteria value in index row; using empty criteria', 'warning', 'search-manager', [
+            'handle' => $handle,
+            'type' => get_debug_type($decoded),
+        ]);
+
+        return [];
+    }
+
+    private static function normalizeRowHeadingLevels(string $handle, mixed $value): ?array
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $decoded = self::decodeRowJson($value, null);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        LoggingService::log('Invalid headingLevels value in index row; using null', 'warning', 'search-manager', [
+            'handle' => $handle,
+            'type' => get_debug_type($decoded),
+        ]);
+
+        return null;
+    }
+
+    private static function decodeRowJson(mixed $value, mixed $fallback): mixed
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if ($value === null || $value === '') {
+            return $fallback;
+        }
+
+        $decoded = json_decode((string)$value, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return $fallback;
+        }
+
+        return $decoded ?? $fallback;
     }
 
     private static function parseDate(mixed $value): ?\DateTime
