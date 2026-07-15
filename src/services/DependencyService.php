@@ -75,6 +75,23 @@ class DependencyService extends Component
     }
 
     /**
+     * @return array<int, array{type: string, label: string}>
+     */
+    public function getApiKeyUsages(string $handle): array
+    {
+        $usages = [];
+
+        foreach (SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKeyHandle($handle) as $widgetConfig) {
+            $usages[] = [
+                'type' => Craft::t('search-manager', 'Widget'),
+                'label' => $widgetConfig->name,
+            ];
+        }
+
+        return $usages;
+    }
+
+    /**
      * @param array<int, array{type: string, label: string}> $usages
      */
     public function formatInUseError(string $name, array $usages): string

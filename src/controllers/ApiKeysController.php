@@ -307,11 +307,9 @@ class ApiKeysController extends Controller
             throw new NotFoundHttpException(Craft::t('search-manager', 'API key not found'));
         }
 
-        $usedConfigs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKeyHandle($apiKey->handle);
-        if ($usedConfigs !== []) {
-            $errorMessage = Craft::t('search-manager', 'This API key is used by widget configs ({widgets}). Reassign or remove it from those widgets before deleting it.', [
-                'widgets' => SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($usedConfigs),
-            ]);
+        $usages = SearchManager::$plugin->dependencies->getApiKeyUsages($apiKey->handle);
+        if ($usages !== []) {
+            $errorMessage = SearchManager::$plugin->dependencies->formatInUseError($apiKey->name, $usages);
             if ($acceptsJson) {
                 return $this->asJson(['success' => false, 'error' => $errorMessage]);
             }
@@ -359,18 +357,51 @@ class ApiKeysController extends Controller
         $this->requirePermission('searchManager:revokeApiKeys');
 
         $ids = $this->parseBulkIds(Craft::$app->getRequest()->getBodyParam('ids', []));
-        $usedConfigs = $this->findWidgetConfigsUsingApiKeyIds($ids, false);
-        if ($usedConfigs !== []) {
-            return $this->respondToBulkResult(
-                0,
-                '',
-                Craft::t('search-manager', 'Some selected API keys are used by widget configs ({widgets}). Reassign or remove them from those widgets before deleting them.', [
-                    'widgets' => SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($usedConfigs),
-                ]),
-            );
+        $apiKeys = [];
+        $errors = [];
+
+        foreach ($ids as $id) {
+            $apiKey = ApiKey::findById($id);
+            if ($apiKey === null) {
+                continue;
+            }
+
+            $usages = SearchManager::$plugin->dependencies->getApiKeyUsages($apiKey->handle);
+            if ($usages !== []) {
+                $errors[] = SearchManager::$plugin->dependencies->formatInUseError($apiKey->name, $usages);
+                continue;
+            }
+
+            $apiKeys[] = $apiKey;
         }
 
-        $deleted = SearchManager::$plugin->apiKeys->bulkDelete($ids);
+        if ($errors !== []) {
+            return $this->respondToBulkErrors($errors);
+        }
+
+        $deleted = 0;
+        $transaction = Craft::$app->getDb()->beginTransaction();
+
+        try {
+            foreach ($apiKeys as $apiKey) {
+                if ($apiKey->delete()) {
+                    $deleted++;
+                    continue;
+                }
+
+                $errors[] = Craft::t('search-manager', 'Couldn’t revoke API key');
+            }
+
+            if ($errors !== []) {
+                $transaction->rollBack();
+                return $this->respondToBulkErrors($errors);
+            }
+
+            $transaction->commit();
+        } catch (\Throwable $e) {
+            $transaction->rollBack();
+            throw $e;
+        }
 
         return $this->respondToBulkResult(
             $deleted,
@@ -411,6 +442,27 @@ class ApiKeysController extends Controller
                 ? Craft::t('search-manager', 'Couldn’t enable API keys')
                 : Craft::t('search-manager', 'Couldn’t disable API keys'),
         );
+    }
+
+    /**
+     * @param list<string> $errors
+     */
+    private function respondToBulkErrors(array $errors): Response
+    {
+        $error = implode(' ', $errors);
+        $acceptsJson = Craft::$app->getRequest()->getAcceptsJson();
+
+        if ($acceptsJson) {
+            return $this->asJson([
+                'success' => false,
+                'count' => 0,
+                'error' => $error,
+                'errors' => $errors,
+            ]);
+        }
+
+        Craft::$app->getSession()->setError($error);
+        return $this->redirect('search-manager/api-keys');
     }
 
     /**

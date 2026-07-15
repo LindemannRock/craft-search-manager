@@ -283,10 +283,14 @@
 
         Craft.sendActionRequest('POST', 'search-manager/api-keys/delete', {
             data: {keyId: id},
-        }).then(function() {
+        }).then(function(response) {
+            if (response.data.success === false) {
+                Craft.cp.displayError(response.data.error || T.revokeFailed);
+                return;
+            }
             window.location.reload();
-        }).catch(function() {
-            Craft.cp.displayError(T.revokeFailed);
+        }).catch(function(response) {
+            Craft.cp.displayError(response?.response?.data?.error || T.revokeFailed);
         });
     });
 
@@ -302,8 +306,20 @@
         const ids = selectedIds();
         if (!ids.length) return;
         Craft.sendActionRequest('POST', endpoint, {data: {ids: ids}})
-            .then(function() { window.location.reload(); })
-            .catch(function() { Craft.cp.displayError(errorFallback); });
+            .then(function(response) {
+                if (response.data.success === false) {
+                    if (Array.isArray(response.data.errors)) {
+                        response.data.errors.forEach(function(err) { Craft.cp.displayError(err); });
+                    } else {
+                        Craft.cp.displayError(response.data.error || errorFallback);
+                    }
+                    return;
+                }
+                window.location.reload();
+            })
+            .catch(function(response) {
+                Craft.cp.displayError(response?.response?.data?.error || errorFallback);
+            });
     }
 
     document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
