@@ -92,7 +92,7 @@ Search arguments:
 | Argument | Type | Notes |
 |----------|------|-------|
 | `query` | `String!` | Search query. Advanced operators match the REST API. |
-| `indexHandles` | `[String]` | One or more index handles to search. Omit to search all enabled indices. |
+| `indexHandles` | `[String]` | Up to 5 explicit index handles to search. Passing more than 5 handles returns an `error`. Omit to search all enabled indices. |
 | `site` | `String` | Site handle filter. |
 | `siteId` | `Int` | Site ID filter. `site` wins when both are provided. |
 | `resultsLimit` | `Int` | Defaults to `20`, capped at `200`. |
@@ -117,13 +117,13 @@ Search arguments:
 Like the REST search endpoint, GraphQL search records analytics unless `skipAnalytics: true` is passed. This makes an executed search behave like a real frontend search while still letting typeahead or background callers opt out.
 
 > [!NOTE]
-> Query strings are capped at 256 characters — longer queries return an `error` instead of results. Up to 5 `indexHandles` are searched per query; extra handles beyond 5 are silently dropped.
+> Query strings are capped at 256 characters — longer queries return an `error` instead of results. Up to 5 explicit `indexHandles` are accepted per query; passing more than 5 returns an `error`. Omitting `indexHandles` searches all enabled indices.
 
 Beyond `total`, `page`, `resultsLimit`, `totalPages`, `hits`, and `indices`, the response also exposes:
 
 | Field | Notes |
 |-------|-------|
-| `error` | Validation failure message, set instead of results when the query exceeds 256 characters, when `filters` is used with more than one index, or when no indices are configured. |
+| `error` | Validation failure message, set instead of results when the query exceeds 256 characters, when more than 5 explicit `indexHandles` are passed, when `filters` is used with more than one index, or when no indices are configured. |
 | `redirect` | Redirect URL when a [query rule](../feature-tour/query-rules.md) redirect matched the query — send the user there instead of rendering hits. |
 | `query` | Echo of the executed query string. |
 | `meta` | Backend/cache metadata for diagnostics. |
@@ -462,7 +462,7 @@ Autocomplete arguments:
 | Argument | Type | Notes |
 |----------|------|-------|
 | `query` | `String!` | Partial search query. |
-| `indexHandles` | `[String]` | One or more index handles to query. Omit to query all enabled indices. |
+| `indexHandles` | `[String]` | Up to 5 explicit index handles to query. Passing more than 5 handles returns an `error`. Omit to query all enabled indices. |
 | `site` | `String` | Site handle filter. |
 | `siteId` | `Int` | Site ID filter. `site` wins when both are provided. |
 | `resultsLimit` | `Int` | Defaults to `10`, capped at `100`. |
@@ -473,6 +473,7 @@ Autocomplete arguments:
 
 Autocomplete does not record search analytics.
 When multiple indices return the same element suggestion, Search Manager keeps the first result per `siteId`, element `id`, and `type`.
+If more than 5 explicit `indexHandles` are passed, `suggestions` and `results` are empty and `error` contains the validation message.
 
 ## Multi-Index Counts
 

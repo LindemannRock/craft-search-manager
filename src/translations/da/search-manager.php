@@ -351,6 +351,7 @@ return [
     'The active GraphQL schema is not allowed to query the requested site.' => 'Det aktive GraphQL-skema har ikke tilladelse til at forespørge det anmodede websted.',
     'The filters argument is not a valid filter expression.' => 'Argumentet filters er ikke et gyldigt filterudtryk.',
     'The filters argument requires a single index.' => 'Argumentet filters kræver ét enkelt indeks.',
+    'The indexHandles argument accepts at most {max} indices.' => 'Argumentet indexHandles accepterer højst {max} indekser.',
     'The requested site is outside the scope of index "{handle}".' => 'Det anmodede websted er uden for omfanget af indeks "{handle}".',
     'This API key cannot access this search.' => 'Denne API-nøgle kan ikke få adgang til denne søgning.',
     'This API key has expired.' => 'Denne API-nøgle er udløbet.',

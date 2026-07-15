@@ -28,7 +28,6 @@ use yii\web\ForbiddenHttpException;
 class SearchResolver extends Resolver
 {
     private const MAX_QUERY_LENGTH = 256;
-    private const MAX_INDICES_COUNT = 5;
 
     /**
      * Resolve the default search field shape.
@@ -75,7 +74,18 @@ class SearchResolver extends Resolver
             return ['hits' => [], 'total' => 0, 'query' => $query, 'page' => $page, 'resultsLimit' => $limit, 'totalPages' => 0];
         }
 
-        [$indexHandles, $indicesProvided] = self::resolveIndexHandles($arguments);
+        [$indexHandles, $indicesProvided, $exceededMax] = self::resolveIndexHandles($arguments);
+        if ($exceededMax) {
+            return [
+                'hits' => [],
+                'total' => 0,
+                'query' => $query,
+                'page' => $page,
+                'resultsLimit' => $limit,
+                'totalPages' => 0,
+                'error' => Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES]),
+            ];
+        }
         if ($indicesProvided && empty($indexHandles)) {
             return ['hits' => [], 'total' => 0, 'query' => $query, 'page' => $page, 'resultsLimit' => $limit, 'totalPages' => 0];
         }
@@ -202,7 +212,14 @@ class SearchResolver extends Resolver
             return ['suggestions' => [], 'results' => []];
         }
 
-        [$indexHandles, $indicesProvided] = self::resolveIndexHandles($arguments);
+        [$indexHandles, $indicesProvided, $exceededMax] = self::resolveIndexHandles($arguments);
+        if ($exceededMax) {
+            return [
+                'suggestions' => [],
+                'results' => [],
+                'error' => Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES]),
+            ];
+        }
         if ($indicesProvided && empty($indexHandles)) {
             return ['suggestions' => [], 'results' => []];
         }
@@ -285,7 +302,7 @@ class SearchResolver extends Resolver
 
     /**
      * @param array<string, mixed> $arguments
-     * @return array{0: array<int, string>, 1: bool}
+     * @return array{0: array<int, string>, 1: bool, 2: bool}
      */
     private static function resolveIndexHandles(array $arguments): array
     {
@@ -294,10 +311,7 @@ class SearchResolver extends Resolver
             ? implode(',', array_filter(array_map(static fn(mixed $value): string => trim((string)$value), $indices)))
             : trim((string)$indices);
 
-        return SearchIndex::resolveRequestedIndices(
-            $indicesString,
-            self::MAX_INDICES_COUNT,
-        );
+        return SearchIndex::resolveRequestedIndices($indicesString);
     }
 
     /**

@@ -351,6 +351,7 @@ return [
     'The active GraphQL schema is not allowed to query the requested site.' => 'Le schéma GraphQL actif n\'est pas autorisé à interroger le site demandé.',
     'The filters argument is not a valid filter expression.' => 'L\'argument filters n\'est pas une expression de filtre valide.',
     'The filters argument requires a single index.' => 'L\'argument filters nécessite un seul index.',
+    'The indexHandles argument accepts at most {max} indices.' => 'L\'argument indexHandles accepte au maximum {max} indices.',
     'The requested site is outside the scope of index "{handle}".' => 'Le site demandé est hors du périmètre de l\'index "{handle}".',
     'This API key cannot access this search.' => 'Cette clé API ne peut pas accéder à cette recherche.',
     'This API key has expired.' => 'Cette clé API a expiré.',

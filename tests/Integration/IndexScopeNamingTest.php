@@ -26,11 +26,12 @@ final class IndexScopeNamingTest extends TestCase
             $this->markTestSkipped('No enabled search index available.');
         }
 
-        self::assertSame([[$handle], true], SearchIndex::resolveRequestedIndices($handle));
+        self::assertSame([[$handle], true, false], SearchIndex::resolveRequestedIndices($handle));
 
-        [$handles, $provided] = SearchIndex::resolveRequestedIndices($handle . ',__missing_index__');
+        [$handles, $provided, $exceededMax] = SearchIndex::resolveRequestedIndices($handle . ',__missing_index__');
 
         self::assertTrue($provided);
+        self::assertFalse($exceededMax);
         self::assertSame([$handle], $handles);
     }
 

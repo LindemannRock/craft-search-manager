@@ -42,6 +42,7 @@ class SearchIndex extends Model
     use ConfigSourceTrait;
 
     private const PLUGIN_HANDLE = 'search-manager';
+    public const MAX_REQUESTED_INDICES = 5;
 
     /**
      * @var self[]|null Request-scoped index cache.
@@ -753,25 +754,29 @@ class SearchIndex extends Model
     /**
      * Parse and validate requested index handles from request parameters.
      *
-     * Handles the comma-separated 'indices' param, caps the count to prevent
-     * fan-out attacks, and filters to enabled-only indices.
+     * Handles the comma-separated 'indices' param, reports when the requested
+     * count exceeds the cap, and filters to enabled-only indices.
      *
      * @param string $indicesParam Comma-separated index handles (from 'indices' param)
      * @param int $maxCount Maximum number of indices allowed
-     * @return array{0: array<string>, 1: bool} [validatedHandles, wereIndicesProvided]
+     * @return array{0: array<string>, 1: bool, 2: bool} [validatedHandles, wereIndicesProvided, exceededMax]
      * @since 5.39.0
      */
-    public static function resolveRequestedIndices(string $indicesParam, int $maxCount = 5): array
+    public static function resolveRequestedIndices(string $indicesParam, int $maxCount = self::MAX_REQUESTED_INDICES): array
     {
         $indexHandles = [];
         $indicesProvided = false;
+        $exceededMax = false;
 
         if (!empty($indicesParam)) {
             $indicesProvided = true;
             $indexHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
         }
 
-        // Cap indices count to prevent fan-out attacks
+        $exceededMax = count($indexHandles) > $maxCount;
+
+        // Keep the cap as a defense-in-depth backstop even when callers check
+        // $exceededMax and fail closed before searching.
         if (count($indexHandles) > $maxCount) {
             $indexHandles = array_slice($indexHandles, 0, $maxCount);
         }
@@ -786,7 +791,7 @@ class SearchIndex extends Model
             $indexHandles = array_values(array_intersect($indexHandles, $enabledHandles));
         }
 
-        return [$indexHandles, $indicesProvided];
+        return [$indexHandles, $indicesProvided, $exceededMax];
     }
 
     /**

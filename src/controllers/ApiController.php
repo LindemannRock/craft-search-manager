@@ -34,10 +34,6 @@ class ApiController extends Controller
      * Maximum query length to prevent resource exhaustion
      */
     private const MAX_QUERY_LENGTH = 256;
-    /**
-     * Maximum number of indices allowed per request
-     */
-    private const MAX_INDICES_COUNT = 5;
 
     /**
      * @inheritdoc
@@ -162,10 +158,16 @@ class ApiController extends Controller
         $autocomplete = SearchManager::$plugin->autocomplete;
 
         // Parse and validate requested indices
-        [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
+        [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
             Craft::$app->getRequest()->getParam('indexHandles', ''),
-            self::MAX_INDICES_COUNT,
         );
+        if ($exceededMax) {
+            return $this->asJson([
+                'suggestions' => [],
+                'results' => [],
+                'error' => Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES]),
+            ]);
+        }
 
         // Apply the API key's index permission boundary (2b).
         if ($this->authenticatedKey !== null) {
@@ -418,10 +420,17 @@ class ApiController extends Controller
         }
 
         // Parse and validate requested indices
-        [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
+        [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
             $request->getParam('indexHandles', ''),
-            self::MAX_INDICES_COUNT,
         );
+        if ($exceededMax) {
+            return $this->asJson([
+                'hits' => [],
+                'total' => 0,
+                'query' => $query,
+                'error' => Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES]),
+            ]);
+        }
 
         // Apply the API key's index permission boundary (2b): rejects an
         // out-of-scope explicit index (403), or scopes an unscoped request to

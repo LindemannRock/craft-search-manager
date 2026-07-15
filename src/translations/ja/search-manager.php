@@ -351,6 +351,7 @@ return [
     'The active GraphQL schema is not allowed to query the requested site.' => 'アクティブな GraphQL スキーマでは、リクエストされたサイトをクエリできません。',
     'The filters argument is not a valid filter expression.' => 'filters 引数は有効なフィルター式ではありません。',
     'The filters argument requires a single index.' => 'filters 引数には単一のインデックスが必要です。',
+    'The indexHandles argument accepts at most {max} indices.' => 'indexHandles 引数には最大 {max} 件のインデックスを指定できます。',
     'The requested site is outside the scope of index "{handle}".' => 'リクエストされたサイトはインデックス {handle} のスコープ外です。',
     'This API key cannot access this search.' => 'この API キーではこの検索にアクセスできません。',
     'This API key has expired.' => 'この API キーは有効期限切れです。',

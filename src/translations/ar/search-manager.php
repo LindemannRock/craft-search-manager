@@ -351,6 +351,7 @@ return [
     'The active GraphQL schema is not allowed to query the requested site.' => 'مخطط GraphQL النشط غير مسموح له بالاستعلام عن الموقع المطلوب.',
     'The filters argument is not a valid filter expression.' => 'وسيطة filters ليست تعبير تصفية صالحاً.',
     'The filters argument requires a single index.' => 'تتطلب وسيطة filters فهرساً واحداً.',
+    'The indexHandles argument accepts at most {max} indices.' => 'تقبل وسيطة indexHandles بحد أقصى {max} فهارس.',
     'The requested site is outside the scope of index "{handle}".' => 'الموقع المطلوب خارج نطاق الفهرس "{handle}".',
     'This API key cannot access this search.' => 'لا يمكن لمفتاح API هذا الوصول إلى هذا البحث.',
     'This API key has expired.' => 'انتهت صلاحية مفتاح API هذا.',

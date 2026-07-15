@@ -118,9 +118,12 @@ class SearchController extends Controller
             $trackingIndices = $action->id === 'track-click'
                 ? (string) $request->getParam('index', '')
                 : (string) $request->getParam('indexHandles', '');
-            [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
+            [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
                 $trackingIndices,
             );
+            if ($exceededMax) {
+                throw new ForbiddenHttpException(Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES]));
+            }
             if ($indicesProvided) {
                 SearchManager::$plugin->apiKeys->scopeIndices($key, $indexHandles, true);
             }

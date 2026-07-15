@@ -148,7 +148,7 @@ input.addEventListener('input', (e) => {
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `indexHandles` | (all indices) | One index handle or a comma-separated list of index handles. Omit to search all enabled indices. |
+| `indexHandles` | (all indices) | One index handle or a comma-separated list of up to 5 explicit handles. Passing more than 5 handles returns an error. Omit to search all enabled indices. |
 | `resultsLimit` | `10` | Maximum suggestions/results |
 | `siteId` | (all sites) | Filter to a specific site |
 | `language` | (auto) | Language code |

@@ -56,6 +56,11 @@ class AutocompleteResponseType extends ObjectType
                 'type' => Type::listOf(AutocompleteResultType::getType()),
                 'description' => 'Element result suggestions.',
             ],
+            'error' => [
+                'name' => 'error',
+                'type' => Type::string(),
+                'description' => 'A non-fatal error message, if applicable.',
+            ],
         ];
     }
 

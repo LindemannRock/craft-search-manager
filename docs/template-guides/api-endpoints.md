@@ -50,7 +50,7 @@ GET /actions/search-manager/api/search
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `indexHandles` | (all indices) | One index handle or a comma-separated list of index handles to search. Omit to search all enabled indices. |
+| `indexHandles` | (all indices) | One index handle or a comma-separated list of up to 5 explicit handles to search. Passing more than 5 handles returns an error. Omit to search all enabled indices. |
 | `resultsLimit` | `20` | Maximum results per page (min: 1, max: 200). Values below 1 reset to the default. |
 | `page` | `0` | Page number (0-based) |
 | `type` | (none) | Filter by stable document kind, for example `entry`, `product`, `variant`, `asset`, `category`, or `user` |
@@ -340,7 +340,7 @@ GET /actions/search-manager/api/autocomplete
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `indexHandles` | (all indices) | One index handle or a comma-separated list of index handles. Omit to search all enabled indices. |
+| `indexHandles` | (all indices) | One index handle or a comma-separated list of up to 5 explicit handles. Passing more than 5 handles returns an error. Omit to search all enabled indices. |
 | `resultsLimit` | `10` | Maximum suggestions/results (capped at 100) |
 | `siteId` | (all sites) | Filter to a specific site |
 | `language` | (auto) | Language code (alias: `lang`) |
@@ -451,7 +451,7 @@ Records a search query when the user shows intent (clicking a result, pressing E
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query (truncated at 256 characters) |
-| `indexHandles` | (all) | Comma-separated index handles. Only enabled indices are accepted. |
+| `indexHandles` | (all) | Comma-separated index handles. Only enabled indices are accepted. Passing more than 5 explicit handles is rejected; omit the parameter to record all-indices searches. |
 | `resultsCount` | `0` | Number of results shown (capped at 1000) |
 | `trigger` | `unknown` | What triggered tracking: `click`, `enter`, `idle`, or `unknown` |
 | `analyticsSource` | `frontend-widget` | Source identifier (alphanumeric, dash, underscore; max 64 chars) |

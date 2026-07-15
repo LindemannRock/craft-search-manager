@@ -101,7 +101,7 @@ Override settings per-include:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `configHandle` | `string` | — | Widget config handle (loads settings from CP/config) |
-| `indexHandles` | `array|string` | `[]` | Index handles to search. Use an array in Twig config or a comma-separated string on the web component; empty = all. |
+| `indexHandles` | `array|string` | `[]` | Up to 5 explicit index handles to search. Use an array in Twig config or a comma-separated string on the web component; empty = all enabled indices. |
 | `placeholder` | `string` | `'Search...'` | Input placeholder text |
 | `theme` | `string` | `'light'` | `'light'` or `'dark'` |
 | `siteId` | `int` | — | Specific site to search |

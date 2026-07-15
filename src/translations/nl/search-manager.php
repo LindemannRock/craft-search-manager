@@ -351,6 +351,7 @@ return [
     'The active GraphQL schema is not allowed to query the requested site.' => 'Het actieve GraphQL-schema mag de aangevraagde site niet opvragen.',
     'The filters argument is not a valid filter expression.' => 'Het argument filters is geen geldige filterexpressie.',
     'The filters argument requires a single index.' => 'Het argument filters vereist één index.',
+    'The indexHandles argument accepts at most {max} indices.' => 'Het argument indexHandles accepteert maximaal {max} indexen.',
     'The requested site is outside the scope of index "{handle}".' => 'De aangevraagde site valt buiten het bereik van index "{handle}".',
     'This API key cannot access this search.' => 'Deze API-sleutel heeft geen toegang tot deze zoekopdracht.',
     'This API key has expired.' => 'Deze API-sleutel is verlopen.',
