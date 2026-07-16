@@ -701,7 +701,8 @@ return [
          *     - promotionDisplay: How promoted results are marked: 'badge', 'tint', 'none' (default: 'none')
          *     - promotionBadgeText: Badge label; also the screen-reader label in tint mode (default: 'Featured', localized; custom text uses the site translation category)
          *     - promotionBadgePosition: 'inline' (before the title), 'above', 'below' (default: 'inline')
-         *     - resultsGroupingEnabled: Group flat results by source, Entry section, or type (default: true)
+         *     - resultsGroupingEnabled: Group flat results by source, Entry section, or type (default: true).
+         *       Default layout only — the hierarchical layout ignores this and always groups by hierarchyGroupBy
          *     - triggerHotkey: Keyboard shortcut key, e.g. 'k' for Cmd/Ctrl+K (default: 'k')
          *     - resultsRequireUrl: Hide results that don't have a URL (default: false)
          *     - loadingIndicatorEnabled: Show spinner while searching (default: true)

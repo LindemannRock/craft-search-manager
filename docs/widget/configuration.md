@@ -60,7 +60,6 @@ Override settings per-include:
     searchMinChars: 2,
     recentlyViewedEnabled: true,
     recentlyViewedLimit: 5,
-    resultsGroupingEnabled: true,
     triggerHotkey: 'k',
     resultsLayout: 'hierarchical',
     hierarchyGroupBy: '',
@@ -144,7 +143,7 @@ Override settings per-include:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `resultsLimit` | `int` | `10` | Maximum results to show (1-100) |
-| `resultsGroupingEnabled` | `bool` | `true` | Group flat results by `source`, `entrySection`, or `type` |
+| `resultsGroupingEnabled` | `bool` | `true` | Group flat results by `source`, `entrySection`, or `type`. **Default layout only** — the hierarchical layout ignores this and always groups by `hierarchyGroupBy` |
 | `resultsRequireUrl` | `bool` | `false` | Hide results without a URL |
 
 ### Hierarchy @since(5.39.0)
@@ -152,7 +151,7 @@ Override settings per-include:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `resultsLayout` | `string` | `'default'` | Result layout: `'default'` or `'hierarchical'` |
-| `hierarchyGroupBy` | `string` | `''` | Field to group hierarchical results by. Leave empty for the default `source` → `entrySection` → `type` chain. |
+| `hierarchyGroupBy` | `string` | `''` | Field whose values become the section headers in hierarchical layout (grouping is always on there). Leave empty for the default `source` → `entrySection` → `type` chain. |
 | `hierarchyStyle` | `string` | `'tree'` | Hierarchy display style: `'tree'` (indented + connectors), `'flat'` (no indentation + connectors), or `'none'` (no indentation, no connectors) |
 | `hierarchyDisplay` | `string` | `'individual'` | Card mode: `'individual'` (each parent result is its own card) or `'unified'` (page block and heading children share one card) |
 | `hierarchyMaxHeadings` | `int` | `3` | Maximum heading children shown per page block (1-50). Split hits are selected by score, then displayed in document order. |
