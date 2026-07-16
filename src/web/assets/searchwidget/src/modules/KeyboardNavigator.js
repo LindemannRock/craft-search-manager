@@ -180,6 +180,11 @@ export function updateSelectionState(items, selectedIndex, options = {}) {
  * Makes items selectable via mouse hover, keeping keyboard
  * and mouse navigation in sync.
  *
+ * Listens to mousemove instead of mouseenter: keyboard navigation scrolls
+ * the list, which slides rows under a stationary pointer and fires
+ * mouseenter — hijacking the keyboard selection. A scroll never fires
+ * mousemove, so hover only wins when the pointer actually moves.
+ *
  * @param {NodeList|Array} items - List of navigable item elements
  * @param {Function} onHover - Callback when item is hovered (receives index)
  *
@@ -191,8 +196,8 @@ export function updateSelectionState(items, selectedIndex, options = {}) {
  */
 export function attachHoverHandlers(items, onHover) {
     items.forEach((item, index) => {
-        item.addEventListener('mouseenter', () => {
-            if (onHover) {
+        item.addEventListener('mousemove', () => {
+            if (onHover && !item.classList.contains('sm-selected')) {
                 onHover(index);
             }
         });

@@ -270,7 +270,7 @@
     transition: background 0.1s ease;
 }
 
-/* Hover and selected share the same visual — mouseenter always sets .sm-selected,
+/* Hover and selected share the same visual — pointer movement sets .sm-selected,
    so separate hover colors would never be visible. Use one set of active colors.
    box-shadow color changes from --_border-shadow (gray) to --_active-shadow (blue). */
 .sm-result-item:hover,

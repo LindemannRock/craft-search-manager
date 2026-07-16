@@ -198,6 +198,8 @@ try {
     test('None mode and the default render no marker', hiddenMarker.rowClass === '' && hiddenMarker.titlePrefix === '' && defaultMarker.titlePrefix === '');
     test('Unpromoted results never get a marker', unpromotedMarker.rowClass === '' && unpromotedMarker.titlePrefix === '' && unpromotedMarker.blockMarkup === '');
 
+    const navigatorSource = fs.readFileSync(path.join(SRC_DIR, 'modules', 'KeyboardNavigator.js'), 'utf8');
+    test('Hover selection reacts to pointer movement, not scroll-induced mouseenter', navigatorSource.includes("addEventListener('mousemove'") && !navigatorSource.includes("addEventListener('mouseenter'"));
     const splitHits = [
         {
             elementId: 101,
