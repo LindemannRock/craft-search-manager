@@ -264,22 +264,12 @@ class SearchController extends Controller
             return $this->asJson(['success' => true, 'tracked' => false]);
         }
 
-        // Parse indices and validate against enabled indices
-        $indexHandles = [];
-        $indicesProvided = false;
-        if (!empty($indexHandlesParam)) {
-            $indicesProvided = true;
-            $requestedHandles = array_filter(array_map('trim', explode(',', $indexHandlesParam)));
-
-            // Get all enabled index handles
-            $allIndices = SearchIndex::findAll();
-            $enabledHandles = array_map(
-                fn($idx) => $idx->handle,
-                array_filter($allIndices, fn($idx) => $idx->enabled)
-            );
-
-            // Only allow indices that exist and are enabled
-            $indexHandles = array_values(array_intersect($requestedHandles, $enabledHandles));
+        // Parse indices through the shared resolver so the anonymous path gets
+        // the same dedup + fail-closed cap as every other indexHandles consumer
+        // (the beforeAction cap only runs when requireApiKey is on).
+        [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices($indexHandlesParam);
+        if ($exceededMax) {
+            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES])]);
         }
 
         // If indices were explicitly provided but none are valid/enabled, don't track

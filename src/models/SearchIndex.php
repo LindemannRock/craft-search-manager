@@ -754,8 +754,10 @@ class SearchIndex extends Model
     /**
      * Parse and validate requested index handles from request parameters.
      *
-     * Handles the comma-separated 'indices' param, reports when the requested
-     * count exceeds the cap, and filters to enabled-only indices.
+     * Handles the comma-separated 'indices' param, dedupes (handles are a set —
+     * repeats would multiply per-handle work like analytics writes and query-rule
+     * lookups downstream), reports when the distinct count exceeds the cap, and
+     * filters to enabled-only indices.
      *
      * @param string $indicesParam Comma-separated index handles (from 'indices' param)
      * @param int $maxCount Maximum number of indices allowed
@@ -770,7 +772,7 @@ class SearchIndex extends Model
 
         if (!empty($indicesParam)) {
             $indicesProvided = true;
-            $indexHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
+            $indexHandles = array_unique(array_filter(array_map('trim', explode(',', $indicesParam))));
         }
 
         $exceededMax = count($indexHandles) > $maxCount;
