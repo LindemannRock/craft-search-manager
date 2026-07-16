@@ -54,7 +54,7 @@ final class ApiKeyDeleteDependencyGuardTest extends TestCase
     {
         $apiKeyId = $this->insertApiKey('used-key', 'Used API Key');
         $this->insertWidget('widget', 'Search Widget', self::PREFIX . '-used-key');
-        $this->actWithPermissions(['searchManager:manageApiKeys', 'searchManager:revokeApiKeys']);
+        $this->actWithPermissions(['searchManager:manageApiKeys', 'searchManager:revokeApiKeys', 'searchManager:manageWidgetConfigs']);
         $this->withPostJson(['keyId' => $apiKeyId]);
 
         $response = (new ApiKeysController('api-keys', SearchManager::$plugin))->actionDelete();
@@ -71,7 +71,7 @@ final class ApiKeyDeleteDependencyGuardTest extends TestCase
     public function testApiKeyDeleteSucceedsWhenNoResolvedWidgetUsesKey(): void
     {
         $apiKeyId = $this->insertApiKey('unused-key', 'Unused API Key');
-        $this->actWithPermissions(['searchManager:manageApiKeys', 'searchManager:revokeApiKeys']);
+        $this->actWithPermissions(['searchManager:manageApiKeys', 'searchManager:revokeApiKeys', 'searchManager:manageWidgetConfigs']);
         $this->withPostJson(['keyId' => $apiKeyId]);
 
         $response = (new ApiKeysController('api-keys', SearchManager::$plugin))->actionDelete();
@@ -86,7 +86,7 @@ final class ApiKeyDeleteDependencyGuardTest extends TestCase
         $usedKeyId = $this->insertApiKey('bulk-used-key', 'Bulk Used API Key');
         $unusedKeyId = $this->insertApiKey('bulk-unused-key', 'Bulk Unused API Key');
         $this->insertWidget('bulk-widget', 'Bulk Widget', self::PREFIX . '-bulk-used-key');
-        $this->actWithPermissions(['searchManager:manageApiKeys', 'searchManager:revokeApiKeys']);
+        $this->actWithPermissions(['searchManager:manageApiKeys', 'searchManager:revokeApiKeys', 'searchManager:manageWidgetConfigs']);
         $this->withPostJson(['ids' => [$usedKeyId, $unusedKeyId]]);
 
         $response = (new ApiKeysController('api-keys', SearchManager::$plugin))->actionBulkDelete();

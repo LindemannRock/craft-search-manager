@@ -54,7 +54,7 @@ final class IndexDeleteDependencyGuardTest extends TestCase
     {
         $indexId = $this->insertIndex('widget-index', 'Widget Index');
         $this->insertWidget('widget', 'Search Widget', [self::PREFIX . '-widget-index']);
-        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices']);
+        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices', 'searchManager:manageWidgetConfigs', 'searchManager:manageApiKeys']);
         $this->withPostJson(['indexId' => $indexId]);
 
         $response = (new IndicesController('indices', SearchManager::$plugin))->actionDelete();
@@ -72,7 +72,7 @@ final class IndexDeleteDependencyGuardTest extends TestCase
     {
         $indexId = $this->insertIndex('api-key-index', 'API Key Index');
         $this->insertApiKey('api-key', 'Public Key', [self::PREFIX . '-api-key-index']);
-        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices']);
+        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices', 'searchManager:manageWidgetConfigs', 'searchManager:manageApiKeys']);
         $this->withPostJson(['indexId' => $indexId]);
 
         $response = (new IndicesController('indices', SearchManager::$plugin))->actionDelete();
@@ -90,7 +90,7 @@ final class IndexDeleteDependencyGuardTest extends TestCase
     {
         $indexId = $this->insertIndex('api-key-all-index', 'All Key Index');
         $this->insertApiKey('api-key-all', 'All Indices Key', ['*']);
-        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices']);
+        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices', 'searchManager:manageWidgetConfigs', 'searchManager:manageApiKeys']);
         $this->withPostJson(['indexId' => $indexId]);
 
         $response = (new IndicesController('indices', SearchManager::$plugin))->actionDelete();
@@ -103,7 +103,7 @@ final class IndexDeleteDependencyGuardTest extends TestCase
     public function testIndexDeleteSucceedsWhenNoResolvedDependencyUsesIndex(): void
     {
         $indexId = $this->insertIndex('unused-index', 'Unused Index');
-        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices']);
+        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices', 'searchManager:manageWidgetConfigs', 'searchManager:manageApiKeys']);
         $this->withPostJson(['indexId' => $indexId]);
 
         $response = (new IndicesController('indices', SearchManager::$plugin))->actionDelete();
@@ -118,7 +118,7 @@ final class IndexDeleteDependencyGuardTest extends TestCase
         $usedIndexId = $this->insertIndex('bulk-mixed-used', 'Bulk Mixed Used Index');
         $unusedIndexId = $this->insertIndex('bulk-mixed-unused', 'Bulk Mixed Unused Index');
         $this->insertWidget('bulk-widget', 'Bulk Widget', [self::PREFIX . '-bulk-mixed-used']);
-        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices']);
+        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices', 'searchManager:manageWidgetConfigs', 'searchManager:manageApiKeys']);
         $this->withPostJson(['indexIds' => [$usedIndexId, $unusedIndexId]]);
 
         $response = (new IndicesController('indices', SearchManager::$plugin))->actionBulkDelete();
@@ -137,7 +137,7 @@ final class IndexDeleteDependencyGuardTest extends TestCase
     {
         $firstIndexId = $this->insertIndex('bulk-unused-one', 'Bulk Unused One');
         $secondIndexId = $this->insertIndex('bulk-unused-two', 'Bulk Unused Two');
-        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices']);
+        $this->actWithPermissions(['searchManager:manageIndices', 'searchManager:deleteIndices', 'searchManager:manageWidgetConfigs', 'searchManager:manageApiKeys']);
         $this->withPostJson(['indexIds' => [$firstIndexId, $secondIndexId]]);
 
         $response = (new IndicesController('indices', SearchManager::$plugin))->actionBulkDelete();

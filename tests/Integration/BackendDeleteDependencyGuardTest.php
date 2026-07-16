@@ -55,7 +55,7 @@ final class BackendDeleteDependencyGuardTest extends TestCase
         $targetBackendId = $this->insertBackend('target', 'Target Backend');
         $this->insertIndex('referencing-index', 'Blog Search', self::PREFIX . '-target');
         $this->setDefaultBackend(self::PREFIX . '-default');
-        $this->actWithPermissions(['searchManager:manageBackends', 'searchManager:deleteBackends']);
+        $this->actWithPermissions(['searchManager:manageBackends', 'searchManager:deleteBackends', 'searchManager:manageIndices']);
         $this->withPostJson(['backendId' => $targetBackendId]);
 
         $response = (new BackendsController('backends', SearchManager::$plugin))->actionDelete();
@@ -74,7 +74,7 @@ final class BackendDeleteDependencyGuardTest extends TestCase
     {
         $targetBackendId = $this->insertBackend('unused', 'Unused Backend');
         $this->setDefaultBackend(null);
-        $this->actWithPermissions(['searchManager:manageBackends', 'searchManager:deleteBackends']);
+        $this->actWithPermissions(['searchManager:manageBackends', 'searchManager:deleteBackends', 'searchManager:manageIndices']);
         $this->withPostJson(['backendId' => $targetBackendId]);
 
         $response = (new BackendsController('backends', SearchManager::$plugin))->actionDelete();
@@ -89,7 +89,7 @@ final class BackendDeleteDependencyGuardTest extends TestCase
         $targetBackendId = $this->insertBackend('bulk-target', 'Bulk Target Backend');
         $this->insertIndex('bulk-referencing-index', 'Bulk Blog Search', self::PREFIX . '-bulk-target');
         $this->setDefaultBackend(null);
-        $this->actWithPermissions(['searchManager:manageBackends', 'searchManager:deleteBackends']);
+        $this->actWithPermissions(['searchManager:manageBackends', 'searchManager:deleteBackends', 'searchManager:manageIndices']);
         $this->withPostJson(['backendIds' => [$targetBackendId]]);
 
         $response = (new BackendsController('backends', SearchManager::$plugin))->actionBulkDelete();
@@ -109,7 +109,7 @@ final class BackendDeleteDependencyGuardTest extends TestCase
         $unusedBackendId = $this->insertBackend('bulk-mixed-unused', 'Bulk Mixed Unused Backend');
         $this->insertIndex('bulk-mixed-referencing-index', 'Bulk Mixed Blog Search', self::PREFIX . '-bulk-mixed-used');
         $this->setDefaultBackend(null);
-        $this->actWithPermissions(['searchManager:manageBackends', 'searchManager:deleteBackends']);
+        $this->actWithPermissions(['searchManager:manageBackends', 'searchManager:deleteBackends', 'searchManager:manageIndices']);
         $this->withPostJson(['backendIds' => [$usedBackendId, $unusedBackendId]]);
 
         $response = (new BackendsController('backends', SearchManager::$plugin))->actionBulkDelete();
@@ -128,7 +128,7 @@ final class BackendDeleteDependencyGuardTest extends TestCase
     {
         $targetBackendId = $this->insertBackend('bulk-unused', 'Bulk Unused Backend');
         $this->setDefaultBackend(null);
-        $this->actWithPermissions(['searchManager:manageBackends', 'searchManager:deleteBackends']);
+        $this->actWithPermissions(['searchManager:manageBackends', 'searchManager:deleteBackends', 'searchManager:manageIndices']);
         $this->withPostJson(['backendIds' => [$targetBackendId]]);
 
         $response = (new BackendsController('backends', SearchManager::$plugin))->actionBulkDelete();

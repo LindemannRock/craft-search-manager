@@ -22,7 +22,25 @@ use lindemannrock\searchmanager\SearchManager;
 class DependencyService extends Component
 {
     /**
-     * @return array<int, array{type: string, label: string}>
+     * The permission groups are independent, so a caller holding only a delete
+     * permission may not be allowed to view the referenced entity type. Each
+     * usage kind maps to the permission that grants viewing that section;
+     * {@see formatInUseError()} shows a count instead of names without it.
+     */
+    private const KIND_VIEW_PERMISSIONS = [
+        'widget' => 'searchManager:manageWidgetConfigs',
+        'apiKey' => 'searchManager:manageApiKeys',
+        'index' => 'searchManager:manageIndices',
+    ];
+
+    private const KIND_COUNT_MESSAGES = [
+        'widget' => '{count, plural, =1{# widget} other{# widgets}}',
+        'apiKey' => '{count, plural, =1{# API key} other{# API keys}}',
+        'index' => '{count, plural, =1{# index} other{# indices}}',
+    ];
+
+    /**
+     * @return array<int, array{type: string, label: string, kind: string}>
      */
     public function getBackendUsages(string $handle): array
     {
@@ -36,6 +54,7 @@ class DependencyService extends Component
             $usages[] = [
                 'type' => Craft::t('search-manager', 'Index'),
                 'label' => $index->name,
+                'kind' => 'index',
             ];
         }
 
@@ -43,7 +62,7 @@ class DependencyService extends Component
     }
 
     /**
-     * @return array<int, array{type: string, label: string}>
+     * @return array<int, array{type: string, label: string, kind: string}>
      */
     public function getIndexUsages(string $handle): array
     {
@@ -57,6 +76,7 @@ class DependencyService extends Component
             $usages[] = [
                 'type' => Craft::t('search-manager', 'Widget'),
                 'label' => $widgetConfig->name,
+                'kind' => 'widget',
             ];
         }
 
@@ -68,6 +88,7 @@ class DependencyService extends Component
             $usages[] = [
                 'type' => Craft::t('search-manager', 'API key'),
                 'label' => $apiKey->name,
+                'kind' => 'apiKey',
             ];
         }
 
@@ -75,7 +96,7 @@ class DependencyService extends Component
     }
 
     /**
-     * @return array<int, array{type: string, label: string}>
+     * @return array<int, array{type: string, label: string, kind: string}>
      */
     public function getApiKeyUsages(string $handle): array
     {
@@ -85,6 +106,7 @@ class DependencyService extends Component
             $usages[] = [
                 'type' => Craft::t('search-manager', 'Widget'),
                 'label' => $widgetConfig->name,
+                'kind' => 'widget',
             ];
         }
 
@@ -92,7 +114,7 @@ class DependencyService extends Component
     }
 
     /**
-     * @return array<int, array{type: string, label: string}>
+     * @return array<int, array{type: string, label: string, kind: string}>
      */
     public function getStyleUsages(string $handle): array
     {
@@ -106,6 +128,7 @@ class DependencyService extends Component
             $usages[] = [
                 'type' => Craft::t('search-manager', 'Widget'),
                 'label' => $widgetConfig->name,
+                'kind' => 'widget',
             ];
         }
 
@@ -113,14 +136,32 @@ class DependencyService extends Component
     }
 
     /**
-     * @param array<int, array{type: string, label: string}> $usages
+     * Format the delete-guard block message. Usage names are shown only for
+     * kinds the current user holds the view permission for; other kinds are
+     * summarized as a count so entity names don't leak across permission
+     * groups (a name is only actionable to someone who can open that section
+     * anyway). No identity (guest/console) fails closed to counts.
+     *
+     * @param array<int, array{type: string, label: string, kind: string}> $usages
      */
     public function formatInUseError(string $name, array $usages): string
     {
-        $usageLabels = array_map(
-            static fn(array $usage): string => $usage['type'] . ': ' . $usage['label'],
-            $usages,
-        );
+        $user = Craft::$app->getUser();
+        $usageLabels = [];
+        $hiddenCounts = [];
+
+        foreach ($usages as $usage) {
+            $viewPermission = self::KIND_VIEW_PERMISSIONS[$usage['kind']] ?? null;
+            if ($viewPermission === null || $user->checkPermission($viewPermission)) {
+                $usageLabels[] = $usage['type'] . ': ' . $usage['label'];
+            } else {
+                $hiddenCounts[$usage['kind']] = ($hiddenCounts[$usage['kind']] ?? 0) + 1;
+            }
+        }
+
+        foreach ($hiddenCounts as $kind => $count) {
+            $usageLabels[] = Craft::t('search-manager', self::KIND_COUNT_MESSAGES[$kind], ['count' => $count]);
+        }
 
         return Craft::t('search-manager', 'Cannot delete “{name}” — it is in use by: {usages}.', [
             'name' => $name,

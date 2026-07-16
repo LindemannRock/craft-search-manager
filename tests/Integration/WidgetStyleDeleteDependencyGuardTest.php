@@ -53,7 +53,7 @@ final class WidgetStyleDeleteDependencyGuardTest extends TestCase
     {
         $styleId = $this->insertStyle('used-style', 'Used Style');
         $this->insertWidget('widget', 'Search Widget', self::PREFIX . '-used-style');
-        $this->actWithPermissions(['searchManager:manageWidgetStyles', 'searchManager:deleteWidgetStyles']);
+        $this->actWithPermissions(['searchManager:manageWidgetStyles', 'searchManager:deleteWidgetStyles', 'searchManager:manageWidgetConfigs']);
         $this->withPostJson(['styleId' => $styleId]);
 
         $response = (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle();
@@ -70,7 +70,7 @@ final class WidgetStyleDeleteDependencyGuardTest extends TestCase
     public function testWidgetStyleDeleteSucceedsWhenNoResolvedWidgetUsesStyle(): void
     {
         $styleId = $this->insertStyle('unused-style', 'Unused Style');
-        $this->actWithPermissions(['searchManager:manageWidgetStyles', 'searchManager:deleteWidgetStyles']);
+        $this->actWithPermissions(['searchManager:manageWidgetStyles', 'searchManager:deleteWidgetStyles', 'searchManager:manageWidgetConfigs']);
         $this->withPostJson(['styleId' => $styleId]);
 
         $response = (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle();
@@ -85,7 +85,7 @@ final class WidgetStyleDeleteDependencyGuardTest extends TestCase
         $usedStyleId = $this->insertStyle('bulk-used-style', 'Bulk Used Style');
         $unusedStyleId = $this->insertStyle('bulk-unused-style', 'Bulk Unused Style');
         $this->insertWidget('bulk-widget', 'Bulk Widget', self::PREFIX . '-bulk-used-style');
-        $this->actWithPermissions(['searchManager:manageWidgetStyles', 'searchManager:deleteWidgetStyles']);
+        $this->actWithPermissions(['searchManager:manageWidgetStyles', 'searchManager:deleteWidgetStyles', 'searchManager:manageWidgetConfigs']);
         $this->withPostJson(['styleIds' => [$usedStyleId, $unusedStyleId]]);
 
         $response = (new WidgetsController('widgets', SearchManager::$plugin))->actionBulkDeleteStyle();
