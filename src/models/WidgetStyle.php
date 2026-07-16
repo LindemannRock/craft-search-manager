@@ -129,6 +129,10 @@ class WidgetStyle extends Model
         $this->validateStyleInt($s, 'headerPaddingX', 0, 40, Craft::t('search-manager', 'Header Padding X'));
         $this->validateStyleInt($s, 'headerPaddingY', 0, 40, Craft::t('search-manager', 'Header Padding Y'));
 
+        // Footer (empty = follows the modal padding)
+        $this->validateStyleInt($s, 'footerPaddingX', 0, 40, Craft::t('search-manager', 'Footer Padding X'));
+        $this->validateStyleInt($s, 'footerPaddingY', 0, 40, Craft::t('search-manager', 'Footer Padding Y'));
+
         // Input
         $this->validateStyleInt($s, 'inputFontSize', 12, 24, Craft::t('search-manager', 'Input Font Size'));
         $this->validateStyleInt($s, 'inputBorderRadius', 0, 20, Craft::t('search-manager', 'Input Border Radius'));

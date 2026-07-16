@@ -27,21 +27,32 @@ window.SearchManagerPreview = (function() {
 		modalBorderRadius:    [{ mode: 'both', selector: '.preview-modal', prop: 'borderRadius', unit: 'px' }],
 		modalBorderWidth:     [{ mode: 'both', selector: '.preview-modal', prop: 'borderWidth', unit: 'px' }],
 		modalPaddingX: [
-			{ mode: 'both', selector: '.preview-modal', prop: 'paddingLeft', unit: 'px' },
-			{ mode: 'both', selector: '.preview-modal', prop: 'paddingRight', unit: 'px' }
+			{ mode: 'both', selector: '.preview-body', prop: 'paddingLeft', unit: 'px' },
+			{ mode: 'both', selector: '.preview-body', prop: 'paddingRight', unit: 'px' }
 		],
 		modalPaddingY: [
-			{ mode: 'both', selector: '.preview-modal', prop: 'paddingTop', unit: 'px' },
-			{ mode: 'both', selector: '.preview-modal', prop: 'paddingBottom', unit: 'px' }
+			{ mode: 'both', selector: '.preview-body', prop: 'paddingTop', unit: 'px' },
+			{ mode: 'both', selector: '.preview-body', prop: 'paddingBottom', unit: 'px' }
 		],
 		modalShadow:     [{ mode: 'light', selector: '.preview-modal', prop: 'boxShadow' }],
 		modalShadowDark: [{ mode: 'dark', selector: '.preview-modal', prop: 'boxShadow' }],
 		resultMutedColor: [
-			{ mode: 'light', cssVar: '--preview-connector-color' }
+			{ mode: 'light', cssVar: '--preview-connector-color' },
+			{ mode: 'light', selector: '.preview-result-type', prop: 'color' },
+			{ mode: 'light', selector: '.preview-section-header', prop: 'color', all: true },
+			{ mode: 'light', selector: '.preview-empty', prop: 'color' }
 		],
 		resultMutedColorDark: [
-			{ mode: 'dark', cssVar: '--preview-connector-color' }
+			{ mode: 'dark', cssVar: '--preview-connector-color' },
+			{ mode: 'dark', selector: '.preview-result-type', prop: 'color' },
+			{ mode: 'dark', selector: '.preview-section-header', prop: 'color', all: true },
+			{ mode: 'dark', selector: '.preview-empty', prop: 'color' }
 		],
+
+		// Dedicated connector color wins over muted (fields appear after muted
+		// in the form, so the later value takes the var on load and on input)
+		hierarchyConnectorColor:     [{ mode: 'light', cssVar: '--preview-connector-color' }],
+		hierarchyConnectorColorDark: [{ mode: 'dark', cssVar: '--preview-connector-color' }],
 
 		// --- Search Header ---
 		headerBg:              [{ mode: 'light', selector: '.preview-header', prop: 'backgroundColor' }],
@@ -49,7 +60,10 @@ window.SearchManagerPreview = (function() {
 		headerBorderColor:     [{ mode: 'light', selector: '.preview-header', prop: 'borderColor' }],
 		headerBorderColorDark: [{ mode: 'dark', selector: '.preview-header', prop: 'borderColor' }],
 		headerBorderWidth:     [{ mode: 'both', selector: '.preview-header', prop: 'borderBottomWidth', unit: 'px' }],
-		headerBorderRadius:    [{ mode: 'both', selector: '.preview-header', prop: 'borderRadius', unit: 'px' }],
+		headerBorderRadius: [
+			{ mode: 'both', selector: '.preview-header', prop: 'borderTopLeftRadius', unit: 'px' },
+			{ mode: 'both', selector: '.preview-header', prop: 'borderTopRightRadius', unit: 'px' }
+		],
 		headerPaddingX: [
 			{ mode: 'both', selector: '.preview-header', prop: 'paddingLeft', unit: 'px' },
 			{ mode: 'both', selector: '.preview-header', prop: 'paddingRight', unit: 'px' }
@@ -97,8 +111,8 @@ window.SearchManagerPreview = (function() {
 		resultActiveTextColorDark:   [{ mode: 'dark', selector: '.preview-result-title', prop: 'color', index: 1 }],
 		resultActiveDescColor:       [{ mode: 'light', selector: '.preview-result-desc', prop: 'color', index: 1 }],
 		resultActiveDescColorDark:   [{ mode: 'dark', selector: '.preview-result-desc', prop: 'color', index: 1 }],
-		resultActiveMutedColor:      [{ mode: 'light', selector: '.preview-result-arrow', prop: 'stroke', index: 1 }],
-		resultActiveMutedColorDark:  [{ mode: 'dark', selector: '.preview-result-arrow', prop: 'stroke', index: 1 }],
+		resultActiveMutedColor:      [{ mode: 'light', selector: '.preview-result-arrow', prop: 'stroke', all: true }],
+		resultActiveMutedColorDark:  [{ mode: 'dark', selector: '.preview-result-arrow', prop: 'stroke', all: true }],
 		resultActiveBorderColor:     [{ mode: 'light', selector: '.preview-result', prop: 'borderColor', index: 1 }],
 		resultActiveBorderColorDark: [{ mode: 'dark', selector: '.preview-result', prop: 'borderColor', index: 1 }],
 
@@ -156,19 +170,77 @@ window.SearchManagerPreview = (function() {
 			{ mode: 'both', selector: '.preview-trigger-kbd', prop: 'borderRadius', unit: 'px' }
 		],
 
-		// --- Icon Color ---
+		// --- Glyphs: page icon, search icon, result icons, arrow ---
 		iconColor: [
-			{ mode: 'light', selector: '.preview-icon-color', prop: 'stroke' },
-			{ mode: 'light', selector: '.preview-result-arrow', prop: 'stroke', all: true }
+			{ mode: 'light', selector: '.preview-icon-color', prop: 'stroke' }
 		],
 		iconColorDark: [
-			{ mode: 'dark', selector: '.preview-icon-color', prop: 'stroke' },
-			{ mode: 'dark', selector: '.preview-result-arrow', prop: 'stroke', all: true }
+			{ mode: 'dark', selector: '.preview-icon-color', prop: 'stroke' }
 		],
+		iconActiveColor:     [{ mode: 'light', cssVar: '--preview-page-icon-active' }],
+		iconActiveColorDark: [{ mode: 'dark', cssVar: '--preview-page-icon-active' }],
+		resultIconActiveColor:     [{ mode: 'light', cssVar: '--preview-result-icon-active' }],
+		resultIconActiveColorDark: [{ mode: 'dark', cssVar: '--preview-result-icon-active' }],
+		hierarchyConnectorActiveColor:     [{ mode: 'light', cssVar: '--preview-connector-active' }],
+		hierarchyConnectorActiveColorDark: [{ mode: 'dark', cssVar: '--preview-connector-active' }],
+		searchIconColor:     [{ mode: 'light', selector: '.preview-search-icon', prop: 'stroke' }],
+		searchIconColorDark: [{ mode: 'dark', selector: '.preview-search-icon', prop: 'stroke' }],
+		resultIconColor:     [{ mode: 'light', selector: '.preview-result-icon', prop: 'stroke' }],
+		resultIconColorDark: [{ mode: 'dark', selector: '.preview-result-icon', prop: 'stroke' }],
+		arrowColor:          [{ mode: 'light', selector: '.preview-result-arrow', prop: 'stroke', all: true }],
+		arrowColorDark:      [{ mode: 'dark', selector: '.preview-result-arrow', prop: 'stroke', all: true }],
+
+		// --- Highlighting ---
+		highlightBgLight:    [{ mode: 'light', selector: '.preview-highlight', prop: 'backgroundColor' }],
+		highlightColorLight: [{ mode: 'light', selector: '.preview-highlight', prop: 'color' }],
+		highlightBgDark:     [{ mode: 'dark', selector: '.preview-highlight', prop: 'backgroundColor' }],
+		highlightColorDark:  [{ mode: 'dark', selector: '.preview-highlight', prop: 'color' }],
+		highlightActiveBgLight:    [{ mode: 'light', selector: '.preview-highlight-active', prop: 'backgroundColor' }],
+		highlightActiveColorLight: [{ mode: 'light', selector: '.preview-highlight-active', prop: 'color' }],
+		highlightActiveBgDark:     [{ mode: 'dark', selector: '.preview-highlight-active', prop: 'backgroundColor' }],
+		highlightActiveColorDark:  [{ mode: 'dark', selector: '.preview-highlight-active', prop: 'color' }],
+
+		// --- Promoted Badge ---
+		promotedBg:        [{ mode: 'light', selector: '.preview-promoted', prop: 'backgroundColor' }],
+		promotedBgDark:    [{ mode: 'dark', selector: '.preview-promoted', prop: 'backgroundColor' }],
+		promotedColor:     [{ mode: 'light', selector: '.preview-promoted', prop: 'color' }],
+		promotedColorDark: [{ mode: 'dark', selector: '.preview-promoted', prop: 'color' }],
+
+		// --- Trigger Hover ---
+		triggerHoverBg:              [{ mode: 'light', cssVar: '--preview-trigger-hover-bg' }],
+		triggerHoverBgDark:          [{ mode: 'dark', cssVar: '--preview-trigger-hover-bg' }],
+		triggerHoverTextColor:       [{ mode: 'light', cssVar: '--preview-trigger-hover-color' }],
+		triggerHoverTextColorDark:   [{ mode: 'dark', cssVar: '--preview-trigger-hover-color' }],
+		triggerHoverBorderColor:     [{ mode: 'light', cssVar: '--preview-trigger-hover-border' }],
+		triggerHoverBorderColorDark: [{ mode: 'dark', cssVar: '--preview-trigger-hover-border' }],
 
 		// --- Spinner ---
 		spinnerColor:     [{ mode: 'light', selector: '.preview-spinner', prop: 'color' }],
-		spinnerColorDark: [{ mode: 'dark', selector: '.preview-spinner', prop: 'color' }]
+		spinnerColorDark: [{ mode: 'dark', selector: '.preview-spinner', prop: 'color' }],
+
+		// --- Clear icon ---
+		clearIconColor:     [{ mode: 'light', selector: '.preview-clear', prop: 'stroke' }],
+		clearIconColorDark: [{ mode: 'dark', selector: '.preview-clear', prop: 'stroke' }],
+
+		// --- Footer ---
+		footerBg:     [{ mode: 'light', selector: '.preview-footer', prop: 'backgroundColor' }],
+		footerBgDark: [{ mode: 'dark', selector: '.preview-footer', prop: 'backgroundColor' }],
+		footerTextColor: [
+			{ mode: 'light', selector: '.preview-footer', prop: 'color' },
+			{ mode: 'light', selector: '.preview-footer-brand strong', prop: 'color' }
+		],
+		footerTextColorDark: [
+			{ mode: 'dark', selector: '.preview-footer', prop: 'color' },
+			{ mode: 'dark', selector: '.preview-footer-brand strong', prop: 'color' }
+		],
+		footerPaddingX: [
+			{ mode: 'both', selector: '.preview-footer', prop: 'paddingLeft', unit: 'px' },
+			{ mode: 'both', selector: '.preview-footer', prop: 'paddingRight', unit: 'px' }
+		],
+		footerPaddingY: [
+			{ mode: 'both', selector: '.preview-footer', prop: 'paddingTop', unit: 'px' },
+			{ mode: 'both', selector: '.preview-footer', prop: 'paddingBottom', unit: 'px' }
+		]
 	};
 
 	/**

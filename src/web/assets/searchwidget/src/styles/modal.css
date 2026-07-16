@@ -44,6 +44,18 @@
     --sm-trigger-py: 8px;
     --sm-trigger-font-size: 14px;
 
+    /* Search icon — unset key falls back to muted */
+    --sm-search-icon-resolved: var(--sm-search-icon-color, var(--sm-text-muted));
+
+    /* Clear icon — unset falls back to muted, hover to primary text */
+    --sm-clear-icon-resolved: var(--sm-clear-icon-color, var(--sm-text-muted));
+    --sm-clear-icon-hover-resolved: var(--sm-clear-icon-color, var(--sm-text-primary));
+
+    /* Footer — unset bg matches the modal; unset text follows the muted chain */
+    --sm-footer-bg-resolved: var(--sm-footer-bg, transparent);
+    --sm-footer-text-resolved: var(--sm-footer-text-color, var(--sm-text-muted));
+    --sm-footer-brand-strong-resolved: var(--sm-footer-text-color, var(--sm-text-secondary));
+
     /* Trigger hover */
     --sm-trigger-hover-bg-resolved: var(--sm-trigger-hover-bg, #f9fafb);
     --sm-trigger-hover-color: var(--sm-trigger-hover-text-color, #111827);
@@ -63,6 +75,12 @@
     --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);
     --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);
 
+    --sm-search-icon-resolved: var(--sm-search-icon-color-dark, var(--sm-text-muted));
+    --sm-clear-icon-resolved: var(--sm-clear-icon-color-dark, var(--sm-text-muted));
+    --sm-clear-icon-hover-resolved: var(--sm-clear-icon-color-dark, var(--sm-text-primary));
+    --sm-footer-bg-resolved: var(--sm-footer-bg-dark, transparent);
+    --sm-footer-text-resolved: var(--sm-footer-text-color-dark, var(--sm-text-muted));
+    --sm-footer-brand-strong-resolved: var(--sm-footer-text-color-dark, var(--sm-text-secondary));
     --sm-trigger-hover-bg-resolved: var(--sm-trigger-hover-bg-dark, #4b5563);
     --sm-trigger-hover-color: var(--sm-trigger-hover-text-color-dark, #f9fafb);
     --sm-trigger-hover-border: var(--sm-trigger-hover-border-color-dark, #60a5fa);
@@ -175,12 +193,62 @@
     padding: var(--sm-header-py) var(--sm-header-px);
     background: var(--sm-header-bg);
     border-bottom: var(--sm-header-border-width) solid var(--sm-header-border-color);
-    border-radius: var(--sm-header-radius);
+    /* Header sits flush against the results — round the top corners only */
+    border-radius: var(--sm-header-radius) var(--sm-header-radius) 0 0;
 }
 
 .sm-search-icon {
     flex-shrink: 0;
-    color: var(--sm-text-muted);
+    color: var(--sm-search-icon-resolved, var(--sm-text-muted));
+}
+
+.sm-input-wrap {
+    position: relative;
+    flex: 1;
+    display: flex;
+    min-width: 0;
+}
+
+.sm-input-wrap .sm-input {
+    /* Reserve space for the spinner + clear button so they never shift the input */
+    padding-inline-end: calc(var(--sm-input-px, 0px) + 56px);
+}
+
+.sm-input-wrap .sm-loading {
+    position: absolute;
+    inset-inline-end: 32px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+}
+
+/* display: flex above would defeat the UA [hidden] default — restate it */
+.sm-input-wrap .sm-loading[hidden] {
+    display: none;
+}
+
+.sm-clear {
+    position: absolute;
+    inset-inline-end: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    background: transparent;
+    border: none;
+    color: var(--sm-clear-icon-resolved, var(--sm-text-muted));
+    cursor: pointer;
+}
+
+.sm-clear:hover {
+    color: var(--sm-clear-icon-hover-resolved, var(--sm-text-primary));
+}
+
+.sm-clear[hidden] {
+    display: none;
 }
 
 .sm-close {
@@ -220,10 +288,13 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: var(--sm-modal-py) var(--sm-modal-px);
-    border-top: 1px solid var(--sm-border-color);
+    /* Own padding keys when set, otherwise follows the modal padding */
+    padding: var(--sm-footer-py, var(--sm-modal-py)) var(--sm-footer-px, var(--sm-modal-px));
+    background: var(--sm-footer-bg-resolved);
+    /* Footer divider mirrors the header's divider width and color */
+    border-top: var(--sm-header-border-width, 1px) solid var(--sm-border-color);
     font-size: 12px;
-    color: var(--sm-text-muted);
+    color: var(--sm-footer-text-resolved, var(--sm-text-muted));
 }
 
 .sm-footer-hints {
@@ -253,11 +324,21 @@
 }
 
 .sm-footer-brand {
-    color: var(--sm-text-muted);
+    color: var(--sm-footer-text-resolved, var(--sm-text-muted));
+}
+
+.sm-footer-brand a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.sm-footer-brand a:hover,
+.sm-footer-brand a:focus-visible {
+    text-decoration: underline;
 }
 
 .sm-footer-brand strong {
-    color: var(--sm-text-secondary);
+    color: var(--sm-footer-brand-strong-resolved, var(--sm-text-secondary));
 }
 
 /* =========================================================================

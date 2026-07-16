@@ -40,10 +40,6 @@
 		label: 'Controls'|t('search-manager'),
 		url: '#controls',
 	},
-	highlights: {
-		label: 'Result Highlighting'|t('search-manager'),
-		url: '#highlights',
-	},
 } %}
 
 {% set styles = isNew ? defaultStyles : defaultStyles|merge(widgetStyle.getStyles()) %}
@@ -140,14 +136,6 @@
 		} %}
 	</div>
 
-	{# Highlights Tab #}
-	<div id="highlights" class="hidden">
-		{% include "search-manager/widgets/styles/_partials/highlights" with {
-			styles: styles,
-			namePrefix: namePrefix,
-			widgetStyle: widgetStyle,
-		} %}
-	</div>
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}

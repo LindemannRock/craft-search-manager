@@ -1,5 +1,65 @@
 {% import "_includes/forms" as forms %}
 
+{% macro shadowComposer(id, name, value) %}
+	{% import "_includes/forms" as forms %}
+	<div class="field" data-shadow-composer data-shadow-input="{{ id }}">
+		<div class="heading">
+			<label>{{ 'Box Shadow'|t('search-manager') }}</label>
+		</div>
+		<input type="hidden" id="{{ id }}" name="{{ name }}" value="{{ value }}">
+		<div data-shadow-parts class="flex" style="gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+			{{ forms.textField({
+				label: 'Offset X (px)'|t('search-manager'),
+				id: id ~ '-x',
+				type: 'number',
+				size: 6,
+			}) }}
+			{{ forms.textField({
+				label: 'Offset Y (px)'|t('search-manager'),
+				id: id ~ '-y',
+				type: 'number',
+				size: 6,
+			}) }}
+			{{ forms.textField({
+				label: 'Blur (px)'|t('search-manager'),
+				id: id ~ '-blur',
+				type: 'number',
+				min: 0,
+				size: 6,
+			}) }}
+			{{ forms.textField({
+				label: 'Spread (px)'|t('search-manager'),
+				id: id ~ '-spread',
+				type: 'number',
+				size: 6,
+			}) }}
+			{{ forms.colorField({
+				label: 'Color'|t('search-manager'),
+				id: id ~ '-color',
+			}) }}
+			{{ forms.textField({
+				label: 'Opacity (%)'|t('search-manager'),
+				id: id ~ '-opacity',
+				type: 'number',
+				min: 0,
+				max: 100,
+				size: 6,
+			}) }}
+		</div>
+		<div data-shadow-custom class="hidden" style="margin-top: 8px;">
+			{{ forms.text({
+				id: id ~ '-custom',
+				placeholder: '0 25px 50px -12px rgba(0,0,0,0.25)',
+			}) }}
+		</div>
+		<div style="margin-top: 6px;">
+			<button type="button" class="btn small" data-shadow-toggle
+				data-label-css="{{ 'Edit as CSS'|t('search-manager') }}"
+				data-label-visual="{{ 'Edit visually'|t('search-manager') }}">{{ 'Edit as CSS'|t('search-manager') }}</button>
+		</div>
+	</div>
+{% endmacro %}
+
 <div class="color-scheme-toggle btngroup" style="margin-bottom: 14px;">
 	<button type="button" class="btn secondary" data-color-scheme="light" aria-pressed="true">{{ "Light"|t('search-manager') }}</button>
 	<button type="button" class="btn" data-color-scheme="dark" aria-pressed="false">{{ "Dark"|t('search-manager') }}</button>
@@ -26,13 +86,14 @@
 			value: styles.modalBorderColor,
 		}) }}
 	</div>
-	{{ forms.textField({
-		label: 'Box Shadow'|t('search-manager'),
-		instructions: 'CSS box-shadow value (e.g., "0 25px 50px -12px rgba(0,0,0,0.25)")'|t('search-manager'),
-		id: 'styles-modalShadow',
-		name: namePrefix ~ '[modalShadow]',
-		value: styles.modalShadow,
+	{{ forms.colorField({
+		label: 'Scrollbar'|t('search-manager'),
+		id: 'styles-scrollbarColor',
+		name: namePrefix ~ '[scrollbarColor]',
+		value: styles.scrollbarColor,
+		tip: 'Results scrollbar. Leave empty for an automatic subtle thumb.'|t('search-manager'),
 	}) }}
+	{{ _self.shadowComposer('styles-modalShadow', namePrefix ~ '[modalShadow]', styles.modalShadow) }}
 </div>
 
 {# Dark Mode Colors #}
@@ -51,18 +112,19 @@
 			value: styles.modalBorderColorDark,
 		}) }}
 	</div>
-	{{ forms.textField({
-		label: 'Box Shadow'|t('search-manager'),
-		instructions: 'CSS box-shadow value (e.g., "0 25px 50px -12px rgba(0,0,0,0.5)")'|t('search-manager'),
-		id: 'styles-modalShadowDark',
-		name: namePrefix ~ '[modalShadowDark]',
-		value: styles.modalShadowDark,
+	{{ forms.colorField({
+		label: 'Scrollbar'|t('search-manager'),
+		id: 'styles-scrollbarColorDark',
+		name: namePrefix ~ '[scrollbarColorDark]',
+		value: styles.scrollbarColorDark,
+		tip: 'Results scrollbar. Leave empty for an automatic subtle thumb.'|t('search-manager'),
 	}) }}
+	{{ _self.shadowComposer('styles-modalShadowDark', namePrefix ~ '[modalShadowDark]', styles.modalShadowDark) }}
 </div>
 
 {# Shared Dimensions #}
 <div style="margin-top: 24px;">
-	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	<h3>{{ "Dimensions"|t('search-manager') }}</h3>
 	{{ forms.textField({
 		label: 'Max Width (px)'|t('search-manager'),
 		id: 'styles-modalMaxWidth',
@@ -111,6 +173,7 @@
 		tip: 'Min: 0, Max: 10. Default: 1. Set to 0 to remove border.'|t('search-manager'),
 		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.modalBorderWidth') : [],
 	}) }}
+	<h3 style="margin-top: 24px;">{{ "Content Padding"|t('search-manager') }}</h3>
 	{{ forms.textField({
 		label: 'Padding X (px)'|t('search-manager'),
 		id: 'styles-modalPaddingX',
@@ -134,6 +197,172 @@
 		size: 10,
 		tip: 'Min: 0, Max: 64. Default: 16. Vertical inner padding.'|t('search-manager'),
 		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.modalPaddingY') : [],
+	}) }}
+</div>
+
+<hr>
+
+{# ========================================
+   SEARCH HEADER (.sm-header container)
+   ======================================== #}
+<h2>{{ "Header"|t('search-manager') }}</h2>
+
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-headerBg',
+			name: namePrefix ~ '[headerBg]',
+			value: styles.headerBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-headerBorderColor',
+			name: namePrefix ~ '[headerBorderColor]',
+			value: styles.headerBorderColor,
+		}) }}
+	</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-headerBgDark',
+			name: namePrefix ~ '[headerBgDark]',
+			value: styles.headerBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-headerBorderColorDark',
+			name: namePrefix ~ '[headerBorderColorDark]',
+			value: styles.headerBorderColorDark,
+		}) }}
+	</div>
+</div>
+
+{# Shared Dimensions #}
+<div style="margin-top: 24px;">
+	<h3>{{ "Dimensions"|t('search-manager') }}</h3>
+	{{ forms.textField({
+		label: 'Border Radius (px)'|t('search-manager'),
+		id: 'styles-headerBorderRadius',
+		name: namePrefix ~ '[headerBorderRadius]',
+		value: styles.headerBorderRadius,
+		type: 'number',
+		min: 0,
+		max: 20,
+		size: 10,
+		tip: 'Min: 0, Max: 20. Default: 0. Rounds the top corners only.'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.headerBorderRadius') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Border Width (px)'|t('search-manager'),
+		id: 'styles-headerBorderWidth',
+		name: namePrefix ~ '[headerBorderWidth]',
+		value: styles.headerBorderWidth,
+		type: 'number',
+		min: 0,
+		max: 10,
+		size: 10,
+		tip: 'Min: 0, Max: 10. Default: 1. Divider line under the header; the footer divider matches.'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.headerBorderWidth') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding X (px)'|t('search-manager'),
+		id: 'styles-headerPaddingX',
+		name: namePrefix ~ '[headerPaddingX]',
+		value: styles.headerPaddingX,
+		type: 'number',
+		min: 0,
+		max: 40,
+		size: 10,
+		tip: 'Min: 0, Max: 40. Default: 16'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.headerPaddingX') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding Y (px)'|t('search-manager'),
+		id: 'styles-headerPaddingY',
+		name: namePrefix ~ '[headerPaddingY]',
+		value: styles.headerPaddingY,
+		type: 'number',
+		min: 0,
+		max: 40,
+		size: 10,
+		tip: 'Min: 0, Max: 40. Default: 12'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.headerPaddingY') : [],
+	}) }}
+</div>
+
+<hr>
+
+{# ========================================
+   FOOTER
+   ======================================== #}
+<h2>{{ "Footer"|t('search-manager') }}</h2>
+
+<div class="color-scheme-section" data-color-scheme="light">
+	{{ forms.colorField({
+		label: 'Background'|t('search-manager'),
+		id: 'styles-footerBg',
+		name: namePrefix ~ '[footerBg]',
+		value: styles.footerBg,
+		tip: 'Leave empty to match the modal background.'|t('search-manager'),
+	}) }}
+	{{ forms.colorField({
+		label: 'Text'|t('search-manager'),
+		id: 'styles-footerTextColor',
+		name: namePrefix ~ '[footerTextColor]',
+		value: styles.footerTextColor,
+		tip: 'Applies to the shortcut hints and the "Powered by" line.'|t('search-manager'),
+	}) }}
+</div>
+
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	{{ forms.colorField({
+		label: 'Background'|t('search-manager'),
+		id: 'styles-footerBgDark',
+		name: namePrefix ~ '[footerBgDark]',
+		value: styles.footerBgDark,
+		tip: 'Leave empty to match the modal background.'|t('search-manager'),
+	}) }}
+	{{ forms.colorField({
+		label: 'Text'|t('search-manager'),
+		id: 'styles-footerTextColorDark',
+		name: namePrefix ~ '[footerTextColorDark]',
+		value: styles.footerTextColorDark,
+		tip: 'Applies to the shortcut hints and the "Powered by" line.'|t('search-manager'),
+	}) }}
+</div>
+
+{# Shared Dimensions #}
+<div style="margin-top: 24px;">
+	<h3>{{ "Dimensions"|t('search-manager') }}</h3>
+	{{ forms.textField({
+		label: 'Padding X (px)'|t('search-manager'),
+		id: 'styles-footerPaddingX',
+		name: namePrefix ~ '[footerPaddingX]',
+		value: styles.footerPaddingX,
+		type: 'number',
+		min: 0,
+		max: 40,
+		size: 10,
+		tip: 'Min: 0, Max: 40. Default: 16'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.footerPaddingX') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding Y (px)'|t('search-manager'),
+		id: 'styles-footerPaddingY',
+		name: namePrefix ~ '[footerPaddingY]',
+		value: styles.footerPaddingY,
+		type: 'number',
+		min: 0,
+		max: 40,
+		size: 10,
+		tip: 'Min: 0, Max: 40. Default: 16'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.footerPaddingY') : [],
 	}) }}
 </div>
 
@@ -166,3 +395,123 @@
 	name: namePrefix ~ '[backdropBlur]',
 	on: styles.backdropBlur != '0',
 }) }}
+
+{% css %}
+[data-shadow-parts] > .field {
+	margin: 0;
+}
+[data-shadow-parts] input[type='number'] {
+	width: 5.5em;
+}
+[data-shadow-parts] .color-container .color-input,
+[data-shadow-parts] .color-container .text {
+	width: 7em;
+}
+{% endcss %}
+
+{% js %}
+// Box-shadow composer: number inputs + color picker compose the stored CSS
+// string; unparseable values (multi-layer shadows) fall back to raw CSS mode.
+document.querySelectorAll('[data-shadow-composer]').forEach(function(composer) {
+	var inputId = composer.getAttribute('data-shadow-input');
+	var hidden = document.getElementById(inputId);
+	var get = function(suffix) { return document.getElementById(inputId + '-' + suffix); };
+	var x = get('x'), y = get('y'), blur = get('blur'), spread = get('spread'),
+		color = get('color'), opacity = get('opacity'), custom = get('custom');
+	var partsWrap = composer.querySelector('[data-shadow-parts]');
+	var customWrap = composer.querySelector('[data-shadow-custom]');
+	var toggle = composer.querySelector('[data-shadow-toggle]');
+	var labels = { css: toggle.getAttribute('data-label-css'), visual: toggle.getAttribute('data-label-visual') };
+	var customMode = false;
+
+	function hexToRgb(hex) {
+		hex = String(hex || '').replace('#', '');
+		if (hex.length === 3) hex = hex.split('').map(function(c) { return c + c; }).join('');
+		if (!/^[0-9a-fA-F]{6}$/.test(hex)) hex = '000000';
+		var n = parseInt(hex, 16);
+		return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+	}
+
+	function compose() {
+		if (customMode) { hidden.value = custom.value.trim(); return; }
+		var allEmpty = !x.value && !y.value && !blur.value && !spread.value && !color.value;
+		if (allEmpty) { hidden.value = ''; return; }
+		var rgb = hexToRgb(color.value);
+		var a = Math.min(100, Math.max(0, parseInt(opacity.value === '' ? '100' : opacity.value, 10) || 0)) / 100;
+		hidden.value = (x.value || 0) + 'px ' + (y.value || 0) + 'px ' + (blur.value || 0) + 'px ' +
+			(spread.value || 0) + 'px rgba(' + rgb.join(', ') + ', ' + a + ')';
+	}
+
+	function parseShadow(value) {
+		var m = String(value || '').trim().match(
+			/^(-?\d+(?:\.\d+)?)(?:px)?\s+(-?\d+(?:\.\d+)?)(?:px)?(?:\s+(-?\d+(?:\.\d+)?)(?:px)?)?(?:\s+(-?\d+(?:\.\d+)?)(?:px)?)?\s+(rgba?\([^)]*\)|#[0-9a-fA-F]{3,8})$/
+		);
+		if (!m) return null;
+		var col = m[5], hex = '000000', alpha = 100;
+		var rgba = col.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/);
+		if (rgba) {
+			hex = [rgba[1], rgba[2], rgba[3]].map(function(c) {
+				return ('0' + (+c).toString(16)).slice(-2);
+			}).join('');
+			alpha = rgba[4] !== undefined ? Math.round(parseFloat(rgba[4]) * 100) : 100;
+		} else {
+			hex = col.slice(1);
+			if (hex.length === 3) hex = hex.split('').map(function(c) { return c + c; }).join('');
+			if (hex.length === 8) {
+				alpha = Math.round(parseInt(hex.slice(6), 16) / 255 * 100);
+				hex = hex.slice(0, 6);
+			}
+		}
+		return { x: m[1], y: m[2], blur: m[3] || '0', spread: m[4] || '0', hex: hex, alpha: alpha };
+	}
+
+	function setMode(toCustom) {
+		customMode = toCustom;
+		partsWrap.classList.toggle('hidden', toCustom);
+		customWrap.classList.toggle('hidden', !toCustom);
+		toggle.textContent = toCustom ? labels.visual : labels.css;
+	}
+
+	// Initialize from the stored value
+	var initial = (hidden.value || '').trim();
+	var parsed = parseShadow(initial);
+	if (parsed) {
+		x.value = parsed.x; y.value = parsed.y; blur.value = parsed.blur; spread.value = parsed.spread;
+		color.value = '#' + parsed.hex; opacity.value = parsed.alpha;
+		color.dispatchEvent(new Event('input', { bubbles: true }));
+		setMode(false);
+	} else if (initial === '') {
+		setMode(false);
+	} else {
+		custom.value = initial;
+		setMode(true);
+	}
+
+	toggle.addEventListener('click', function() {
+		if (!customMode) { custom.value = hidden.value; setMode(true); }
+		else {
+			var p = parseShadow(custom.value);
+			if (p) {
+				x.value = p.x; y.value = p.y; blur.value = p.blur; spread.value = p.spread;
+				color.value = '#' + p.hex; opacity.value = p.alpha;
+				color.dispatchEvent(new Event('input', { bubbles: true }));
+			}
+			setMode(false);
+			compose();
+		}
+	});
+
+	composer.addEventListener('input', function(e) {
+		if (e.target !== hidden) compose();
+	});
+
+	// Craft's color picker doesn't always fire input events — poll it
+	var lastColor = color.value;
+	setInterval(function() {
+		if (!customMode && color.value !== lastColor) {
+			lastColor = color.value;
+			compose();
+		}
+	}, 250);
+});
+{% endjs %}

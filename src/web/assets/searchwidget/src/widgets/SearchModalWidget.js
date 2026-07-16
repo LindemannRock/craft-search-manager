@@ -55,6 +55,7 @@ class SearchModalWidget extends SearchWidgetBase {
         this.close = this.close.bind(this);
         this.toggle = this.toggle.bind(this);
         this.handleGlobalKeydown = this.handleGlobalKeydown.bind(this);
+        this.handleClearClick = this.handleClearClick.bind(this);
         this.handleBackdropClick = this.handleBackdropClick.bind(this);
         this.handleTriggerClick = this.handleTriggerClick.bind(this);
         this.handleExternalTriggerClick = this.handleExternalTriggerClick.bind(this);
@@ -144,6 +145,7 @@ class SearchModalWidget extends SearchWidgetBase {
         this.elements.backdrop.hidden = false;
         this.elements.trigger.setAttribute('aria-expanded', 'true');
         this.elements.input.value = query;
+        this.elements.clear.hidden = !query;
 
         this.renderResultsContent();
         this.updateLoadingVisual();
@@ -173,6 +175,7 @@ class SearchModalWidget extends SearchWidgetBase {
         const safeTriggerLabel = escapeHtml(triggerLabel || t(translations, 'Search'));
         const safeSearchLabel = escapeHtml(t(translations, 'Search'));
         const safeCloseSearchLabel = escapeHtml(t(translations, 'Close search'));
+        const safeClearSearchLabel = escapeHtml(t(translations, 'Clear search'));
         const safeSearchResultsLabel = escapeHtml(t(translations, 'Search results'));
 
         this.shadowRoot.innerHTML = `
@@ -197,29 +200,36 @@ class SearchModalWidget extends SearchWidgetBase {
                             <circle cx="11" cy="11" r="8"/>
                             <path d="m21 21-4.35-4.35"/>
                         </svg>
-                        <input
-                            type="text"
-                            id="${this.inputId}"
-                            class="sm-input"
-                            part="input"
-                            placeholder="${safePlaceholder}"
-                            maxlength="256"
-                            autocomplete="off"
-                            autocorrect="off"
-                            autocapitalize="off"
-                            spellcheck="false"
-                            role="combobox"
-                            aria-autocomplete="list"
-                            aria-haspopup="listbox"
-                            aria-expanded="false"
-                            aria-controls="${this.listboxId}"
-                        />
-                        <div class="sm-loading" part="loading" hidden>
-                            <svg class="sm-spinner" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
-                                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
-                            </svg>
-                        </div>
+                        <span class="sm-input-wrap">
+                            <input
+                                type="text"
+                                id="${this.inputId}"
+                                class="sm-input"
+                                part="input"
+                                placeholder="${safePlaceholder}"
+                                maxlength="256"
+                                autocomplete="off"
+                                autocorrect="off"
+                                autocapitalize="off"
+                                spellcheck="false"
+                                role="combobox"
+                                aria-autocomplete="list"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                                aria-controls="${this.listboxId}"
+                            />
+                            <div class="sm-loading" part="loading" hidden>
+                                <svg class="sm-spinner" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
+                                    <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <button class="sm-clear" part="clear" aria-label="${safeClearSearchLabel}" hidden>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                        </span>
                         <button class="sm-close" part="close" aria-label="${safeCloseSearchLabel}">
                             <kbd>esc</kbd>
                         </button>
@@ -239,7 +249,7 @@ class SearchModalWidget extends SearchWidgetBase {
                             <span><kbd>esc</kbd> ${escapeHtml(t(translations, 'close'))}</span>
                         </div>
                         <div class="sm-footer-brand">
-                            ${escapeHtml(t(translations, 'Powered by'))} <strong>Search Manager</strong>
+                            ${escapeHtml(t(translations, 'Powered by'))} <a href="https://github.com/LindemannRock/craft-search-manager" target="_blank" rel="noopener noreferrer"><strong>Search Manager</strong><span class="sm-sr-only"> ${escapeHtml(t(translations, '(opens in a new tab)'))}</span></a>
                         </div>
                     </div>
                 </div>
@@ -254,6 +264,7 @@ class SearchModalWidget extends SearchWidgetBase {
             input: this.shadowRoot.querySelector('.sm-input'),
             results: this.shadowRoot.querySelector('.sm-results'),
             loading: this.shadowRoot.querySelector('.sm-loading'),
+            clear: this.shadowRoot.querySelector('.sm-clear'),
             close: this.shadowRoot.querySelector('.sm-close'),
             debugToolbar: this.shadowRoot.querySelector('.sm-debug-toolbar'),
         };
@@ -333,6 +344,9 @@ class SearchModalWidget extends SearchWidgetBase {
         this.elements.input.addEventListener('input', this.handleInput);
         this.elements.input.addEventListener('keydown', this.handleKeydown);
 
+        // Clear button
+        this.elements.clear.addEventListener('click', this.handleClearClick);
+
         // Global hotkey listener
         document.addEventListener('keydown', this.handleGlobalKeydown);
 
@@ -362,6 +376,7 @@ class SearchModalWidget extends SearchWidgetBase {
         }
         if (this.elements.input) {
             this.elements.input.removeEventListener('input', this.handleInput);
+            this.elements.clear.removeEventListener('click', this.handleClearClick);
             this.elements.input.removeEventListener('keydown', this.handleKeydown);
         }
 
@@ -403,6 +418,7 @@ class SearchModalWidget extends SearchWidgetBase {
 
         // Clear previous state
         this.elements.input.value = '';
+        this.elements.clear.hidden = true;
         this.state.set({
             query: '',
             results: [],
@@ -539,6 +555,16 @@ class SearchModalWidget extends SearchWidgetBase {
      *
      * @param {Event} e - Click event
      */
+
+    /**
+     * Clear the search input, reset results, and refocus the input.
+     */
+    handleClearClick() {
+        this.elements.input.value = '';
+        this.elements.input.dispatchEvent(new Event('input', { bubbles: true }));
+        this.elements.input.focus();
+    }
+
     handleBackdropClick(e) {
         // Only close if clicking the backdrop itself, not the modal
         if (e.target === this.elements.backdrop) {

@@ -105,15 +105,49 @@ export const STYLE_MAPPINGS = {
     kbdTextColorDark: '--sm-kbd-text-color-dark',
     kbdBorderRadius: '--sm-kbd-radius',
 
-    // Icon color (hierarchy icons, arrows)
+    // Icon color (hierarchy page icon)
     iconColor: '--sm-icon-color',
     iconColorDark: '--sm-icon-color-dark',
+
+    // Search icon (input magnifier; unset = follows the muted color)
+    searchIconColor: '--sm-search-icon-color',
+    searchIconColorDark: '--sm-search-icon-color-dark',
+
+    // Clear icon (input clear button; unset = follows the muted color)
+    clearIconColor: '--sm-clear-icon-color',
+    clearIconColorDark: '--sm-clear-icon-color-dark',
+
+    // Result row icons (e.g. recent-search clock; unset = follows the muted color)
+    resultIconColor: '--sm-result-icon-color',
+    resultIconColorDark: '--sm-result-icon-color-dark',
+
+    // Result arrow (unset = follows the active/hover muted color)
+    arrowColor: '--sm-arrow-color',
+    arrowColorDark: '--sm-arrow-color-dark',
+
+    // Active/hover glyph variants (unset = follow their base color)
+    iconActiveColor: '--sm-icon-active-color',
+    iconActiveColorDark: '--sm-icon-active-color-dark',
+    resultIconActiveColor: '--sm-result-icon-active-color',
+    resultIconActiveColorDark: '--sm-result-icon-active-color-dark',
+    hierarchyConnectorActiveColor: '--sm-hierarchy-connector-active-color',
+    hierarchyConnectorActiveColorDark: '--sm-hierarchy-connector-active-color-dark',
+
+    // Hierarchy connector lines (unset = follows the muted color)
+    hierarchyConnectorColor: '--sm-hierarchy-connector-color',
+    hierarchyConnectorColorDark: '--sm-hierarchy-connector-color-dark',
 
     // Highlighting
     highlightBgLight: '--sm-highlight-bg',
     highlightColorLight: '--sm-highlight-color',
     highlightBgDark: '--sm-highlight-bg-dark',
     highlightColorDark: '--sm-highlight-color-dark',
+
+    // Highlighting on the active/hovered row (unset = follows the base highlight)
+    highlightActiveBgLight: '--sm-highlight-active-bg',
+    highlightActiveColorLight: '--sm-highlight-active-color',
+    highlightActiveBgDark: '--sm-highlight-active-bg-dark',
+    highlightActiveColorDark: '--sm-highlight-active-color-dark',
 
     // Promoted badge
     promotedBg: '--sm-promoted-bg',
@@ -124,6 +158,18 @@ export const STYLE_MAPPINGS = {
     // Spinner
     spinnerColor: '--sm-spinner-color-light',
     spinnerColorDark: '--sm-spinner-color-dark',
+
+    // Results scrollbar thumb (unset = semi-transparent muted)
+    scrollbarColor: '--sm-scrollbar-color',
+    scrollbarColorDark: '--sm-scrollbar-color-dark',
+
+    // Footer (unset bg = matches the modal; unset text = muted chain)
+    footerBg: '--sm-footer-bg',
+    footerBgDark: '--sm-footer-bg-dark',
+    footerTextColor: '--sm-footer-text-color',
+    footerTextColorDark: '--sm-footer-text-color-dark',
+    footerPaddingX: '--sm-footer-px',
+    footerPaddingY: '--sm-footer-py',
 };
 
 // Keys that require 'px' suffix
@@ -153,6 +199,8 @@ export const NUMERIC_KEYS = [
     'triggerPaddingY',
     'triggerFontSize',
     'kbdBorderRadius',
+    'footerPaddingX',
+    'footerPaddingY',
 ];
 
 // Keys that require 'vh' suffix
@@ -179,9 +227,20 @@ export const COLOR_KEYS = [
     'triggerHoverBorderColor', 'triggerHoverBorderColorDark',
     'kbdBg', 'kbdBgDark', 'kbdTextColor', 'kbdTextColorDark',
     'iconColor', 'iconColorDark',
+    'searchIconColor', 'searchIconColorDark',
+    'clearIconColor', 'clearIconColorDark',
+    'resultIconColor', 'resultIconColorDark',
+    'arrowColor', 'arrowColorDark',
+    'iconActiveColor', 'iconActiveColorDark',
+    'resultIconActiveColor', 'resultIconActiveColorDark',
+    'hierarchyConnectorActiveColor', 'hierarchyConnectorActiveColorDark',
+    'hierarchyConnectorColor', 'hierarchyConnectorColorDark',
     'highlightBgLight', 'highlightColorLight', 'highlightBgDark', 'highlightColorDark',
+    'highlightActiveBgLight', 'highlightActiveColorLight', 'highlightActiveBgDark', 'highlightActiveColorDark',
     'promotedBg', 'promotedBgDark', 'promotedColor', 'promotedColorDark',
     'spinnerColor', 'spinnerColorDark',
+    'scrollbarColor', 'scrollbarColorDark',
+    'footerBg', 'footerBgDark', 'footerTextColor', 'footerTextColorDark',
 ];
 
 // Default style values - loaded from shared JSON config

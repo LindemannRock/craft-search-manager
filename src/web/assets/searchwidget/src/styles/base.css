@@ -60,6 +60,11 @@
     --sm-highlight-bg: #fef08a;
     --sm-highlight-color: #854d0e;
 
+    /* Highlighting on the active/hovered row — falls back to the base
+       highlight so nothing changes unless the active pair is set */
+    --sm-highlight-active-bg: var(--sm-highlight-bg);
+    --sm-highlight-active-color: var(--sm-highlight-color);
+
     /* Result line clamping */
     --sm-result-title-lines: 1;
     --sm-result-desc-lines: 1;
@@ -73,8 +78,18 @@
     /* Icon color (hierarchy icons, arrows) */
     --sm-icon: var(--sm-icon-color, #3b82f6);
 
+    /* Utility glyph colors — unset keys fall back to the muted chain */
+    --sm-result-icon-resolved: var(--sm-result-icon-color, var(--sm-text-muted));
+    --sm-result-icon-active-resolved: var(--sm-result-icon-active-color, var(--sm-result-icon-color, var(--sm-result-active-muted-color, var(--sm-text-muted))));
+    --sm-arrow-resolved: var(--sm-arrow-color, var(--sm-result-active-muted-color, var(--sm-text-muted)));
+    --sm-icon-active-resolved: var(--sm-icon-active-color, var(--sm-icon));
+    --sm-hierarchy-connector-active-resolved: var(--sm-hierarchy-connector-active-color, var(--sm-hierarchy-connector-color));
+
     /* Spinner */
     --sm-spinner-color: var(--sm-spinner-color-light, #3b82f6);
+
+    /* Scrollbar thumb — unset falls back to semi-transparent muted */
+    --sm-scrollbar-resolved: var(--sm-scrollbar-color, color-mix(in srgb, var(--sm-text-muted) 45%, transparent));
 
     display: inline-block;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -90,7 +105,7 @@
     --sm-text-primary: var(--sm-result-text-color-dark, #f9fafb);
     --sm-text-secondary: var(--sm-result-desc-color-dark, #d1d5db);
     --sm-text-muted: var(--sm-result-muted-color-dark, #9ca3af);
-    --sm-hierarchy-connector-color: var(--sm-result-muted-color-dark, #9ca3af);
+    --sm-hierarchy-connector-color: var(--sm-hierarchy-connector-color-dark, var(--sm-result-muted-color-dark, #9ca3af));
 
     --sm-header-bg: var(--sm-header-bg-dark, transparent);
     --sm-header-border-color: var(--sm-header-border-color-dark, #374151);
@@ -111,14 +126,22 @@
 
     --sm-highlight-bg: var(--sm-highlight-bg-dark, #854d0e);
     --sm-highlight-color: var(--sm-highlight-color-dark, #fef08a);
+    --sm-highlight-active-bg: var(--sm-highlight-active-bg-dark, var(--sm-highlight-bg));
+    --sm-highlight-active-color: var(--sm-highlight-active-color-dark, var(--sm-highlight-color));
 
     --sm-kbd-bg: var(--sm-kbd-bg-dark, #374151);
     --sm-kbd-border: #4b5563;
     --sm-kbd-color: var(--sm-kbd-text-color-dark, #e5e7eb);
 
     --sm-icon: var(--sm-icon-color-dark, #60a5fa);
+    --sm-result-icon-resolved: var(--sm-result-icon-color-dark, var(--sm-text-muted));
+    --sm-result-icon-active-resolved: var(--sm-result-icon-active-color-dark, var(--sm-result-icon-color-dark, var(--sm-result-active-muted-color, var(--sm-text-muted))));
+    --sm-arrow-resolved: var(--sm-arrow-color-dark, var(--sm-result-active-muted-color, var(--sm-text-muted)));
+    --sm-icon-active-resolved: var(--sm-icon-active-color-dark, var(--sm-icon));
+    --sm-hierarchy-connector-active-resolved: var(--sm-hierarchy-connector-active-color-dark, var(--sm-hierarchy-connector-color));
 
     --sm-spinner-color: var(--sm-spinner-color-dark, #60a5fa);
+    --sm-scrollbar-resolved: var(--sm-scrollbar-color-dark, color-mix(in srgb, var(--sm-text-muted) 45%, transparent));
 }
 
 *, *::before, *::after {
@@ -185,6 +208,8 @@
 .sm-results {
     flex: 1;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sm-scrollbar-resolved) transparent;
     padding: 8px;
     display: flex;
     flex-direction: column;
@@ -269,15 +294,18 @@
 }
 
 .sm-result-item:hover .sm-result-icon,
+.sm-result-item.sm-selected .sm-result-icon {
+    color: var(--sm-result-icon-active-resolved, var(--sm-result-active-muted-color, var(--sm-text-muted)));
+}
+
 .sm-result-item:hover .sm-result-arrow,
-.sm-result-item.sm-selected .sm-result-icon,
 .sm-result-item.sm-selected .sm-result-arrow {
-    color: var(--sm-result-active-muted-color, var(--sm-text-muted));
+    color: var(--sm-arrow-resolved, var(--sm-result-active-muted-color, var(--sm-text-muted)));
 }
 
 .sm-result-icon {
     flex-shrink: 0;
-    color: var(--sm-text-muted);
+    color: var(--sm-result-icon-resolved, var(--sm-text-muted));
 }
 
 .sm-result-content {
@@ -322,7 +350,9 @@
 
 .sm-result-arrow {
     flex-shrink: 0;
-    color: var(--sm-icon);
+    /* Invisible at rest; visible color comes from arrowColor, falling back
+       to the active/hover muted chain */
+    color: var(--sm-arrow-resolved, var(--sm-result-active-muted-color, var(--sm-text-muted)));
     opacity: 0;
     transition: opacity 0.1s ease;
 }
@@ -364,6 +394,21 @@
 .sm-hierarchy-parent .sm-hierarchy-icon {
     flex-shrink: 0;
     color: var(--sm-icon);
+}
+
+.sm-result-item:hover .sm-hierarchy-icon,
+.sm-result-item.sm-selected .sm-hierarchy-icon {
+    color: var(--sm-icon-active-resolved, var(--sm-icon));
+}
+
+/* Hovered/selected child row recolors its connector segment.
+   Connectors are drawn with borders only — never set a background here
+   (it fills the last-row curve box into a solid square). */
+.sm-hierarchy-child-row:hover::before,
+.sm-hierarchy-child-row:hover::after,
+.sm-hierarchy-child-row.sm-selected::before,
+.sm-hierarchy-child-row.sm-selected::after {
+    border-color: var(--sm-hierarchy-connector-active-resolved, var(--sm-hierarchy-connector-color));
 }
 
 /* Child result (heading-level) with gutter connector */
@@ -619,6 +664,13 @@
     padding: 0 2px;
 }
 
+/* Keep highlights legible when the row background changes on hover/selection */
+.sm-result-item:hover .sm-highlight,
+.sm-result-item.sm-selected .sm-highlight {
+    background: var(--sm-highlight-active-bg);
+    color: var(--sm-highlight-active-color);
+}
+
 /* =========================================================================
    EMPTY STATE
    ========================================================================= */
@@ -677,4 +729,21 @@
 
 :host([dir="rtl"]) .sm-hierarchy-child-row {
     flex-direction: row-reverse;
+}
+
+/* Legacy Safari (pre-18.2) scrollbar fallback — modern browsers use the
+   standard scrollbar-width/scrollbar-color above and ignore this block */
+@supports not (scrollbar-color: red red) {
+    .sm-results::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .sm-results::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .sm-results::-webkit-scrollbar-thumb {
+        background: var(--sm-scrollbar-resolved);
+        border-radius: 4px;
+    }
 }

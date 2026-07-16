@@ -19,6 +19,12 @@
 {% set hlBgDark = styles.highlightBgDark starts with '#' ? styles.highlightBgDark : '#' ~ (styles.highlightBgDark ?? '854d0e') %}
 {% set hlTextDark = styles.highlightColorDark starts with '#' ? styles.highlightColorDark : '#' ~ (styles.highlightColorDark ?? 'fef08a') %}
 
+{# Active-row highlight: falls back to the base highlight when unset #}
+{% set hlActiveBgLight = styles.highlightActiveBgLight is defined and styles.highlightActiveBgLight ? (styles.highlightActiveBgLight starts with '#' ? styles.highlightActiveBgLight : '#' ~ styles.highlightActiveBgLight) : hlBgLight %}
+{% set hlActiveTextLight = styles.highlightActiveColorLight is defined and styles.highlightActiveColorLight ? (styles.highlightActiveColorLight starts with '#' ? styles.highlightActiveColorLight : '#' ~ styles.highlightActiveColorLight) : hlTextLight %}
+{% set hlActiveBgDark = styles.highlightActiveBgDark is defined and styles.highlightActiveBgDark ? (styles.highlightActiveBgDark starts with '#' ? styles.highlightActiveBgDark : '#' ~ styles.highlightActiveBgDark) : hlBgDark %}
+{% set hlActiveTextDark = styles.highlightActiveColorDark is defined and styles.highlightActiveColorDark ? (styles.highlightActiveColorDark starts with '#' ? styles.highlightActiveColorDark : '#' ~ styles.highlightActiveColorDark) : hlTextDark %}
+
 <fieldset>
 	<legend class="h6">{{ 'Preview'|t('search-manager') }}</legend>
 
@@ -27,39 +33,71 @@
 		<button type="button" class="btn small" data-preview-mode="dark" aria-pressed="false">{{ 'Dark'|t('search-manager') }}</button>
 	</div>
 
-{% set previewConnectorLight = (styles.resultMutedColor is defined and styles.resultMutedColor starts with '#') ? styles.resultMutedColor : '#' ~ styles.resultMutedColor %}
-{% set previewConnectorDark = (styles.resultMutedColorDark is defined and styles.resultMutedColorDark starts with '#') ? styles.resultMutedColorDark : '#' ~ styles.resultMutedColorDark %}
+{# Connector: dedicated color when set, otherwise follows the muted color #}
+{% set connLightRaw = styles.hierarchyConnectorColor is defined and styles.hierarchyConnectorColor ? styles.hierarchyConnectorColor : styles.resultMutedColor %}
+{% set connDarkRaw = styles.hierarchyConnectorColorDark is defined and styles.hierarchyConnectorColorDark ? styles.hierarchyConnectorColorDark : styles.resultMutedColorDark %}
+{% set previewConnectorLight = connLightRaw starts with '#' ? connLightRaw : '#' ~ connLightRaw %}
+{% set previewConnectorDark = connDarkRaw starts with '#' ? connDarkRaw : '#' ~ connDarkRaw %}
+
+{# Glyph colors: dedicated keys when set, otherwise the muted chain (mirrors the widget CSS) #}
+{% set searchIconLight = styles.searchIconColor is defined and styles.searchIconColor ? styles.searchIconColor : styles.resultMutedColor %}
+{% set searchIconDark = styles.searchIconColorDark is defined and styles.searchIconColorDark ? styles.searchIconColorDark : styles.resultMutedColorDark %}
+{% set resultIconLight = styles.resultIconColor is defined and styles.resultIconColor ? styles.resultIconColor : styles.resultMutedColor %}
+{% set resultIconDark = styles.resultIconColorDark is defined and styles.resultIconColorDark ? styles.resultIconColorDark : styles.resultMutedColorDark %}
+{% set arrowLight = styles.arrowColor is defined and styles.arrowColor ? styles.arrowColor : styles.resultActiveMutedColor %}
+{% set arrowDark = styles.arrowColorDark is defined and styles.arrowColorDark ? styles.arrowColorDark : styles.resultActiveMutedColorDark %}
+{% set pageIconActiveLight = styles.iconActiveColor is defined and styles.iconActiveColor ? styles.iconActiveColor : (styles.iconColor ?? '#3b82f6') %}
+{% set pageIconActiveDark = styles.iconActiveColorDark is defined and styles.iconActiveColorDark ? styles.iconActiveColorDark : (styles.iconColorDark ?? '#60a5fa') %}
+{% set resultIconActiveLight = styles.resultIconActiveColor is defined and styles.resultIconActiveColor ? styles.resultIconActiveColor : resultIconLight %}
+{% set resultIconActiveDark = styles.resultIconActiveColorDark is defined and styles.resultIconActiveColorDark ? styles.resultIconActiveColorDark : resultIconDark %}
+{% set connActiveLight = styles.hierarchyConnectorActiveColor is defined and styles.hierarchyConnectorActiveColor ? styles.hierarchyConnectorActiveColor : previewConnectorLight %}
+{% set connActiveDark = styles.hierarchyConnectorActiveColorDark is defined and styles.hierarchyConnectorActiveColorDark ? styles.hierarchyConnectorActiveColorDark : previewConnectorDark %}
+{% set clearIconLight = styles.clearIconColor is defined and styles.clearIconColor ? styles.clearIconColor : styles.resultMutedColor %}
+{% set clearIconDark = styles.clearIconColorDark is defined and styles.clearIconColorDark ? styles.clearIconColorDark : styles.resultMutedColorDark %}
+
+{# Footer: bg matches the modal when unset; one text color, brand name falls back to Description #}
+{% set footerBgLight = styles.footerBg is defined and styles.footerBg ? styles.footerBg : 'transparent' %}
+{% set footerBgDark = styles.footerBgDark is defined and styles.footerBgDark ? styles.footerBgDark : 'transparent' %}
+{% set footerTextLight = styles.footerTextColor is defined and styles.footerTextColor ? styles.footerTextColor : styles.resultMutedColor %}
+{% set footerTextDark = styles.footerTextColorDark is defined and styles.footerTextColorDark ? styles.footerTextColorDark : styles.resultMutedColorDark %}
+{% set footerBrandLight = styles.footerTextColor is defined and styles.footerTextColor ? styles.footerTextColor : styles.resultDescColor %}
+{% set footerBrandDark = styles.footerTextColorDark is defined and styles.footerTextColorDark ? styles.footerTextColorDark : styles.resultDescColorDark %}
 
 {# Light Mode Preview #}
-	<div class="widget-preview-container widget-preview-light" data-mode="light" style="--preview-connector-color: {{ previewConnectorLight }};">
-		<div class="preview-modal" style="background: {{ styles.modalBg }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColor }}; border-radius: {{ styles.modalBorderRadius }}px; padding: {{ styles.modalPaddingY }}px {{ styles.modalPaddingX }}px;">
-			<div class="preview-header" style="background: {{ styles.headerBg }}; border-bottom: {{ styles.headerBorderWidth }}px solid {{ styles.headerBorderColor }}; border-radius: {{ styles.headerBorderRadius }}px; padding: {{ styles.headerPaddingY }}px {{ styles.headerPaddingX }}px;">
-				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ styles.inputTextColor }}" stroke-width="2" style="opacity: 0.5;">
+	<div class="widget-preview-container widget-preview-light" data-mode="light" style="--preview-connector-color: {{ previewConnectorLight }}; --preview-trigger-hover-bg: {{ styles.triggerHoverBg }}; --preview-trigger-hover-color: {{ styles.triggerHoverTextColor }}; --preview-trigger-hover-border: {{ styles.triggerHoverBorderColor }}; --preview-page-icon-active: {{ pageIconActiveLight }}; --preview-result-icon-active: {{ resultIconActiveLight }}; --preview-connector-active: {{ connActiveLight }};">
+		<div class="preview-modal" style="background: {{ styles.modalBg }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColor }}; border-radius: {{ styles.modalBorderRadius }}px; box-shadow: {{ styles.modalShadow }};">
+			<div class="preview-header" style="background: {{ styles.headerBg }}; border-bottom: {{ styles.headerBorderWidth }}px solid {{ styles.headerBorderColor }}; border-radius: {{ styles.headerBorderRadius }}px {{ styles.headerBorderRadius }}px 0 0; padding: {{ styles.headerPaddingY }}px {{ styles.headerPaddingX }}px;">
+				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ searchIconLight }}" stroke-width="2">
 					<circle cx="11" cy="11" r="8"></circle>
 					<path d="m21 21-4.35-4.35"></path>
 				</svg>
 				<span class="preview-input-field" style="background: {{ styles.inputBg }}; border: {{ styles.inputBorderWidth }}px solid {{ styles.inputBorderColor }}; border-radius: {{ styles.inputBorderRadius }}px; padding: {{ styles.inputPaddingY }}px {{ styles.inputPaddingX }}px;">
 					<span class="preview-placeholder" style="color: {{ styles.inputPlaceholderColor }};">{{ 'Search...'|t('search-manager') }}</span>
+					<svg class="preview-spinner" width="14" height="14" viewBox="0 0 24 24" style="color: {{ styles.spinnerColor }}; margin-inline-start: auto;">
+						<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
+						<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
+					</svg>
+					<svg class="preview-clear" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{ clearIconLight }}" stroke-width="2">
+						<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+					</svg>
 				</span>
-				<svg class="preview-spinner" width="14" height="14" viewBox="0 0 24 24" style="color: {{ styles.spinnerColor }};">
-					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
-					<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
-				</svg>
 				<span class="preview-kbd" style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }}; border-radius: {{ styles.kbdBorderRadius }}px;">{{ hotkey|upper }}</span>
 			</div>
+			<div class="preview-body" style="padding: {{ styles.modalPaddingY }}px {{ styles.modalPaddingX }}px;">
 			<div class="preview-results">
+				<div class="preview-section-header" style="color: {{ styles.resultMutedColor }};">{{ 'Results'|t('search-manager') }}</div>
 				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColor }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
-						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Sample Result'|t('search-manager') }}</span>
-						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Description text'|t('search-manager') }}</span>
+						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Sample Result'|t('search-manager') }} <mark class="preview-highlight" style="background: {{ hlBgLight }}; color: {{ hlTextLight }};">{{ 'match'|t('search-manager') }}</mark> <span class="preview-promoted" style="background: {{ styles.promotedBg }}; color: {{ styles.promotedColor }};">{{ 'Promoted'|t('search-manager') }}</span></span>
+						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Description text'|t('search-manager') }} <span class="preview-result-type" style="color: {{ styles.resultMutedColor }};">entry</span></span>
 					</div>
 				</div>
 				<div class="preview-result" style="background: {{ styles.resultActiveBg }}; border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultActiveBorderColor }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
-						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgLight }}; color: {{ hlTextLight }};">{{ 'match'|t('search-manager') }}</mark></span>
-						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'With highlight'|t('search-manager') }}</span>
+						<span class="preview-result-title" style="color: {{ styles.resultActiveTextColor }};">{{ 'Active / Hover'|t('search-manager') }} <mark class="preview-highlight-active" style="background: {{ hlActiveBgLight }}; color: {{ hlActiveTextLight }};">{{ 'match'|t('search-manager') }}</mark></span>
+						<span class="preview-result-desc" style="color: {{ styles.resultActiveDescColor }};">{{ 'With highlight'|t('search-manager') }}</span>
 					</div>
-					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.iconColor ?? '#3b82f6' }}" stroke-width="2">
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ arrowLight }}" stroke-width="2">
 						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
@@ -71,10 +109,30 @@
 						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Another Result'|t('search-manager') }}</span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Another result'|t('search-manager') }}</span>
 					</div>
-					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.iconColor ?? '#3b82f6' }}" stroke-width="2">
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ arrowLight }}" stroke-width="2">
 						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
+			</div>
+			<div class="preview-recent">
+				<div class="preview-section-header" style="color: {{ styles.resultMutedColor }};">{{ 'Recent Searches'|t('search-manager') }}</div>
+				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColor }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
+					<svg class="preview-result-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ resultIconLight }}" stroke-width="2">
+						<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+					</svg>
+					<div class="preview-result-content">
+						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Search...'|t('search-manager') }}</span>
+					</div>
+				</div>
+			</div>
+			<div class="preview-empty" style="color: {{ styles.resultMutedColor }};">{{ 'No results for "{query}"'|t('search-manager', {query: 'abc'}) }}</div>
+			</div>
+			<div class="preview-footer" style="background: {{ footerBgLight }}; border-top: {{ styles.headerBorderWidth }}px solid {{ styles.headerBorderColor }}; padding: {{ styles.footerPaddingY }}px {{ styles.footerPaddingX }}px; color: {{ footerTextLight }};">
+				<span class="preview-footer-hints">
+					<kbd style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }}; border-radius: {{ styles.kbdBorderRadius }}px;">↑</kbd><kbd style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }}; border-radius: {{ styles.kbdBorderRadius }}px;">↓</kbd> {{ 'navigate'|t('search-manager') }}
+					<kbd style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }}; border-radius: {{ styles.kbdBorderRadius }}px;">↵</kbd> {{ 'select'|t('search-manager') }}
+				</span>
+				<span class="preview-footer-brand">{{ 'Powered by'|t('search-manager') }} <strong style="color: {{ footerBrandLight }};">Search Manager</strong></span>
 			</div>
 		</div>
 		<div class="preview-trigger-container">
@@ -91,35 +149,40 @@
 	</div>
 
 {# Dark Mode Preview (hidden by default) #}
-	<div class="widget-preview-container widget-preview-dark" data-mode="dark" style="display: none; --preview-connector-color: {{ previewConnectorDark }};">
-		<div class="preview-modal" style="background: {{ styles.modalBgDark }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColorDark }}; border-radius: {{ styles.modalBorderRadius }}px; padding: {{ styles.modalPaddingY }}px {{ styles.modalPaddingX }}px;">
-			<div class="preview-header" style="background: {{ styles.headerBgDark }}; border-bottom: {{ styles.headerBorderWidth }}px solid {{ styles.headerBorderColorDark }}; border-radius: {{ styles.headerBorderRadius }}px; padding: {{ styles.headerPaddingY }}px {{ styles.headerPaddingX }}px;">
-				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ styles.inputTextColorDark }}" stroke-width="2" style="opacity: 0.5;">
+	<div class="widget-preview-container widget-preview-dark" data-mode="dark" style="display: none; --preview-connector-color: {{ previewConnectorDark }}; --preview-trigger-hover-bg: {{ styles.triggerHoverBgDark }}; --preview-trigger-hover-color: {{ styles.triggerHoverTextColorDark }}; --preview-trigger-hover-border: {{ styles.triggerHoverBorderColorDark }}; --preview-page-icon-active: {{ pageIconActiveDark }}; --preview-result-icon-active: {{ resultIconActiveDark }}; --preview-connector-active: {{ connActiveDark }};">
+		<div class="preview-modal" style="background: {{ styles.modalBgDark }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColorDark }}; border-radius: {{ styles.modalBorderRadius }}px; box-shadow: {{ styles.modalShadowDark }};">
+			<div class="preview-header" style="background: {{ styles.headerBgDark }}; border-bottom: {{ styles.headerBorderWidth }}px solid {{ styles.headerBorderColorDark }}; border-radius: {{ styles.headerBorderRadius }}px {{ styles.headerBorderRadius }}px 0 0; padding: {{ styles.headerPaddingY }}px {{ styles.headerPaddingX }}px;">
+				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ searchIconDark }}" stroke-width="2">
 					<circle cx="11" cy="11" r="8"></circle>
 					<path d="m21 21-4.35-4.35"></path>
 				</svg>
 				<span class="preview-input-field" style="background: {{ styles.inputBgDark }}; border: {{ styles.inputBorderWidth }}px solid {{ styles.inputBorderColorDark }}; border-radius: {{ styles.inputBorderRadius }}px; padding: {{ styles.inputPaddingY }}px {{ styles.inputPaddingX }}px;">
 					<span class="preview-placeholder" style="color: {{ styles.inputPlaceholderColorDark }};">{{ 'Search...'|t('search-manager') }}</span>
+					<svg class="preview-spinner" width="14" height="14" viewBox="0 0 24 24" style="color: {{ styles.spinnerColorDark }}; margin-inline-start: auto;">
+						<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
+						<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
+					</svg>
+					<svg class="preview-clear" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{ clearIconDark }}" stroke-width="2">
+						<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+					</svg>
 				</span>
-				<svg class="preview-spinner" width="14" height="14" viewBox="0 0 24 24" style="color: {{ styles.spinnerColorDark }};">
-					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
-					<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
-				</svg>
 				<span class="preview-kbd" style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }}; border-radius: {{ styles.kbdBorderRadius }}px;">{{ hotkey|upper }}</span>
 			</div>
+			<div class="preview-body" style="padding: {{ styles.modalPaddingY }}px {{ styles.modalPaddingX }}px;">
 			<div class="preview-results">
+				<div class="preview-section-header" style="color: {{ styles.resultMutedColorDark }};">{{ 'Results'|t('search-manager') }}</div>
 				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColorDark }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
-						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Sample Result'|t('search-manager') }}</span>
-						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Description text'|t('search-manager') }}</span>
+						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Sample Result'|t('search-manager') }} <mark class="preview-highlight" style="background: {{ hlBgDark }}; color: {{ hlTextDark }};">{{ 'match'|t('search-manager') }}</mark> <span class="preview-promoted" style="background: {{ styles.promotedBgDark }}; color: {{ styles.promotedColorDark }};">{{ 'Promoted'|t('search-manager') }}</span></span>
+						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Description text'|t('search-manager') }} <span class="preview-result-type" style="color: {{ styles.resultMutedColorDark }};">entry</span></span>
 					</div>
 				</div>
 				<div class="preview-result" style="background: {{ styles.resultActiveBgDark }}; border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultActiveBorderColorDark }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
-						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgDark }}; color: {{ hlTextDark }};">{{ 'match'|t('search-manager') }}</mark></span>
-						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'With highlight'|t('search-manager') }}</span>
+						<span class="preview-result-title" style="color: {{ styles.resultActiveTextColorDark }};">{{ 'Active / Hover'|t('search-manager') }} <mark class="preview-highlight-active" style="background: {{ hlActiveBgDark }}; color: {{ hlActiveTextDark }};">{{ 'match'|t('search-manager') }}</mark></span>
+						<span class="preview-result-desc" style="color: {{ styles.resultActiveDescColorDark }};">{{ 'With highlight'|t('search-manager') }}</span>
 					</div>
-					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.iconColorDark ?? '#60a5fa' }}" stroke-width="2">
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ arrowDark }}" stroke-width="2">
 						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
@@ -131,10 +194,30 @@
 						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Another Result'|t('search-manager') }}</span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Another result'|t('search-manager') }}</span>
 					</div>
-					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.iconColorDark ?? '#60a5fa' }}" stroke-width="2">
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ arrowDark }}" stroke-width="2">
 						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
+			</div>
+			<div class="preview-recent">
+				<div class="preview-section-header" style="color: {{ styles.resultMutedColorDark }};">{{ 'Recent Searches'|t('search-manager') }}</div>
+				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColorDark }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
+					<svg class="preview-result-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ resultIconDark }}" stroke-width="2">
+						<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+					</svg>
+					<div class="preview-result-content">
+						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Search...'|t('search-manager') }}</span>
+					</div>
+				</div>
+			</div>
+			<div class="preview-empty" style="color: {{ styles.resultMutedColorDark }};">{{ 'No results for "{query}"'|t('search-manager', {query: 'abc'}) }}</div>
+			</div>
+			<div class="preview-footer" style="background: {{ footerBgDark }}; border-top: {{ styles.headerBorderWidth }}px solid {{ styles.headerBorderColorDark }}; padding: {{ styles.footerPaddingY }}px {{ styles.footerPaddingX }}px; color: {{ footerTextDark }};">
+				<span class="preview-footer-hints">
+					<kbd style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }}; border-radius: {{ styles.kbdBorderRadius }}px;">↑</kbd><kbd style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }}; border-radius: {{ styles.kbdBorderRadius }}px;">↓</kbd> {{ 'navigate'|t('search-manager') }}
+					<kbd style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }}; border-radius: {{ styles.kbdBorderRadius }}px;">↵</kbd> {{ 'select'|t('search-manager') }}
+				</span>
+				<span class="preview-footer-brand">{{ 'Powered by'|t('search-manager') }} <strong style="color: {{ footerBrandDark }};">Search Manager</strong></span>
 			</div>
 		</div>
 		<div class="preview-trigger-container">
@@ -182,8 +265,70 @@
 
 .preview-modal {
 	overflow: hidden;
-	box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 	font-size: 11px;
+}
+
+.preview-trigger:hover {
+	background: var(--preview-trigger-hover-bg) !important;
+	color: var(--preview-trigger-hover-color) !important;
+	border-color: var(--preview-trigger-hover-border) !important;
+}
+
+.preview-section-header {
+	font-size: 9px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	padding: 6px 4px 2px;
+}
+
+.preview-recent {
+	padding: 0 4px 4px;
+}
+
+.preview-result-icon {
+	flex-shrink: 0;
+}
+
+.preview-result:hover .preview-icon-color {
+	stroke: var(--preview-page-icon-active);
+}
+
+.preview-result:hover .preview-result-icon {
+	stroke: var(--preview-result-icon-active);
+}
+
+.preview-hierarchy-row:hover::before {
+	background-color: var(--preview-connector-active);
+}
+
+.preview-empty {
+	font-size: 10px;
+	text-align: center;
+	padding: 6px 4px 2px;
+	font-style: italic;
+}
+
+.preview-result-type {
+	font-size: 9px;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.preview-promoted {
+	display: inline-block;
+	font-size: 8px;
+	padding: 1px 5px;
+	border-radius: 999px;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	vertical-align: middle;
+}
+
+.preview-highlight,
+.preview-highlight-active {
+	border-radius: 2px;
+	padding: 0 2px;
 }
 
 .preview-header {
@@ -318,6 +463,32 @@
 .preview-spinner {
 	flex-shrink: 0;
 	animation: preview-spin 1s linear infinite;
+}
+
+.preview-clear {
+	flex-shrink: 0;
+	margin-inline-start: 6px;
+}
+
+.preview-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 9px;
+}
+
+.preview-footer-hints {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.preview-footer kbd {
+	padding: 1px 3px;
+	font-size: 8px;
+	font-family: monospace;
+	border: 1px solid rgba(128, 128, 128, 0.3);
 }
 
 @keyframes preview-spin {

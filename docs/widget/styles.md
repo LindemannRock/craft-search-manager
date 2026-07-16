@@ -25,9 +25,8 @@ Go to **Search Manager > Widgets > Styles** and click "New Style". The editor is
 - **General** — name and handle
 - **Modal** — max width, max height, border radius, padding, backdrop opacity
 - **Input** — search header (container background, border, padding) and search input (font size, colors, borders, padding)
-- **Results** — gap, border radius, padding, resting/active/selected colors
+- **Results** — gap, border radius, padding, resting/active/selected colors, icons and hierarchy connector, term highlighting, promoted badge
 - **Controls** — trigger button styling (border radius, padding, font size, colors, hover states), keyboard badge styling (border radius, colors)
-- **Result Highlighting** — highlighting background and text colors for light and dark modes
 
 ### Via Config File
 
@@ -49,7 +48,7 @@ Define styles in `config/search-manager.php` under the `widgetStyles` key:
             'modalPaddingX' => '16',
             'modalPaddingY' => '16',
 
-            // Search Header (container around the input)
+            // Header (container around the input)
             'headerBg' => '#2a2a2e',
             'headerBorderColor' => '#4da6ff',
             'headerPaddingX' => '16',
@@ -124,10 +123,25 @@ All style properties are optional. Unset properties use the built-in defaults (W
 | `modalBorderColorDark` | `string` | — | `#374151` | Border color (dark mode) |
 | `modalMaxWidth` | `int` | 300-1200 | `640` | Maximum width in px |
 | `modalMaxHeight` | `int` | 30-95 | `80` | Maximum height in vh |
-| `modalPaddingX` | `int` | 0-64 | `16` | Horizontal padding in px |
-| `modalPaddingY` | `int` | 0-64 | `16` | Vertical padding in px |
+| `modalPaddingX` | `int` | 0-64 | `16` | Horizontal content padding in px — pads the results area, not the modal shell (header and footer sit flush) |
+| `modalPaddingY` | `int` | 0-64 | `16` | Vertical content padding in px |
 | `modalShadow` | `string` | — | `0 25px 50px -12px rgba(0, 0, 0, 0.25)` | Box shadow |
 | `modalShadowDark` | `string` | — | `0 25px 50px -12px rgba(0, 0, 0, 0.5)` | Box shadow (dark mode) |
+| `scrollbarColor` | `string` | — | — | Results scrollbar thumb. Empty = automatic subtle thumb derived from the muted color |
+| `scrollbarColorDark` | `string` | — | — | Results scrollbar thumb (dark mode) |
+
+### Footer
+
+The footer holds the keyboard shortcut hints and the "Powered by Search Manager" line (the name links to the plugin's GitHub repository). The keyboard chips follow the [Keyboard Badge](#keyboard-badge) properties, and the footer's top divider follows the header's `headerBorderWidth` and border color.
+
+| Property | Type | Range | Default | Description |
+|----------|------|-------|---------|-------------|
+| `footerBg` | `string` | — | — | Footer background. Empty = matches the modal background |
+| `footerBgDark` | `string` | — | — | Footer background (dark mode) |
+| `footerTextColor` | `string` | — | — | One color for the hints and the "Powered by" line. Empty = follows the muted color |
+| `footerTextColorDark` | `string` | — | — | Footer text color (dark mode) |
+| `footerPaddingX` | `int` | 0-40 | `16` | Horizontal padding in px |
+| `footerPaddingY` | `int` | 0-40 | `16` | Vertical padding in px |
 
 ### Backdrop
 
@@ -143,9 +157,9 @@ All style properties are optional. Unset properties use the built-in defaults (W
 | `spinnerColor` | `string` | `#3b82f6` | Loading spinner color |
 | `spinnerColorDark` | `string` | `#60a5fa` | Loading spinner color (dark mode) |
 
-### Search Header
+### Header
 
-The search header is the container wrapping the search icon, `<input>` element, spinner, and escape button. It sits at the top of the modal.
+The header is the container wrapping the search icon, `<input>` element (with its spinner and clear button), and escape button. It sits at the top of the modal.
 
 | Property | Type | Range | Default | Description |
 |----------|------|-------|---------|-------------|
@@ -153,8 +167,8 @@ The search header is the container wrapping the search icon, `<input>` element, 
 | `headerBgDark` | `string` | — | `transparent` | Header background (dark mode) |
 | `headerBorderColor` | `string` | — | `#e5e7eb` | Header bottom border color (separator line) |
 | `headerBorderColorDark` | `string` | — | `#374151` | Header bottom border color (dark mode) |
-| `headerBorderWidth` | `int` | 0-10 | `1` | Bottom border width in px |
-| `headerBorderRadius` | `int` | 0-20 | `0` | Border radius in px |
+| `headerBorderWidth` | `int` | 0-10 | `1` | Divider line under the header; the footer's top divider matches this width and color |
+| `headerBorderRadius` | `int` | 0-20 | `0` | Header corner rounding — applies to the top corners only (the header sits flush against the results) |
 | `headerPaddingX` | `int` | 0-40 | `16` | Horizontal padding in px |
 | `headerPaddingY` | `int` | 0-40 | `12` | Vertical padding in px |
 
@@ -170,6 +184,8 @@ The search input is the bare `<input>` element inside the header. By default it 
 | `inputTextColorDark` | `string` | — | `#f9fafb` | Input text color (dark mode) |
 | `inputPlaceholderColor` | `string` | — | `#9ca3af` | Placeholder color |
 | `inputPlaceholderColorDark` | `string` | — | `#9ca3af` | Placeholder color (dark mode) |
+| `searchIconColor` / `searchIconColorDark` | `string` | — | — | The magnifier icon in the input. Empty = follows the muted color |
+| `clearIconColor` / `clearIconColorDark` | `string` | — | — | The clear (×) button shown while typing. Empty = follows the muted color (hover uses the primary text color) |
 | `inputBorderColor` | `string` | — | `transparent` | Input border color |
 | `inputBorderColorDark` | `string` | — | `transparent` | Input border color (dark mode) |
 | `inputFontSize` | `int` | 12-24 | `16` | Font size in px |
@@ -251,13 +267,26 @@ The search input is the bare `<input>` element inside the header. By default it 
 | `highlightColorLight` | `string` | `#854d0e` | Highlight text color (light mode) |
 | `highlightBgDark` | `string` | `#854d0e` | Highlight background (dark mode) |
 | `highlightColorDark` | `string` | `#fef08a` | Highlight text color (dark mode) |
+| `highlightActiveBgLight` | `string` | — | Highlight background on the hovered/selected row (light mode). Empty = reuse the base highlight |
+| `highlightActiveColorLight` | `string` | — | Highlight text color on the hovered/selected row (light mode) |
+| `highlightActiveBgDark` | `string` | — | Highlight background on the hovered/selected row (dark mode) |
+| `highlightActiveColorDark` | `string` | — | Highlight text color on the hovered/selected row (dark mode) |
 
-### Icon
+> [!TIP]
+> If your `resultActiveBg` is close to the highlight background, set the active highlight pair so matches stay legible on the row the user is pointing at.
+
+### Icons & Hierarchy
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `iconColor` | `string` | `#3b82f6` | Search icon color |
-| `iconColorDark` | `string` | `#60a5fa` | Search icon color (dark mode) |
+| `iconColor` | `string` | `#3b82f6` | Hierarchy page-icon color |
+| `iconColorDark` | `string` | `#60a5fa` | Hierarchy page-icon color (dark mode) |
+| `iconActiveColor` / `iconActiveColorDark` | `string` | — | Page icon on the hovered/selected row. Empty = follows the base icon color |
+| `resultIconColor` / `resultIconColorDark` | `string` | — | Result row icons (e.g. the recent-search clock). Empty = follows the muted color |
+| `resultIconActiveColor` / `resultIconActiveColorDark` | `string` | — | Result row icons on the hovered/selected row. Empty = follows the base, then active muted |
+| `arrowColor` / `arrowColorDark` | `string` | — | The result arrow (only visible on the hovered/selected row). Empty = follows the active muted color |
+| `hierarchyConnectorColor` / `hierarchyConnectorColorDark` | `string` | — | Hierarchy tree connector lines. Empty = follows the muted color |
+| `hierarchyConnectorActiveColor` / `hierarchyConnectorActiveColorDark` | `string` | — | Connector segment of the hovered/selected row. Empty = follows the base connector color |
 
 ### Promoted Badge
 

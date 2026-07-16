@@ -385,6 +385,11 @@ class SearchWidgetBase extends HTMLElement {
     handleInput(e) {
         const query = e.target.value;
 
+        // Sync the clear button (present in the modal widget)
+        if (this.elements && this.elements.clear) {
+            this.elements.clear.hidden = !query;
+        }
+
         // Update state
         this.state.set({
             query,
