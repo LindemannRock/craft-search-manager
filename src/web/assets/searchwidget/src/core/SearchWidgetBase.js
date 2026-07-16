@@ -1123,17 +1123,10 @@ class SearchWidgetBase extends HTMLElement {
         if (!this.config) return;
 
         const host = this.shadowRoot.host;
-        const { theme, styles, resultsTitleLines, resultsDescriptionLines } = this.config;
+        const { theme, styles } = this.config;
 
         // Apply styles from config (theme-aware)
         applyStylesToElement(host, styles, theme);
-
-        if (resultsTitleLines) {
-            host.style.setProperty('--sm-result-title-lines', String(resultsTitleLines));
-        }
-        if (resultsDescriptionLines) {
-            host.style.setProperty('--sm-result-desc-lines', String(resultsDescriptionLines));
-        }
     }
 
     // =========================================================================

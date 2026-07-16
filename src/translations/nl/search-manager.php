@@ -1139,13 +1139,8 @@ return [
     'Unified' => 'Samengevoegd',
     'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.' => 'Individueel toont elk bovenliggend resultaat als eigen kaart. Samengevoegd verpakt elk paginablok en de bijbehorende kopkinderen in één kaart.',
     'How results are displayed. Hierarchical can group split section hits back under their page.' => 'Hoe resultaten worden weergegeven. Hiërarchisch kan gesplitste sectiehits weer onder hun pagina groeperen.',
-    'Maximum lines for result descriptions before truncating' => 'Maximaal aantal regels voor resultaatbeschrijvingen voordat wordt afgekapt',
-    'Maximum lines for result titles before truncating' => 'Maximaal aantal regels voor resultaattitels voordat wordt afgekapt',
     'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.' => 'Maximaal aantal kopkinderen dat per paginablok wordt weergegeven. Gesplitste hits worden geselecteerd op score en daarna in documentvolgorde weergegeven.',
     'Min: 1, Max: 50. Default: 5' => 'Min: 1, Max: 50. Standaard: 5',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.' => 'Min: 1, Max: 5. Standaard: 1. Gebruik 2-3 voor langere titels.',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.' => 'Min: 1, Max: 5. Standaard: 1. Gebruik 2-3 voor rijkere voorvertoningen.',
-    'Line Clamping' => 'Regelbegrenzing',
 
     // Promotions
     'New Promotion' => 'Nieuwe promotie',
@@ -2028,8 +2023,6 @@ return [
     'Search Minimum Characters' => 'Minimumaantal zoektekens',
     'Results Limit' => 'Resultaatlimiet',
     'Hierarchy Max Headings' => 'Maximale hiërarchiekoppen',
-    'Results Title Lines' => 'Titelregels van resultaten',
-    'Results Description Lines' => 'Beschrijvingregels van resultaten',
     'Snippet Max Length' => 'Maximale snippetlengte',
     'Hierarchy Style' => 'Hiërarchiestijl',
     'Enable Recently Viewed' => 'Onlangs bekeken inschakelen',

@@ -352,7 +352,7 @@ export function renderPromotionMarker(result, options = {}) {
         return { rowClass: ' sm-promoted', titlePrefix: '', titleSuffix: '', aboveMarkup: '', blockMarkup: `<span class="sm-promoted-badge-row">${badge}</span>` };
     }
 
-    // inline — the chip leads the title so it survives title line clamping
+    // inline — the chip leads the title so its position stays consistent
     return { rowClass: ' sm-promoted', titlePrefix: badge, titleSuffix: '', aboveMarkup: '', blockMarkup: '' };
 }
 

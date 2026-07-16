@@ -1139,13 +1139,8 @@ return [
     'Unified' => 'Unified',
     'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.' => 'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.',
     'How results are displayed. Hierarchical can group split section hits back under their page.' => 'How results are displayed. Hierarchical can group split section hits back under their page.',
-    'Maximum lines for result descriptions before truncating' => 'Maximum lines for result descriptions before truncating',
-    'Maximum lines for result titles before truncating' => 'Maximum lines for result titles before truncating',
     'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.' => 'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.',
     'Min: 1, Max: 50. Default: 5' => 'Min: 1, Max: 50. Default: 5',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.' => 'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.' => 'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.',
-    'Line Clamping' => 'Line Clamping',
 
     // Promotions
     'New Promotion' => 'New Promotion',
@@ -2028,8 +2023,6 @@ return [
     'Search Minimum Characters' => 'Search Minimum Characters',
     'Results Limit' => 'Results Limit',
     'Hierarchy Max Headings' => 'Hierarchy Max Headings',
-    'Results Title Lines' => 'Results Title Lines',
-    'Results Description Lines' => 'Results Description Lines',
     'Snippet Max Length' => 'Snippet Max Length',
     'Hierarchy Style' => 'Hierarchy Style',
     'Enable Recently Viewed' => 'Enable Recently Viewed',

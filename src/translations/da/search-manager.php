@@ -1139,13 +1139,8 @@ return [
     'Unified' => 'Samlet',
     'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.' => 'Individuel viser hvert overordnet resultat som sit eget kort. Samlet samler hver sideblok og dens overskriftsbørn i ét kort.',
     'How results are displayed. Hierarchical can group split section hits back under their page.' => 'Hvordan resultater vises. Hierarkisk kan gruppere opdelte afsnitsklik tilbage under deres side.',
-    'Maximum lines for result descriptions before truncating' => 'Maksimalt antal linjer for resultatbeskrivelser før trunkering',
-    'Maximum lines for result titles before truncating' => 'Maksimalt antal linjer for resultattitler før trunkering',
     'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.' => 'Maksimalt antal overskriftsbørn vist for hver sideblok. Opdelte klik vælges efter score og vises derefter i dokumentrækkefølge.',
     'Min: 1, Max: 50. Default: 5' => 'Min: 1, Maks: 50. Standard: 5',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.' => 'Min: 1, Maks: 5. Standard: 1. Brug 2-3 til længere titler.',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.' => 'Min: 1, Maks: 5. Standard: 1. Brug 2-3 til rigere forhåndsvisninger.',
-    'Line Clamping' => 'Linjebegrænsning',
 
     // Promotions
     'New Promotion' => 'Ny kampagne',
@@ -2028,8 +2023,6 @@ return [
     'Search Minimum Characters' => 'Minimum antal søgetegn',
     'Results Limit' => 'Resultatgrænse',
     'Hierarchy Max Headings' => 'Maksimalt antal hierarkioverskrifter',
-    'Results Title Lines' => 'Titelrækker for resultater',
-    'Results Description Lines' => 'Beskrivelsesrækker for resultater',
     'Snippet Max Length' => 'Maksimal uddragslængde',
     'Hierarchy Style' => 'Hierarkistil',
     'Enable Recently Viewed' => 'Aktiver senest viste',

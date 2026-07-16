@@ -1139,13 +1139,8 @@ return [
     'Unified' => 'Unificado',
     'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.' => 'Individual muestra cada resultado principal como su propia tarjeta. Unificado envuelve cada bloque de página y sus encabezados secundarios en una tarjeta.',
     'How results are displayed. Hierarchical can group split section hits back under their page.' => 'Cómo se muestran los resultados. El modo jerárquico puede volver a agrupar los resultados de secciones divididas bajo su página.',
-    'Maximum lines for result descriptions before truncating' => 'Número máximo de líneas para las descripciones de resultados antes de truncar',
-    'Maximum lines for result titles before truncating' => 'Número máximo de líneas para los títulos de resultados antes de truncar',
     'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.' => 'Número máximo de encabezados secundarios mostrados por cada bloque de página. Los resultados divididos se seleccionan por puntuación y luego se muestran en orden del documento.',
     'Min: 1, Max: 50. Default: 5' => 'Mín: 1, Máx: 50. Predeterminado: 5',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.' => 'Mín: 1, Máx: 5. Predeterminado: 1. Use 2-3 para títulos más largos.',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.' => 'Mín: 1, Máx: 5. Predeterminado: 1. Use 2-3 para vistas previas más ricas.',
-    'Line Clamping' => 'Limitación de líneas',
 
     // Promotions
     'New Promotion' => 'Nueva promoción',
@@ -2028,8 +2023,6 @@ return [
     'Search Minimum Characters' => 'Caracteres mínimos de búsqueda',
     'Results Limit' => 'Límite de resultados',
     'Hierarchy Max Headings' => 'Máximo de encabezados de jerarquía',
-    'Results Title Lines' => 'Líneas de título de resultados',
-    'Results Description Lines' => 'Líneas de descripción de resultados',
     'Snippet Max Length' => 'Longitud máxima del fragmento',
     'Hierarchy Style' => 'Estilo de jerarquía',
     'Enable Recently Viewed' => 'Activar vistos recientemente',

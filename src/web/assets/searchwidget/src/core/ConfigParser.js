@@ -84,8 +84,6 @@ export const BASE_DEFAULTS = {
     snippetMode: 'balanced',
     loadingIndicatorEnabled: true,
     debugEnabled: false,
-    resultsTitleLines: 1,
-    resultsDescriptionLines: 1,
     snippetMaxLength: 150,
     snippetCleanMarkdown: false,
     highlightDestinationPersistQuery: true,
@@ -329,8 +327,6 @@ export function parseConfig(element, widgetType = 'modal') {
         highlightDestinationEnabled: parseBoolean(element.getAttribute('highlight-destination-enabled'), defaults.highlightDestinationEnabled),
 
         // Result line clamping
-        resultsTitleLines: parseInt(element.getAttribute('results-title-lines'), defaults.resultsTitleLines),
-        resultsDescriptionLines: parseInt(element.getAttribute('results-description-lines'), defaults.resultsDescriptionLines),
         highlightDestinationQueryParam: element.getAttribute('highlight-destination-query-param') || defaults.highlightDestinationQueryParam,
         highlightDestinationContentSelector: element.getAttribute('highlight-destination-content-selector') || defaults.highlightDestinationContentSelector,
 
@@ -386,7 +382,7 @@ export function getObservedAttributes(widgetType = 'modal') {
         'debug-enabled', 'styles', 'translations',
         'promotion-display', 'promotion-badge-text', 'promotion-badge-position',
         'results-layout', 'hierarchy-group-by', 'hierarchy-style', 'hierarchy-display', 'hierarchy-max-headings',
-        'results-title-lines', 'results-description-lines', 'snippet-max-length', 'snippet-clean-markdown',
+        'snippet-max-length', 'snippet-clean-markdown',
         'highlight-destination-persist-query', 'highlight-destination-query-param', 'highlight-destination-enabled', 'highlight-destination-content-selector',
     ];
 

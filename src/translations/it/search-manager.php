@@ -1139,13 +1139,8 @@ return [
     'Unified' => 'Unificato',
     'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.' => 'Individuale mostra ogni risultato padre come scheda separata. Unificato racchiude ogni blocco pagina e le sue intestazioni figlie in una scheda.',
     'How results are displayed. Hierarchical can group split section hits back under their page.' => 'Come vengono visualizzati i risultati. Gerarchico può raggruppare nuovamente gli hit di sezioni divise sotto la relativa pagina.',
-    'Maximum lines for result descriptions before truncating' => 'Numero massimo di righe per le descrizioni dei risultati prima del troncamento',
-    'Maximum lines for result titles before truncating' => 'Numero massimo di righe per i titoli dei risultati prima del troncamento',
     'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.' => 'Numero massimo di intestazioni figlie mostrate per ogni blocco pagina. Gli hit divisi vengono selezionati per punteggio e poi mostrati nell\'ordine del documento.',
     'Min: 1, Max: 50. Default: 5' => 'Min: 1, Max: 50. Predefinito: 5',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.' => 'Min: 1, Max: 5. Predefinito: 1. Usa 2-3 per titoli più lunghi.',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.' => 'Min: 1, Max: 5. Predefinito: 1. Usa 2-3 per anteprime più ricche.',
-    'Line Clamping' => 'Limitazione delle righe',
 
     // Promotions
     'New Promotion' => 'Nuova promozione',
@@ -2028,8 +2023,6 @@ return [
     'Search Minimum Characters' => 'Caratteri minimi di ricerca',
     'Results Limit' => 'Limite risultati',
     'Hierarchy Max Headings' => 'Numero massimo di titoli gerarchici',
-    'Results Title Lines' => 'Righe del titolo dei risultati',
-    'Results Description Lines' => 'Righe della descrizione dei risultati',
     'Snippet Max Length' => 'Lunghezza massima dello snippet',
     'Hierarchy Style' => 'Stile gerarchico',
     'Enable Recently Viewed' => 'Attiva visualizzati di recente',

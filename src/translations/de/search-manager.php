@@ -1139,13 +1139,8 @@ return [
     'Unified' => 'Vereinheitlicht',
     'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.' => 'Einzeln zeigt jedes übergeordnete Ergebnis als eigene Karte. Vereinheitlicht fasst jeden Seitenblock und seine Überschriften als Unterelemente in einer Karte zusammen.',
     'How results are displayed. Hierarchical can group split section hits back under their page.' => 'Wie Ergebnisse angezeigt werden. Hierarchisch kann aufgeteilte Abschnittstreffer wieder unter ihrer Seite gruppieren.',
-    'Maximum lines for result descriptions before truncating' => 'Maximale Zeilen für Ergebnisbeschreibungen vor dem Kürzen',
-    'Maximum lines for result titles before truncating' => 'Maximale Zeilen für Ergebnistitel vor dem Kürzen',
     'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.' => 'Maximale Überschriften als Unterelemente pro Seitenblock. Aufgeteilte Treffer werden nach Bewertung ausgewählt und dann in Dokumentreihenfolge angezeigt.',
     'Min: 1, Max: 50. Default: 5' => 'Min: 1, Max: 50. Standard: 5',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.' => 'Min: 1, Max: 5. Standard: 1. 2–3 für längere Titel verwenden.',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.' => 'Min: 1, Max: 5. Standard: 1. 2–3 für reichhaltigere Vorschauen verwenden.',
-    'Line Clamping' => 'Zeilenbegrenzung',
 
     // Promotions
     'New Promotion' => 'Neue Promotion',
@@ -2028,8 +2023,6 @@ return [
     'Search Minimum Characters' => 'Mindestzeichen für Suche',
     'Results Limit' => 'Ergebnislimit',
     'Hierarchy Max Headings' => 'Maximale Hierarchie-Überschriften',
-    'Results Title Lines' => 'Titelzeilen der Ergebnisse',
-    'Results Description Lines' => 'Beschreibungszeilen der Ergebnisse',
     'Snippet Max Length' => 'Maximale Snippet-Länge',
     'Hierarchy Style' => 'Hierarchiestil',
     'Enable Recently Viewed' => 'Zuletzt angesehen aktivieren',

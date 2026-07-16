@@ -146,8 +146,6 @@ Override settings per-include:
 | `resultsLimit` | `int` | `10` | Maximum results to show (1-100) |
 | `resultsGroupingEnabled` | `bool` | `true` | Group flat results by `source`, `entrySection`, or `type` |
 | `resultsRequireUrl` | `bool` | `false` | Hide results without a URL |
-| `resultsTitleLines` | `int` | `1` | Title line clamp count (1-5) |
-| `resultsDescriptionLines` | `int` | `1` | Description line clamp count (1-5) |
 
 ### Hierarchy @since(5.39.0)
 

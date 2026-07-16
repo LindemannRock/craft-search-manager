@@ -120,8 +120,6 @@
 {% set hierarchyStyle = hierarchyStyle ?? widgetConfig.getHierarchyStyle() %}
 {% set hierarchyDisplay = hierarchyDisplay ?? widgetConfig.getHierarchyDisplay() %}
 {% set hierarchyMaxHeadings = hierarchyMaxHeadings ?? widgetConfig.getHierarchyMaxHeadings() %}
-{% set resultsTitleLines = resultsTitleLines ?? widgetConfig.getResultsTitleLines() %}
-{% set resultsDescriptionLines = resultsDescriptionLines ?? widgetConfig.getResultsDescriptionLines() %}
 {% set snippetMaxLength = snippetMaxLength ?? widgetConfig.getSnippetMaxLength() %}
 {% set snippetCleanMarkdown = snippetCleanMarkdown ?? widgetConfig.isSnippetCleanMarkdownEnabled() %}
 {% set snippetDefaults = widgetConfig.getSnippetDefaults() %}
@@ -235,8 +233,6 @@
     {% if hierarchyStyle != 'tree' %}hierarchy-style="{{ hierarchyStyle }}"{% endif %}
     {% if hierarchyDisplay != 'individual' %}hierarchy-display="{{ hierarchyDisplay }}"{% endif %}
     hierarchy-max-headings="{{ hierarchyMaxHeadings }}"
-    results-title-lines="{{ resultsTitleLines }}"
-    results-description-lines="{{ resultsDescriptionLines }}"
     snippet-max-length="{{ snippetMaxLength }}"
     snippet-clean-markdown="{{ _self.toBool(snippetCleanMarkdown, false) }}"
 ></search-modal>

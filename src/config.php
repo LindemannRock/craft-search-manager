@@ -719,8 +719,6 @@ return [
          *       (default: false)
          *     - snippetMode: How snippets find the best passage from fields, page bodies, or split
          *       section bodies: 'early', 'balanced', or 'deep' (default: 'balanced')
-         *     - resultsTitleLines: Max lines for result title, 1-5 (default: 1)
-         *     - resultsDescriptionLines: Max lines for result description, 1-5 (default: 1)
          *     - snippetMaxLength: Snippet length in characters for page and section snippets, 50-1000
          *       (default: 150)
          *     - snippetCleanMarkdown: Clean Markdown markers from page and section snippet display
@@ -773,8 +771,6 @@ return [
             //             'resultsLayout' => 'default',
             //             'snippetIncludeCodeBlocks' => false,
             //             'snippetMode' => 'balanced',
-            //             'resultsTitleLines' => 1,
-            //             'resultsDescriptionLines' => 1,
             //             'snippetMaxLength' => 150,
             //             'snippetCleanMarkdown' => false,
             //             'highlightDestinationEnabled' => true,
@@ -811,7 +807,6 @@ return [
             //             'hierarchyStyle' => 'tree',
             //             'hierarchyMaxHeadings' => 3,
             //             'snippetMode' => 'deep',
-            //             'resultsDescriptionLines' => 2,
             //             'snippetMaxLength' => 200,
             //         ],
             //         // Inline styles — same keys as widgetStyles.*.styles

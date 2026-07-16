@@ -56,37 +56,6 @@
 
 <hr>
 
-{# Line Clamping #}
-<h2>{{ "Line Clamping"|t('search-manager') }}</h2>
-
-{{ forms.textField({
-	label: 'Results Title Lines'|t('search-manager'),
-	instructions: 'Maximum lines for result titles before truncating'|t('search-manager'),
-	tip: 'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.'|t('search-manager'),
-	id: 'behavior-resultsTitleLines',
-	name: 'settings[behavior][resultsTitleLines]',
-	value: widgetConfig.getResultsTitleLines(),
-	type: 'number',
-	min: 1,
-	max: 5,
-	errors: widgetConfig.getErrors('settings.behavior.resultsTitleLines')
-}) }}
-
-{{ forms.textField({
-	label: 'Results Description Lines'|t('search-manager'),
-	instructions: 'Maximum lines for result descriptions before truncating'|t('search-manager'),
-	tip: 'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.'|t('search-manager'),
-	id: 'behavior-resultsDescriptionLines',
-	name: 'settings[behavior][resultsDescriptionLines]',
-	value: widgetConfig.getResultsDescriptionLines(),
-	type: 'number',
-	min: 1,
-	max: 5,
-	errors: widgetConfig.getErrors('settings.behavior.resultsDescriptionLines')
-}) }}
-
-<hr>
-
 <h2>{{ "Promotions"|t('search-manager') }}</h2>
 
 {{ forms.selectField({

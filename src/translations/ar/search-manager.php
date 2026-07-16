@@ -1139,13 +1139,8 @@ return [
     'Unified' => 'موحد',
     'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.' => 'يعرض الوضع الفردي كل نتيجة أصلية كبطاقة مستقلة. يضع الوضع الموحد كل كتلة صفحة وعناوينها الفرعية في بطاقة واحدة.',
     'How results are displayed. Hierarchical can group split section hits back under their page.' => 'كيفية عرض النتائج. يمكن للوضع الهرمي تجميع زيارات الأقسام المقسّمة مرة أخرى تحت صفحتها.',
-    'Maximum lines for result descriptions before truncating' => 'الحد الأقصى للأسطر لأوصاف النتائج قبل الاقتطاع',
-    'Maximum lines for result titles before truncating' => 'الحد الأقصى للأسطر لعناوين النتائج قبل الاقتطاع',
     'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.' => 'الحد الأقصى للعناوين الفرعية المعروضة لكل كتلة صفحة. يتم اختيار الزيارات المقسّمة حسب الدرجة، ثم عرضها بترتيب المستند.',
     'Min: 1, Max: 50. Default: 5' => 'الحد الأدنى: 1، الحد الأقصى: 50. الافتراضي: 5',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.' => 'الحد الأدنى: 1، الحد الأقصى: 5. الافتراضي: 1. استخدم 2-3 للعناوين الأطول.',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.' => 'الحد الأدنى: 1، الحد الأقصى: 5. الافتراضي: 1. استخدم 2-3 لمعاينات أغنى.',
-    'Line Clamping' => 'تحديد الأسطر',
 
     // Promotions
     'New Promotion' => 'عرض ترويجي جديد',
@@ -2028,8 +2023,6 @@ return [
     'Search Minimum Characters' => 'الحد الأدنى لأحرف البحث',
     'Results Limit' => 'حد النتائج',
     'Hierarchy Max Headings' => 'الحد الأقصى لعناوين التسلسل الهرمي',
-    'Results Title Lines' => 'أسطر عنوان النتائج',
-    'Results Description Lines' => 'أسطر وصف النتائج',
     'Snippet Max Length' => 'الحد الأقصى لطول المقتطف',
     'Hierarchy Style' => 'نمط التسلسل الهرمي',
     'Enable Recently Viewed' => 'تمكين العناصر المعروضة مؤخرًا',

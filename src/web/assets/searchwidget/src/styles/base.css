@@ -65,10 +65,6 @@
     --sm-highlight-active-bg: var(--sm-highlight-bg);
     --sm-highlight-active-color: var(--sm-highlight-color);
 
-    /* Result line clamping */
-    --sm-result-title-lines: 1;
-    --sm-result-desc-lines: 1;
-
     /* Kbd / keyboard shortcuts - 4.5:1 contrast ratio minimum */
     --sm-kbd-bg: #f3f4f6;
     --sm-kbd-border: #d1d5db;
@@ -320,23 +316,16 @@
     font-size: 14px;
     font-weight: 500;
     color: var(--sm-text-primary);
-    display: -webkit-box;
-    -webkit-line-clamp: var(--sm-result-title-lines);
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: normal;
+    overflow-wrap: anywhere;
 }
 
+/* Description length is bounded by snippetMaxLength server-side — no clamp */
 .sm-result-desc {
     font-size: 13px;
     color: var(--sm-text-secondary);
-    display: -webkit-box;
-    -webkit-line-clamp: var(--sm-result-desc-lines);
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .sm-result-type {
@@ -407,7 +396,11 @@
 .sm-hierarchy-child-row:hover::before,
 .sm-hierarchy-child-row:hover::after,
 .sm-hierarchy-child-row.sm-selected::before,
-.sm-hierarchy-child-row.sm-selected::after {
+.sm-hierarchy-child-row.sm-selected::after,
+.sm-hierarchy-child-row:hover .sm-debug-enabled .sm-result-main::before,
+.sm-hierarchy-child-row:hover .sm-debug-enabled .sm-result-main::after,
+.sm-hierarchy-child-row.sm-selected .sm-debug-enabled .sm-result-main::before,
+.sm-hierarchy-child-row.sm-selected .sm-debug-enabled .sm-result-main::after {
     border-color: var(--sm-hierarchy-connector-active-resolved, var(--sm-hierarchy-connector-color));
 }
 
@@ -458,6 +451,57 @@
 
 /* Last child: curve handles the branch, hide separate horizontal */
 .sm-hierarchy-child-row-last::after {
+    display: none;
+}
+
+/* Debug rows: the strip below the content stretches the row, so 50% anchors
+   drift. Re-anchor the branch and last-row curve to the content block
+   (.sm-result-main) — the vertical through-line still spans the full row. */
+.sm-hierarchy-child-row:has(.sm-debug-enabled)::after {
+    display: none;
+}
+
+.sm-hierarchy-child-row .sm-debug-enabled .sm-result-main {
+    position: relative;
+}
+
+.sm-hierarchy-child-row .sm-debug-enabled .sm-result-main::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    inset-inline-start: -20px;
+    width: 20px;
+    height: 0;
+    border-top: 2px solid var(--sm-hierarchy-connector-color);
+    pointer-events: none;
+}
+
+.sm-hierarchy-child-row-last:has(.sm-debug-enabled)::before {
+    /* Keep only the short bridge across the gap up to the parent —
+       the curve itself is re-anchored to the content block below */
+    top: calc(-1 * var(--sm-result-gap, 0px));
+    bottom: auto;
+    height: var(--sm-result-gap, 0px);
+    width: 0;
+    border-bottom: none;
+    border-end-start-radius: 0;
+}
+
+.sm-hierarchy-child-row-last .sm-debug-enabled .sm-result-main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 50%;
+    inset-inline-start: -20px;
+    width: 20px;
+    border-inline-start: 2px solid var(--sm-hierarchy-connector-color);
+    border-bottom: 2px solid var(--sm-hierarchy-connector-color);
+    border-end-start-radius: 6px;
+    pointer-events: none;
+}
+
+/* Last row: the curve provides the branch */
+.sm-hierarchy-child-row-last .sm-debug-enabled .sm-result-main::after {
     display: none;
 }
 

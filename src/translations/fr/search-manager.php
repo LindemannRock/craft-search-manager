@@ -1139,13 +1139,8 @@ return [
     'Unified' => 'Unifié',
     'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.' => 'Individuel affiche chaque résultat parent dans sa propre carte. Unifié regroupe chaque bloc de page et ses titres enfants dans une seule carte.',
     'How results are displayed. Hierarchical can group split section hits back under their page.' => 'Comment les résultats sont affichés. Le mode hiérarchique peut regrouper les résultats de sections fractionnées sous leur page.',
-    'Maximum lines for result descriptions before truncating' => 'Nombre maximum de lignes pour les descriptions de résultats avant troncature',
-    'Maximum lines for result titles before truncating' => 'Nombre maximum de lignes pour les titres de résultats avant troncature',
     'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.' => 'Nombre maximum de titres enfants affichés pour chaque bloc de page. Les résultats fractionnés sont sélectionnés par score, puis affichés dans l\'ordre du document.',
     'Min: 1, Max: 50. Default: 5' => 'Min : 1, Max : 50. Par défaut : 5',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.' => 'Min : 1, Max : 5. Par défaut : 1. Utilisez 2-3 pour les titres longs.',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.' => 'Min : 1, Max : 5. Par défaut : 1. Utilisez 2-3 pour des aperçus plus riches.',
-    'Line Clamping' => 'Limitation de lignes',
 
     // Promotions
     'New Promotion' => 'Nouvelle promotion',
@@ -2028,8 +2023,6 @@ return [
     'Search Minimum Characters' => 'Nombre minimal de caractères de recherche',
     'Results Limit' => 'Limite de résultats',
     'Hierarchy Max Headings' => 'Nombre maximal de titres hiérarchiques',
-    'Results Title Lines' => 'Lignes de titre des résultats',
-    'Results Description Lines' => 'Lignes de description des résultats',
     'Snippet Max Length' => 'Longueur maximale du snippet',
     'Hierarchy Style' => 'Style de hiérarchie',
     'Enable Recently Viewed' => 'Activer les éléments consultés récemment',

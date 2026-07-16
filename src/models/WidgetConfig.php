@@ -94,8 +94,6 @@ class WidgetConfig extends Model
                 'hierarchyDisplay' => 'individual',
                 'snippetIncludeCodeBlocks' => SnippetOptionsHelper::DEFAULT_SHOW_CODE,
                 'snippetMode' => SnippetOptionsHelper::DEFAULT_MODE,
-                'resultsTitleLines' => 1,
-                'resultsDescriptionLines' => 1,
                 'snippetMaxLength' => SnippetOptionsHelper::DEFAULT_LENGTH,
                 'snippetCleanMarkdown' => SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN,
                 'loadingIndicatorEnabled' => true,
@@ -360,26 +358,6 @@ class WidgetConfig extends Model
     public function getSnippetMode(): string
     {
         return SnippetOptionsHelper::normalizeMode($this->getSetting('behavior.snippetMode', SnippetOptionsHelper::DEFAULT_MODE));
-    }
-
-    /**
-     * Result title line clamp count
-     *
-     * @since 5.39.0
-     */
-    public function getResultsTitleLines(): int
-    {
-        return (int) $this->getSetting('behavior.resultsTitleLines', 1);
-    }
-
-    /**
-     * Result description line clamp count
-     *
-     * @since 5.39.0
-     */
-    public function getResultsDescriptionLines(): int
-    {
-        return (int) $this->getSetting('behavior.resultsDescriptionLines', 1);
     }
 
     /**
@@ -732,8 +710,6 @@ class WidgetConfig extends Model
         if (BooleanHelper::normalize($s['behavior']['recentlyViewedEnabled'] ?? true, true)) {
             $this->validateIntField($s, 'behavior', 'recentlyViewedLimit', Craft::t('search-manager', 'Recently Viewed Limit'), 1, 50);
         }
-        $this->validateIntField($s, 'behavior', 'resultsTitleLines', Craft::t('search-manager', 'Results Title Lines'), 1, 5);
-        $this->validateIntField($s, 'behavior', 'resultsDescriptionLines', Craft::t('search-manager', 'Results Description Lines'), 1, 5);
         $this->validateIntField($s, 'behavior', 'snippetMaxLength', Craft::t('search-manager', 'Snippet Max Length'), SnippetOptionsHelper::MIN_LENGTH, SnippetOptionsHelper::MAX_LENGTH);
 
         // Behavior settings — enums

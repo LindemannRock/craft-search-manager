@@ -1139,13 +1139,8 @@ return [
     'Unified' => '統合',
     'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.' => '個別は各親結果を独自のカードとして表示します。統合は各ページブロックとその見出し子要素を 1 つのカードにまとめます。',
     'How results are displayed. Hierarchical can group split section hits back under their page.' => '結果の表示方法。階層表示では分割セクションヒットをページの下に再グループ化できます。',
-    'Maximum lines for result descriptions before truncating' => '切り詰め前の結果説明の最大行数',
-    'Maximum lines for result titles before truncating' => '切り詰め前の結果タイトルの最大行数',
     'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.' => '各ページブロックに表示する見出し子要素の最大数。分割ヒットはスコアで選択され、その後ドキュメント順に表示されます。',
     'Min: 1, Max: 50. Default: 5' => '最小: 1、最大: 50。デフォルト: 5',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.' => '最小: 1、最大: 5。デフォルト: 1。長いタイトルには 2-3 を使用。',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.' => '最小: 1、最大: 5。デフォルト: 1。リッチなプレビューには 2-3 を使用。',
-    'Line Clamping' => '行クランプ',
 
     // Promotions
     'New Promotion' => '新規プロモーション',
@@ -2028,8 +2023,6 @@ return [
     'Search Minimum Characters' => '検索最小文字数',
     'Results Limit' => '結果数の上限',
     'Hierarchy Max Headings' => '階層見出しの最大数',
-    'Results Title Lines' => '結果タイトル行数',
-    'Results Description Lines' => '結果説明行数',
     'Snippet Max Length' => 'スニペット最大長',
     'Hierarchy Style' => '階層スタイル',
     'Enable Recently Viewed' => '最近表示した項目を有効にする',

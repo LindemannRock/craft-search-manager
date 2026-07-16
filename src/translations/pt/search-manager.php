@@ -1139,13 +1139,8 @@ return [
     'Unified' => 'Unificado',
     'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.' => 'Individual mostra cada resultado principal no seu próprio cartão. Unificado reúne cada bloco de página e os respetivos títulos filhos num cartão.',
     'How results are displayed. Hierarchical can group split section hits back under their page.' => 'Como os resultados são apresentados. O modo hierárquico pode reagrupar acessos de secções divididas sob a respetiva página.',
-    'Maximum lines for result descriptions before truncating' => 'Número máximo de linhas para descrições de resultados antes de truncar',
-    'Maximum lines for result titles before truncating' => 'Número máximo de linhas para títulos de resultados antes de truncar',
     'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.' => 'Número máximo de títulos filhos apresentados para cada bloco de página. Os acessos divididos são selecionados por pontuação e depois apresentados pela ordem do documento.',
     'Min: 1, Max: 50. Default: 5' => 'Mín: 1, Máx: 50. Predefinido: 5',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.' => 'Mín: 1, Máx: 5. Predefinido: 1. Utilize 2-3 para títulos mais longos.',
-    'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.' => 'Mín: 1, Máx: 5. Predefinido: 1. Utilize 2-3 para pré-visualizações mais ricas.',
-    'Line Clamping' => 'Limitação de linhas',
 
     // Promotions
     'New Promotion' => 'Nova promoção',
@@ -2028,8 +2023,6 @@ return [
     'Search Minimum Characters' => 'Caracteres mínimos da pesquisa',
     'Results Limit' => 'Limite de resultados',
     'Hierarchy Max Headings' => 'Máximo de cabeçalhos da hierarquia',
-    'Results Title Lines' => 'Linhas do título dos resultados',
-    'Results Description Lines' => 'Linhas da descrição dos resultados',
     'Snippet Max Length' => 'Comprimento máximo do excerto',
     'Hierarchy Style' => 'Estilo da hierarquia',
     'Enable Recently Viewed' => 'Ativar vistos recentemente',
