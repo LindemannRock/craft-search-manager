@@ -124,8 +124,9 @@ test.describe('Search Widget A11y - Static Fixture', () => {
         });
 
         test('trigger button has accessible name', async ({ page }) => {
+            // Accessible name mirrors the visible trigger label (WCAG 2.5.3 Label in Name)
             const ariaLabel = await getShadowAttribute(page, 'widget-light', '.sm-trigger', 'aria-label');
-            expect(ariaLabel).toBe('Open search');
+            expect(ariaLabel).toBe('Search');
         });
 
         test('trigger button is keyboard focusable', async ({ page }) => {
@@ -735,20 +736,20 @@ test.describe('Search Widget A11y - Static Fixture', () => {
     });
 
     // ------------------------------------------------------------------------
-    // Recent Searches
+    // Recently Viewed
     // ------------------------------------------------------------------------
 
-    test.describe('Recent Searches', () => {
+    test.describe('Recently Viewed', () => {
 
-        test('recent search items have role="option"', async ({ page }) => {
+        test('recently viewed items have role="option"', async ({ page }) => {
             await page.evaluate(() => window.openWidget('widget-light'));
             await page.waitForTimeout(200);
-            await page.evaluate(() => window.injectRecentSearches('widget-light'));
+            await page.evaluate(() => window.injectRecentlyViewed('widget-light'));
             await page.waitForTimeout(200);
 
             const recentItems = await page.evaluate((id) => {
                 const widget = document.getElementById(id);
-                const items = widget?.shadowRoot?.querySelectorAll('.sm-recent-item[role="option"]');
+                const items = widget?.shadowRoot?.querySelectorAll('.sm-recently-viewed-item[role="option"]');
                 return Array.from(items || []).map(i => ({
                     role: i.getAttribute('role'),
                     id: i.id,
@@ -762,29 +763,29 @@ test.describe('Search Widget A11y - Static Fixture', () => {
             });
         });
 
-        test('recent search clock icons are aria-hidden', async ({ page }) => {
+        test('recently viewed clock icons are aria-hidden', async ({ page }) => {
             await page.evaluate(() => window.openWidget('widget-light'));
             await page.waitForTimeout(200);
-            await page.evaluate(() => window.injectRecentSearches('widget-light'));
+            await page.evaluate(() => window.injectRecentlyViewed('widget-light'));
             await page.waitForTimeout(200);
 
             const allHidden = await page.evaluate((id) => {
                 const widget = document.getElementById(id);
-                const icons = widget?.shadowRoot?.querySelectorAll('.sm-recent-item .sm-result-icon');
+                const icons = widget?.shadowRoot?.querySelectorAll('.sm-recently-viewed-item .sm-result-icon');
                 return Array.from(icons || []).every(i => i.getAttribute('aria-hidden') === 'true');
             }, 'widget-light');
 
             expect(allHidden).toBe(true);
         });
 
-        test('recent searches section has header', async ({ page }) => {
+        test('recently viewed section has header', async ({ page }) => {
             await page.evaluate(() => window.openWidget('widget-light'));
             await page.waitForTimeout(200);
-            await page.evaluate(() => window.injectRecentSearches('widget-light'));
+            await page.evaluate(() => window.injectRecentlyViewed('widget-light'));
             await page.waitForTimeout(200);
 
             const headerText = await getShadowText(page, 'widget-light', '.sm-section-header');
-            expect(headerText).toContain('Recent');
+            expect(headerText).toContain('Recently viewed');
         });
 
     });

@@ -2,7 +2,7 @@
  * ResultRenderer - Search result rendering utilities
  *
  * Renders search results with support for grouping, highlighting,
- * promoted results badges, recent searches display, and empty states.
+ * promoted results badges, recently viewed display, and empty states.
  *
  * @module ResultRenderer
  * @author Search Manager
@@ -850,30 +850,30 @@ function slugifyHeading(text) {
 }
 
 /**
- * Render recent searches section
+ * Render recently viewed section
  *
- * @param {Array} recentSearches - Recent search items
+ * @param {Array} recentlyViewed - Recent search items
  * @param {string} listboxId - ARIA listbox ID
- * @returns {string} HTML string of recent searches
+ * @returns {string} HTML string of recently viewed items
  *
  * @example
- * const html = renderRecentSearches([
+ * const html = renderRecentlyViewed([
  *   { query: 'test', title: 'Test Result', url: '/test' },
  * ], 'sm-results');
  */
-export function renderRecentSearches(recentSearches, listboxId, translations = {}) {
-    if (!recentSearches || recentSearches.length === 0) {
+export function renderRecentlyViewed(recentlyViewed, listboxId, translations = {}) {
+    if (!recentlyViewed || recentlyViewed.length === 0) {
         return '';
     }
 
     return `
         <div class="sm-section">
             <div class="sm-section-header">
-                <span id="${listboxId}-recent-label">${escapeHtml(t(translations, 'Recently viewed'))}</span>
-                <button class="sm-clear-recent" part="clear-recent">${escapeHtml(t(translations, 'Clear'))}</button>
+                <span id="${listboxId}-recently-viewed-label">${escapeHtml(t(translations, 'Recently viewed'))}</span>
+                <button class="sm-recently-viewed-clear" part="recently-viewed-clear">${escapeHtml(t(translations, 'Clear'))}</button>
             </div>
-            ${recentSearches.map((item, i) => `
-                <div class="sm-result-item sm-recent-item" id="${getOptionId(listboxId, i)}" role="option" aria-selected="false" data-index="${i}" data-url="${escapeHtml(item.url || '')}" data-query="${escapeHtml(item.query)}">
+            ${recentlyViewed.map((item, i) => `
+                <div class="sm-result-item sm-recently-viewed-item" id="${getOptionId(listboxId, i)}" role="option" aria-selected="false" data-index="${i}" data-url="${escapeHtml(item.url || '')}" data-query="${escapeHtml(item.query)}">
                     <svg class="sm-result-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>
@@ -970,9 +970,9 @@ export function renderErrorState(message, translations = {}) {
  * @param {Object} state - Current search state
  * @param {string} state.query - Current search query
  * @param {Array} state.results - Search results
- * @param {Array} state.recentSearches - Recent searches
+ * @param {Array} state.recentlyViewed - Recent searches
  * @param {boolean} state.loading - Loading state
- * @param {boolean} state.recentSearchesEnabled - Whether to show recent searches
+ * @param {boolean} state.recentlyViewedEnabled - Whether to show recent searches
  * @param {RenderOptions} options - Rendering options
  * @returns {Object} Object with { html, hasResults, showListbox }
  *
@@ -980,13 +980,13 @@ export function renderErrorState(message, translations = {}) {
  * const { html, hasResults, showListbox } = getContentToRender({
  *   query: '',
  *   results: [],
- *   recentSearches: [...],
+ *   recentlyViewed: [...],
  *   loading: false,
- *   recentSearchesEnabled: true,
+ *   recentlyViewedEnabled: true,
  * }, options);
  */
 export function getContentToRender(state, options) {
-    const { query, results, recentSearches, loading, recentSearchesEnabled, error } = state;
+    const { query, results, recentlyViewed, loading, recentlyViewedEnabled, error } = state;
     const { loadingIndicatorEnabled = true, translations = {} } = options;
     const hasQuery = query && query.trim();
 
@@ -1007,11 +1007,11 @@ export function getContentToRender(state, options) {
         };
     }
 
-    // No query - show recent searches or empty state
+    // No query - show recently viewed items or empty state
     if (!hasQuery) {
-        if (recentSearchesEnabled && recentSearches && recentSearches.length > 0) {
+        if (recentlyViewedEnabled && recentlyViewed && recentlyViewed.length > 0) {
             return {
-                html: renderRecentSearches(recentSearches, options.listboxId, translations),
+                html: renderRecentlyViewed(recentlyViewed, options.listboxId, translations),
                 hasResults: true,
                 showListbox: true,
             };

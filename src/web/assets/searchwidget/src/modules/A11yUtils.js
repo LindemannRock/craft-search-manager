@@ -78,11 +78,11 @@ export function getLoadingAnnouncement(translations = {}) {
 }
 
 /**
- * Get announcement for recent searches
- * @param {number} count - Number of recent searches
+ * Get announcement for recently viewed items
+ * @param {number} count - Number of recently viewed items
  * @returns {string} Announcement message
  */
-export function getRecentSearchesAnnouncement(count, translations = {}) {
+export function getRecentlyViewedAnnouncement(count, translations = {}) {
     if (count === 0) {
         return t(translations, 'No recently viewed items');
     }

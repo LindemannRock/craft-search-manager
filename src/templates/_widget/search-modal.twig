@@ -63,8 +63,8 @@
 {% set resultsLimit = resultsLimit ?? widgetConfig.getResultsLimit() %}
 {% set searchDebounceMs = searchDebounceMs ?? widgetConfig.getSearchDebounceMs() %}
 {% set searchMinChars = searchMinChars ?? widgetConfig.getSearchMinChars() %}
-{% set recentSearchesEnabled = recentSearchesEnabled ?? widgetConfig.isRecentSearchesEnabled() %}
-{% set recentSearchesLimit = recentSearchesLimit ?? widgetConfig.getRecentSearchesLimit() %}
+{% set recentlyViewedEnabled = recentlyViewedEnabled ?? widgetConfig.isRecentlyViewedEnabled() %}
+{% set recentlyViewedLimit = recentlyViewedLimit ?? widgetConfig.getRecentlyViewedLimit() %}
 {% set resultsGroupingEnabled = resultsGroupingEnabled ?? widgetConfig.isResultsGroupingEnabled() %}
 {% set triggerHotkey = triggerHotkey ?? widgetConfig.getTriggerHotkey() %}
 {% set resultsRequireUrl = resultsRequireUrl ?? widgetConfig.isResultsRequireUrlEnabled() %}
@@ -191,8 +191,8 @@
     results-limit="{{ resultsLimit }}"
     search-debounce-ms="{{ searchDebounceMs }}"
     search-min-chars="{{ searchMinChars }}"
-    recent-searches-enabled="{{ _self.toBool(recentSearchesEnabled, widgetConfig.isRecentSearchesEnabled()) }}"
-    recent-searches-limit="{{ recentSearchesLimit }}"
+    recently-viewed-enabled="{{ _self.toBool(recentlyViewedEnabled, widgetConfig.isRecentlyViewedEnabled()) }}"
+    recently-viewed-limit="{{ recentlyViewedLimit }}"
     results-grouping-enabled="{{ _self.toBool(resultsGroupingEnabled, widgetConfig.isResultsGroupingEnabled()) }}"
     trigger-hotkey="{{ triggerHotkey }}"
     results-require-url="{{ _self.toBool(resultsRequireUrl, widgetConfig.isResultsRequireUrlEnabled()) }}"

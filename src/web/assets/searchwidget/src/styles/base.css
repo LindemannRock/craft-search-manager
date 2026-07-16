@@ -238,7 +238,7 @@
     letter-spacing: 0.05em;
 }
 
-.sm-clear-recent {
+.sm-recently-viewed-clear {
     padding: 2px 8px;
     background: transparent;
     border: none;
@@ -250,7 +250,7 @@
     letter-spacing: normal;
 }
 
-.sm-clear-recent:hover {
+.sm-recently-viewed-clear:hover {
     background: var(--sm-selected-bg);
     color: var(--sm-text-secondary);
 }

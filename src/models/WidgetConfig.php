@@ -80,8 +80,8 @@ class WidgetConfig extends Model
                 'searchMinChars' => 2,
                 'resultsLimit' => 10,
                 'hierarchyMaxHeadings' => 3,
-                'recentSearchesEnabled' => true,
-                'recentSearchesLimit' => 5,
+                'recentlyViewedEnabled' => true,
+                'recentlyViewedLimit' => 5,
                 'resultsGroupingEnabled' => true,
                 'triggerHotkey' => 'k',
                 'resultsRequireUrl' => false,
@@ -234,14 +234,14 @@ class WidgetConfig extends Model
         return (int) $this->getSetting('behavior.hierarchyMaxHeadings', 3);
     }
 
-    public function isRecentSearchesEnabled(): bool
+    public function isRecentlyViewedEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.recentSearchesEnabled', true);
+        return $this->getBooleanSetting('behavior.recentlyViewedEnabled', true);
     }
 
-    public function getRecentSearchesLimit(): int
+    public function getRecentlyViewedLimit(): int
     {
-        return (int) $this->getSetting('behavior.recentSearchesLimit', 5);
+        return (int) $this->getSetting('behavior.recentlyViewedLimit', 5);
     }
 
     public function isResultsGroupingEnabled(): bool
@@ -692,8 +692,8 @@ class WidgetConfig extends Model
         $this->validateIntField($s, 'behavior', 'searchMinChars', Craft::t('search-manager', 'Search Minimum Characters'), 1, 10);
         $this->validateIntField($s, 'behavior', 'resultsLimit', Craft::t('search-manager', 'Results Limit'), 1, 100);
         $this->validateIntField($s, 'behavior', 'hierarchyMaxHeadings', Craft::t('search-manager', 'Hierarchy Max Headings'), 1, 50);
-        if (BooleanHelper::normalize($s['behavior']['recentSearchesEnabled'] ?? true, true)) {
-            $this->validateIntField($s, 'behavior', 'recentSearchesLimit', Craft::t('search-manager', 'Recent Searches Limit'), 1, 50);
+        if (BooleanHelper::normalize($s['behavior']['recentlyViewedEnabled'] ?? true, true)) {
+            $this->validateIntField($s, 'behavior', 'recentlyViewedLimit', Craft::t('search-manager', 'Recently Viewed Limit'), 1, 50);
         }
         $this->validateIntField($s, 'behavior', 'resultsTitleLines', Craft::t('search-manager', 'Results Title Lines'), 1, 5);
         $this->validateIntField($s, 'behavior', 'resultsDescriptionLines', Craft::t('search-manager', 'Results Description Lines'), 1, 5);
@@ -707,7 +707,7 @@ class WidgetConfig extends Model
 
         // Behavior settings — booleans
         $this->validateBooleanField($s, 'behavior', 'modalPreventBodyScroll', Craft::t('search-manager', 'Prevent Body Scroll'));
-        $this->validateBooleanField($s, 'behavior', 'recentSearchesEnabled', Craft::t('search-manager', 'Enable Recent Searches'));
+        $this->validateBooleanField($s, 'behavior', 'recentlyViewedEnabled', Craft::t('search-manager', 'Enable Recently Viewed'));
         $this->validateBooleanField($s, 'behavior', 'resultsGroupingEnabled', Craft::t('search-manager', 'Enable Result Grouping'));
         $this->validateBooleanField($s, 'behavior', 'resultsRequireUrl', Craft::t('search-manager', 'Require URL for Results'));
         $this->validateBooleanField($s, 'behavior', 'snippetIncludeCodeBlocks', Craft::t('search-manager', 'Include Code Blocks'));

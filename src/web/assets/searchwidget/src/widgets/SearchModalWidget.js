@@ -425,7 +425,7 @@ class SearchModalWidget extends SearchWidgetBase {
             selectedIndex: -1,
         });
 
-        // Render initial content (recent searches or empty state)
+        // Render initial content (recently viewed items or empty state)
         this.renderResultsContent();
 
         // Focus input after animation frame

@@ -174,9 +174,9 @@
     };
 
     /**
-     * Inject recent searches into widget
+     * Inject recently viewed items into widget
      */
-    window.injectRecentSearches = function(widgetId) {
+    window.injectRecentlyViewed = function(widgetId) {
         const widget = document.getElementById(widgetId);
         if (!widget || !widget.shadowRoot) return;
 
@@ -184,7 +184,7 @@
         const listboxId = getListboxId(widget);
         if (!container) return;
 
-        container.innerHTML = buildRecentSearchesHtml(MOCK_RECENT_SEARCHES, listboxId);
+        container.innerHTML = buildRecentlyViewedHtml(MOCK_RECENTLY_VIEWED, listboxId);
         updateAriaState(widget, true);
     };
 
@@ -370,15 +370,15 @@
         }).join('');
     }
 
-    function buildRecentSearchesHtml(recentSearches, listboxId) {
+    function buildRecentlyViewedHtml(recentlyViewed, listboxId) {
         return `
             <div class="sm-section">
                 <div class="sm-section-header">
-                    <span id="${listboxId}-recent-label">Recent searches</span>
-                    <button class="sm-clear-recent" part="clear-recent">Clear</button>
+                    <span id="${listboxId}-recently-viewed-label">Recently viewed</span>
+                    <button class="sm-recently-viewed-clear" part="recently-viewed-clear">Clear</button>
                 </div>
-                ${recentSearches.map((item, i) => `
-                    <div class="sm-result-item sm-recent-item" id="${listboxId}-option-${i}" role="option" aria-selected="false" data-index="${i}" data-url="${item.url || ''}" data-query="${escapeHtml(item.query)}">
+                ${recentlyViewed.map((item, i) => `
+                    <div class="sm-result-item sm-recently-viewed-item" id="${listboxId}-option-${i}" role="option" aria-selected="false" data-index="${i}" data-url="${item.url || ''}" data-query="${escapeHtml(item.query)}">
                         <svg class="sm-result-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <circle cx="12" cy="12" r="10"/>
                             <polyline points="12 6 12 12 16 14"/>
@@ -505,7 +505,7 @@
         },
     ];
 
-    const MOCK_RECENT_SEARCHES = [
+    const MOCK_RECENTLY_VIEWED = [
         { query: 'installation', title: 'installation', url: '/docs/installation' },
         { query: 'widget config', title: 'widget config', url: '/docs/widgets' },
         { query: 'api keys', title: 'api keys', url: '/docs/api-keys' },
@@ -515,7 +515,7 @@
 
     window.MOCK_FLAT_RESULTS = MOCK_FLAT_RESULTS;
     window.MOCK_HIERARCHICAL_RESULTS = MOCK_HIERARCHICAL_RESULTS;
-    window.MOCK_RECENT_SEARCHES = MOCK_RECENT_SEARCHES;
+    window.MOCK_RECENTLY_VIEWED = MOCK_RECENTLY_VIEWED;
     </script>
 </body>
 </html>

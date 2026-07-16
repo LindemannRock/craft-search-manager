@@ -696,8 +696,8 @@ return [
          *     - searchDebounceMs: Delay before search triggers in ms (default: 200)
          *     - searchMinChars: Minimum chars before search (default: 2)
          *     - resultsLimit: Max results to show, capped at 100 (default: 10)
-         *     - recentSearchesEnabled: Show recent searches (default: true)
-         *     - recentSearchesLimit: Max recent searches stored (default: 5)
+         *     - recentlyViewedEnabled: Show recent searches (default: true)
+         *     - recentlyViewedLimit: Max recent searches stored (default: 5)
          *     - resultsGroupingEnabled: Group flat results by source, Entry section, or type (default: true)
          *     - triggerHotkey: Keyboard shortcut key, e.g. 'k' for Cmd/Ctrl+K (default: 'k')
          *     - resultsRequireUrl: Hide results that don't have a URL (default: false)
@@ -758,8 +758,8 @@ return [
             //             'searchDebounceMs' => 200,
             //             'searchMinChars' => 2,
             //             'resultsLimit' => 10,
-            //             'recentSearchesEnabled' => true,
-            //             'recentSearchesLimit' => 5,
+            //             'recentlyViewedEnabled' => true,
+            //             'recentlyViewedLimit' => 5,
             //             'resultsGroupingEnabled' => true,
             //             'triggerHotkey' => 'k',
             //             'resultsRequireUrl' => false,
@@ -829,7 +829,7 @@ return [
             //     'enabled' => true,
             //     'settings' => [
             //         'behavior' => [
-            //             'recentSearchesEnabled' => false,
+            //             'recentlyViewedEnabled' => false,
             //             'resultsGroupingEnabled' => false,
             //         ],
             //         'trigger' => [

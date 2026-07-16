@@ -17,8 +17,8 @@
  * @property {number} resultsLimit - Maximum results to display
  * @property {number} searchDebounceMs - Debounce delay in milliseconds
  * @property {number} searchMinChars - Minimum characters before search
- * @property {boolean} recentSearchesEnabled - Show recent searches
- * @property {number} recentSearchesLimit - Max recent searches to store
+ * @property {boolean} recentlyViewedEnabled - Show recent searches
+ * @property {number} recentlyViewedLimit - Max recent searches to store
  * @property {boolean} resultsGroupingEnabled - Group flat results by source, Entry section, or type
  * @property {string} siteId - Site ID filter
  * @property {string} searchEndpoint - Search API endpoint (internal)
@@ -61,8 +61,8 @@ export const BASE_DEFAULTS = {
     resultsLimit: 20,
     searchDebounceMs: 200,
     searchMinChars: 2,
-    recentSearchesEnabled: true,
-    recentSearchesLimit: 5,
+    recentlyViewedEnabled: true,
+    recentlyViewedLimit: 5,
     resultsGroupingEnabled: true,
     siteId: '',
     // Public API key, sent as X-Search-Manager-Key (required when requireApiKey is on)
@@ -297,11 +297,11 @@ export function parseConfig(element, widgetType = 'modal') {
         resultsLimit: parseInt(element.getAttribute('results-limit'), defaults.resultsLimit),
         searchDebounceMs: parseInt(element.getAttribute('search-debounce-ms'), defaults.searchDebounceMs),
         searchMinChars: parseInt(element.getAttribute('search-min-chars'), defaults.searchMinChars),
-        recentSearchesLimit: parseInt(element.getAttribute('recent-searches-limit'), defaults.recentSearchesLimit),
+        recentlyViewedLimit: parseInt(element.getAttribute('recently-viewed-limit'), defaults.recentlyViewedLimit),
         analyticsIdleTimeoutMs: parseInt(element.getAttribute('analytics-idle-timeout-ms'), defaults.analyticsIdleTimeoutMs),
 
         // Boolean attributes (default true - check for 'false')
-        recentSearchesEnabled: parseBoolean(element.getAttribute('recent-searches-enabled'), defaults.recentSearchesEnabled),
+        recentlyViewedEnabled: parseBoolean(element.getAttribute('recently-viewed-enabled'), defaults.recentlyViewedEnabled),
         resultsGroupingEnabled: parseBoolean(element.getAttribute('results-grouping-enabled'), defaults.resultsGroupingEnabled),
         highlightResultsEnabled: parseBoolean(element.getAttribute('highlight-results-enabled'), defaults.highlightResultsEnabled),
         loadingIndicatorEnabled: parseBoolean(element.getAttribute('loading-indicator-enabled'), defaults.loadingIndicatorEnabled),
@@ -364,8 +364,8 @@ export function getObservedAttributes(widgetType = 'modal') {
     // Note: endpoint attributes are internal and not included here
     const baseAttrs = [
         'index-handles', 'placeholder', 'theme',
-        'results-limit', 'search-debounce-ms', 'search-min-chars', 'recent-searches-enabled',
-        'recent-searches-limit', 'results-grouping-enabled', 'site-id',
+        'results-limit', 'search-debounce-ms', 'search-min-chars', 'recently-viewed-enabled',
+        'recently-viewed-limit', 'results-grouping-enabled', 'site-id',
         'analytics-idle-timeout-ms', 'analytics-source',
         'highlight-results-enabled', 'highlight-tag',
         'highlight-class', 'results-require-url', 'snippet-include-code-blocks', 'snippet-mode', 'loading-indicator-enabled',

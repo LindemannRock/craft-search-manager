@@ -14,7 +14,7 @@
  * @property {boolean} isOpen - Whether widget is open (modal) or active (inline)
  * @property {string} query - Current search query
  * @property {Array} results - Current search results
- * @property {Array} recentSearches - Recent search history
+ * @property {Array} recentlyViewed - Recent search history
  * @property {number} selectedIndex - Currently selected result index (-1 = none)
  * @property {boolean} loading - Whether search is in progress
  * @property {string|null} error - Error message if any
@@ -34,7 +34,7 @@ export const DEFAULT_STATE = {
     isOpen: false,
     query: '',
     results: [],
-    recentSearches: [],
+    recentlyViewed: [],
     selectedIndex: -1,
     loading: false,
     error: null,

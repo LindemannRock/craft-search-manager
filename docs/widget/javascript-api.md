@@ -83,12 +83,12 @@ Fired when a user clicks a search result.
 
 ```javascript
 widget.addEventListener('search-result-click', (e) => {
-    const { id, title, url, query, isRecent } = e.detail;
+    const { id, title, url, query, isRecentlyViewed } = e.detail;
     console.log(`Clicked: ${title} (${url})`);
 });
 ```
 
-**Detail:** `{ id: string, elementId: string, title: string, url: string, query: string, isRecent: boolean }` — `id` is the backend document identity (`backendId`); `elementId` is the Craft element ID
+**Detail:** `{ id: string, elementId: string, title: string, url: string, query: string, isRecentlyViewed: boolean }` — `id` is the backend document identity (`backendId`); `elementId` is the Craft element ID
 
 ### `search-error`
 

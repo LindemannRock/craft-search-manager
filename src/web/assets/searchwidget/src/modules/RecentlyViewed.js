@@ -3,7 +3,7 @@
  */
 
 const DEFAULT_MAX_RECENT_SEARCHES = 5;
-const STORAGE_PREFIX = 'sm-recent-';
+const STORAGE_PREFIX = 'sm-recently-viewed-';
 
 /**
  * Get the storage key for an index
@@ -19,7 +19,7 @@ function getStorageKey(index) {
  * @param {string} index - The search index identifier
  * @returns {Array} - Array of recent search objects
  */
-export function loadRecentSearches(index) {
+export function loadRecentlyViewed(index) {
     try {
         const key = getStorageKey(index);
         const stored = localStorage.getItem(key);
@@ -37,8 +37,8 @@ export function loadRecentSearches(index) {
  * @param {number} maxRecent - Maximum number of recent searches to store
  * @returns {Array} - Updated array of recent searches
  */
-export function saveRecentSearch(index, query, result = null, maxRecent = DEFAULT_MAX_RECENT_SEARCHES) {
-    if (!query || !query.trim()) return loadRecentSearches(index);
+export function saveRecentlyViewed(index, query, result = null, maxRecent = DEFAULT_MAX_RECENT_SEARCHES) {
+    if (!query || !query.trim()) return loadRecentlyViewed(index);
 
     const key = getStorageKey(index);
     const entry = {
@@ -48,27 +48,27 @@ export function saveRecentSearch(index, query, result = null, maxRecent = DEFAUL
         timestamp: Date.now(),
     };
 
-    let recentSearches = loadRecentSearches(index);
+    let recentlyViewed = loadRecentlyViewed(index);
 
     // Remove duplicates and add to front
-    recentSearches = recentSearches.filter(s => s.query !== entry.query);
-    recentSearches.unshift(entry);
-    recentSearches = recentSearches.slice(0, maxRecent);
+    recentlyViewed = recentlyViewed.filter(s => s.query !== entry.query);
+    recentlyViewed.unshift(entry);
+    recentlyViewed = recentlyViewed.slice(0, maxRecent);
 
     try {
-        localStorage.setItem(key, JSON.stringify(recentSearches));
+        localStorage.setItem(key, JSON.stringify(recentlyViewed));
     } catch (e) {
         // localStorage full or unavailable
     }
 
-    return recentSearches;
+    return recentlyViewed;
 }
 
 /**
  * Clear all recent searches for an index
  * @param {string} index - The search index identifier
  */
-export function clearRecentSearches(index) {
+export function clearRecentlyViewed(index) {
     try {
         const key = getStorageKey(index);
         localStorage.removeItem(key);

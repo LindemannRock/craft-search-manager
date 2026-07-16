@@ -143,7 +143,7 @@ final class WidgetFrontendHardeningTest extends TestCase
     public function testWidgetConfigFormUsesApprovedBehaviorLabels(): void
     {
         $source = implode("\n", [
-            $this->readPluginFile('src/templates/widgets/_partials/recent-searches.twig'),
+            $this->readPluginFile('src/templates/widgets/_partials/recently-viewed.twig'),
             $this->readPluginFile('src/templates/widgets/_partials/results.twig'),
             $this->readPluginFile('src/templates/widgets/_partials/snippets.twig'),
             $this->readPluginFile('src/templates/widgets/_partials/destination-highlighting.twig'),
@@ -152,7 +152,7 @@ final class WidgetFrontendHardeningTest extends TestCase
         ]);
 
         foreach ([
-            'Enable Recent Searches',
+            'Enable Recently Viewed',
             'Enable Result Grouping',
             'Require URL for Results',
             'Include Code Blocks',

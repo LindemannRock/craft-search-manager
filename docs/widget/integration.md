@@ -64,7 +64,7 @@ Override specific settings without creating a config:
     placeholder: 'Search articles and products...',
     theme: 'dark',
     resultsLimit: 12,
-    recentSearchesEnabled: true,
+    recentlyViewedEnabled: true,
     resultsGroupingEnabled: true,
 } %}
 ```

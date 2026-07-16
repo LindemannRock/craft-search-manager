@@ -33,9 +33,9 @@
 		label: 'Modal & Trigger'|t('search-manager'),
 		url: '#modalTrigger',
 	},
-	recentSearches: {
-		label: 'Recent Searches'|t('search-manager'),
-		url: '#recentSearches',
+	recentlyViewed: {
+		label: 'Recently Viewed'|t('search-manager'),
+		url: '#recentlyViewed',
 	},
 	results: {
 		label: 'Results'|t('search-manager'),
@@ -68,8 +68,8 @@
 		{% set selectedTab = 'results' %}
 	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.results')|length %}
 		{% set selectedTab = 'results' %}
-	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.recentSearches')|length %}
-		{% set selectedTab = 'recentSearches' %}
+	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.recentlyViewed')|length %}
+		{% set selectedTab = 'recentlyViewed' %}
 	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.search' or k starts with 'settings.search.placeholder')|length %}
 		{% set selectedTab = 'searchInput' %}
 	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.modal' or k starts with 'settings.behavior.trigger' or k starts with 'settings.behavior.loadingIndicator' or k starts with 'settings.trigger.')|length %}
@@ -153,9 +153,9 @@
 		} %}
 	</div>
 
-	{# Recent Searches Tab #}
-	<div id="recentSearches"{% if selectedTab != 'recentSearches' %} class="hidden"{% endif %}>
-		{% include "search-manager/widgets/_partials/recent-searches" with {
+	{# Recently Viewed Tab #}
+	<div id="recentlyViewed"{% if selectedTab != 'recentlyViewed' %} class="hidden"{% endif %}>
+		{% include "search-manager/widgets/_partials/recently-viewed" with {
 			widgetConfig: widgetConfig,
 		} %}
 	</div>

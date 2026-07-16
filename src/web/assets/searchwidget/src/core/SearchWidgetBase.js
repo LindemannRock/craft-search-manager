@@ -9,7 +9,7 @@
  * - Keyboard navigation
  * - Accessibility (ARIA, live region announcements)
  * - Analytics tracking
- * - Recent searches
+ * - Recently viewed items
  * - Event dispatching
  *
  * Subclasses implement widget-specific behavior:
@@ -26,13 +26,13 @@
 import { getSearchScopeKey, getSingleConfiguredIndex, parseConfig } from './ConfigParser.js';
 import { createStateManager, DEFAULT_STATE } from './StateManager.js';
 import { performSearch, trackClick, trackSearch } from '../modules/SearchService.js';
-import { loadRecentSearches, saveRecentSearch, clearRecentSearches } from '../modules/RecentSearches.js';
+import { loadRecentlyViewed, saveRecentlyViewed, clearRecentlyViewed } from '../modules/RecentlyViewed.js';
 import { applyStylesToElement } from '../modules/StyleUtils.js';
 import { parseQueryTerms, escapeRegex } from '../modules/Highlighter.js';
 import { appendQueryParam } from '../modules/UrlUtils.js';
 import {
     renderResults,
-    renderRecentSearches,
+    renderRecentlyViewed,
     renderEmptyState,
     getContentToRender,
 } from '../modules/ResultRenderer.js';
@@ -48,7 +48,7 @@ import {
     announce,
     getResultsAnnouncement,
     getLoadingAnnouncement,
-    getRecentSearchesAnnouncement,
+    getRecentlyViewedAnnouncement,
     updateComboboxAria,
 } from '../modules/A11yUtils.js';
 
@@ -219,9 +219,9 @@ class SearchWidgetBase extends HTMLElement {
         // Parse configuration from attributes
         this.config = parseConfig(this, this.widgetType);
 
-        // Load recent searches from localStorage
+        // Load recently viewed items from localStorage
         this.state.set({
-            recentSearches: loadRecentSearches(getSearchScopeKey(this.config)),
+            recentlyViewed: loadRecentlyViewed(getSearchScopeKey(this.config)),
         });
 
         // Create keyboard navigator
@@ -352,8 +352,8 @@ class SearchWidgetBase extends HTMLElement {
      * @param {Array<string>} changedKeys - Keys that changed
      */
     handleStateChange(newState, changedKeys) {
-        // Update results display when results, query, or recent searches changes
-        if (changedKeys.includes('results') || changedKeys.includes('query') || changedKeys.includes('recentSearches') || changedKeys.includes('error')) {
+        // Update results display when results, query, or recently viewed items change
+        if (changedKeys.includes('results') || changedKeys.includes('query') || changedKeys.includes('recentlyViewed') || changedKeys.includes('error')) {
             this.renderResultsContent();
         }
 
@@ -407,7 +407,7 @@ class SearchWidgetBase extends HTMLElement {
             this.analyticsIdleTimer = null;
         }
 
-        // If query is empty, just re-render (shows recent or empty state)
+        // If query is empty, just re-render (shows recently viewed or empty state)
         if (!query.trim()) {
             this.state.set({ results: [] });
             return;
@@ -534,7 +534,7 @@ class SearchWidgetBase extends HTMLElement {
 
         const state = this.state.getAll();
         const {
-            recentSearchesEnabled,
+            recentlyViewedEnabled,
             resultsGroupingEnabled,
             highlightResultsEnabled,
             highlightTag,
@@ -548,10 +548,10 @@ class SearchWidgetBase extends HTMLElement {
             {
                 query: state.query,
                 results: state.results,
-                recentSearches: state.recentSearches,
+                recentlyViewed: state.recentlyViewed,
                 loading: state.loading,
                 error: state.error,
-                recentSearchesEnabled,
+                recentlyViewedEnabled,
             },
             {
                 listboxId: this.listboxId,
@@ -598,21 +598,21 @@ class SearchWidgetBase extends HTMLElement {
         if (this.liveRegion && !state.loading) {
             if (state.query && state.results.length === 0) {
                 announce(this.liveRegion, getResultsAnnouncement(0, state.query, this.config.translations));
-            } else if (!state.query && state.recentSearches.length > 0 && recentSearchesEnabled) {
-                announce(this.liveRegion, getRecentSearchesAnnouncement(state.recentSearches.length, this.config.translations));
+            } else if (!state.query && state.recentlyViewed.length > 0 && recentlyViewedEnabled) {
+                announce(this.liveRegion, getRecentlyViewedAnnouncement(state.recentlyViewed.length, this.config.translations));
             }
         }
 
         // Attach event handlers to new elements
         this.attachResultHandlers();
 
-        // Handle clear recent button
-        const clearBtn = container.querySelector('.sm-clear-recent');
+        // Handle recently-viewed clear button
+        const clearBtn = container.querySelector('.sm-recently-viewed-clear');
         if (clearBtn) {
             clearBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                clearRecentSearches(getSearchScopeKey(this.config));
-                this.state.set({ recentSearches: [] });
+                clearRecentlyViewed(getSearchScopeKey(this.config));
+                this.state.set({ recentlyViewed: [] });
             });
         }
 
@@ -726,7 +726,7 @@ class SearchWidgetBase extends HTMLElement {
     /**
      * Handle result item click
      *
-     * Handles navigation, recent search saving, and analytics tracking.
+     * Handles navigation, recently-viewed saving, and analytics tracking.
      *
      * @param {Event} e - Click event
      * @param {HTMLElement} item - Clicked item element
@@ -739,25 +739,25 @@ class SearchWidgetBase extends HTMLElement {
         const id = item.dataset.id;
         const elementId = item.dataset.elementId || id;
         const query = item.dataset.query || this.state.get('query');
-        const isRecentItem = item.classList.contains('sm-recent-item');
+        const isRecentlyViewedItem = item.classList.contains('sm-recently-viewed-item');
         const destinationUrl = appendQueryParam(
             url,
             query,
             (this.config.highlightDestinationEnabled && this.config.highlightDestinationPersistQuery) ? this.config.highlightDestinationQueryParam : ''
         );
 
-        // Save to recent searches (for regular results, not re-clicking recent items)
-        if (!isRecentItem && query) {
-            const updatedRecent = saveRecentSearch(
+        // Save to recently viewed (for regular results, not re-clicking recently viewed items)
+        if (!isRecentlyViewedItem && query) {
+            const updatedRecent = saveRecentlyViewed(
                 getSearchScopeKey(this.config),
                 query,
                 { title, url },
-                this.config.recentSearchesLimit
+                this.config.recentlyViewedLimit
             );
-            this.state.set({ recentSearches: updatedRecent });
+            this.state.set({ recentlyViewed: updatedRecent });
         }
 
-        // Track analytics for search results (not recent items)
+        // Track analytics for search results (not recently viewed items)
         const sourceIndex = item.dataset.sourceIndex || getSingleConfiguredIndex(this.config);
         if (elementId && sourceIndex) {
             trackClick({
@@ -770,7 +770,7 @@ class SearchWidgetBase extends HTMLElement {
         }
 
         // Track search analytics on click (explicit intent signal)
-        if (!isRecentItem && query) {
+        if (!isRecentlyViewedItem && query) {
             this.trackSearchAnalytics(query, this.state.get('results')?.length || 0, 'click');
         }
 
@@ -781,14 +781,14 @@ class SearchWidgetBase extends HTMLElement {
             title,
             url: destinationUrl,
             query,
-            isRecent: isRecentItem,
+            isRecentlyViewed: isRecentlyViewedItem,
         });
 
         // Handle navigation/action
         if (url && url !== '#') {
             // For <a> elements, browser handles navigation naturally
-            // For recent items (<div> elements), navigate explicitly
-            if (isRecentItem) {
+            // For recently viewed items (<div> elements), navigate explicitly
+            if (isRecentlyViewedItem) {
                 e.preventDefault();
                 window.location.href = destinationUrl;
             }

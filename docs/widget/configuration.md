@@ -33,8 +33,8 @@ Define widget configs in `config/search-manager.php`:
                 'resultsLimit' => 15,
                 'debounce' => 300,
                 'minChars' => 2,
-                'recentSearchesEnabled' => true,
-                'recentSearchesLimit' => 5,
+                'recentlyViewedEnabled' => true,
+                'recentlyViewedLimit' => 5,
                 'resultsGroupingEnabled' => true,
                 'hotkey' => 'k',
             ],
@@ -58,8 +58,8 @@ Override settings per-include:
     resultsLimit: 15,
     searchDebounceMs: 300,
     searchMinChars: 2,
-    recentSearchesEnabled: true,
-    recentSearchesLimit: 5,
+    recentlyViewedEnabled: true,
+    recentlyViewedLimit: 5,
     resultsGroupingEnabled: true,
     triggerHotkey: 'k',
     resultsLayout: 'hierarchical',
@@ -129,12 +129,12 @@ Override settings per-include:
 | `triggerLabel` | `string` | `'Search'` | Trigger button text |
 | `triggerSelector` | `string` | — | CSS selector for an external trigger element |
 
-### Recent Searches
+### Recently Viewed
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `recentSearchesEnabled` | `bool` | `true` | Show the "Recently viewed" section — results the visitor previously opened, stored in their browser |
-| `recentSearchesLimit` | `int` | `5` | Maximum recently viewed entries to store (1-50) |
+| `recentlyViewedEnabled` | `bool` | `true` | Show the "Recently viewed" section — results the visitor previously opened, stored in their browser |
+| `recentlyViewedLimit` | `int` | `5` | Maximum recently viewed entries to store (1-50) |
 
 ### Results
 

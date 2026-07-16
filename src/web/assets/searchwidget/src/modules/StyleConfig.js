@@ -117,7 +117,7 @@ export const STYLE_MAPPINGS = {
     clearIconColor: '--sm-clear-icon-color',
     clearIconColorDark: '--sm-clear-icon-color-dark',
 
-    // Result row icons (e.g. recent-search clock; unset = follows the muted color)
+    // Result row icons (e.g. recently-viewed clock; unset = follows the muted color)
     resultIconColor: '--sm-result-icon-color',
     resultIconColorDark: '--sm-result-icon-color-dark',
 

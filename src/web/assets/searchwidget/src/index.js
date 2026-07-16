@@ -92,7 +92,7 @@ export {
     renderResults,
     renderResultItem,
     renderPromotedBadge,
-    renderRecentSearches,
+    renderRecentlyViewed,
     renderEmptyState,
     renderLoadingState,
     getContentToRender,
@@ -110,17 +110,17 @@ export {
     announce,
     getResultsAnnouncement,
     getLoadingAnnouncement,
-    getRecentSearchesAnnouncement,
+    getRecentlyViewedAnnouncement,
     updateComboboxAria,
     getOptionId,
     scrollIntoViewIfNeeded,
 } from './modules/A11yUtils.js';
 
 export {
-    loadRecentSearches,
-    saveRecentSearch,
-    clearRecentSearches,
-} from './modules/RecentSearches.js';
+    loadRecentlyViewed,
+    saveRecentlyViewed,
+    clearRecentlyViewed,
+} from './modules/RecentlyViewed.js';
 
 export {
     applyStylesToElement,

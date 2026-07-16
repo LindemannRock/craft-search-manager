@@ -1,0 +1,25 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.lightswitchField({
+	label: 'Enable Recently Viewed'|t('search-manager'),
+	instructions: 'Show recently viewed results when the modal opens'|t('search-manager'),
+	id: 'behavior-recentlyViewedEnabled',
+	name: 'settings[behavior][recentlyViewedEnabled]',
+	on: widgetConfig.isRecentlyViewedEnabled(),
+	toggle: 'recently-viewed-limit-field',
+}) }}
+
+<div id="recently-viewed-limit-field"{% if not widgetConfig.isRecentlyViewedEnabled() and not widgetConfig.getErrors('settings.behavior.recentlyViewedLimit') %} class="hidden"{% endif %}>
+	{{ forms.textField({
+		label: 'Recently Viewed Limit'|t('search-manager'),
+		instructions: 'Maximum number of recently viewed results to store and display'|t('search-manager'),
+		tip: 'Min: 1, Max: 50. Default: 5'|t('search-manager'),
+		id: 'behavior-recentlyViewedLimit',
+		name: 'settings[behavior][recentlyViewedLimit]',
+		value: widgetConfig.getRecentlyViewedLimit(),
+		type: 'number',
+		min: 1,
+		max: 50,
+		errors: widgetConfig.getErrors('settings.behavior.recentlyViewedLimit')
+	}) }}
+</div>
