@@ -9,6 +9,7 @@
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\base\testing\IntegrationTestCase;
+use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 
 /**
@@ -55,5 +56,21 @@ class PublicHitUrlSchemeSanitizationTest extends IntegrationTestCase
 
         self::assertSame('https://example.com/page?a=1', $hit['url']);
         self::assertSame('/docs/page#anchor', $hit['headings'][0]['url']);
+    }
+
+    public function testResultsRequireUrlExcludesDangerousSchemeHits(): void
+    {
+        $hits = [
+            ['elementId' => 1, 'title' => 'Hostile', 'url' => 'javascript:alert(1)', '_index' => 'test'],
+            ['elementId' => 2, 'title' => 'Safe', 'url' => 'https://example.com/page', '_index' => 'test'],
+        ];
+
+        $prepared = CanonicalHitPipeline::presentHits($hits, 'query', ['test'], [
+            'resultsRequireUrl' => true,
+        ]);
+
+        self::assertCount(1, $prepared);
+        self::assertSame('Safe', $prepared[0]['title']);
+        self::assertSame('https://example.com/page', $prepared[0]['url']);
     }
 }

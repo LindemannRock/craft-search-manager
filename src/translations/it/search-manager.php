@@ -1482,6 +1482,7 @@ return [
     'Opacity of the dark overlay (0 = transparent, 100 = opaque)' => 'Opacità dell\'overlay scuro (0 = trasparente, 100 = opaco)',
     'Apply a blur effect to the page content behind the modal' => 'Applica un effetto di sfocatura al contenuto della pagina dietro il modale',
     'Enable Backdrop Blur' => 'Abilita sfocatura dello sfondo',
+    'Backdrop Blur' => 'Sfocatura dello sfondo',
     'The overlay behind the modal when it is open.' => 'L\'overlay dietro il modale quando è aperto.',
     'Padding X (px)' => 'Padding X (px)',
     'Padding Y (px)' => 'Padding Y (px)',

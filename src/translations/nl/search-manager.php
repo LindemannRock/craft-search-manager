@@ -1482,6 +1482,7 @@ return [
     'Opacity of the dark overlay (0 = transparent, 100 = opaque)' => 'Dekking van de donkere overlay (0 = transparant, 100 = dekkend)',
     'Apply a blur effect to the page content behind the modal' => 'Een vervagingseffect toepassen op de pagina-inhoud achter het modaal',
     'Enable Backdrop Blur' => 'Achtergrondvervaging inschakelen',
+    'Backdrop Blur' => 'Achtergrondvervaging',
     'The overlay behind the modal when it is open.' => 'De overlay achter het modaal wanneer het geopend is.',
     'Padding X (px)' => 'Padding X (px)',
     'Padding Y (px)' => 'Padding Y (px)',

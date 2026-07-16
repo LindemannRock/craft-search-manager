@@ -1482,6 +1482,7 @@ return [
     'Opacity of the dark overlay (0 = transparent, 100 = opaque)' => 'Gjennomsiktighet for det mørke overlaget (0 = gjennomsiktig, 100 = ugjennomsiktig)',
     'Apply a blur effect to the page content behind the modal' => 'Bruk en uskarphet-effekt på sideinnholdet bak modalen',
     'Enable Backdrop Blur' => 'Aktiver bakgrunnsuskarphet',
+    'Backdrop Blur' => 'Bakgrunnsuskarphet',
     'The overlay behind the modal when it is open.' => 'Overlaget bak modalen når den er åpen.',
     'Padding X (px)' => 'Padding X (px)',
     'Padding Y (px)' => 'Padding Y (px)',

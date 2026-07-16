@@ -122,6 +122,8 @@ class WidgetStyle extends Model
 
         // Backdrop
         $this->validateStyleInt($s, 'backdropOpacity', 0, 100, Craft::t('search-manager', 'Backdrop Opacity'));
+        // backdropBlur is boolean end-to-end (toBool -> blur(4px)|none) — clamp to 0/1
+        $this->validateStyleInt($s, 'backdropBlur', 0, 1, Craft::t('search-manager', 'Backdrop Blur'));
 
         // Header
         $this->validateStyleInt($s, 'headerBorderRadius', 0, 20, Craft::t('search-manager', 'Header Border Radius'));

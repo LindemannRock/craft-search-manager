@@ -1482,6 +1482,7 @@ return [
     'Opacity of the dark overlay (0 = transparent, 100 = opaque)' => 'Opacité du voile sombre (0 = transparent, 100 = opaque)',
     'Apply a blur effect to the page content behind the modal' => 'Appliquer un effet de flou au contenu de la page derrière la modale',
     'Enable Backdrop Blur' => 'Activer le flou d\'arrière-plan',
+    'Backdrop Blur' => 'Flou d\'arrière-plan',
     'The overlay behind the modal when it is open.' => 'Le voile derrière la modale lorsqu\'elle est ouverte.',
     'Padding X (px)' => 'Padding X (px)',
     'Padding Y (px)' => 'Padding Y (px)',

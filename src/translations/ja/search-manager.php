@@ -1482,6 +1482,7 @@ return [
     'Opacity of the dark overlay (0 = transparent, 100 = opaque)' => 'ダークオーバーレイの不透明度（0 = 透明、100 = 不透明）',
     'Apply a blur effect to the page content behind the modal' => 'モーダル背後のページコンテンツにぼかし効果を適用',
     'Enable Backdrop Blur' => 'バックドロップぼかしを有効にする',
+    'Backdrop Blur' => 'バックドロップぼかし',
     'The overlay behind the modal when it is open.' => 'モーダルが開いているときの背後のオーバーレイ。',
     'Padding X (px)' => 'Padding X (px)',
     'Padding Y (px)' => 'Padding Y (px)',

@@ -8,6 +8,7 @@
 
 namespace lindemannrock\searchmanager\helpers;
 
+use lindemannrock\base\helpers\UrlSafetyHelper;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -82,7 +83,12 @@ class CanonicalHitPipeline
      */
     private static function hasIndexedUrl(array $hit): bool
     {
-        return isset($hit['url']) && is_string($hit['url']) && trim($hit['url']) !== '';
+        // A dangerous-scheme URL is about to be neutralized to '' by the
+        // presenter, so resultsRequireUrl must treat it as having no URL.
+        return isset($hit['url'])
+            && is_string($hit['url'])
+            && trim($hit['url']) !== ''
+            && !UrlSafetyHelper::hasDangerousScheme($hit['url']);
     }
 
     /**

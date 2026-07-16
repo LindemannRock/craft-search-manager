@@ -1482,6 +1482,7 @@ return [
     'Opacity of the dark overlay (0 = transparent, 100 = opaque)' => 'Deckkraft der dunklen Überlagerung (0 = transparent, 100 = undurchsichtig)',
     'Apply a blur effect to the page content behind the modal' => 'Unschärfeeffekt auf den Seiteninhalt hinter dem Modal anwenden',
     'Enable Backdrop Blur' => 'Backdrop-Unschärfe aktivieren',
+    'Backdrop Blur' => 'Backdrop-Unschärfe',
     'The overlay behind the modal when it is open.' => 'Die Überlagerung hinter dem Modal, wenn es geöffnet ist.',
     'Padding X (px)' => 'Abstand X (px)',
     'Padding Y (px)' => 'Abstand Y (px)',

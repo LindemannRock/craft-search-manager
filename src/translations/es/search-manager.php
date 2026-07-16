@@ -1482,6 +1482,7 @@ return [
     'Opacity of the dark overlay (0 = transparent, 100 = opaque)' => 'Opacidad de la superposición oscura (0 = transparente, 100 = opaco)',
     'Apply a blur effect to the page content behind the modal' => 'Aplicar un efecto de desenfoque al contenido de la página detrás del modal',
     'Enable Backdrop Blur' => 'Activar desenfoque del fondo',
+    'Backdrop Blur' => 'Desenfoque del fondo',
     'The overlay behind the modal when it is open.' => 'La superposición detrás del modal cuando está abierto.',
     'Padding X (px)' => 'Padding X (px)',
     'Padding Y (px)' => 'Padding Y (px)',

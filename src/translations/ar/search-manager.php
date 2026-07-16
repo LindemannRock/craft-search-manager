@@ -1482,6 +1482,7 @@ return [
     'Opacity of the dark overlay (0 = transparent, 100 = opaque)' => 'عتامة التراكب الداكن (0 = شفاف، 100 = معتم)',
     'Apply a blur effect to the page content behind the modal' => 'تطبيق تأثير ضبابي على محتوى الصفحة خلف النافذة المنبثقة',
     'Enable Backdrop Blur' => 'تفعيل ضبابية الخلفية',
+    'Backdrop Blur' => 'ضبابية الخلفية',
     'The overlay behind the modal when it is open.' => 'التراكب خلف النافذة المنبثقة عندما تكون مفتوحة.',
     'Padding X (px)' => 'Padding X (px)',
     'Padding Y (px)' => 'Padding Y (px)',

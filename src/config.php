@@ -883,7 +883,7 @@ return [
          *                 active variants: highlightActiveBgLight, highlightActiveColorLight (+ Dark)
          *   Promoted:     promotedBg, promotedColor
          *   Spinner:      spinnerColor
-         *   Backdrop:     backdropOpacity (0-100), backdropBlur (px, 0 = disabled)
+         *   Backdrop:     backdropOpacity (0-100), backdropBlur (1 = enabled, 0 = disabled)
          *   Trigger:      triggerBg, triggerTextColor, triggerBorderColor,
          *                 hover variants: triggerHoverBg, triggerHoverTextColor, triggerHoverBorderColor,
          *                 triggerBorderWidth/Radius (px), triggerPaddingX/Y (px), triggerFontSize (px)
@@ -941,7 +941,7 @@ return [
             //         'scrollbarColor' => '#d1d5db',
             //         // Backdrop
             //         'backdropOpacity' => '50',      // 0-100
-            //         'backdropBlur' => '4',          // px, 0 = disabled
+            //         'backdropBlur' => '1',          // 1 = enabled, 0 = disabled
             //     ],
             // ],
 
