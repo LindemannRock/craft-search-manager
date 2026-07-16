@@ -78,6 +78,7 @@ export { default as SearchModalWidget } from './widgets/SearchModalWidget.js';
 export {
     escapeHtml,
     escapeRegex,
+    sanitizeUrl,
     highlightMatches,
     createHighlighter,
 } from './modules/Highlighter.js';

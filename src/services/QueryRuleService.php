@@ -157,6 +157,10 @@ class QueryRuleService extends Component
             if ($rule->isRedirect()) {
                 // Pass siteId so element URLs resolve to the correct site
                 $redirectUrl = $rule->getRedirectUrl($siteId);
+                if ($redirectUrl !== null && \lindemannrock\base\helpers\UrlSafetyHelper::hasDangerousScheme($redirectUrl)) {
+                    $this->logDebug('Redirect rule blocked: dangerous URL scheme', ['ruleId' => $rule->id]);
+                    continue;
+                }
                 $this->logDebug('Redirect rule matched', [
                     'query' => $query,
                     'ruleId' => $rule->id,

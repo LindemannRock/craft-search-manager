@@ -111,6 +111,20 @@ function loadRendererModule() {
     return require(outfile);
 }
 
+function loadHighlighterModule() {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-widget-highlighter-'));
+    const outfile = path.join(tmpDir, 'Highlighter.cjs');
+    esbuild.buildSync({
+        entryPoints: [path.join(SRC_DIR, 'modules', 'Highlighter.js')],
+        bundle: true,
+        platform: 'node',
+        format: 'cjs',
+        outfile,
+        logLevel: 'silent',
+    });
+    return require(outfile);
+}
+
 function loadSearchServiceModule() {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-widget-service-'));
     const outfile = path.join(tmpDir, 'SearchService.cjs');
@@ -197,6 +211,13 @@ try {
     test('Tint mode marks the row and keeps a screen-reader label', tintMarker.rowClass.includes('sm-promoted--tint') && tintMarker.titleSuffix.includes('sm-sr-only'));
     test('None mode and the default render no marker', hiddenMarker.rowClass === '' && hiddenMarker.titlePrefix === '' && defaultMarker.titlePrefix === '');
     test('Unpromoted results never get a marker', unpromotedMarker.rowClass === '' && unpromotedMarker.titlePrefix === '' && unpromotedMarker.blockMarkup === '');
+
+    const { sanitizeUrl } = loadHighlighterModule();
+    const { renderRecentlyViewed } = loadRendererModule();
+    test('Dangerous URL schemes are neutralized', sanitizeUrl('javascript:alert(1)') === '#' && sanitizeUrl('JaVa\tScRiPt:alert(1)') === '#' && sanitizeUrl('data:text/html,x') === '#' && sanitizeUrl('vbscript:x') === '#' && sanitizeUrl('file:///etc/passwd') === '#');
+    test('Safe URLs pass the scheme guard unchanged', sanitizeUrl('/docs/page#anchor') === '/docs/page#anchor' && sanitizeUrl('https://example.com/a?b=1') === 'https://example.com/a?b=1' && sanitizeUrl('mailto:a@b.com') === 'mailto:a@b.com');
+    const hostileRecent = renderRecentlyViewed([{ query: 'x', title: 'X', url: 'javascript:alert(1)' }], 'recent-list', {});
+    test('Recently viewed entries neutralize dangerous stored URLs', hostileRecent.includes('data-url="#"') && !hostileRecent.includes('javascript:'));
 
     const navigatorSource = fs.readFileSync(path.join(SRC_DIR, 'modules', 'KeyboardNavigator.js'), 'utf8');
     test('Hover selection reacts to pointer movement, not scroll-induced mouseenter', navigatorSource.includes("addEventListener('mousemove'") && !navigatorSource.includes("addEventListener('mouseenter'"));

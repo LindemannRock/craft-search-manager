@@ -50,6 +50,28 @@ export function escapeHtml(text) {
  * escapeRegex('test (value)')
  * // Returns: 'test \\(value\\)'
  */
+/**
+ * Neutralize URLs with executable schemes (mirrors the server-side
+ * UrlSafetyHelper denylist). Browsers ignore control characters and
+ * whitespace inside a scheme, so strip them before anchoring the check.
+ *
+ * @param {string} url - Candidate URL
+ * @param {string} fallback - Returned for dangerous URLs (default '#')
+ * @returns {string} The original URL, or the fallback when dangerous
+ */
+export function sanitizeUrl(url, fallback = '#') {
+    if (typeof url !== 'string' || url === '') {
+        return url || '';
+    }
+    const normalized = url.replace(/[\u0000-\u0020]+/g, '').toLowerCase();
+    for (const scheme of ['javascript', 'vbscript', 'data', 'file']) {
+        if (normalized.startsWith(scheme + ':')) {
+            return fallback;
+        }
+    }
+    return url;
+}
+
 export function escapeRegex(string) {
     if (!string) return '';
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

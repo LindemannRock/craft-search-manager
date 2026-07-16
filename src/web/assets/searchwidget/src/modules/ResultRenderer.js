@@ -9,7 +9,7 @@
  * @since 5.32.0
  */
 
-import { highlightMatches, escapeHtml } from './Highlighter.js';
+import { highlightMatches, escapeHtml, sanitizeUrl } from './Highlighter.js';
 import { groupResultsByType, groupResultsByField } from './SearchService.js';
 import { getOptionId } from './A11yUtils.js';
 import { appendQueryParam } from './UrlUtils.js';
@@ -127,9 +127,9 @@ export function renderResultItem(result, index, query, options = {}) {
         ? (result.sectionTitle || result.title || result.name || t(translations, 'Untitled'))
         : (result.title || result.name || t(translations, 'Untitled'));
     const snippet = result.snippet || '';
-    const rawUrl = sectionHit
+    const rawUrl = sanitizeUrl(sectionHit
         ? (result.sectionUrl || result.url || result.href || '#')
-        : (result.url || result.href || '#');
+        : (result.url || result.href || '#'));
     const url = appendQueryParam(rawUrl, query, highlightDestinationPersistQuery ? highlightDestinationQueryParam : '');
     const type = result.source || result.entrySection || result.type || '';
     const optionId = getOptionId(listboxId, index);
@@ -695,7 +695,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
 
     const title = result.title || result.name || t(translations, 'Untitled');
     const snippet = result.snippet || '';
-    const rawUrl = result.url || '#';
+    const rawUrl = sanitizeUrl(result.url || '#');
     const url = appendQueryParam(rawUrl, query, highlightDestinationPersistQuery ? highlightDestinationQueryParam : '');
     const optionId = getOptionId(listboxId, index);
     const sourceIndex = result._index || result.index || '';
@@ -783,7 +783,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
     const level = Number.isFinite(parsedLevel) ? Math.min(Math.max(parsedLevel, 1), 6) : 2;
     const anchorId = heading.id || (text ? slugifyHeading(text) : '');
     const baseUrl = result.url || '#';
-    const rawUrl = heading.url || (anchorId ? `${baseUrl}#${anchorId}` : baseUrl);
+    const rawUrl = sanitizeUrl(heading.url || (anchorId ? `${baseUrl}#${anchorId}` : baseUrl));
     const url = appendQueryParam(rawUrl, query, highlightDestinationPersistQuery ? highlightDestinationQueryParam : '');
     const optionId = getOptionId(listboxId, index);
     const sourceIndex = heading._index || heading.index || result._index || result.index || '';
@@ -897,7 +897,7 @@ export function renderRecentlyViewed(recentlyViewed, listboxId, translations = {
                 <button class="sm-recently-viewed-clear" part="recently-viewed-clear">${escapeHtml(t(translations, 'Clear'))}</button>
             </div>
             ${recentlyViewed.map((item, i) => `
-                <div class="sm-result-item sm-recently-viewed-item" id="${getOptionId(listboxId, i)}" role="option" aria-selected="false" data-index="${i}" data-url="${escapeHtml(item.url || '')}" data-query="${escapeHtml(item.query)}">
+                <div class="sm-result-item sm-recently-viewed-item" id="${getOptionId(listboxId, i)}" role="option" aria-selected="false" data-index="${i}" data-url="${escapeHtml(sanitizeUrl(item.url || ''))}" data-query="${escapeHtml(item.query)}">
                     <svg class="sm-result-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>

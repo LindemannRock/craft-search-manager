@@ -28,7 +28,7 @@ import { createStateManager, DEFAULT_STATE } from './StateManager.js';
 import { performSearch, trackClick, trackSearch } from '../modules/SearchService.js';
 import { loadRecentlyViewed, saveRecentlyViewed, clearRecentlyViewed } from '../modules/RecentlyViewed.js';
 import { applyStylesToElement } from '../modules/StyleUtils.js';
-import { parseQueryTerms, escapeRegex } from '../modules/Highlighter.js';
+import { parseQueryTerms, escapeRegex, sanitizeUrl } from '../modules/Highlighter.js';
 import { appendQueryParam } from '../modules/UrlUtils.js';
 import {
     renderResults,
@@ -792,7 +792,7 @@ class SearchWidgetBase extends HTMLElement {
             // For recently viewed items (<div> elements), navigate explicitly
             if (isRecentlyViewedItem) {
                 e.preventDefault();
-                window.location.href = destinationUrl;
+                window.location.href = sanitizeUrl(destinationUrl, '/');
             }
             // Let subclass know a result was selected (for closing modal, etc.)
             this.onResultSelected(destinationUrl, title, id);

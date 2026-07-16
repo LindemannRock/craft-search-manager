@@ -8,6 +8,8 @@
 
 namespace lindemannrock\searchmanager\helpers;
 
+use lindemannrock\base\helpers\UrlSafetyHelper;
+
 /**
  * Formats search hits for public/debug output without changing search logic.
  *
@@ -31,6 +33,7 @@ class SearchHitPresenter
         $hit = SearchHitIdentityHelper::normalizeHit($hit);
         $hit = SearchFieldValueHelper::exposeFields($hit, $retrievableFields);
         $hit = SearchHeadingValueHelper::exposeHeadings($hit);
+        $hit = self::neutralizeDangerousUrls($hit);
         if (!array_key_exists('index', $hit) && is_string($hit['_index'] ?? null) && $hit['_index'] !== '') {
             $hit['index'] = $hit['_index'];
         }
@@ -212,5 +215,37 @@ class SearchHitPresenter
     private static function isSplitSectionType(mixed $value): bool
     {
         return is_string($value) && in_array($value, ['heading', 'intro', 'promoted-page'], true);
+    }
+
+    /**
+     * Indexed URLs are backend data — a hostile transformer or an externally
+     * written document could carry an executable scheme. Neutralize them here
+     * so no public hit ever ships a javascript:/data:/vbscript:/file: URL.
+     *
+     * @param array<string, mixed> $hit
+     * @return array<string, mixed>
+     */
+    private static function neutralizeDangerousUrls(array $hit): array
+    {
+        foreach (['url', 'sectionUrl'] as $key) {
+            if (is_string($hit[$key] ?? null) && UrlSafetyHelper::hasDangerousScheme($hit[$key])) {
+                $hit[$key] = '';
+            }
+        }
+
+        if (is_array($hit['headings'] ?? null)) {
+            foreach ($hit['headings'] as $i => $heading) {
+                if (!is_array($heading)) {
+                    continue;
+                }
+                foreach (['url', 'sectionUrl'] as $key) {
+                    if (is_string($heading[$key] ?? null) && UrlSafetyHelper::hasDangerousScheme($heading[$key])) {
+                        $hit['headings'][$i][$key] = '';
+                    }
+                }
+            }
+        }
+
+        return $hit;
     }
 }
