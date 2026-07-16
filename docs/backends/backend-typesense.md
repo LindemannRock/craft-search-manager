@@ -45,6 +45,8 @@ Everything from the built-in backends, plus:
 ],
 ```
 
+Then define the referenced environment variables in your `.env` file:
+
 ```bash
 # .env
 TYPESENSE_ADMIN_API_KEY=your-admin-api-key

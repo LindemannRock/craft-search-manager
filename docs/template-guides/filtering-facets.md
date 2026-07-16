@@ -69,6 +69,8 @@ The API supports filtering by stable document kind. Use lowercase values — for
 {# GET /actions/search-manager/api/search?q=laptop&type=product,category #}
 ```
 
+The same parameter works from JavaScript:
+
 ```javascript
 const response = await fetch(
     `/actions/search-manager/api/search?q=${query}&type=product`

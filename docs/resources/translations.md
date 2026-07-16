@@ -31,6 +31,8 @@ translations/
     └── search-manager.php
 ```
 
+The file returns only the strings you want to replace:
+
 ```php
 <?php
 

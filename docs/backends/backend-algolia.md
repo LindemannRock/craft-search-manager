@@ -42,6 +42,8 @@ Everything from the built-in backends, plus:
 ],
 ```
 
+Then define the referenced environment variables in your `.env` file:
+
 ```bash
 # .env
 ALGOLIA_APPLICATION_ID=your-app-id

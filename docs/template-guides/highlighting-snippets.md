@@ -159,6 +159,8 @@ Configure in your config file:
 'highlightClass' => 'search-highlight',
 ```
 
+Then style the class in your frontend CSS:
+
 ```css
 .search-highlight {
     background-color: #ff9800;

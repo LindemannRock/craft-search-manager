@@ -65,6 +65,8 @@ For production, a dedicated Redis connection gives you full control:
 ],
 ```
 
+Then define the referenced environment variables in your `.env` file:
+
 ```bash
 # .env
 REDIS_HOST=redis

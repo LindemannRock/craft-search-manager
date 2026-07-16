@@ -43,6 +43,8 @@ Everything from the built-in backends, plus:
 ],
 ```
 
+Then define the referenced environment variables in your `.env` file:
+
 ```bash
 # .env
 MEILISEARCH_HOST=http://localhost:7700

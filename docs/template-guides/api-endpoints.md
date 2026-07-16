@@ -304,6 +304,8 @@ Asset documents add `assetKind` and `extension` to searchable content at indexin
 https://your-site.com/actions/search-manager/api/search?q=plugin&indexHandles=docs-manager&language=en&resultsLimit=5&page=0&siteId=1
 ```
 
+**Fetch from JavaScript:**
+
 ```javascript
 // Basic search
 const response = await fetch('/actions/search-manager/api/search?q=craft+cms&indexHandles=entries-en');
@@ -383,6 +385,8 @@ GET /actions/search-manager/api/autocomplete
 ```text
 https://your-site.com/actions/search-manager/api/autocomplete?q=test&indexHandles=entries-en&resultsLimit=10&siteId=1
 ```
+
+**Fetch from JavaScript:**
 
 ```javascript
 // Default: both suggestions and results

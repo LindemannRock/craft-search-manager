@@ -81,6 +81,8 @@ Or use a custom class:
 'highlightClass' => 'search-highlight',
 ```
 
+Then style that class in your frontend CSS:
+
 ```css
 .search-highlight {
     background-color: #ff9800;
