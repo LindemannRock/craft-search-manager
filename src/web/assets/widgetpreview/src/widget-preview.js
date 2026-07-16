@@ -484,6 +484,46 @@ window.SearchManagerPreview = (function() {
 		},
 
 		/**
+		 * Live-sync the promotion display fields (widget edit page) with the
+		 * preview: mode select shows/hides the badge variants or the row tint,
+		 * the text field updates the badge label, and the position select picks
+		 * which badge variant is visible. All variants are pre-rendered.
+		 */
+		initPromotionPreview: function() {
+			var display = document.getElementById('behavior-promotionDisplay');
+			if (!display) return;
+			var text = document.getElementById('behavior-promotionBadgeText');
+			var position = document.getElementById('behavior-promotionBadgePosition');
+
+			function apply() {
+				var mode = display.value;
+				var pos = position ? position.value : 'inline';
+				var label = text && text.value.trim() !== '' ? text.value.trim() : 'Featured';
+
+				document.querySelectorAll('.widget-preview-container').forEach(function(container) {
+					container.querySelectorAll('.preview-promoted').forEach(function(badge) {
+						var variant = badge.classList.contains('preview-promoted-above') ? 'above'
+							: badge.classList.contains('preview-promoted-below') ? 'below'
+							: 'inline';
+						badge.style.display = (mode === 'badge' && variant === pos) ? 'inline-flex' : 'none';
+						badge.textContent = label;
+					});
+
+					var row = container.querySelector('.preview-promotable');
+					if (row) {
+						row.style.background = mode === 'tint' ? (container.getAttribute('data-tint-bg') || '') : '';
+					}
+				});
+			}
+
+			[display, text, position].forEach(function(el) {
+				if (!el) return;
+				el.addEventListener('change', apply);
+				el.addEventListener('input', apply);
+			});
+		},
+
+		/**
 		 * Show/hide the preview wrapper based on which tab is active.
 		 *
 		 * @param {string} tabHash  The hash of the tab that shows the preview, e.g. '#appearance'

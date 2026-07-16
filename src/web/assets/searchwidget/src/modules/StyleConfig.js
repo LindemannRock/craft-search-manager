@@ -154,6 +154,24 @@ export const STYLE_MAPPINGS = {
     promotedBgDark: '--sm-promoted-bg-dark',
     promotedColor: '--sm-promoted-color',
     promotedColorDark: '--sm-promoted-color-dark',
+    promotedActiveBg: '--sm-promoted-active-bg',
+    promotedActiveBgDark: '--sm-promoted-active-bg-dark',
+    promotedActiveColor: '--sm-promoted-active-color',
+    promotedActiveColorDark: '--sm-promoted-active-color-dark',
+    promotedBorderColor: '--sm-promoted-border-color',
+    promotedBorderColorDark: '--sm-promoted-border-color-dark',
+    promotedPaddingX: '--sm-promoted-px',
+    promotedPaddingY: '--sm-promoted-py',
+    promotedBorderRadius: '--sm-promoted-radius',
+    promotedBorderWidth: '--sm-promoted-border-width',
+
+    // Promoted row tint (tint display mode)
+    promotedTintBg: '--sm-promoted-tint-bg',
+    promotedTintBgDark: '--sm-promoted-tint-bg-dark',
+    promotedTintTextColor: '--sm-promoted-tint-text',
+    promotedTintTextColorDark: '--sm-promoted-tint-text-dark',
+    promotedTintActiveBg: '--sm-promoted-tint-active-bg',
+    promotedTintActiveBgDark: '--sm-promoted-tint-active-bg-dark',
 
     // Spinner
     spinnerColor: '--sm-spinner-color-light',
@@ -201,6 +219,10 @@ export const NUMERIC_KEYS = [
     'kbdBorderRadius',
     'footerPaddingX',
     'footerPaddingY',
+    'promotedPaddingX',
+    'promotedPaddingY',
+    'promotedBorderRadius',
+    'promotedBorderWidth',
 ];
 
 // Keys that require 'vh' suffix
@@ -238,6 +260,10 @@ export const COLOR_KEYS = [
     'highlightBgLight', 'highlightColorLight', 'highlightBgDark', 'highlightColorDark',
     'highlightActiveBgLight', 'highlightActiveColorLight', 'highlightActiveBgDark', 'highlightActiveColorDark',
     'promotedBg', 'promotedBgDark', 'promotedColor', 'promotedColorDark',
+    'promotedActiveBg', 'promotedActiveBgDark', 'promotedActiveColor', 'promotedActiveColorDark',
+    'promotedBorderColor', 'promotedBorderColorDark',
+    'promotedTintBg', 'promotedTintBgDark', 'promotedTintTextColor', 'promotedTintTextColorDark',
+    'promotedTintActiveBg', 'promotedTintActiveBgDark',
     'spinnerColor', 'spinnerColorDark',
     'scrollbarColor', 'scrollbarColorDark',
     'footerBg', 'footerBgDark', 'footerTextColor', 'footerTextColorDark',

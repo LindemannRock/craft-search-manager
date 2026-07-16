@@ -487,12 +487,14 @@
 <hr>
 
 {# ========================================
-   PROMOTED BADGE
+   PROMOTED
    ======================================== #}
-<h2>{{ "Promoted Badge"|t('search-manager') }}</h2>
+<h2>{{ "Promoted"|t('search-manager') }}</h2>
+<p class="light">{{ "Badge colors apply in badge mode and Row Tint colors in tint mode — each widget picks its mode via its Promotion Display setting."|t('search-manager') }}</p>
 
 {# Light Mode Colors #}
 <div class="color-scheme-section" data-color-scheme="light">
+	<h3>{{ "Badge"|t('search-manager') }}</h3>
 	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
 		{{ forms.colorField({
 			label: 'Background'|t('search-manager'),
@@ -506,11 +508,54 @@
 			name: namePrefix ~ '[promotedColor]',
 			value: styles.promotedColor,
 		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-promotedBorderColor',
+			name: namePrefix ~ '[promotedBorderColor]',
+			value: styles.promotedBorderColor,
+		}) }}
 	</div>
+	<h4>{{ "Active / Hover"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-promotedActiveBg',
+			name: namePrefix ~ '[promotedActiveBg]',
+			value: styles.promotedActiveBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-promotedActiveColor',
+			name: namePrefix ~ '[promotedActiveColor]',
+			value: styles.promotedActiveColor,
+		}) }}
+	</div>
+	<h3 style="margin-top: 24px;">{{ "Row Tint"|t('search-manager') }}</h3>
+	{{ forms.colorField({
+		label: 'Background'|t('search-manager'),
+		id: 'styles-promotedTintBg',
+		name: namePrefix ~ '[promotedTintBg]',
+		value: styles.promotedTintBg,
+	}) }}
+	{{ forms.colorField({
+		label: 'Text'|t('search-manager'),
+		id: 'styles-promotedTintTextColor',
+		name: namePrefix ~ '[promotedTintTextColor]',
+		value: styles.promotedTintTextColor,
+		tip: 'One color for title, description, and type on tinted rows. Leave empty to keep the theme text colors.'|t('search-manager'),
+	}) }}
+	{{ forms.colorField({
+		label: 'Active / Hover Background'|t('search-manager'),
+		id: 'styles-promotedTintActiveBg',
+		name: namePrefix ~ '[promotedTintActiveBg]',
+		value: styles.promotedTintActiveBg,
+		tip: 'Leave empty to use the normal Active / Hover row background.'|t('search-manager'),
+	}) }}
 </div>
 
 {# Dark Mode Colors #}
 <div class="color-scheme-section hidden" data-color-scheme="dark">
+	<h3>{{ "Badge"|t('search-manager') }}</h3>
 	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
 		{{ forms.colorField({
 			label: 'Background'|t('search-manager'),
@@ -524,5 +569,100 @@
 			name: namePrefix ~ '[promotedColorDark]',
 			value: styles.promotedColorDark,
 		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-promotedBorderColorDark',
+			name: namePrefix ~ '[promotedBorderColorDark]',
+			value: styles.promotedBorderColorDark,
+		}) }}
 	</div>
+	<h4>{{ "Active / Hover"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-promotedActiveBgDark',
+			name: namePrefix ~ '[promotedActiveBgDark]',
+			value: styles.promotedActiveBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-promotedActiveColorDark',
+			name: namePrefix ~ '[promotedActiveColorDark]',
+			value: styles.promotedActiveColorDark,
+		}) }}
+	</div>
+	<h3 style="margin-top: 24px;">{{ "Row Tint"|t('search-manager') }}</h3>
+	{{ forms.colorField({
+		label: 'Background'|t('search-manager'),
+		id: 'styles-promotedTintBgDark',
+		name: namePrefix ~ '[promotedTintBgDark]',
+		value: styles.promotedTintBgDark,
+	}) }}
+	{{ forms.colorField({
+		label: 'Text'|t('search-manager'),
+		id: 'styles-promotedTintTextColorDark',
+		name: namePrefix ~ '[promotedTintTextColorDark]',
+		value: styles.promotedTintTextColorDark,
+		tip: 'One color for title, description, and type on tinted rows. Leave empty to keep the theme text colors.'|t('search-manager'),
+	}) }}
+	{{ forms.colorField({
+		label: 'Active / Hover Background'|t('search-manager'),
+		id: 'styles-promotedTintActiveBgDark',
+		name: namePrefix ~ '[promotedTintActiveBgDark]',
+		value: styles.promotedTintActiveBgDark,
+		tip: 'Leave empty to use the normal Active / Hover row background.'|t('search-manager'),
+	}) }}
+</div>
+
+{# Shared Dimensions #}
+<div style="margin-top: 24px;">
+	<h3>{{ "Badge Dimensions"|t('search-manager') }}</h3>
+	{{ forms.textField({
+		label: 'Padding X (px)'|t('search-manager'),
+		id: 'styles-promotedPaddingX',
+		name: namePrefix ~ '[promotedPaddingX]',
+		value: styles.promotedPaddingX,
+		type: 'number',
+		min: 0,
+		max: 20,
+		size: 10,
+		tip: 'Min: 0, Max: 20. Default: 6'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.promotedPaddingX') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding Y (px)'|t('search-manager'),
+		id: 'styles-promotedPaddingY',
+		name: namePrefix ~ '[promotedPaddingY]',
+		value: styles.promotedPaddingY,
+		type: 'number',
+		min: 0,
+		max: 20,
+		size: 10,
+		tip: 'Min: 0, Max: 20. Default: 2'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.promotedPaddingY') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Border Radius (px)'|t('search-manager'),
+		id: 'styles-promotedBorderRadius',
+		name: namePrefix ~ '[promotedBorderRadius]',
+		value: styles.promotedBorderRadius,
+		type: 'number',
+		min: 0,
+		max: 20,
+		size: 10,
+		tip: 'Min: 0, Max: 20. Default: 4'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.promotedBorderRadius') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Border Width (px)'|t('search-manager'),
+		id: 'styles-promotedBorderWidth',
+		name: namePrefix ~ '[promotedBorderWidth]',
+		value: styles.promotedBorderWidth,
+		type: 'number',
+		min: 0,
+		max: 5,
+		size: 10,
+		tip: 'Min: 0, Max: 5. Default: 0'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.promotedBorderWidth') : [],
+	}) }}
 </div>

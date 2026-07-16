@@ -66,7 +66,7 @@
 		{% set selectedTab = 'snippets' %}
 	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.hierarchy')|length %}
 		{% set selectedTab = 'results' %}
-	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.results')|length %}
+	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.results' or k starts with 'settings.behavior.promotion')|length %}
 		{% set selectedTab = 'results' %}
 	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.recentlyViewed')|length %}
 		{% set selectedTab = 'recentlyViewed' %}
@@ -424,4 +424,7 @@ if (saveShortcut) {
 
 // Preview color scheme toggle
 SearchManagerPreview.initColorSchemeToggle();
+
+// Live promotion display/text/position sync
+SearchManagerPreview.initPromotionPreview();
 {% endjs %}

@@ -621,35 +621,98 @@
    PROMOTED RESULTS
    ========================================================================= */
 
-.sm-result-item.sm-promoted {
-    position: relative;
-}
-
+/* Badge chip — sits inline at the end of the title, or on its own line
+   below it (.sm-promoted-badge-row wrapper) */
 .sm-promoted-badge {
-    position: absolute;
-    padding: 2px 6px;
+    display: inline-flex;
+    align-items: center;
+    padding: var(--sm-promoted-py, 2px) var(--sm-promoted-px, 6px);
     background: var(--sm-promoted-bg);
     color: var(--sm-promoted-color);
+    border: var(--sm-promoted-border-width, 0) solid var(--sm-promoted-border-color, transparent);
+    border-radius: var(--sm-promoted-radius, 4px);
     font-size: 11px;
     font-weight: 700;
-    border-radius: var(--sm-kbd-radius);
     text-transform: uppercase;
     letter-spacing: 0.02em;
+    margin-inline-end: 8px;
+    vertical-align: middle;
 }
 
-.sm-promoted-badge--top-right {
-    top: 4px;
-    inset-inline-end: 4px;
+:host([data-theme="dark"]) .sm-promoted-badge {
+    border-color: var(--sm-promoted-border-color-dark, transparent);
 }
 
-.sm-promoted-badge--top-left {
-    top: 4px;
-    inset-inline-start: 4px;
+.sm-promoted-badge-row {
+    display: block;
+    margin-top: 3px;
 }
 
-.sm-promoted-badge--inline {
-    position: static;
-    margin-inline-start: 8px;
+.sm-promoted-badge-row--above {
+    margin-top: 0;
+    margin-bottom: 3px;
+}
+
+.sm-promoted-badge-row .sm-promoted-badge {
+    margin-inline-end: 0;
+}
+
+/* Badge on the hovered/selected row — empty keys keep the base colors */
+.sm-result-item.sm-selected .sm-promoted-badge,
+.sm-result-item:hover .sm-promoted-badge {
+    background: var(--sm-promoted-active-bg, var(--sm-promoted-bg));
+    color: var(--sm-promoted-active-color, var(--sm-promoted-color));
+}
+
+:host([data-theme="dark"]) .sm-result-item.sm-selected .sm-promoted-badge,
+:host([data-theme="dark"]) .sm-result-item:hover .sm-promoted-badge {
+    background: var(--sm-promoted-active-bg-dark, var(--sm-promoted-bg));
+    color: var(--sm-promoted-active-color-dark, var(--sm-promoted-color));
+}
+
+/* Row tint mode — resting rows; the tint text color (when set) covers
+   title, description, and type in one color */
+.sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) {
+    background: var(--sm-promoted-tint-bg, #eff6ff);
+}
+
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) {
+    background: var(--sm-promoted-tint-bg-dark, #1e3a8a);
+}
+
+.sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-title {
+    color: var(--sm-promoted-tint-text, var(--sm-text-primary));
+}
+
+.sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-desc {
+    color: var(--sm-promoted-tint-text, var(--sm-text-secondary));
+}
+
+.sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-type {
+    color: var(--sm-promoted-tint-text, var(--sm-text-muted));
+}
+
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-title {
+    color: var(--sm-promoted-tint-text-dark, var(--sm-text-primary));
+}
+
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-desc {
+    color: var(--sm-promoted-tint-text-dark, var(--sm-text-secondary));
+}
+
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-type {
+    color: var(--sm-promoted-tint-text-dark, var(--sm-text-muted));
+}
+
+/* Tinted row hover/selection — empty key falls back to the normal active bg */
+.sm-result-item.sm-promoted--tint.sm-selected,
+.sm-result-item.sm-promoted--tint:hover {
+    background: var(--sm-promoted-tint-active-bg, var(--sm-selected-bg));
+}
+
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint.sm-selected,
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:hover {
+    background: var(--sm-promoted-tint-active-bg-dark, var(--sm-selected-bg));
 }
 
 /* =========================================================================

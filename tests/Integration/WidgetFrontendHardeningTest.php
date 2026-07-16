@@ -81,10 +81,10 @@ final class WidgetFrontendHardeningTest extends TestCase
     {
         $source = $this->readPluginFile('src/web/assets/searchwidget/src/modules/ResultRenderer.js');
 
-        self::assertStringContainsString("const allowedPositions = new Set(['top-right', 'top-left', 'inline']);", $source);
-        self::assertStringContainsString("const safeBadgePosition = allowedPositions.has(badgePosition) ? badgePosition : 'top-right';", $source);
-        self::assertStringContainsString('const positionClass = `sm-promoted-badge--${safeBadgePosition}`;', $source);
-        self::assertStringNotContainsString('const positionClass = `sm-promoted-badge--${badgePosition}`;', $source);
+        // Positions no longer interpolate into class names at all — the badge
+        // class is fixed and only escaped text is rendered
+        self::assertStringContainsString('class="sm-promoted-badge">${escapeHtml(promotionBadgeText)}', $source);
+        self::assertStringNotContainsString('sm-promoted-badge--', $source);
     }
 
     public function testWidgetSearchServiceDoesNotSendHighlightMarkupOptions(): void

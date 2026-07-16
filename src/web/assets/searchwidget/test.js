@@ -163,19 +163,40 @@ try {
 }
 
 try {
-    const { renderPromotedBadge, renderResults } = loadRendererModule();
-    const maliciousBadgeHtml = renderPromotedBadge({ promoted: true }, {
-        badgeText: '<Featured>',
-        badgePosition: 'top-right" onmouseover="alert(1)',
+    const { renderPromotionMarker, renderResults } = loadRendererModule();
+    const maliciousBadge = renderPromotionMarker({ promoted: true }, {
+        promotionDisplay: 'badge',
+        promotionBadgeText: '<Featured>',
+        promotionBadgePosition: 'top-right" onmouseover="alert(1)',
     });
-    const inlineBadgeHtml = renderPromotedBadge({ promoted: true }, {
-        badgeText: 'Featured',
-        badgePosition: 'inline',
+    const inlineBadge = renderPromotionMarker({ promoted: true }, {
+        promotionDisplay: 'badge',
+        promotionBadgeText: 'Featured',
+        promotionBadgePosition: 'inline',
     });
+    const belowBadge = renderPromotionMarker({ promoted: true }, {
+        promotionDisplay: 'badge',
+        promotionBadgeText: 'Featured',
+        promotionBadgePosition: 'below',
+    });
+    const aboveBadge = renderPromotionMarker({ promoted: true }, {
+        promotionDisplay: 'badge',
+        promotionBadgeText: 'Featured',
+        promotionBadgePosition: 'above',
+    });
+    const tintMarker = renderPromotionMarker({ promoted: true }, { promotionDisplay: 'tint', promotionBadgeText: 'Featured' });
+    const hiddenMarker = renderPromotionMarker({ promoted: true }, { promotionDisplay: 'none' });
+    const defaultMarker = renderPromotionMarker({ promoted: true }, {});
+    const unpromotedMarker = renderPromotionMarker({ promoted: false }, { promotionDisplay: 'badge' });
 
-    test('Promoted badge position falls back for unrecognised values', maliciousBadgeHtml.includes('sm-promoted-badge--top-right') && !maliciousBadgeHtml.includes('onmouseover'));
-    test('Promoted badge text remains escaped after position normalization', maliciousBadgeHtml.includes('&lt;Featured&gt;'));
-    test('Promoted badge keeps allowlisted inline position', inlineBadgeHtml.includes('sm-promoted-badge--inline'));
+    test('Unrecognised badge positions fall back to inline without leaking markup', maliciousBadge.titlePrefix.includes('sm-promoted-badge') && !maliciousBadge.titlePrefix.includes('onmouseover') && maliciousBadge.blockMarkup === '');
+    test('Promoted badge text remains escaped', maliciousBadge.titlePrefix.includes('&lt;Featured&gt;'));
+    test('Inline badge renders in the title slot', inlineBadge.titlePrefix.includes('sm-promoted-badge') && inlineBadge.blockMarkup === '');
+    test('Below badge renders on its own line', belowBadge.blockMarkup.includes('sm-promoted-badge-row') && belowBadge.titlePrefix === '');
+    test('Above badge renders on its own line above the title', aboveBadge.aboveMarkup.includes('sm-promoted-badge-row--above') && aboveBadge.titlePrefix === '' && aboveBadge.blockMarkup === '');
+    test('Tint mode marks the row and keeps a screen-reader label', tintMarker.rowClass.includes('sm-promoted--tint') && tintMarker.titleSuffix.includes('sm-sr-only'));
+    test('None mode and the default render no marker', hiddenMarker.rowClass === '' && hiddenMarker.titlePrefix === '' && defaultMarker.titlePrefix === '');
+    test('Unpromoted results never get a marker', unpromotedMarker.rowClass === '' && unpromotedMarker.titlePrefix === '' && unpromotedMarker.blockMarkup === '');
 
     const splitHits = [
         {
@@ -325,13 +346,12 @@ try {
         resultsLayout: 'hierarchical',
         listboxId: 'promoted-list',
         hierarchyMaxHeadings: 3,
-        promotionBadge: {
-            showBadge: true,
-            badgeText: 'Promoted',
-        },
+        promotionDisplay: 'badge',
+        promotionBadgeText: 'Promoted',
     });
     test('Split promoted-page hits render as page-level hierarchy rows', promotedPageHtml.includes('Promoted Guide') && promotedPageHtml.includes('sm-hierarchy-parent') && !promotedPageHtml.includes('sm-hierarchy-children'));
     test('Split promoted-page hits keep backendId DOM identity and elementId analytics identity', promotedPageHtml.includes('data-id="707_1_promoted-page" data-element-id="707"'));
+    test('Hierarchy parents inherit the promoted flag and render the marker', promotedPageHtml.includes('sm-hierarchy-parent sm-promoted') && promotedPageHtml.includes('sm-promoted-badge'));
 
     const flatSectionHtml = renderResults([splitHits[0]], 'install', {
         resultsLayout: 'default',

@@ -103,6 +103,18 @@
     --_dbg-muted-basis: var(--sm-result-active-muted-color, var(--sm-text-muted));
 }
 
+/* On tinted promoted rows the strip sits on the tint background —
+   follow the tint text color when one is set */
+.sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-debug-info {
+    --_dbg-text-basis: var(--sm-promoted-tint-text, var(--sm-text-primary));
+    --_dbg-muted-basis: var(--sm-promoted-tint-text, var(--sm-text-muted));
+}
+
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-debug-info {
+    --_dbg-text-basis: var(--sm-promoted-tint-text-dark, var(--sm-text-primary));
+    --_dbg-muted-basis: var(--sm-promoted-tint-text-dark, var(--sm-text-muted));
+}
+
 /* Each debug item: label + value pair */
 .sm-debug-item {
     display: inline-flex;

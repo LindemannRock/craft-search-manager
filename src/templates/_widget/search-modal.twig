@@ -65,6 +65,11 @@
 {% set searchMinChars = searchMinChars ?? widgetConfig.getSearchMinChars() %}
 {% set recentlyViewedEnabled = recentlyViewedEnabled ?? widgetConfig.isRecentlyViewedEnabled() %}
 {% set recentlyViewedLimit = recentlyViewedLimit ?? widgetConfig.getRecentlyViewedLimit() %}
+{% set promotionDisplay = promotionDisplay ?? widgetConfig.getPromotionDisplay() %}
+{# Default badge text is localized from the plugin; custom text goes through the site category #}
+{% set promotionBadgeTextRaw = promotionBadgeText ?? widgetConfig.getPromotionBadgeText() %}
+{% set promotionBadgeText = promotionBadgeTextRaw == 'Featured' ? 'Featured'|t('search-manager') : promotionBadgeTextRaw|t('site') %}
+{% set promotionBadgePosition = promotionBadgePosition ?? widgetConfig.getPromotionBadgePosition() %}
 {% set resultsGroupingEnabled = resultsGroupingEnabled ?? widgetConfig.isResultsGroupingEnabled() %}
 {% set triggerHotkey = triggerHotkey ?? widgetConfig.getTriggerHotkey() %}
 {% set resultsRequireUrl = resultsRequireUrl ?? widgetConfig.isResultsRequireUrlEnabled() %}
@@ -193,6 +198,9 @@
     search-min-chars="{{ searchMinChars }}"
     recently-viewed-enabled="{{ _self.toBool(recentlyViewedEnabled, widgetConfig.isRecentlyViewedEnabled()) }}"
     recently-viewed-limit="{{ recentlyViewedLimit }}"
+    promotion-display="{{ promotionDisplay }}"
+    promotion-badge-text="{{ promotionBadgeText }}"
+    promotion-badge-position="{{ promotionBadgePosition }}"
     results-grouping-enabled="{{ _self.toBool(resultsGroupingEnabled, widgetConfig.isResultsGroupingEnabled()) }}"
     trigger-hotkey="{{ triggerHotkey }}"
     results-require-url="{{ _self.toBool(resultsRequireUrl, widgetConfig.isResultsRequireUrlEnabled()) }}"

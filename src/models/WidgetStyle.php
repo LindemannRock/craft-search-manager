@@ -157,6 +157,12 @@ class WidgetStyle extends Model
         // Keyboard badge
         $this->validateStyleInt($s, 'kbdBorderRadius', 0, 20, Craft::t('search-manager', 'Keyboard Badge Border Radius'));
 
+        // Promoted badge
+        $this->validateStyleInt($s, 'promotedPaddingX', 0, 20, Craft::t('search-manager', 'Promoted Badge Padding X'));
+        $this->validateStyleInt($s, 'promotedPaddingY', 0, 20, Craft::t('search-manager', 'Promoted Badge Padding Y'));
+        $this->validateStyleInt($s, 'promotedBorderRadius', 0, 20, Craft::t('search-manager', 'Promoted Badge Border Radius'));
+        $this->validateStyleInt($s, 'promotedBorderWidth', 0, 5, Craft::t('search-manager', 'Promoted Badge Border Width'));
+
         $this->validateHighlightTag($s);
         $this->validateHighlightClass($s);
     }

@@ -564,7 +564,9 @@ class SearchWidgetBase extends HTMLElement {
                 translations: this.config.translations,
                 highlightDestinationPersistQuery: this.config.highlightDestinationEnabled && this.config.highlightDestinationPersistQuery,
                 highlightDestinationQueryParam: this.config.highlightDestinationQueryParam,
-                promotionBadge: this.config.promotionBadge,
+                promotionDisplay: this.config.promotionDisplay,
+                promotionBadgeText: this.config.promotionBadgeText,
+                promotionBadgePosition: this.config.promotionBadgePosition,
                 // Hierarchical display options
                 resultsLayout: this.config.resultsLayout,
                 hierarchyGroupBy: this.config.hierarchyGroupBy,

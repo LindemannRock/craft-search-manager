@@ -82,6 +82,9 @@ class WidgetConfig extends Model
                 'hierarchyMaxHeadings' => 3,
                 'recentlyViewedEnabled' => true,
                 'recentlyViewedLimit' => 5,
+                'promotionDisplay' => 'none',
+                'promotionBadgeText' => 'Featured',
+                'promotionBadgePosition' => 'inline',
                 'resultsGroupingEnabled' => true,
                 'triggerHotkey' => 'k',
                 'resultsRequireUrl' => false,
@@ -242,6 +245,40 @@ class WidgetConfig extends Model
     public function getRecentlyViewedLimit(): int
     {
         return (int) $this->getSetting('behavior.recentlyViewedLimit', 5);
+    }
+
+    /**
+     * How promoted results are marked in the widget: badge, tint, icon, or none.
+     *
+     * @since 5.53.0
+     */
+    public function getPromotionDisplay(): string
+    {
+        $value = (string) $this->getSetting('behavior.promotionDisplay', 'none');
+
+        return in_array($value, ['badge', 'tint', 'none'], true) ? $value : 'none';
+    }
+
+    /**
+     * Badge label; also the screen-reader label in tint and icon modes.
+     *
+     * @since 5.53.0
+     */
+    public function getPromotionBadgeText(): string
+    {
+        $value = trim((string) $this->getSetting('behavior.promotionBadgeText', 'Featured'));
+
+        return $value !== '' ? $value : 'Featured';
+    }
+
+    /**
+     * @since 5.53.0
+     */
+    public function getPromotionBadgePosition(): string
+    {
+        $value = (string) $this->getSetting('behavior.promotionBadgePosition', 'inline');
+
+        return in_array($value, ['inline', 'above', 'below'], true) ? $value : 'inline';
     }
 
     public function isResultsGroupingEnabled(): bool
@@ -704,6 +741,8 @@ class WidgetConfig extends Model
         $this->validateEnumField($s, 'behavior', 'hierarchyStyle', Craft::t('search-manager', 'Hierarchy Style'), ['tree', 'flat', 'none']);
         $this->validateEnumField($s, 'behavior', 'hierarchyDisplay', Craft::t('search-manager', 'Hierarchy Display'), ['individual', 'unified']);
         $this->validateEnumField($s, 'behavior', 'snippetMode', Craft::t('search-manager', 'Snippet Mode'), SnippetOptionsHelper::MODES);
+        $this->validateEnumField($s, 'behavior', 'promotionDisplay', Craft::t('search-manager', 'Promotion Display'), ['badge', 'tint', 'none']);
+        $this->validateEnumField($s, 'behavior', 'promotionBadgePosition', Craft::t('search-manager', 'Badge Position'), ['inline', 'above', 'below']);
 
         // Behavior settings — booleans
         $this->validateBooleanField($s, 'behavior', 'modalPreventBodyScroll', Craft::t('search-manager', 'Prevent Body Scroll'));

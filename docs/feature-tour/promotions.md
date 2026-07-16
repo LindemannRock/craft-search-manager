@@ -91,6 +91,8 @@ Select multiple promotions using checkboxes to:
 
 ## API Response
 
+In the search widget, each widget chooses how promoted results are marked via its **Promotion Display** setting (widget settings → Results → Promotions): a badge (inline with the title or on its own line), a row tint, or no marker at all. The colors come from the widget style's Promoted section.
+
 Promoted items appear in search results with `promoted: true` and `score: null`:
 
 ```json

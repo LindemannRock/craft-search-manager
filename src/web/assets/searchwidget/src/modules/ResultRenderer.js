@@ -22,12 +22,14 @@ import { t } from './Translations.js';
  * @property {boolean} highlightResultsEnabled - Whether to highlight matches
  * @property {string} highlightTag - HTML tag for highlights (default: 'mark')
  * @property {string} highlightClass - Additional CSS class for highlights
- * @property {PromotionConfig} promotionBadge - Promoted results configuration
+ * @property {string} promotionDisplay - Promotion marker mode ('badge'|'tint'|'icon'|'none')
+ * @property {string} promotionBadgeText - Badge/marker accessible label
+ * @property {string} promotionBadgePosition - Badge position ('top-right'|'top-left'|'inline')
  */
 
 /**
  * @typedef {Object} PromotionConfig
- * @property {boolean} showBadge - Whether to show promoted badge
+ * (see promotionDisplay/promotionBadgeText/promotionBadgePosition on RenderOptions)
  * @property {string} badgeText - Text for the badge (default: 'Featured')
  * @property {string} badgePosition - Badge position: 'top-right', 'top-left', 'inline'
  */
@@ -104,7 +106,7 @@ export function renderResults(results, query, options = {}) {
  * const itemHtml = renderResultItem(result, 0, 'query', {
  *   listboxId: 'sm-results',
  *   highlightResultsEnabled: true,
- *   promotionBadge: { showBadge: true, badgeText: 'Featured' },
+ *   promotionDisplay: 'badge', promotionBadgeText: 'Featured',
  * });
  */
 export function renderResultItem(result, index, query, options = {}) {
@@ -114,7 +116,6 @@ export function renderResultItem(result, index, query, options = {}) {
         highlightTag = 'mark',
         highlightClass = '',
         resultsGroupingEnabled = false,
-        promotionBadge = {},
         debugEnabled = false,
         highlightDestinationPersistQuery = false,
         highlightDestinationQueryParam = 'smq',
@@ -132,7 +133,6 @@ export function renderResultItem(result, index, query, options = {}) {
     const url = appendQueryParam(rawUrl, query, highlightDestinationPersistQuery ? highlightDestinationQueryParam : '');
     const type = result.source || result.entrySection || result.type || '';
     const optionId = getOptionId(listboxId, index);
-    const isPromoted = result.promoted === true;
     const sourceIndex = result._index || result.index || '';
     const identityAttrs = renderIdentityAttrs(result);
 
@@ -152,9 +152,9 @@ export function renderResultItem(result, index, query, options = {}) {
         terms: getHighlightTerms(result, 'snippet'),
     }) : '';
 
-    // Build promoted badge HTML
-    const promotedBadge = renderPromotedBadge(result, promotionBadge);
-    const promotedClass = isPromoted ? ' sm-promoted' : '';
+    // Build promotion marker (badge / tint per promotionDisplay)
+    const promo = renderPromotionMarker(result, options);
+    const promotedClass = promo.rowClass;
 
     // Build type badge (only if not grouping)
     const typeBadge = type && !resultsGroupingEnabled
@@ -169,9 +169,10 @@ export function renderResultItem(result, index, query, options = {}) {
         return `
             <a class="sm-result-item sm-debug-enabled${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
                 <div class="sm-result-main">
-                    ${promotedBadge}
                     <div class="sm-result-content">
-                        <span class="sm-result-title">${highlightedTitle}</span>
+                        ${promo.aboveMarkup}
+                        <span class="sm-result-title">${promo.titlePrefix}${highlightedTitle}${promo.titleSuffix}</span>
+                        ${promo.blockMarkup}
                         ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
                     </div>
                     ${typeBadge}
@@ -184,9 +185,10 @@ export function renderResultItem(result, index, query, options = {}) {
 
     return `
         <a class="sm-result-item${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
-            ${promotedBadge}
             <div class="sm-result-content">
-                <span class="sm-result-title">${highlightedTitle}</span>
+                ${promo.aboveMarkup}
+                <span class="sm-result-title">${promo.titlePrefix}${highlightedTitle}${promo.titleSuffix}</span>
+                ${promo.blockMarkup}
                 ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
             </div>
             ${typeBadge}
@@ -308,35 +310,50 @@ function debugItem(label, value, type, backendType = '', translations = {}) {
 }
 
 /**
- * Render promoted badge for a result
+ * Build the promotion marker for a promoted result
+ *
+ * Modes (promotionDisplay): 'badge' renders a chip inline with the title or
+ * on its own line above/below it (promotionBadgePosition 'inline'|'above'|'below'),
+ * 'tint' adds a row class painted by the promoted tint colors, and 'none'
+ * (default) marks nothing. Tint includes a visually-hidden label so screen
+ * readers get the same signal badge users see.
  *
  * @param {SearchResult} result - Result with potential promoted flag
- * @param {PromotionConfig} config - Promotion display config
- * @returns {string} HTML string of badge (or empty string)
- *
- * @example
- * const badge = renderPromotedBadge({ promoted: true }, {
- *   showBadge: true,
- *   badgeText: 'Featured',
- *   badgePosition: 'top-right',
- * });
+ * @param {RenderOptions} options - Rendering options
+ * @returns {{rowClass: string, titlePrefix: string, titleSuffix: string, aboveMarkup: string, blockMarkup: string}} Row class, before/after-title HTML, above-title HTML, below-title HTML
  */
-export function renderPromotedBadge(result, config = {}) {
+export function renderPromotionMarker(result, options = {}) {
     const {
-        showBadge = true,
-        badgeText = 'Featured',
-        badgePosition = 'top-right',
-    } = config;
+        promotionDisplay = 'none',
+        promotionBadgeText = 'Featured',
+        promotionBadgePosition = 'inline',
+    } = options;
 
-    if (!result.promoted || !showBadge) {
-        return '';
+    if (result.promoted !== true || promotionDisplay === 'none') {
+        return { rowClass: '', titlePrefix: '', titleSuffix: '', aboveMarkup: '', blockMarkup: '' };
     }
 
-    const allowedPositions = new Set(['top-right', 'top-left', 'inline']);
-    const safeBadgePosition = allowedPositions.has(badgePosition) ? badgePosition : 'top-right';
-    const positionClass = `sm-promoted-badge--${safeBadgePosition}`;
+    if (promotionDisplay === 'tint') {
+        return {
+            rowClass: ' sm-promoted sm-promoted--tint',
+            titlePrefix: '',
+            titleSuffix: `<span class="sm-sr-only"> ${escapeHtml(promotionBadgeText)}</span>`,
+            aboveMarkup: '',
+            blockMarkup: '',
+        };
+    }
 
-    return `<span class="sm-promoted-badge ${positionClass}">${escapeHtml(badgeText)}</span>`;
+    // badge chip
+    const badge = `<span class="sm-promoted-badge">${escapeHtml(promotionBadgeText)}</span>`;
+    if (promotionBadgePosition === 'above') {
+        return { rowClass: ' sm-promoted', titlePrefix: '', titleSuffix: '', aboveMarkup: `<span class="sm-promoted-badge-row sm-promoted-badge-row--above">${badge}</span>`, blockMarkup: '' };
+    }
+    if (promotionBadgePosition === 'below') {
+        return { rowClass: ' sm-promoted', titlePrefix: '', titleSuffix: '', aboveMarkup: '', blockMarkup: `<span class="sm-promoted-badge-row">${badge}</span>` };
+    }
+
+    // inline — the chip leads the title so it survives title line clamping
+    return { rowClass: ' sm-promoted', titlePrefix: badge, titleSuffix: '', aboveMarkup: '', blockMarkup: '' };
 }
 
 function isSectionHit(result) {
@@ -439,6 +456,7 @@ function sectionGroupToPageResult(hits, hierarchyMaxHeadings) {
         url: pageHit.url || '#',
         snippet: introHit ? (introHit.snippet || null) : null,
         score: numericScore(bestHit),
+        promoted: sortedHits.some(hit => hit.promoted === true),
         headings,
         __sectionHitGroup: true,
         __useBackendDomId: true,
@@ -701,14 +719,18 @@ function renderHierarchyParent(result, index, query, options = {}) {
     const debugInfo = debugEnabled ? renderDebugInfo(result, translations) : '';
     const hasHeadings = result.headings && result.headings.length > 0;
     const icon = hasHeadings ? documentIcon() : contentIcon();
+    const promo = renderPromotionMarker(result, options);
+    const promotedClass = promo.rowClass;
 
     if (debugEnabled) {
         return `
-            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
+            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
                 <div class="sm-result-main">
                     ${icon}
                     <div class="sm-result-content">
-                        <span class="sm-result-title">${highlightedTitle}</span>
+                        ${promo.aboveMarkup}
+                        <span class="sm-result-title">${promo.titlePrefix}${highlightedTitle}${promo.titleSuffix}</span>
+                        ${promo.blockMarkup}
                         ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
                     </div>
                     ${arrowSvg()}
@@ -719,10 +741,12 @@ function renderHierarchyParent(result, index, query, options = {}) {
     }
 
     return `
-        <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
+        <a class="sm-result-item sm-hierarchy-parent${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
             ${icon}
             <div class="sm-result-content">
-                <span class="sm-result-title">${highlightedTitle}</span>
+                ${promo.aboveMarkup}
+                <span class="sm-result-title">${promo.titlePrefix}${highlightedTitle}${promo.titleSuffix}</span>
+                ${promo.blockMarkup}
                 ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
             </div>
             ${arrowSvg()}

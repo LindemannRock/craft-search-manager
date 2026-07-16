@@ -288,7 +288,9 @@ The search input is the bare `<input>` element inside the header. By default it 
 | `hierarchyConnectorColor` / `hierarchyConnectorColorDark` | `string` | — | Hierarchy tree connector lines. Empty = follows the muted color |
 | `hierarchyConnectorActiveColor` / `hierarchyConnectorActiveColorDark` | `string` | — | Connector segment of the hovered/selected row. Empty = follows the base connector color |
 
-### Promoted Badge
+### Promoted
+
+Which colors apply depends on each widget's **Promotion Display** setting (widget settings → Results → Promotions): the badge keys style the badge chip, the tint keys style tinted rows.
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -296,6 +298,17 @@ The search input is the bare `<input>` element inside the header. By default it 
 | `promotedBgDark` | `string` | `#2563eb` | Badge background (dark mode) |
 | `promotedColor` | `string` | `#ffffff` | Badge text color (light mode) |
 | `promotedColorDark` | `string` | `#ffffff` | Badge text color (dark mode) |
+| `promotedActiveBg` / `promotedActiveBgDark` | `string` | — | Badge background on the hovered/selected row. Empty = keeps the base badge background |
+| `promotedActiveColor` / `promotedActiveColorDark` | `string` | — | Badge text on the hovered/selected row |
+| `promotedBorderColor` / `promotedBorderColorDark` | `string` | — | Badge border color (with `promotedBorderWidth`) |
+| `promotedPaddingX` | `int` (0-20) | `6` | Badge horizontal padding in px |
+| `promotedPaddingY` | `int` (0-20) | `2` | Badge vertical padding in px |
+| `promotedBorderRadius` | `int` (0-20) | `4` | Badge border radius in px |
+| `promotedBorderWidth` | `int` (0-5) | `0` | Badge border width in px |
+| `promotedTintBg` | `string` | `#eff6ff` | Row background in tint mode (light mode) |
+| `promotedTintBgDark` | `string` | `#1e3a8a` | Row background in tint mode (dark mode) |
+| `promotedTintTextColor` / `promotedTintTextColorDark` | `string` | — | One color for title, description, and type on tinted rows. Empty = theme text colors |
+| `promotedTintActiveBg` / `promotedTintActiveBgDark` | `string` | — | Tinted row hover/selected background. Empty = the normal active row background |
 
 ## Accessibility
 

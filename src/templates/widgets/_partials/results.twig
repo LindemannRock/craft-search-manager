@@ -84,3 +84,48 @@
 	max: 5,
 	errors: widgetConfig.getErrors('settings.behavior.resultsDescriptionLines')
 }) }}
+
+<hr>
+
+<h2>{{ "Promotions"|t('search-manager') }}</h2>
+
+{{ forms.selectField({
+	label: 'Promotion Display'|t('search-manager'),
+	instructions: 'How promoted results are marked in the widget. Colors come from the widget style.'|t('search-manager'),
+	id: 'behavior-promotionDisplay',
+	name: 'settings[behavior][promotionDisplay]',
+	value: widgetConfig.getPromotionDisplay(),
+	options: [
+		{ label: 'Hidden'|t('search-manager'), value: 'none' },
+		{ label: 'Badge'|t('search-manager'), value: 'badge' },
+		{ label: 'Row Tint'|t('search-manager'), value: 'tint' },
+	],
+	toggle: true,
+	targetPrefix: 'promotion-display-',
+	errors: widgetConfig.getErrors('settings.behavior.promotionDisplay')
+}) }}
+
+<div id="promotion-display-badge"{% if widgetConfig.getPromotionDisplay() != 'badge' %} class="hidden"{% endif %}>
+	{{ forms.textField({
+		label: 'Badge Text'|t('search-manager'),
+		instructions: 'Label shown on the badge; also read to screen readers in row tint mode.'|t('search-manager'),
+		id: 'behavior-promotionBadgeText',
+		name: 'settings[behavior][promotionBadgeText]',
+		value: widgetConfig.getPromotionBadgeText(),
+		placeholder: 'Featured',
+		errors: widgetConfig.getErrors('settings.behavior.promotionBadgeText')
+	}) }}
+
+	{{ forms.selectField({
+		label: 'Badge Position'|t('search-manager'),
+		id: 'behavior-promotionBadgePosition',
+		name: 'settings[behavior][promotionBadgePosition]',
+		value: widgetConfig.getPromotionBadgePosition(),
+		options: [
+			{ label: 'Inline with title'|t('search-manager'), value: 'inline' },
+			{ label: 'Above Title'|t('search-manager'), value: 'above' },
+			{ label: 'Below Title'|t('search-manager'), value: 'below' },
+		],
+		errors: widgetConfig.getErrors('settings.behavior.promotionBadgePosition')
+	}) }}
+</div>

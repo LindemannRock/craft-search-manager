@@ -696,8 +696,11 @@ return [
          *     - searchDebounceMs: Delay before search triggers in ms (default: 200)
          *     - searchMinChars: Minimum chars before search (default: 2)
          *     - resultsLimit: Max results to show, capped at 100 (default: 10)
-         *     - recentlyViewedEnabled: Show recent searches (default: true)
-         *     - recentlyViewedLimit: Max recent searches stored (default: 5)
+         *     - recentlyViewedEnabled: Show recently viewed results (default: true)
+         *     - recentlyViewedLimit: Max recently viewed results stored (default: 5)
+         *     - promotionDisplay: How promoted results are marked: 'badge', 'tint', 'none' (default: 'none')
+         *     - promotionBadgeText: Badge label; also the screen-reader label in tint mode (default: 'Featured', localized; custom text uses the site translation category)
+         *     - promotionBadgePosition: 'inline' (before the title), 'above', 'below' (default: 'inline')
          *     - resultsGroupingEnabled: Group flat results by source, Entry section, or type (default: true)
          *     - triggerHotkey: Keyboard shortcut key, e.g. 'k' for Cmd/Ctrl+K (default: 'k')
          *     - resultsRequireUrl: Hide results that don't have a URL (default: false)
@@ -760,6 +763,9 @@ return [
             //             'resultsLimit' => 10,
             //             'recentlyViewedEnabled' => true,
             //             'recentlyViewedLimit' => 5,
+            //             'promotionDisplay' => 'badge',
+            //             'promotionBadgeText' => 'Featured',
+            //             'promotionBadgePosition' => 'inline',
             //             'resultsGroupingEnabled' => true,
             //             'triggerHotkey' => 'k',
             //             'resultsRequireUrl' => false,

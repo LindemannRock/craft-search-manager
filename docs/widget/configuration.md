@@ -135,6 +135,9 @@ Override settings per-include:
 |-----------|------|---------|-------------|
 | `recentlyViewedEnabled` | `bool` | `true` | Show the "Recently viewed" section — results the visitor previously opened, stored in their browser |
 | `recentlyViewedLimit` | `int` | `5` | Maximum recently viewed entries to store (1-50) |
+| `promotionDisplay` | `string` | `none` | How promoted results are marked: `badge`, `tint` (row background), or `none`. Colors come from the widget style's Promoted section |
+| `promotionBadgeText` | `string` | `Featured` | Badge label; also the screen-reader label in tint mode. The default is localized per site language; custom text runs through Craft's `site` translation category |
+| `promotionBadgePosition` | `string` | `inline` | Badge placement: `inline` (before the title), `above` (own line above the title), or `below` (own line below it) — badge mode only |
 
 ### Results
 

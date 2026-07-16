@@ -63,8 +63,13 @@
 {% set footerBrandLight = styles.footerTextColor is defined and styles.footerTextColor ? styles.footerTextColor : styles.resultDescColor %}
 {% set footerBrandDark = styles.footerTextColorDark is defined and styles.footerTextColorDark ? styles.footerTextColorDark : styles.resultDescColorDark %}
 
+{# Promotion marker: follows the widget's display mode; style page previews the badge #}
+{% set promoDisplay = widgetConfig is defined and widgetConfig is not null ? widgetConfig.getPromotionDisplay() : 'badge' %}
+{% set promoPosition = widgetConfig is defined and widgetConfig is not null ? widgetConfig.getPromotionBadgePosition() : 'inline' %}
+{% set promoLabel = widgetConfig is defined and widgetConfig is not null ? widgetConfig.getPromotionBadgeText() : 'Promoted'|t('search-manager') %}
+
 {# Light Mode Preview #}
-	<div class="widget-preview-container widget-preview-light" data-mode="light" style="--preview-connector-color: {{ previewConnectorLight }}; --preview-trigger-hover-bg: {{ styles.triggerHoverBg }}; --preview-trigger-hover-color: {{ styles.triggerHoverTextColor }}; --preview-trigger-hover-border: {{ styles.triggerHoverBorderColor }}; --preview-page-icon-active: {{ pageIconActiveLight }}; --preview-result-icon-active: {{ resultIconActiveLight }}; --preview-connector-active: {{ connActiveLight }};">
+	<div class="widget-preview-container widget-preview-light" data-mode="light" data-tint-bg="{{ styles.promotedTintBg }}" style="--preview-connector-color: {{ previewConnectorLight }}; --preview-trigger-hover-bg: {{ styles.triggerHoverBg }}; --preview-trigger-hover-color: {{ styles.triggerHoverTextColor }}; --preview-trigger-hover-border: {{ styles.triggerHoverBorderColor }}; --preview-page-icon-active: {{ pageIconActiveLight }}; --preview-result-icon-active: {{ resultIconActiveLight }}; --preview-connector-active: {{ connActiveLight }};">
 		<div class="preview-modal" style="background: {{ styles.modalBg }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColor }}; border-radius: {{ styles.modalBorderRadius }}px; box-shadow: {{ styles.modalShadow }};">
 			<div class="preview-header" style="background: {{ styles.headerBg }}; border-bottom: {{ styles.headerBorderWidth }}px solid {{ styles.headerBorderColor }}; border-radius: {{ styles.headerBorderRadius }}px {{ styles.headerBorderRadius }}px 0 0; padding: {{ styles.headerPaddingY }}px {{ styles.headerPaddingX }}px;">
 				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ searchIconLight }}" stroke-width="2">
@@ -86,9 +91,11 @@
 			<div class="preview-body" style="padding: {{ styles.modalPaddingY }}px {{ styles.modalPaddingX }}px;">
 			<div class="preview-results">
 				<div class="preview-section-header" style="color: {{ styles.resultMutedColor }};">{{ 'Results'|t('search-manager') }}</div>
-				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColor }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
+				<div class="preview-result preview-promotable" style="{% if promoDisplay == 'tint' %}background: {{ styles.promotedTintBg }}; {% endif %}border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColor }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
-						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Sample Result'|t('search-manager') }} <mark class="preview-highlight" style="background: {{ hlBgLight }}; color: {{ hlTextLight }};">{{ 'match'|t('search-manager') }}</mark> <span class="preview-promoted" style="background: {{ styles.promotedBg }}; color: {{ styles.promotedColor }};">{{ 'Promoted'|t('search-manager') }}</span></span>
+						<span class="preview-promoted preview-promoted-above" style="background: {{ styles.promotedBg }}; color: {{ styles.promotedColor }}; border-radius: {{ styles.promotedBorderRadius }}px; padding: {{ styles.promotedPaddingY }}px {{ styles.promotedPaddingX }}px;{% if styles.promotedBorderWidth != '0' and styles.promotedBorderWidth != '' %} border: {{ styles.promotedBorderWidth }}px solid {{ styles.promotedBorderColor ?: 'transparent' }};{% endif %}{% if not (promoDisplay == 'badge' and promoPosition == 'above') %} display: none;{% endif %}">{{ promoLabel }}</span>
+						<span class="preview-result-title" style="color: {{ promoDisplay == 'tint' and styles.promotedTintTextColor ? styles.promotedTintTextColor : styles.resultTextColor }};"><span class="preview-promoted" style="background: {{ styles.promotedBg }}; color: {{ styles.promotedColor }}; border-radius: {{ styles.promotedBorderRadius }}px; padding: {{ styles.promotedPaddingY }}px {{ styles.promotedPaddingX }}px;{% if styles.promotedBorderWidth != '0' and styles.promotedBorderWidth != '' %} border: {{ styles.promotedBorderWidth }}px solid {{ styles.promotedBorderColor ?: 'transparent' }};{% endif %}{% if not (promoDisplay == 'badge' and promoPosition == 'inline') %} display: none;{% endif %}">{{ promoLabel }}</span> {{ 'Sample Result'|t('search-manager') }} <mark class="preview-highlight" style="background: {{ hlBgLight }}; color: {{ hlTextLight }};">{{ 'match'|t('search-manager') }}</mark></span>
+						<span class="preview-promoted preview-promoted-below" style="background: {{ styles.promotedBg }}; color: {{ styles.promotedColor }}; border-radius: {{ styles.promotedBorderRadius }}px; padding: {{ styles.promotedPaddingY }}px {{ styles.promotedPaddingX }}px;{% if styles.promotedBorderWidth != '0' and styles.promotedBorderWidth != '' %} border: {{ styles.promotedBorderWidth }}px solid {{ styles.promotedBorderColor ?: 'transparent' }};{% endif %}{% if not (promoDisplay == 'badge' and promoPosition == 'below') %} display: none;{% endif %}">{{ promoLabel }}</span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Description text'|t('search-manager') }} <span class="preview-result-type" style="color: {{ styles.resultMutedColor }};">entry</span></span>
 					</div>
 				</div>
@@ -149,7 +156,7 @@
 	</div>
 
 {# Dark Mode Preview (hidden by default) #}
-	<div class="widget-preview-container widget-preview-dark" data-mode="dark" style="display: none; --preview-connector-color: {{ previewConnectorDark }}; --preview-trigger-hover-bg: {{ styles.triggerHoverBgDark }}; --preview-trigger-hover-color: {{ styles.triggerHoverTextColorDark }}; --preview-trigger-hover-border: {{ styles.triggerHoverBorderColorDark }}; --preview-page-icon-active: {{ pageIconActiveDark }}; --preview-result-icon-active: {{ resultIconActiveDark }}; --preview-connector-active: {{ connActiveDark }};">
+	<div class="widget-preview-container widget-preview-dark" data-mode="dark" data-tint-bg="{{ styles.promotedTintBgDark }}" style="display: none; --preview-connector-color: {{ previewConnectorDark }}; --preview-trigger-hover-bg: {{ styles.triggerHoverBgDark }}; --preview-trigger-hover-color: {{ styles.triggerHoverTextColorDark }}; --preview-trigger-hover-border: {{ styles.triggerHoverBorderColorDark }}; --preview-page-icon-active: {{ pageIconActiveDark }}; --preview-result-icon-active: {{ resultIconActiveDark }}; --preview-connector-active: {{ connActiveDark }};">
 		<div class="preview-modal" style="background: {{ styles.modalBgDark }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColorDark }}; border-radius: {{ styles.modalBorderRadius }}px; box-shadow: {{ styles.modalShadowDark }};">
 			<div class="preview-header" style="background: {{ styles.headerBgDark }}; border-bottom: {{ styles.headerBorderWidth }}px solid {{ styles.headerBorderColorDark }}; border-radius: {{ styles.headerBorderRadius }}px {{ styles.headerBorderRadius }}px 0 0; padding: {{ styles.headerPaddingY }}px {{ styles.headerPaddingX }}px;">
 				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ searchIconDark }}" stroke-width="2">
@@ -171,9 +178,11 @@
 			<div class="preview-body" style="padding: {{ styles.modalPaddingY }}px {{ styles.modalPaddingX }}px;">
 			<div class="preview-results">
 				<div class="preview-section-header" style="color: {{ styles.resultMutedColorDark }};">{{ 'Results'|t('search-manager') }}</div>
-				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColorDark }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
+				<div class="preview-result preview-promotable" style="{% if promoDisplay == 'tint' %}background: {{ styles.promotedTintBgDark }}; {% endif %}border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColorDark }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
-						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Sample Result'|t('search-manager') }} <mark class="preview-highlight" style="background: {{ hlBgDark }}; color: {{ hlTextDark }};">{{ 'match'|t('search-manager') }}</mark> <span class="preview-promoted" style="background: {{ styles.promotedBgDark }}; color: {{ styles.promotedColorDark }};">{{ 'Promoted'|t('search-manager') }}</span></span>
+						<span class="preview-promoted preview-promoted-above" style="background: {{ styles.promotedBgDark }}; color: {{ styles.promotedColorDark }}; border-radius: {{ styles.promotedBorderRadius }}px; padding: {{ styles.promotedPaddingY }}px {{ styles.promotedPaddingX }}px;{% if styles.promotedBorderWidth != '0' and styles.promotedBorderWidth != '' %} border: {{ styles.promotedBorderWidth }}px solid {{ styles.promotedBorderColorDark ?: 'transparent' }};{% endif %}{% if not (promoDisplay == 'badge' and promoPosition == 'above') %} display: none;{% endif %}">{{ promoLabel }}</span>
+						<span class="preview-result-title" style="color: {{ promoDisplay == 'tint' and styles.promotedTintTextColorDark ? styles.promotedTintTextColorDark : styles.resultTextColorDark }};"><span class="preview-promoted" style="background: {{ styles.promotedBgDark }}; color: {{ styles.promotedColorDark }}; border-radius: {{ styles.promotedBorderRadius }}px; padding: {{ styles.promotedPaddingY }}px {{ styles.promotedPaddingX }}px;{% if styles.promotedBorderWidth != '0' and styles.promotedBorderWidth != '' %} border: {{ styles.promotedBorderWidth }}px solid {{ styles.promotedBorderColorDark ?: 'transparent' }};{% endif %}{% if not (promoDisplay == 'badge' and promoPosition == 'inline') %} display: none;{% endif %}">{{ promoLabel }}</span> {{ 'Sample Result'|t('search-manager') }} <mark class="preview-highlight" style="background: {{ hlBgDark }}; color: {{ hlTextDark }};">{{ 'match'|t('search-manager') }}</mark></span>
+						<span class="preview-promoted preview-promoted-below" style="background: {{ styles.promotedBgDark }}; color: {{ styles.promotedColorDark }}; border-radius: {{ styles.promotedBorderRadius }}px; padding: {{ styles.promotedPaddingY }}px {{ styles.promotedPaddingX }}px;{% if styles.promotedBorderWidth != '0' and styles.promotedBorderWidth != '' %} border: {{ styles.promotedBorderWidth }}px solid {{ styles.promotedBorderColorDark ?: 'transparent' }};{% endif %}{% if not (promoDisplay == 'badge' and promoPosition == 'below') %} display: none;{% endif %}">{{ promoLabel }}</span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Description text'|t('search-manager') }} <span class="preview-result-type" style="color: {{ styles.resultMutedColorDark }};">entry</span></span>
 					</div>
 				</div>
@@ -313,6 +322,18 @@
 	font-size: 9px;
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
+}
+
+.preview-promoted-below,
+.preview-promoted-above {
+	display: inline-flex;
+	align-self: flex-start;
+	margin-top: 2px;
+}
+
+.preview-promoted-above {
+	margin-top: 0;
+	margin-bottom: 2px;
 }
 
 .preview-promoted {

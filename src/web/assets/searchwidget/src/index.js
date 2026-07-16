@@ -91,7 +91,7 @@ export {
 export {
     renderResults,
     renderResultItem,
-    renderPromotedBadge,
+    renderPromotionMarker,
     renderRecentlyViewed,
     renderEmptyState,
     renderLoadingState,
