@@ -1481,7 +1481,7 @@ class SearchEngine
             $docLanguage = $languagesByDocId[$docKey] ?? 'en';
 
             // Check if language matches (exact or generic match)
-            if ($this->languageMatches($docLanguage, $language)) {
+            if (LanguageNormalizer::matches($docLanguage, $language)) {
                 $filtered[$docId] = $score;
             }
         }
@@ -1493,39 +1493,6 @@ class SearchEngine
         ]);
 
         return $filtered;
-    }
-
-    /**
-     * Check if document language matches filter language
-     *
-     * @param string $docLanguage Document language (e.g., 'ar', 'en')
-     * @param string $filterLanguage Filter language (e.g., 'ar', 'ar-sa')
-     * @return bool True if matches
-     */
-    private function languageMatches(string $docLanguage, string $filterLanguage): bool
-    {
-        // Exact match
-        if ($docLanguage === $filterLanguage) {
-            return true;
-        }
-
-        // Generic match (filter: 'ar' matches doc: 'ar-sa')
-        if (str_contains($docLanguage, '-')) {
-            $docGeneric = substr($docLanguage, 0, 2);
-            if ($docGeneric === $filterLanguage) {
-                return true;
-            }
-        }
-
-        // Reverse: filter: 'ar-sa' matches doc: 'ar'
-        if (str_contains($filterLanguage, '-')) {
-            $filterGeneric = substr($filterLanguage, 0, 2);
-            if ($docLanguage === $filterGeneric) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**

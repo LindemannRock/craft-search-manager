@@ -52,6 +52,30 @@ class LanguageNormalizer
     }
 
     /**
+     * Check whether a document language satisfies a filter language, exact or
+     * generic either way ('ar' matches 'ar-sa' and vice versa).
+     *
+     * Shared by search's result filter and autocomplete's candidate filter so
+     * both surfaces apply identical language semantics.
+     */
+    public static function matches(string $docLanguage, string $filterLanguage): bool
+    {
+        if ($docLanguage === $filterLanguage) {
+            return true;
+        }
+
+        if (str_contains($docLanguage, '-') && substr($docLanguage, 0, 2) === $filterLanguage) {
+            return true;
+        }
+
+        if (str_contains($filterLanguage, '-') && $docLanguage === substr($filterLanguage, 0, 2)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Return a normalized language handle, or null when the value is unsafe.
      */
     public static function normalizeOrNull(?string $language): ?string

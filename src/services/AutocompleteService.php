@@ -15,6 +15,7 @@ use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\QueryUnderstanding;
+use lindemannrock\searchmanager\search\storage\DocumentKeyStorageInterface;
 use lindemannrock\searchmanager\search\storage\ElementSuggestionStorageInterface;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\search\TermResolver;
@@ -76,24 +77,20 @@ class AutocompleteService extends Component
         $siteIdProvided = isset($options['siteId']) && $options['siteId'] !== null;
         $siteId = $options['siteId'] ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
 
-        // Auto-detect language only when a specific site is targeted
+        // Query script is conclusive (e.g. Arabic) — the same heuristic the
+        // search backend applies UNCONDITIONALLY, so all-sites suggestions are
+        // language-scoped exactly like all-sites search results (audit #388).
         if ($language === null) {
-            if ($siteIdProvided) {
-                $scriptLanguage = LanguageNormalizer::detectScriptLanguage($query);
-                if ($scriptLanguage !== null) {
-                    // Query script is conclusive (e.g. Arabic) — same heuristic
-                    // the search backend applies, keeping both surfaces coherent.
-                    $language = $scriptLanguage;
-                } else {
-                    // Detect from site
-                    $site = Craft::$app->getSites()->getSiteById($siteId);
-                    if ($site) {
-                        $language = LanguageNormalizer::normalize(substr($site->language, 0, 2));
-                    } else {
-                        $language = 'en';
-                    }
-                }
-            }
+            $language = LanguageNormalizer::detectScriptLanguage($query);
+        }
+
+        // Site-language fallback stays gated on an explicit site, mirroring
+        // the is_int($siteScope) gate on the search side.
+        if ($language === null && $siteIdProvided) {
+            $site = Craft::$app->getSites()->getSiteById($siteId);
+            $language = $site
+                ? LanguageNormalizer::normalize(substr($site->language, 0, 2))
+                : 'en';
         }
 
         // Validate query length
@@ -373,6 +370,16 @@ class AutocompleteService extends Component
             }
         }
 
+        // Narrow the intersection to language-matching documents so every
+        // completion is strict-AND answerable in the detected language, the
+        // same way search language-filters its results (audit #388).
+        if ($intersection !== null && $language !== null) {
+            $intersection = $this->filterDocsByLanguage($storage, $intersection, $language, $siteId);
+            if ($intersection === []) {
+                return [];
+            }
+        }
+
         // Completion candidates for the token being typed. Multi-token input
         // over-fetches so the keystone filter below has headroom.
         $candidates = $resolver->resolve($completionToken, $siteId, [
@@ -388,24 +395,46 @@ class AutocompleteService extends Component
         $prefix = $precedingTokens === [] ? '' : implode(' ', $precedingTokens) . ' ';
 
         if ($intersection === null) {
-            // Single token (or only non-restrictive preceding tokens): exact
-            // and prefix candidates are live by construction, but fuzzy
-            // candidates come from the ngram store, which can outlive a term's
-            // last posting — doc-check those so a "ghost" term is never
-            // suggested (audit #387). Filter before slicing so ghosts can't
-            // eat suggestion slots.
-            $fuzzyTerms = [];
+            // Single token (or only non-restrictive preceding tokens): prefix
+            // candidates are live and language-filtered at the term level, but
+            // fuzzy candidates come from the ngram store, which can outlive a
+            // term's last posting ("ghosts", audit #387), and neither the
+            // exact nor the fuzzy tier knows document languages — so doc-check
+            // fuzzy candidates, and language-check exact + fuzzy ones the way
+            // search filters its results (audit #388). Filter before slicing
+            // so dropped candidates can't eat suggestion slots.
+            $checkTerms = [];
             foreach ($candidates as $candidate) {
-                if ($candidate['matchType'] === TermResolver::MATCH_FUZZY) {
-                    $fuzzyTerms[] = $candidate['term'];
+                if ($candidate['matchType'] === TermResolver::MATCH_FUZZY
+                    || ($language !== null && $candidate['matchType'] === TermResolver::MATCH_EXACT)
+                ) {
+                    $checkTerms[] = $candidate['term'];
                 }
             }
-            $fuzzyDocs = $fuzzyTerms === [] ? [] : $storage->getTermDocumentsBatch($fuzzyTerms, $siteId);
+            $docsByTerm = $checkTerms === [] ? [] : $storage->getTermDocumentsBatch($checkTerms, $siteId);
+
+            $languageDocIds = null;
+            if ($language !== null && $docsByTerm !== []) {
+                $allDocs = [];
+                foreach ($docsByTerm as $docs) {
+                    $allDocs += $docs;
+                }
+                $languageDocIds = $this->filterDocsByLanguage($storage, $allDocs, $language, $siteId);
+            }
 
             $suggestions = [];
             foreach ($candidates as $candidate) {
-                if ($candidate['matchType'] === TermResolver::MATCH_FUZZY && empty($fuzzyDocs[$candidate['term']])) {
-                    continue;
+                $isFuzzy = $candidate['matchType'] === TermResolver::MATCH_FUZZY;
+                $isExact = $candidate['matchType'] === TermResolver::MATCH_EXACT;
+
+                if ($isFuzzy || ($language !== null && $isExact)) {
+                    $docs = $docsByTerm[$candidate['term']] ?? [];
+                    if ($isFuzzy && $docs === []) {
+                        continue;
+                    }
+                    if ($languageDocIds !== null && array_intersect_key($docs, $languageDocIds) === []) {
+                        continue;
+                    }
                 }
 
                 $suggestions[] = $prefix . $candidate['term'];
@@ -447,6 +476,46 @@ class AutocompleteService extends Component
         }
 
         return $suggestions;
+    }
+
+    /**
+     * Keep only the docs whose document language matches $language — the
+     * autocomplete counterpart of search's result language filter, sharing
+     * {@see LanguageNormalizer::matches()} semantics. Docs are keyed
+     * "siteId:documentKey" as returned by getTermDocumentsBatch(); a doc with
+     * no recorded language counts as 'en', mirroring search.
+     *
+     * @param array<string, mixed> $docs
+     * @return array<string, mixed>
+     */
+    private function filterDocsByLanguage(StorageInterface $storage, array $docs, string $language, int $siteId): array
+    {
+        if ($docs === []) {
+            return [];
+        }
+
+        $useDocumentKeys = $storage instanceof DocumentKeyStorageInterface && $storage->supportsDocumentKeys();
+
+        $lookupByDocId = [];
+        foreach (array_keys($docs) as $docId) {
+            $docId = (string)$docId;
+            $documentKey = str_contains($docId, ':') ? explode(':', $docId, 2)[1] : $docId;
+            $lookupByDocId[$docId] = $useDocumentKeys ? $documentKey : (int)$documentKey;
+        }
+
+        $languages = $useDocumentKeys
+            ? $storage->getDocumentLanguagesBatchByKeys($siteId, array_values(array_unique($lookupByDocId)))
+            : $storage->getDocumentLanguagesBatch($siteId, array_values(array_unique($lookupByDocId)));
+
+        $filtered = [];
+        foreach ($docs as $docId => $value) {
+            $docLanguage = (string)($languages[$lookupByDocId[(string)$docId]] ?? 'en');
+            if (LanguageNormalizer::matches($docLanguage, $language)) {
+                $filtered[$docId] = $value;
+            }
+        }
+
+        return $filtered;
     }
 
     /**
