@@ -869,7 +869,7 @@ export function renderRecentSearches(recentSearches, listboxId, translations = {
     return `
         <div class="sm-section">
             <div class="sm-section-header">
-                <span id="${listboxId}-recent-label">${escapeHtml(t(translations, 'Recent searches'))}</span>
+                <span id="${listboxId}-recent-label">${escapeHtml(t(translations, 'Recently viewed'))}</span>
                 <button class="sm-clear-recent" part="clear-recent">${escapeHtml(t(translations, 'Clear'))}</button>
             </div>
             ${recentSearches.map((item, i) => `

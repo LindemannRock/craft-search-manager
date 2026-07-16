@@ -282,7 +282,7 @@ The search input is the bare `<input>` element inside the header. By default it 
 | `iconColor` | `string` | `#3b82f6` | Hierarchy page-icon color |
 | `iconColorDark` | `string` | `#60a5fa` | Hierarchy page-icon color (dark mode) |
 | `iconActiveColor` / `iconActiveColorDark` | `string` | — | Page icon on the hovered/selected row. Empty = follows the base icon color |
-| `resultIconColor` / `resultIconColorDark` | `string` | — | Result row icons (e.g. the recent-search clock). Empty = follows the muted color |
+| `resultIconColor` / `resultIconColorDark` | `string` | — | Result row icons (e.g. the recently-viewed clock). Empty = follows the muted color |
 | `resultIconActiveColor` / `resultIconActiveColorDark` | `string` | — | Result row icons on the hovered/selected row. Empty = follows the base, then active muted |
 | `arrowColor` / `arrowColorDark` | `string` | — | The result arrow (only visible on the hovered/selected row). Empty = follows the active muted color |
 | `hierarchyConnectorColor` / `hierarchyConnectorColorDark` | `string` | — | Hierarchy tree connector lines. Empty = follows the muted color |

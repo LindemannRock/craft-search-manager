@@ -133,8 +133,8 @@ Override settings per-include:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `recentSearchesEnabled` | `bool` | `true` | Show recent search history |
-| `recentSearchesLimit` | `int` | `5` | Maximum recent searches to store (1-50) |
+| `recentSearchesEnabled` | `bool` | `true` | Show the "Recently viewed" section — results the visitor previously opened, stored in their browser |
+| `recentSearchesLimit` | `int` | `5` | Maximum recently viewed entries to store (1-50) |
 
 ### Results
 
@@ -236,7 +236,7 @@ Widget configurations can be managed at Search Manager > Widgets. Each config us
 - **General** — name, handle, search indices
 - **Search Input** — placeholder, debounce, minimum characters, loading indicator
 - **Modal & Trigger** — hotkey, trigger button, scroll lock, backdrop behavior
-- **Recent Searches** — recent-search history and limit
+- **Recent Searches** — the "Recently viewed" section (results the visitor opened) and its stored-entry limit
 - **Results** — result limit, grouping, URL requirement, line clamping
 - **Hierarchy** — result layout, grouping field, hierarchy style, heading limit
 - **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup

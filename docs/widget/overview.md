@@ -9,7 +9,7 @@ Search Manager includes a ready-to-use search widget for your frontend. It's bui
 - **Modal search widget** — CMD+K overlay with backdrop, focus handling, and scroll locking
 - **Light & dark themes** — built-in theme support with customizable colors
 - **Reusable style presets** — define [Widget Styles](styles.md) once and share across configs
-- **Recent searches** — optional search history stored locally
+- **Recently viewed** — optional locally stored history of the results a visitor opened, offered back for quick return
 - **Grouped results** — group flat results by source, Entry section, or type; hierarchical layouts can group by any public hit field via `hierarchyGroupBy`
 - **Heading matching** — show matched headings under results for documentation sites
 - **Split section rendering** — split SourceDoc and AutoTransformer-family hits can render as parent rows with matched heading children in hierarchical layouts
@@ -69,7 +69,7 @@ Widget configurations can be managed at Search Manager > Widgets. Each config us
 - **General** — name, handle, search indices
 - **Search Input** — placeholder, debounce, minimum characters, loading indicator
 - **Modal & Trigger** — hotkey, trigger button, scroll lock, backdrop behavior
-- **Recent Searches** — recent-search history and limit
+- **Recent Searches** — the "Recently viewed" section (results the visitor opened) and its stored-entry limit
 - **Results** — result limit, grouping, URL requirement, line clamping
 - **Hierarchy** — result layout, grouping field, hierarchy style, heading limit
 - **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup

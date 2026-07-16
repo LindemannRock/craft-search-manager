@@ -84,12 +84,12 @@ export function getLoadingAnnouncement(translations = {}) {
  */
 export function getRecentSearchesAnnouncement(count, translations = {}) {
     if (count === 0) {
-        return t(translations, 'No recent searches');
+        return t(translations, 'No recently viewed items');
     }
     if (count === 1) {
-        return t(translations, '1 recent search available');
+        return t(translations, '1 recently viewed item available');
     }
-    return t(translations, '{count} recent searches available', { count });
+    return t(translations, '{count} recently viewed items available', { count });
 }
 
 /**
