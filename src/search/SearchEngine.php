@@ -297,6 +297,10 @@ class SearchEngine
             // Update metadata
             $this->storage->updateMetadata($siteId, $docLength, true);
 
+            // Terms dropped by this re-index may have lost their last posting;
+            // runs after the new postings store so surviving terms are skipped.
+            $this->cleanupOrphanedTermNgrams(array_keys($oldTerms), $siteId);
+
             $duration = round((microtime(true) - $startTime) * 1000, 2);
             $this->logInfo('Document indexed', [
                 'site_id' => $siteId,
@@ -417,6 +421,31 @@ class SearchEngine
 
         $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
         $this->storage->removeTermDocument($term, $siteId, $elementId);
+    }
+
+    /**
+     * Delete the ngram signature of any term that no longer has postings for
+     * the site. Without this, a deleted term stays fuzzy-matchable forever
+     * ("ghost" suggestions, audit #387) and the ngram store only shrinks on
+     * clearSite/clearAll.
+     *
+     * @param list<string> $terms Terms whose postings were just removed
+     */
+    private function cleanupOrphanedTermNgrams(array $terms, int $siteId): void
+    {
+        if ($terms === []) {
+            return;
+        }
+
+        $docsByTerm = $this->storage->getTermDocumentsBatch($terms, $siteId);
+
+        foreach ($terms as $term) {
+            if (!empty($docsByTerm[$term])) {
+                continue;
+            }
+
+            $this->storage->removeTermNgrams($term, $this->ngramGenerator->generate($term), $siteId);
+        }
     }
 
     private function deleteDocumentRows(int $siteId, int $elementId, string $documentKey): void
@@ -1603,6 +1632,7 @@ class SearchEngine
             foreach (array_keys($terms) as $term) {
                 $this->removeTermDocument($term, $siteId, $elementId, $documentKey);
             }
+            $this->cleanupOrphanedTermNgrams(array_keys($terms), $siteId);
 
             // Delete document and title data
             $this->deleteDocumentRows($siteId, $elementId, $documentKey);

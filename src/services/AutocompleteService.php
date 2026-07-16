@@ -388,11 +388,30 @@ class AutocompleteService extends Component
         $prefix = $precedingTokens === [] ? '' : implode(' ', $precedingTokens) . ' ';
 
         if ($intersection === null) {
-            // Single token (or only non-restrictive preceding tokens): every
-            // candidate is an indexed term, so search finds it directly.
+            // Single token (or only non-restrictive preceding tokens): exact
+            // and prefix candidates are live by construction, but fuzzy
+            // candidates come from the ngram store, which can outlive a term's
+            // last posting — doc-check those so a "ghost" term is never
+            // suggested (audit #387). Filter before slicing so ghosts can't
+            // eat suggestion slots.
+            $fuzzyTerms = [];
+            foreach ($candidates as $candidate) {
+                if ($candidate['matchType'] === TermResolver::MATCH_FUZZY) {
+                    $fuzzyTerms[] = $candidate['term'];
+                }
+            }
+            $fuzzyDocs = $fuzzyTerms === [] ? [] : $storage->getTermDocumentsBatch($fuzzyTerms, $siteId);
+
             $suggestions = [];
-            foreach (array_slice($candidates, 0, $limit) as $candidate) {
+            foreach ($candidates as $candidate) {
+                if ($candidate['matchType'] === TermResolver::MATCH_FUZZY && empty($fuzzyDocs[$candidate['term']])) {
+                    continue;
+                }
+
                 $suggestions[] = $prefix . $candidate['term'];
+                if (count($suggestions) >= $limit) {
+                    break;
+                }
             }
 
             return $suggestions;

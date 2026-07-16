@@ -265,6 +265,21 @@ interface StorageInterface
     public function termHasNgrams(string $term, int $siteId): bool;
 
     /**
+     * Remove a term's stored n-grams
+     *
+     * Called when a term loses its last posting for a site, so it can't
+     * linger as a fuzzy-matchable "ghost" (audit #387). Storages with their
+     * own term→n-gram map may ignore $ngrams and use the stored set.
+     *
+     * @param string $term The term
+     * @param array $ngrams The term's n-grams, for storages without a reverse map
+     * @param int $siteId Site ID
+     * @return void
+     * @since 5.53.0
+     */
+    public function removeTermNgrams(string $term, array $ngrams, int $siteId): void;
+
+    /**
      * Get terms by n-gram similarity
      *
      * Returns terms that have similar n-grams to the provided set,

@@ -433,6 +433,10 @@ final class RecordingStorage implements StorageInterface, ElementSuggestionStora
     {
     }
 
+    public function removeTermNgrams(string $term, array $ngrams, int $siteId): void
+    {
+    }
+
     public function updateMetadata(int $siteId, int $docLength, bool $isAddition): void
     {
         $this->updateMetadataCalls++;

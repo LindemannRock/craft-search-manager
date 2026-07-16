@@ -960,6 +960,21 @@ class MySqlStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
     /**
      * @inheritdoc
      */
+    public function removeTermNgrams(string $term, array $ngrams, int $siteId): void
+    {
+        $condition = [
+            'indexHandle' => $this->indexHandle,
+            'term' => $term,
+            'siteId' => $siteId,
+        ];
+
+        $this->db->createCommand()->delete('{{%searchmanager_search_ngrams}}', $condition)->execute();
+        $this->db->createCommand()->delete('{{%searchmanager_search_ngram_counts}}', $condition)->execute();
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold, int $limit = 100): array
     {
         if (empty($ngrams)) {

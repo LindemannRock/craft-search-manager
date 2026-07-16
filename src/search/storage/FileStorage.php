@@ -881,6 +881,24 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
     /**
      * @inheritdoc
+     *
+     * The stored per-term ngram file is authoritative for bucket removal;
+     * the passed $ngrams only fill in when the file is unreadable.
+     */
+    public function removeTermNgrams(string $term, array $ngrams, int $siteId): void
+    {
+        $ngramPath = $this->basePath . '/ngrams/site' . $siteId . '/' . $this->sanitizeFilename($term) . '.dat';
+
+        $storedNgrams = file_exists($ngramPath) ? $this->readFile($ngramPath) : null;
+        $this->removeTermFromNgramBuckets($term, is_array($storedNgrams) ? $storedNgrams : $ngrams, $siteId);
+
+        if (file_exists($ngramPath)) {
+            @unlink($ngramPath);
+        }
+    }
+
+    /**
+     * @inheritdoc
      */
     public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold, int $limit = 100): array
     {

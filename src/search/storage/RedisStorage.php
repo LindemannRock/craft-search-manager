@@ -1033,6 +1033,22 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
     /**
      * @inheritdoc
      */
+    public function removeTermNgrams(string $term, array $ngrams, int $siteId): void
+    {
+        $this->redis->multi(\Redis::PIPELINE);
+
+        foreach ($ngrams as $ngram) {
+            $this->redis->sRem($this->getNgramKey($siteId, $ngram), $term);
+        }
+
+        $this->redis->del($this->getNgramCountKey($siteId, $term));
+
+        $this->redis->exec();
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold, int $limit = 100): array
     {
         if (empty($ngrams)) {
