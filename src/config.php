@@ -858,21 +858,34 @@ return [
          *   Each property has a light mode key and a dark mode key (suffixed with 'Dark').
          *   Only override what you need — unset properties use built-in defaults.
          *
-         * Style property groups:
-         *   Modal:        modalBg, modalBorderColor, modalBorderWidth, modalBorderRadius,
+         * Style property groups (full key reference: docs/widget/styles.md, or use the CP style editor):
+         *   Modal:        modalBg, modalBorderColor, modalBorderWidth (px), modalBorderRadius (px),
          *                 modalShadow, modalMaxWidth (px), modalMaxHeight (vh),
-         *                 modalPaddingX (px), modalPaddingY (px)
-         *   Input:        inputBg, inputTextColor, inputPlaceholderColor,
-         *                 inputBorderColor, inputFontSize (px)
+         *                 modalPaddingX/Y (px — content area; header and footer sit flush),
+         *                 scrollbarColor (empty = automatic subtle thumb)
+         *   Header:       headerBg, headerBorderColor, headerBorderWidth (px),
+         *                 headerBorderRadius (px, top corners only), headerPaddingX/Y (px)
+         *   Footer:       footerBg (empty = matches modal), footerTextColor (empty = muted),
+         *                 footerPaddingX/Y (px)
+         *   Input:        inputBg, inputTextColor, inputPlaceholderColor, inputBorderColor,
+         *                 inputBorderWidth/Radius (px), inputPaddingX/Y (px), inputFontSize (px),
+         *                 searchIconColor, clearIconColor (empty = follow the muted color)
          *   Results:      resultBg, resultBorderColor, resultTextColor, resultDescColor,
-         *                 resultMutedColor, resultActiveBg, resultActiveBorderColor,
+         *                 resultMutedColor, resultGap/BorderWidth/BorderRadius/PaddingX/PaddingY (px),
+         *                 active variants: resultActiveBg, resultActiveBorderColor,
          *                 resultActiveTextColor, resultActiveDescColor, resultActiveMutedColor
+         *   Icons:        iconColor, resultIconColor, arrowColor, hierarchyConnectorColor,
+         *                 active variants: iconActiveColor, resultIconActiveColor,
+         *                 hierarchyConnectorActiveColor
+         *   Highlighting: highlightBgLight, highlightColorLight (+ Dark variants),
+         *                 active variants: highlightActiveBgLight, highlightActiveColorLight (+ Dark)
+         *   Promoted:     promotedBg, promotedColor
          *   Spinner:      spinnerColor
-         *   Highlighting: highlightBgLight, highlightColorLight (+ Dark variants)
          *   Backdrop:     backdropOpacity (0-100), backdropBlur (px, 0 = disabled)
          *   Trigger:      triggerBg, triggerTextColor, triggerBorderColor,
-         *                 triggerBorderRadius, triggerFontSize
-         *   Kbd Badge:    kbdBg, kbdBorderColor, kbdTextColor
+         *                 hover variants: triggerHoverBg, triggerHoverTextColor, triggerHoverBorderColor,
+         *                 triggerBorderWidth/Radius (px), triggerPaddingX/Y (px), triggerFontSize (px)
+         *   Kbd Badge:    kbdBg, kbdTextColor, kbdBorderRadius (px)
          */
         'widgetStyles' => [
             // Example: Brand theme style
@@ -916,6 +929,14 @@ return [
             //         'highlightColorLight' => '#854d0e',
             //         'highlightBgDark' => '#854d0e',
             //         'highlightColorDark' => '#fef08a',
+            //         // Header
+            //         'headerBg' => '#f9fafb',
+            //         'headerBorderColor' => '#e5e7eb',
+            //         // Footer
+            //         'footerBg' => '#f9fafb',
+            //         'footerTextColor' => '#6b7280',
+            //         // Scrollbar (empty = automatic subtle thumb)
+            //         'scrollbarColor' => '#d1d5db',
             //         // Backdrop
             //         'backdropOpacity' => '50',      // 0-100
             //         'backdropBlur' => '4',          // px, 0 = disabled
