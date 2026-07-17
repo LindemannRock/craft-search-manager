@@ -69,6 +69,26 @@ class Highlighter
     }
 
     /**
+     * Whether the value is a space-separated list of plain CSS class tokens.
+     *
+     * Shared by the Settings and WidgetStyle validators so both highlight
+     * class fields enforce the same format the widget's client-side
+     * normalizeClassTokens applies.
+     *
+     * @since 5.53.0
+     */
+    public static function isValidClassTokenList(string $value): bool
+    {
+        foreach (preg_split('/\s+/', $value) ?: [] as $token) {
+            if ($token === '' || preg_match('/^[A-Za-z0-9_-]+$/', $token) !== 1) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Highlight terms in text
      *
      * @param string $text Text to highlight

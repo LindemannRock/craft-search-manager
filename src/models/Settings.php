@@ -491,6 +491,7 @@ class Settings extends Model
             [['highlightTag'], 'in', 'range' => Highlighter::ALLOWED_TAGS],
             [['trackingAllowedOrigins'], 'safe'],
             [['highlightClass', 'defaultLanguage'], 'string', 'skipOnEmpty' => true],
+            [['highlightClass'], 'validateHighlightClass', 'skipOnEmpty' => true],
             [['defaultBackendHandle', 'defaultWidgetHandle'], 'string', 'max' => 255, 'skipOnEmpty' => true],
             [['defaultBackendHandle'], 'validateDefaultBackendHandle'],
             [['defaultWidgetHandle'], 'validateDefaultWidgetHandle'],
@@ -606,6 +607,26 @@ class Settings extends Model
 
         if (!$widget->enabled) {
             $this->addError($attribute, Craft::t(static::pluginHandle(), 'Selected widget is disabled.'));
+        }
+    }
+
+    /**
+     * Validate the highlight class as space-separated plain CSS class tokens,
+     * matching the WidgetStyle validator and the widget's client-side rule.
+     *
+     * @since 5.53.0
+     */
+    public function validateHighlightClass(string $attribute): void
+    {
+        $value = trim((string)$this->$attribute);
+        if ($value === '') {
+            return;
+        }
+
+        if (!Highlighter::isValidClassTokenList($value)) {
+            $this->addError($attribute, Craft::t('yii', '{attribute} is invalid.', [
+                'attribute' => $this->getAttributeLabel($attribute),
+            ]));
         }
     }
 

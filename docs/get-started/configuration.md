@@ -137,7 +137,7 @@ See [Autocomplete](../feature-tour/autocomplete.md) for details.
 |--------|------|---------|-------------|
 | `highlightResultsEnabled` | `bool` | `true` | Enable search term highlighting |
 | `highlightTag` | `string` | `'mark'` | HTML tag wrapping highlighted terms (`mark`, `em`, `strong`, `b`, `i`, `span`) |
-| `highlightClass` | `?string` | `null` | CSS class added to the highlight tag |
+| `highlightClass` | `?string` | `null` | CSS class added to the highlight tag — space-separated plain class tokens (letters, digits, `-`, `_`) |
 
 ### Template Helper Snippets
 **CP:** Settings → Snippets

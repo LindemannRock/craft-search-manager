@@ -12,6 +12,7 @@ use Craft;
 use craft\base\Model;
 use craft\helpers\Json;
 use lindemannrock\base\helpers\SlugHandleHelper;
+use lindemannrock\searchmanager\search\Highlighter;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
@@ -216,23 +217,13 @@ class WidgetStyle extends Model
             return;
         }
 
-        if (!$this->isValidClassTokenList($value)) {
+        if (!Highlighter::isValidClassTokenList($value)) {
             $this->addError('styles.highlightClass', Craft::t('yii', '{attribute} is invalid.', [
                 'attribute' => Craft::t('search-manager', 'CSS Class'),
             ]));
         }
     }
 
-    private function isValidClassTokenList(string $value): bool
-    {
-        foreach (preg_split('/\s+/', $value) ?: [] as $token) {
-            if ($token === '' || preg_match('/^[A-Za-z0-9_-]+$/', $token) !== 1) {
-                return false;
-            }
-        }
-
-        return true;
-    }
 
     public function getStyles(): array
     {
