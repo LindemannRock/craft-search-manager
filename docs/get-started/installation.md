@@ -26,7 +26,7 @@ ddev composer require lindemannrock/craft-search-manager && ddev craft plugin/in
 3. **Optional** — Enable [Logging Library](https://github.com/LindemannRock/craft-logging-library) for log viewing:
 
 > [!NOTE]
-> Logging Library is included as a Composer dependency and downloaded automatically. Activate it in Craft to enable log viewing.
+> Logging Library is required by Composer. Install or activate it in Craft to enable log viewing.
 
 ```bash title="PHP"
 php craft plugin/install logging-library

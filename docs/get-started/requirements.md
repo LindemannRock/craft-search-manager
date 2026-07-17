@@ -4,7 +4,7 @@
 
 | Requirement | Version |
 |-------------|---------|
-| [Craft CMS](https://craftcms.com/) | 5.0+ |
+| [Craft CMS](https://craftcms.com/) | 5.10+ |
 | [PHP](https://php.net/) | 8.2+ |
 
 ## Search Backends
@@ -29,8 +29,8 @@ Composer pulls these packages automatically. Craft plugin dependencies also need
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| [lindemannrock/craft-plugin-base](https://github.com/LindemannRock/craft-plugin-base) | 5.0+ | Shared base plugin utilities (helpers, traits, layouts) |
-| [lindemannrock/craft-logging-library](https://github.com/LindemannRock/craft-logging-library) | 5.0+ | Optional — install in CP for log viewing |
+| [lindemannrock/craft-plugin-base](https://github.com/LindemannRock/craft-plugin-base) | 5.34.2+ | Shared base plugin utilities (helpers, traits, layouts) |
+| [lindemannrock/craft-logging-library](https://github.com/LindemannRock/craft-logging-library) | 5.15.1+ | Optional — install in CP for log viewing |
 | [algolia/algoliasearch-client-php](https://github.com/algolia/algoliasearch-client-php) | 4.0+ | Algolia backend integration |
 | [meilisearch/meilisearch-php](https://github.com/meilisearch/meilisearch-php) | 1.0+ | Meilisearch backend integration |
 | [typesense/typesense-php](https://github.com/typesense/typesense-php) | 4.0+ | Typesense backend integration |
