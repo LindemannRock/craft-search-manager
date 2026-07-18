@@ -56,14 +56,6 @@ Prefix extensions bypass the typo budget because they are completions rather tha
 
 External Algolia, Meilisearch, and Typesense backends use their own native typo-tolerance policies instead of this built-in-backend rule.
 
-## Accented Titles Missing from Element Suggestions After Upgrade
-
-**Symptom:** Element-title suggestions (`suggestElements` / the API's `results` mode) don't match accented titles when typing unaccented text — e.g. typing `cafe` doesn't suggest "Café Menü".
-
-**Cause:** Title search text is now stored accent-folded so unaccented typing matches accented titles. Indexes built before this change still store the old accented form.
-
-**Fix:** Rebuild the affected indexes once: `php craft search-manager/index/rebuild`. New/updated documents are stored in the folded form automatically.
-
 ## Backend Cannot Be Deleted
 
 Search Manager blocks backend deletion when an index still references that backend. The error lists each dependency as `Index: Name`.
@@ -77,20 +69,6 @@ Search Manager blocks index deletion when a widget or a specifically scoped API 
 API keys set to **All indices (current and future)** do not block index deletion because they do not depend on a specific index handle.
 
 **Fix:** Edit the listed widgets and remove the index from their Search Indices setting, or update the listed API keys so the index is no longer allowed. Once no resolved widget or API key uses the index, the index can be deleted.
-
-## Element Stays in Index After Editor Change
-
-**Symptom:** An editor changes a field that the index's criteria filter depends on (e.g. marks a product `sold`, flips a custom status, sets an expiry date), but the element still appears in search results. Running a full rebuild removes it; the next edit of the same kind brings the problem back.
-
-**Quick checks:**
-
-1. The index is using a `criteria` closure that filters by the field that changed (e.g. `->section(['products'])->status('available')` or a custom query method).
-2. The element fires `EVENT_AFTER_SAVE_ELEMENT` normally — other edits to the same element do sync.
-3. The Pending Syncs page (`/admin/search-manager/pending-syncs`) shows the element either drained (sync completed) or stuck in `failed` / `abandoned` (sync attempted but couldn't complete).
-
-**Fix:** Upgrade to Search Manager 5.44.0 or later. Earlier versions would silently skip the sync when an element's field change made it no longer match the index criteria — the element would stay in the backend with stale data until a full rebuild. The sync now removes stale documents from any index whose criteria no longer matches, regardless of whether the element is still enabled.
-
-**Why this happened:** The auto-sync previously re-ran the index criteria to decide which indices to touch. When criteria excluded the element, the sync correctly saw "this element doesn't belong in index X" — but then did nothing, rather than removing the old document.
 
 ## Indexing Is Slow
 
@@ -202,29 +180,6 @@ Other tips for large rebuilds:
 - **Lower `batchSize`** to `25`–`50` — smaller batches mean more progress checkpoints
 - **Rebuild individual indices** instead of all at once: `php craft search-manager/index/rebuild --handle=my-index`
 - **Check your transformer** — slow transformers (heavy relation queries, API calls) multiply rebuild time
-
-## Duplicate Key Errors During Indexing (MySQL)
-
-```text
-Integrity constraint violation: 1062 Duplicate entry 'my-index-البحـر-2-60807'
-for key 'searchmanager_search_terms.PRIMARY'
-```
-
-This happens when content contains Unicode character variants that MySQL's `utf8mb4_0900_ai_ci` collation treats as equivalent — for example, Arabic text with tatweel (`البحـر` vs `البحر`), Arabic-Indic digits (`٢` vs `2`), or accented Latin characters (`jalapeño` vs `jalapeno`).
-
-**Fix:** Update to the latest version of Search Manager and rebuild your indices. The current version normalizes all text before storage (tatweel removal, digit folding, accent folding) and uses upsert writes on MySQL to handle any remaining collation equivalences gracefully. See [Text Normalization](../feature-tour/search-features.md#text-normalization) for details.
-
-## SQL Errors on PostgreSQL (Column Does Not Exist / Ambiguous / Boolean Max)
-
-```text
-SQLSTATE[42703]: column "resultscount" does not exist
-SQLSTATE[42702]: column reference "frequency" is ambiguous
-SQLSTATE[42883]: function max(boolean) does not exist
-```
-
-Any of these on a PostgreSQL install — during indexing, in the analytics dashboard, or in storage stats — means you're on a version whose SQL was only exercised on MySQL. PostgreSQL folds unquoted identifiers to lowercase, resolves upsert column references differently, and has no `MAX()`/`MIN()` over boolean columns; MySQL surfaces none of these, so they were invisible there.
-
-**Fix:** Update to the latest version of Search Manager. All plugin SQL is now dialect-safe and verified against a live PostgreSQL install. After updating, rebuild your indices if indexing was previously failing.
 
 ## Connection Refused (Redis)
 

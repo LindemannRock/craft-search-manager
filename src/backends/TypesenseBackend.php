@@ -335,9 +335,16 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
             // Filter out Search Manager internal options that Typesense doesn't understand.
             $searchParams = array_diff_key($options, array_flip(self::INTERNAL_SEARCH_OPTIONS));
             $searchParams['q'] = $query;
-            // Search all common string fields for consistency with other backends
-            $searchParams['query_by'] = $searchParams['query_by'] ?? SearchRecordProjectionHelper::typesenseQueryBy();
-            $searchParams['query_by_weights'] = $searchParams['query_by_weights'] ?? SearchRecordProjectionHelper::typesenseQueryByWeights();
+            // Search all common string fields for consistency with other backends.
+            // query_by and query_by_weights must travel together: Typesense rejects
+            // the request outright when the weight count doesn't match the field
+            // count, so the default weights only apply with the default fields. A
+            // caller-supplied query_by without weights gets Typesense's equal
+            // weighting.
+            if (!isset($searchParams['query_by'])) {
+                $searchParams['query_by'] = SearchRecordProjectionHelper::typesenseQueryBy();
+                $searchParams['query_by_weights'] = $searchParams['query_by_weights'] ?? SearchRecordProjectionHelper::typesenseQueryByWeights();
+            }
             $searchParams['include_fields'] = $searchParams['include_fields']
                 ?? implode(',', SearchRecordProjectionHelper::searchProjectionFields($this->retrievableFieldsForIndex($indexName, $options)));
 
@@ -734,10 +741,12 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
             $limit = $options['limit'] ?? 10;
             $siteId = $options['siteId'] ?? null;
 
-            // Build search options for Typesense
+            // Build search options for Typesense. Weights must match the field
+            // count (title outranks content, mirroring the other backends).
             $searchOptions = [
                 'per_page' => $limit,
                 'query_by' => 'title,content',
+                'query_by_weights' => '3,1',
                 'include_fields' => 'title,elementId,siteId',
             ];
 
