@@ -117,9 +117,21 @@ When multiple boost factors apply, they stack. From highest to lowest impact:
 Search Manager automatically finds similar terms using n-gram similarity. This works transparently — no special syntax needed — and runs as a **two-tier expander**:
 
 1. **Expansion (always):** every query word is expanded with its closest indexed variants — searching for "tool" also matches documents that only contain "tools". Expanded variants are scored below exact matches, so exact matches always rank first.
-2. **Typo recovery (on miss):** a word with no exact match at all gets a much broader fuzzy pass — "javascirpt" finds "javascript", "tst" finds "test".
+2. **Typo recovery (on miss):** a word with no exact match at all gets a much broader fuzzy candidate pass — for example, "javascirpt" can find "javascript".
 
 The same expansion powers autocomplete suggestions, so a suggested completion is always something search can find.
+
+N-gram similarity finds the candidate pool. A typo-budget filter then removes look-alike words that are too different to be useful:
+
+| Query word length | Allowed typos |
+|-------------------|---------------|
+| 3 characters or fewer | 0 |
+| 4–7 characters | 1 |
+| 8 characters or more | 2 |
+
+An adjacent transposition counts as one typo. A difference in the first character counts as two because the first keystroke is less likely to be accidental. Prefix extensions are completion matches rather than typos, so they are always accepted: `tool` can match `tools`, and `test` can match `testing`. The rule is directional — the shorter query must be the prefix.
+
+This precision step prevents unrelated look-alikes such as `test` and `best` from matching or appearing in autocomplete while preserving genuine mid-word typos and longer two-typo queries. It applies to the built-in MySQL, PostgreSQL, Redis, and File backends; external backends use their own native typo-tolerance rules.
 
 Configuration options:
 
@@ -130,7 +142,7 @@ Configuration options:
 'maxFuzzyCandidates' => 100,     // Max candidates for typo recovery
 ```
 
-A lower `similarityThreshold` catches more typos but may return less relevant results. The default of `0.25` provides good typo tolerance without too much noise.
+A lower `similarityThreshold` lets more terms enter the candidate pool, but it doesn't bypass the fixed typo budget. The default of `0.25` provides broad candidate recall while the precision filter removes candidates outside the query-length tier. This is query-time behavior, so changing plugin versions doesn't require a reindex for this rule.
 
 ## Relaxed Matching
 

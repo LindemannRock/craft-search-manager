@@ -37,7 +37,7 @@ final class SearchEngineFuzzyFallbackBatchTest extends TestCase
     /**
      * `protein` matches docs 1/2/3; the close variant `protien` matches doc 1
      * only (so doc 1, matched by two candidates, must rank first). Neither the
-     * simple query `protine` nor the variants carry a title term.
+     * simple query `protienx` nor the variants carry a title term.
      */
     private function makeStorage(): RecordingStorage
     {
@@ -59,8 +59,8 @@ final class SearchEngineFuzzyFallbackBatchTest extends TestCase
         $storage = $this->makeStorage();
         $engine = new SearchEngine($storage, 'test-index');
 
-        // `protine` has no exact match → fuzzy fallback over two candidates.
-        $results = $engine->search('protine', self::SITE_ID);
+        // `protienx` has no exact match → fuzzy fallback over two candidates.
+        $results = $engine->search('protienx', self::SITE_ID);
 
         // Candidates fetched in one batch; the only single lookup is the
         // initial exact-match attempt for the query term itself.
@@ -96,9 +96,9 @@ final class SearchEngineFuzzyFallbackBatchTest extends TestCase
         $storage = $this->makeStorage();
         $engine = new SearchEngine($storage, 'test-index');
 
-        // `protine OR protein` routes through QueryParser → searchTerms(): one
+        // `protienx OR protein` routes through QueryParser → searchTerms(): one
         // term misses (fuzzy → batch), one is an exact hit.
-        $results = $engine->search('protine OR protein', self::SITE_ID);
+        $results = $engine->search('protienx OR protein', self::SITE_ID);
 
         $this->assertSame(1, $storage->getTermDocumentsBatchCalls, 'searchTerms() must batch fuzzy candidates');
         $this->assertSame([2], $storage->getTermDocumentsBatchSizes);

@@ -110,17 +110,20 @@ final class TermResolverPolicyTest extends TestCase
         self::assertContains('testing', $testTerms);
     }
 
-    public function testZeroExactTokenGetsFullFallbackBreadth(): void
+    public function testZeroExactTokenAppliesPrecisionFilterToTheFullFallbackPool(): void
     {
         $resolved = $this->makeResolver()->resolve('toolz', self::SITE_ID);
         $byType = $this->groupByMatchType($resolved);
 
         self::assertSame([], $byType[TermResolver::MATCH_EXACT]);
-        self::assertGreaterThan(3, count($byType[TermResolver::MATCH_FUZZY]), 'zero-exact tokens are not capped at the expansion top-K');
+        self::assertCount(2, $byType[TermResolver::MATCH_FUZZY]);
 
         $fuzzyTerms = array_column($byType[TermResolver::MATCH_FUZZY], 'term');
-        foreach (['tool', 'tools', 'toolbar', 'tooling', 'toolkit'] as $expected) {
+        foreach (['tool', 'tools'] as $expected) {
             self::assertContains($expected, $fuzzyTerms);
+        }
+        foreach (['toolbar', 'tooling', 'toolkit'] as $rejected) {
+            self::assertNotContains($rejected, $fuzzyTerms);
         }
     }
 

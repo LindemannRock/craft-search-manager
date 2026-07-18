@@ -38,6 +38,24 @@ Before changing templates or client code, reproduce the same index and query in 
 - If a variant like singular/plural isn't matching, confirm `enableFuzzy` is on (Settings → Search → Fuzzy Matching) and that `similarityThreshold` hasn't been raised far above the `0.25` default — a config-file override wins over the CP value (the CP shows the effective value in the override warning).
 - To see exactly which terms each query word matched, call the search API with `debugEnabled=1` (requires `devMode` or the *View debug meta* permission) and inspect `meta.resolvedTerms`.
 
+## A Similar-Looking Word Is Not Matched
+
+**Symptom:** A term clears the n-gram similarity threshold but doesn't appear in search results or autocomplete. For example, `test` doesn't match `best`.
+
+**Cause:** N-gram similarity builds a broad candidate pool; it isn't the final match decision. Built-in backends apply a query-length typo budget after candidate retrieval: 0 typos for words up to 3 characters, 1 typo for 4–7 characters, and 2 typos for 8 or more characters. Adjacent transpositions count as one, while a first-character difference counts as two. This deliberately rejects short look-alikes that share several bigrams but aren't credible typing mistakes.
+
+Prefix extensions bypass the typo budget because they are completions rather than corrections. `test` can still match and highlight `testing`; the reverse direction isn't a prefix extension.
+
+**Fix / checks:**
+
+- Confirm the intended correction fits the budget for the query word's length.
+- Check the first character separately; changing it consumes two typo units.
+- Confirm `enableFuzzy` is on and the similarity threshold isn't excluding the candidate before the typo-budget stage.
+- Don't lower `similarityThreshold` to force a candidate outside the budget. The budget is a fixed precision rule, not a setting.
+- No reindex is required; this filter runs when resolving each query.
+
+External Algolia, Meilisearch, and Typesense backends use their own native typo-tolerance policies instead of this built-in-backend rule.
+
 ## Accented Titles Missing from Element Suggestions After Upgrade
 
 **Symptom:** Element-title suggestions (`suggestElements` / the API's `results` mode) don't match accented titles when typing unaccented text — e.g. typing `cafe` doesn't suggest "Café Menü".

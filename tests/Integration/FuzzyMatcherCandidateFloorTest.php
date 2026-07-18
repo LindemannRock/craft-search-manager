@@ -40,7 +40,7 @@ final class FuzzyMatcherCandidateFloorTest extends TestCase
         $testingStorage = $this->makeStorage([
             'test' => 0.41,
         ]);
-        self::assertSame(['test'], $matcher->findMatches('testing', $testingStorage, 1));
+        self::assertSame([], $matcher->findMatches('testing', $testingStorage, 1));
     }
 
     /**

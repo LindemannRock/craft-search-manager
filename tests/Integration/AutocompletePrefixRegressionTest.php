@@ -98,6 +98,34 @@ final class AutocompletePrefixRegressionTest extends TestCase
         self::assertSame('to', $storage->getTermsForAutocompleteCalls[0]['prefix'] ?? null);
     }
 
+    public function testAutocompleteRejectsFirstCharacterFuzzyPollution(): void
+    {
+        $storage = new RecordingStorage(
+            termDocs: [
+                'best' => ['1:1' => 1],
+            ],
+            titleByElement: [],
+            docLengths: ['1:1' => 1],
+            totalDocs: 1,
+            avgDocLength: 1.0,
+            fuzzyCandidates: [
+                'best' => 0.5,
+            ],
+            autocompleteTerms: [],
+        );
+        $this->swapPluginComponent('search-manager', 'backend', new AutocompletePrefixBackendService($storage));
+
+        $suggestions = SearchManager::$plugin->autocomplete->suggest('test', 'content', [
+            'limit' => 5,
+            'minLength' => 1,
+            'siteId' => 1,
+            'fuzzy' => true,
+        ]);
+
+        self::assertNotContains('best', $suggestions);
+        self::assertSame([], $suggestions);
+    }
+
     public function testCompoundAutocompleteUsesStoredCompoundPrefixWithoutLastTokenFallback(): void
     {
         $storage = new RecordingStorage(

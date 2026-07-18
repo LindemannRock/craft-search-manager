@@ -180,6 +180,7 @@ final class TermResolver
                         mb_strlen($term) < FuzzyMatcher::MIN_CANDIDATE_LENGTH
                         || $term === $token
                         || isset($resolved[$term])
+                        || !FuzzyMatcher::isCandidateWithinTypoBudget($token, $term)
                     ) {
                         continue;
                     }
