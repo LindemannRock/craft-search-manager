@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.53.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.53.0...v5.53.1) (2026-07-18)
+
+
+### Fixed
+
+* **analytics:** normalize SQL query syntax in action identity expression and zero outcome condition ([33784ab](https://github.com/LindemannRock/craft-search-manager/commit/33784ab10dc3227425c920d52273e8e1900af141))
+* **analytics:** normalize SQL query syntax in analytics calculations ([411cdcf](https://github.com/LindemannRock/craft-search-manager/commit/411cdcfa53c87e2601399d27bfe403d0c54285c0))
+* **analytics:** normalize SQL query syntax in analytics summary calculations ([af94e05](https://github.com/LindemannRock/craft-search-manager/commit/af94e0545c9aa7a90e65d801ac8c4b5d90c041cd))
+* **analytics:** normalize SQL query syntax in device and browser breakdowns ([170d6b6](https://github.com/LindemannRock/craft-search-manager/commit/170d6b6969790a83fed0c0ba0c0051c673d6f6ad))
+* **analytics:** normalize SQL query syntax in performance metrics ([f503feb](https://github.com/LindemannRock/craft-search-manager/commit/f503febb98dc2b86160fc2db1fd1bb35bf229b9b))
+* **analytics:** normalize SQL query syntax in search query metrics ([853f942](https://github.com/LindemannRock/craft-search-manager/commit/853f942c632a95cc3022c7eba9316fc0aebc2542))
+* **jobs:** normalize SQL query syntax in CacheWarmJob for searchCount ([517d79d](https://github.com/LindemannRock/craft-search-manager/commit/517d79df58deb5a28a7fac5460889b6ef5092cef))
+* require PostgreSQL-compatible shared dependencies ([f283d91](https://github.com/LindemannRock/craft-search-manager/commit/f283d91649a7a19c8ad71989b5ea3a41c303efdb))
+* **storage:** normalize SQL query syntax in actionClearStorage ([3aa8704](https://github.com/LindemannRock/craft-search-manager/commit/3aa870411c30fd3000c3b392c2c435973a906fd9))
+* **storage:** normalize SQL query syntax in actionClearStorage ([34b8c75](https://github.com/LindemannRock/craft-search-manager/commit/34b8c75530ea5ddc172361d869b696569e163763))
+* **storage:** normalize SQL query syntax in storeDocument frequency calc ([cdaecb1](https://github.com/LindemannRock/craft-search-manager/commit/cdaecb110f0168e30dc7d4ea20686626a67bb5da))
+* **sync:** normalize SQL query syntax in upsertRows method ([7a0b5c3](https://github.com/LindemannRock/craft-search-manager/commit/7a0b5c34ea3b8382f3183d31f179bbe9a4366ed1))
+
 ## [5.53.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.52.0...v5.53.0) - 2026-07-17
 
 
