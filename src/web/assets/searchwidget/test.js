@@ -212,7 +212,25 @@ try {
     test('None mode and the default render no marker', hiddenMarker.rowClass === '' && hiddenMarker.titlePrefix === '' && defaultMarker.titlePrefix === '');
     test('Unpromoted results never get a marker', unpromotedMarker.rowClass === '' && unpromotedMarker.titlePrefix === '' && unpromotedMarker.blockMarkup === '');
 
-    const { sanitizeUrl } = loadHighlighterModule();
+    const { sanitizeUrl, getHitHighlightTerms, highlightMatches } = loadHighlighterModule();
+    const emptyMatchedTermsHit = { matchedTerms: { title: [], content: [] } };
+    const crossMatchedTermsHit = { matchedTerms: { title: ['search'], content: ['search'] } };
+    const titleScopedTitleTerms = getHitHighlightTerms(emptyMatchedTermsHit, 'title', 'title:search');
+    const titleScopedSnippetTerms = getHitHighlightTerms(crossMatchedTermsHit, 'snippet', 'title:search');
+    test('Title-scoped query terms highlight title only', titleScopedTitleTerms.join(',') === 'search' && titleScopedSnippetTerms.length === 0);
+    test('Title-scoped empty snippet terms do not fall back to the raw query', !highlightMatches('search body', 'title:search', { terms: titleScopedSnippetTerms }).includes('<mark'));
+
+    const contentScopedTitleTerms = getHitHighlightTerms(crossMatchedTermsHit, 'title', 'content:search');
+    const contentScopedSnippetTerms = getHitHighlightTerms(emptyMatchedTermsHit, 'snippet', 'content:search');
+    test('Content-scoped query terms highlight content only', contentScopedTitleTerms.length === 0 && contentScopedSnippetTerms.join(',') === 'search');
+    test('Content-scoped empty title terms do not fall back to the raw query', !highlightMatches('Search title', 'content:search', { terms: contentScopedTitleTerms }).includes('<mark'));
+
+    const bareTitleTerms = getHitHighlightTerms(emptyMatchedTermsHit, 'title', 'search');
+    const bareSnippetTerms = getHitHighlightTerms(emptyMatchedTermsHit, 'snippet', 'search');
+    test('Bare query terms remain eligible for title and content', bareTitleTerms.join(',') === 'search' && bareSnippetTerms.join(',') === 'search');
+
+    const testToolSource = fs.readFileSync(path.join(__dirname, '..', 'testtool', 'src', 'test-tool.js'), 'utf8');
+    test('CP test tool delegates field scope to the shared highlighter rule', testToolSource.includes('return SearchManagerHighlighter.getHitTerms(hit, area, query);'));
     const { renderRecentlyViewed } = loadRendererModule();
     test('Dangerous URL schemes are neutralized', sanitizeUrl('javascript:alert(1)') === '#' && sanitizeUrl('JaVa\tScRiPt:alert(1)') === '#' && sanitizeUrl('data:text/html,x') === '#' && sanitizeUrl('vbscript:x') === '#' && sanitizeUrl('file:///etc/passwd') === '#');
     test('Safe URLs pass the scheme guard unchanged', sanitizeUrl('/docs/page#anchor') === '/docs/page#anchor' && sanitizeUrl('https://example.com/a?b=1') === 'https://example.com/a?b=1' && sanitizeUrl('mailto:a@b.com') === 'mailto:a@b.com');

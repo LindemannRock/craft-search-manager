@@ -86,6 +86,7 @@ export function escapeRegex(string) {
  * for use when explicit matched terms are not available.
  *
  * @param {string} query - The search query to parse
+ * @param {'title'|'content'|null} field - Optional display-field scope
  * @returns {string[]} Array of terms suitable for highlighting
  *
  * @example
@@ -96,7 +97,7 @@ export function escapeRegex(string) {
  * parseQueryTerms('title:blog test^2 search*')
  * // Returns: ['blog', 'test', 'search']
  */
-export function parseQueryTerms(query) {
+export function parseQueryTerms(query, field = null) {
     if (!query) return [];
     const terms = [];
 
@@ -119,11 +120,18 @@ export function parseQueryTerms(query) {
     ]);
 
     remaining.split(/\s+/).filter(w => w.length > 0).forEach(word => {
-        word = word.replace(/^[a-zA-Z]+:/, ''); // field prefix (title:, content:)
+        let termField = null;
+        const fieldMatch = word.match(/^(title|content):(.*)$/i);
+        if (fieldMatch) {
+            termField = fieldMatch[1].toLowerCase();
+            word = fieldMatch[2];
+        } else {
+            word = word.replace(/^[a-zA-Z]+:/, '');
+        }
         word = word.replace(/\*/g, '');          // wildcards
         word = word.replace(/\^\d+(\.\d+)?/, ''); // boost markers (^2, ^1.5)
         word = word.replace(/"/g, '');           // stray quotes
-        if (!word || operators.has(word.toLowerCase())) return;
+        if (!word || operators.has(word.toLowerCase()) || (field && termField && termField !== field)) return;
         terms.push(word);
     });
 
@@ -138,6 +146,33 @@ export function parseQueryTerms(query) {
     });
 
     return withCamel;
+}
+
+/**
+ * Resolve the explicit terms for one rendered hit area.
+ *
+ * @param {Object} hit - Search hit with the locked matched-term contract
+ * @param {'title'|'snippet'} area - Rendered result area
+ * @param {string} query - Original query
+ * @returns {string[]} Explicit terms; an empty array means highlight nothing
+ * @since 5.54.0
+ */
+export function getHitHighlightTerms(hit, area, query) {
+    const field = area === 'snippet' ? 'content' : 'title';
+    const queryTerms = parseQueryTerms(query, field);
+
+    if (query && queryTerms.length === 0) {
+        return [];
+    }
+
+    const matchedTerms = hit && hit.matchedTerms;
+    const fieldTerms = matchedTerms && Array.isArray(matchedTerms[field])
+        ? matchedTerms[field]
+        : [];
+    const phrases = hit && Array.isArray(hit.matchedPhrases) ? hit.matchedPhrases : [];
+    const terms = fieldTerms.length > 0 ? fieldTerms : queryTerms;
+
+    return [...phrases, ...terms];
 }
 
 /**
@@ -211,7 +246,7 @@ export function normalizeClassTokens(className) {
 }
 
 function buildHighlightTerms(query, terms) {
-    if (Array.isArray(terms) && terms.length > 0) {
+    if (Array.isArray(terms)) {
         return normalizeTerms(terms);
     }
 

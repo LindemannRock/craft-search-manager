@@ -9,7 +9,7 @@
  * @since 5.32.0
  */
 
-import { highlightMatches, escapeHtml, sanitizeUrl } from './Highlighter.js';
+import { highlightMatches, escapeHtml, sanitizeUrl, getHitHighlightTerms } from './Highlighter.js';
 import { groupResultsByType, groupResultsByField } from './SearchService.js';
 import { getOptionId } from './A11yUtils.js';
 import { appendQueryParam } from './UrlUtils.js';
@@ -145,11 +145,11 @@ export function renderResultItem(result, index, query, options = {}) {
 
     const highlightedTitle = highlightMatches(title, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(result, 'title'),
+        terms: getHitHighlightTerms(result, 'title', query),
     });
     const highlightedDesc = snippet ? renderSnippetHtml(result, snippet, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(result, 'snippet'),
+        terms: getHitHighlightTerms(result, 'snippet', query),
     }) : '';
 
     // Build promotion marker (badge / tint per promotionDisplay)
@@ -265,30 +265,6 @@ function renderDebugInfo(result, translations = {}) {
     }
 
     return `<div class="sm-debug-info">${debugItems.join('')}</div>`;
-}
-
-function getHighlightTerms(result, area) {
-    const phrases = Array.isArray(result.matchedPhrases) ? result.matchedPhrases : [];
-    const matchedTerms = result.matchedTerms;
-
-    // Collect individual terms from matchedTerms
-    let terms = [];
-    if (matchedTerms) {
-        if (area === 'title' && Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
-            terms = matchedTerms.title;
-        } else if (area === 'snippet' && Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
-            terms = matchedTerms.content;
-        } else {
-            terms = [
-                ...(Array.isArray(matchedTerms.title) ? matchedTerms.title : []),
-                ...(Array.isArray(matchedTerms.content) ? matchedTerms.content : []),
-            ];
-        }
-    }
-
-    // Combine: full phrases (longest match first via normalizeTerms), then explicit terms
-    const combined = [...phrases, ...terms];
-    return combined.length > 0 ? combined : null;
 }
 
 function renderSnippetHtml(result, snippet, query, highlightOptions) {
@@ -709,11 +685,11 @@ function renderHierarchyParent(result, index, query, options = {}) {
 
     const highlightedTitle = highlightMatches(title, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(result, 'title'),
+        terms: getHitHighlightTerms(result, 'title', query),
     });
     const highlightedDesc = snippet ? renderSnippetHtml(result, snippet, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(result, 'snippet'),
+        terms: getHitHighlightTerms(result, 'snippet', query),
     }) : '';
 
     const debugInfo = debugEnabled ? renderDebugInfo(result, translations) : '';
@@ -797,11 +773,11 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
 
     const highlightedText = highlightMatches(text, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(heading, 'title') || getHighlightTerms(result, 'title'),
+        terms: getHitHighlightTerms(heading, 'title', query),
     });
     const highlightedDesc = snippet ? renderSnippetHtml(result, snippet, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(heading, 'snippet') || getHighlightTerms(result, 'snippet'),
+        terms: getHitHighlightTerms(heading, 'snippet', query),
     }) : '';
 
     const rowClass = isLast ? ' sm-hierarchy-child-row-last' : '';

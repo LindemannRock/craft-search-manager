@@ -294,30 +294,14 @@
                     return SearchManagerHighlighter.highlight(text, query, {
                         tag: 'mark',
                         className: '',
-                        terms: terms && terms.length > 0 ? terms : null,
+                        terms: Array.isArray(terms) ? terms : null,
                     });
                 }
                 return Craft.escapeHtml(text);
             }
 
-            function getHitTerms(hit, area) {
-                const phrases = Array.isArray(hit.matchedPhrases) ? hit.matchedPhrases : [];
-                const matchedTerms = hit.matchedTerms;
-                let terms = [];
-                if (matchedTerms) {
-                    if (area === 'title' && Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
-                        terms = matchedTerms.title;
-                    } else if (area === 'snippet' && Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
-                        terms = matchedTerms.content;
-                    } else {
-                        terms = [
-                            ...(Array.isArray(matchedTerms.title) ? matchedTerms.title : []),
-                            ...(Array.isArray(matchedTerms.content) ? matchedTerms.content : []),
-                        ];
-                    }
-                }
-                const combined = [...phrases, ...terms];
-                return combined.length > 0 ? combined : null;
+            function getHitTerms(hit, area, query) {
+                return SearchManagerHighlighter.getHitTerms(hit, area, query);
             }
 
             function renderDebugPill(label, value) {
@@ -1062,8 +1046,8 @@
                             const hasSectionHit = ['heading', 'intro', 'promoted-page'].includes(String(hit.sectionType || ''));
                             const rawTitle = hasSectionHit ? (hit.sectionTitle || hit.title || T.untitled) : (hit.title || T.untitled);
                             const rawSnippet = hit.snippet || '';
-                            const titleTerms = getHitTerms(hit, 'title');
-                            const descTerms = getHitTerms(hit, 'snippet');
+                            const titleTerms = getHitTerms(hit, 'title', query);
+                            const descTerms = getHitTerms(hit, 'snippet', query);
                             const title = smHighlight(rawTitle, query, titleTerms);
                             const rawDisplayText = rawSnippet;
                             const displayText = rawSnippet ? smHighlight(rawSnippet.substring(0, 400), query, descTerms) : '';

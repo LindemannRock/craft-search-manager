@@ -13,6 +13,7 @@ use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHeadingValueHelper;
 use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\search\QueryParser;
 use lindemannrock\searchmanager\search\StopWords;
 use lindemannrock\searchmanager\search\Tokenizer;
 use lindemannrock\searchmanager\SearchManager;
@@ -380,6 +381,13 @@ class IndexedSnippetService extends Component
         string $query,
         string $indexHandle,
     ): array {
+        $queryTerms = $query !== ''
+            ? $this->tokenizeQueryTermsForField($query, $indexHandle, 'content')
+            : [];
+        if ($query !== '' && $queryTerms === []) {
+            return [];
+        }
+
         $terms = [];
         $matchedTerms = $matchedTerms ?? ($hit['matchedTerms'] ?? null);
 
@@ -393,9 +401,7 @@ class IndexedSnippetService extends Component
             $terms = array_merge($terms, $phrases);
         }
 
-        if ($query !== '') {
-            $terms = array_merge($terms, $this->tokenizeQueryTerms($query, $indexHandle));
-        }
+        $terms = array_merge($terms, $queryTerms);
 
         $terms = array_values(array_unique(array_filter($terms, fn($term): bool => is_string($term) && $term !== '')));
         usort($terms, fn($a, $b) => mb_strlen($b) - mb_strlen($a));
@@ -854,12 +860,19 @@ class IndexedSnippetService extends Component
         string $query,
         string $indexHandle,
     ): array {
+        $queryTerms = $query !== ''
+            ? $this->tokenizeQueryTermsForField($query, $indexHandle, 'title')
+            : [];
+        if ($query !== '' && $queryTerms === []) {
+            return [];
+        }
+
         $matchedTerms = $matchedTerms ?? ($hit['matchedTerms'] ?? null);
         if (!empty($matchedTerms['title']) && is_array($matchedTerms['title'])) {
             return array_values(array_unique($matchedTerms['title']));
         }
 
-        return $this->tokenizeQueryTerms($query, $indexHandle);
+        return $queryTerms;
     }
 
     /**
@@ -873,6 +886,13 @@ class IndexedSnippetService extends Component
         string $query,
         string $indexHandle,
     ): array {
+        $queryTerms = $query !== ''
+            ? $this->tokenizeQueryTermsForField($query, $indexHandle, 'content')
+            : [];
+        if ($query !== '' && $queryTerms === []) {
+            return [];
+        }
+
         $matchedTerms = $matchedTerms ?? ($hit['matchedTerms'] ?? null);
         $terms = [];
         if (!empty($matchedTerms['content']) && is_array($matchedTerms['content'])) {
@@ -885,7 +905,7 @@ class IndexedSnippetService extends Component
             return array_values(array_unique($terms));
         }
 
-        return $this->tokenizeQueryTerms($query, $indexHandle);
+        return $queryTerms;
     }
 
     /**
@@ -938,5 +958,59 @@ class IndexedSnippetService extends Component
         }
 
         return array_values(array_unique($terms));
+    }
+
+    /**
+     * Tokenize only the query terms eligible to highlight in one display field.
+     *
+     * Unscoped terms are eligible for both fields. Field-filter terms are
+     * eligible only for their matching field.
+     *
+     * @return string[]
+     */
+    private function tokenizeQueryTermsForField(string $query, string $indexHandle, string $field): array
+    {
+        $language = null;
+        if ($indexHandle !== '') {
+            if (!array_key_exists($indexHandle, $this->tokenizeIndexLookupCache)) {
+                $this->tokenizeIndexLookupCache[$indexHandle] = SearchIndex::findByHandle($indexHandle);
+            }
+            $language = $this->tokenizeIndexLookupCache[$indexHandle]?->language;
+        }
+
+        $parsed = QueryParser::parse($query, $language);
+        if ($parsed->fieldFilters === []) {
+            return $this->tokenizeQueryTerms($query, $indexHandle);
+        }
+
+        $tokenizer = new Tokenizer();
+        $positiveTokens = $tokenizer->tokenize(implode(' ', [
+            ...$parsed->terms,
+            ...$parsed->wildcards,
+            ...$parsed->phrases,
+        ]));
+        $scopedTokenCounts = [];
+        $fieldTokens = [];
+
+        foreach ($parsed->fieldFilters as $scope => $values) {
+            $tokens = $tokenizer->tokenize(implode(' ', $values));
+            foreach ($tokens as $token) {
+                $scopedTokenCounts[$token] = ($scopedTokenCounts[$token] ?? 0) + 1;
+            }
+            if ($scope === $field) {
+                $fieldTokens = array_merge($fieldTokens, $tokens);
+            }
+        }
+
+        $unscopedTokens = [];
+        foreach ($positiveTokens as $token) {
+            if (($scopedTokenCounts[$token] ?? 0) > 0) {
+                --$scopedTokenCounts[$token];
+                continue;
+            }
+            $unscopedTokens[] = $token;
+        }
+
+        return $this->tokenizeQueryTerms(implode(' ', [...$unscopedTokens, ...$fieldTokens]), $indexHandle);
     }
 }
