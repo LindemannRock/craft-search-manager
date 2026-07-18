@@ -74,7 +74,7 @@ if (fs.existsSync(highlighterFile)) {
     test('Source escapeHtml avoids DOM serialization', !source.includes('document.createElement'));
     test('Source allowlists highlight tags', source.includes("const ALLOWED_HIGHLIGHT_TAGS = new Set(['mark', 'em', 'strong', 'u', 'b', 'i', 'span']);"));
     test('Source filters highlight class tokens', source.includes('const CSS_CLASS_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;'));
-    test('Source uses normalized highlight tag for markup', source.includes('return applyHighlightRanges(text, termList, safeTag, classAttr);'));
+    test('Source uses normalized highlight tag for markup', source.includes('return applyHighlightRanges(text, termList, safeTag, classAttr, queryTerms);'));
     test('Source does not render raw className in class attribute', !source.includes('classes.push(className);'));
     test('Source escapes constructed class attribute', source.includes("const classAttr = ` class=\"${escapeHtml(classes.join(' '))}\"`;"));
     test('Source preserves dotted filename-like queries as one highlight term', source.includes('terms.push(word);'));
@@ -228,6 +228,36 @@ try {
     const bareTitleTerms = getHitHighlightTerms(emptyMatchedTermsHit, 'title', 'search');
     const bareSnippetTerms = getHitHighlightTerms(emptyMatchedTermsHit, 'snippet', 'search');
     test('Bare query terms remain eligible for title and content', bareTitleTerms.join(',') === 'search' && bareSnippetTerms.join(',') === 'search');
+
+    test(
+        'Prefix extensions paint only the raw query prefix at word starts',
+        highlightMatches('Testing Tools', 'test tool', { terms: ['testing', 'tools'] })
+            === '<mark class="sm-highlight">Test</mark>ing <mark class="sm-highlight">Tool</mark>s',
+    );
+    test(
+        'Exact and typo matches paint the whole word',
+        highlightMatches('Testing jacket', 'test testing jaket', { terms: ['testing', 'jacket'] })
+            === '<mark class="sm-highlight">Testing</mark> <mark class="sm-highlight">jacket</mark>',
+    );
+    test(
+        'Mid-word occurrences never paint',
+        highlightMatches('stop', 'to') === 'stop',
+    );
+    test(
+        'Prefix painting is case and accent insensitive',
+        highlightMatches('Caféteria', 'cafe') === '<mark class="sm-highlight">Café</mark>teria'
+        && highlightMatches('Cafe\u0301teria', 'cafe') === '<mark class="sm-highlight">Cafe\u0301</mark>teria',
+    );
+    const prefixScopedHit = { matchedTerms: { title: ['testing'], content: ['tools'] } };
+    test(
+        'Prefix painting runs after field-scope filtering',
+        highlightMatches('Testing Tools', 'title:test content:tool', {
+            terms: getHitHighlightTerms(prefixScopedHit, 'title', 'title:test content:tool'),
+        }) === '<mark class="sm-highlight">Test</mark>ing Tools'
+        && highlightMatches('Testing Tools', 'title:test content:tool', {
+            terms: getHitHighlightTerms(prefixScopedHit, 'snippet', 'title:test content:tool'),
+        }) === 'Testing <mark class="sm-highlight">Tool</mark>s',
+    );
 
     const testToolSource = fs.readFileSync(path.join(__dirname, '..', 'testtool', 'src', 'test-tool.js'), 'utf8');
     test('CP test tool delegates field scope to the shared highlighter rule', testToolSource.includes('return SearchManagerHighlighter.getHitTerms(hit, area, query);'));

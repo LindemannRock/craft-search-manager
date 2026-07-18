@@ -201,6 +201,7 @@ class SearchManagerVariable
         $config = array_merge($config, $options);
 
         $highlighter = new \lindemannrock\searchmanager\search\Highlighter($config);
+        $queryTerms = [];
 
         // If terms is a string (query), parse it
         if (is_string($terms)) {
@@ -211,9 +212,10 @@ class SearchManagerVariable
                 ? $options['field']
                 : null;
             $terms = $highlighter->extractTermsFromParsedQuery($parsed, $field);
+            $queryTerms = $terms;
         }
 
-        return $highlighter->highlight($text, $terms, $options['stripTags'] ?? true);
+        return $highlighter->highlight($text, $terms, $options['stripTags'] ?? true, $queryTerms);
     }
 
     /**
@@ -242,6 +244,7 @@ class SearchManagerVariable
         $config = array_merge($config, $options);
 
         $highlighter = new \lindemannrock\searchmanager\search\Highlighter($config);
+        $queryTerms = [];
 
         // If terms is a string (query), parse it
         if (is_string($terms)) {
@@ -249,9 +252,10 @@ class SearchManagerVariable
             $language = \Craft::$app->getSites()->getCurrentSite()->language ?? 'en';
             $parsed = \lindemannrock\searchmanager\search\QueryParser::parse($terms, $language);
             $terms = $highlighter->extractTermsFromParsedQuery($parsed);
+            $queryTerms = $terms;
         }
 
-        return $highlighter->generateSnippets($text, $terms, $options['stripTags'] ?? true);
+        return $highlighter->generateSnippets($text, $terms, $options['stripTags'] ?? true, $queryTerms);
     }
 
     /**

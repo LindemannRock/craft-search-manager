@@ -94,18 +94,17 @@ class Highlighter
      * @param string $text Text to highlight
      * @param array $terms Search terms to highlight
      * @param bool $stripTags Strip HTML tags before highlighting
+     * @param array $queryTerms Eligible raw query terms used to identify prefix extensions
      * @return string Text with highlighted terms
+     * @since 5.54.0 Added word-start prefix painting and raw-query term derivation.
      */
-    public function highlight(string $text, array $terms, bool $stripTags = true): string
+    public function highlight(string $text, array $terms, bool $stripTags = true, array $queryTerms = []): string
     {
         if (empty($text) || empty($terms)) {
             return $text;
         }
 
-        // Sanitize HTML to prevent XSS (htmlspecialchars is safer than strip_tags)
-        if ($stripTags) {
-            $text = htmlspecialchars(strip_tags($text), ENT_QUOTES, 'UTF-8');
-        }
+        $text = $stripTags ? strip_tags($text) : $text;
 
         // Build opening tag
         $openTag = $this->class
@@ -113,18 +112,30 @@ class Highlighter
             : "<{$this->tag}>";
         $closeTag = "</{$this->tag}>";
 
-        // Highlight each term (case-insensitive)
-        foreach ($terms as $term) {
-            if (strlen($term) < 2) {
-                continue; // Skip very short terms
-            }
-
-            // Use Unicode-aware token boundaries so non-ASCII terms highlight correctly.
-            $pattern = '/(?<![\p{L}\p{N}_])(' . preg_quote($term, '/') . ')(?![\p{L}\p{N}_])/iu';
-            $text = preg_replace($pattern, $openTag . '$1' . $closeTag, $text);
+        $queryTerms = $queryTerms !== [] ? $queryTerms : $terms;
+        $ranges = $this->findHighlightRanges($text, $terms, $queryTerms);
+        if ($ranges === []) {
+            return $stripTags ? htmlspecialchars($text, ENT_QUOTES, 'UTF-8') : $text;
         }
 
-        return $text;
+        $result = '';
+        $cursor = 0;
+        foreach ($ranges as $range) {
+            $before = substr($text, $cursor, $range['start'] - $cursor);
+            $match = substr($text, $range['start'], $range['end'] - $range['start']);
+            if ($stripTags) {
+                $before = htmlspecialchars($before, ENT_QUOTES, 'UTF-8');
+                $match = htmlspecialchars($match, ENT_QUOTES, 'UTF-8');
+            }
+
+            $result .= $before . $openTag . $match . $closeTag;
+            $cursor = $range['end'];
+        }
+
+        $remainder = substr($text, $cursor);
+        $result .= $stripTags ? htmlspecialchars($remainder, ENT_QUOTES, 'UTF-8') : $remainder;
+
+        return $result;
     }
 
     /**
@@ -133,9 +144,11 @@ class Highlighter
      * @param string $text Full text content
      * @param array $terms Search terms
      * @param bool $stripTags Strip HTML tags
+     * @param array $queryTerms Eligible raw query terms used to identify prefix extensions
      * @return array Array of snippet strings
+     * @since 5.54.0 Added raw-query term derivation for prefix painting.
      */
-    public function generateSnippets(string $text, array $terms, bool $stripTags = true): array
+    public function generateSnippets(string $text, array $terms, bool $stripTags = true, array $queryTerms = []): array
     {
         if (empty($text) || empty($terms)) {
             return [];
@@ -233,7 +246,7 @@ class Highlighter
             }
 
             // Highlight terms in snippet
-            $snippet = $this->highlight($snippet, $terms, false);
+            $snippet = $this->highlight($snippet, $terms, false, $queryTerms);
 
             $snippets[] = $snippet;
             $usedRanges[] = ['start' => $start, 'end' => $end];
@@ -242,11 +255,209 @@ class Highlighter
         // If no snippets generated, return beginning
         if (empty($snippets)) {
             $snippet = mb_substr($text, 0, $this->snippetLength) . '...';
-            $snippet = $this->highlight($snippet, $terms, false);
+            $snippet = $this->highlight($snippet, $terms, false, $queryTerms);
             $snippets[] = $snippet;
         }
 
         return $snippets;
+    }
+
+    /**
+     * Painting contract: exact and typo terms paint whole words, strict raw-query
+     * prefix extensions paint only at word starts, and mid-word text never paints.
+     *
+     * @param array $terms Eligible matched terms
+     * @param array $queryTerms Eligible raw query terms
+     * @return list<array{start: int, end: int, type: string}>
+     */
+    private function findHighlightRanges(string $text, array $terms, array $queryTerms): array
+    {
+        $words = $this->textWords($text);
+        if ($words === []) {
+            return [];
+        }
+
+        $termTokens = $this->normalizedTermTokens($terms);
+        $rawTokens = $this->eligibleRawQueryTokens($queryTerms, $termTokens);
+        $rawExact = array_fill_keys($rawTokens, true);
+        $prefixExtensions = [];
+
+        foreach ($termTokens as $tokens) {
+            if (count($tokens) !== 1 || isset($rawExact[$tokens[0]])) {
+                continue;
+            }
+            foreach ($rawTokens as $rawToken) {
+                if ($this->isStrictPrefix($rawToken, $tokens[0])) {
+                    $prefixExtensions[$tokens[0]] = true;
+                    break;
+                }
+            }
+        }
+
+        $ranges = [];
+        foreach ($termTokens as $tokens) {
+            if (count($tokens) === 1 && isset($prefixExtensions[$tokens[0]])) {
+                continue;
+            }
+
+            $tokenCount = count($tokens);
+            $lastStart = count($words) - $tokenCount;
+            for ($i = 0; $i <= $lastStart; ++$i) {
+                $matches = true;
+                foreach ($tokens as $offset => $token) {
+                    if ($words[$i + $offset]['normalized'] !== $token) {
+                        $matches = false;
+                        break;
+                    }
+                }
+                if ($matches) {
+                    $ranges[] = [
+                        'start' => $words[$i]['start'],
+                        'end' => $words[$i + $tokenCount - 1]['end'],
+                        'type' => 'whole',
+                    ];
+                }
+            }
+        }
+
+        foreach ($rawTokens as $rawToken) {
+            foreach ($words as $word) {
+                if (!$this->isStrictPrefix($rawToken, $word['normalized'])) {
+                    continue;
+                }
+                $ranges[] = [
+                    'start' => $word['start'],
+                    'end' => $word['start'] + $this->prefixByteLength($word['text'], $rawToken),
+                    'type' => 'prefix',
+                ];
+            }
+        }
+
+        usort($ranges, static function(array $a, array $b): int {
+            if ($a['start'] !== $b['start']) {
+                return $a['start'] <=> $b['start'];
+            }
+
+            $length = ($b['end'] - $b['start']) <=> ($a['end'] - $a['start']);
+            return $length !== 0 ? $length : ($a['type'] === 'whole' ? -1 : 1);
+        });
+
+        $resolved = [];
+        $lastEnd = -1;
+        foreach ($ranges as $range) {
+            if ($range['start'] >= $lastEnd) {
+                $resolved[] = $range;
+                $lastEnd = $range['end'];
+            }
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * @return list<array{text: string, normalized: string, start: int, end: int}>
+     */
+    private function textWords(string $text): array
+    {
+        preg_match_all('/[\p{L}\p{N}\p{M}_]+/u', $text, $matches, PREG_OFFSET_CAPTURE);
+        $words = [];
+        foreach ($matches[0] as $match) {
+            $word = (string)$match[0];
+            $start = (int)$match[1];
+            $words[] = [
+                'text' => $word,
+                'normalized' => TermNormalizer::normalize($word),
+                'start' => $start,
+                'end' => $start + strlen($word),
+            ];
+        }
+
+        return $words;
+    }
+
+    /**
+     * @param array $terms
+     * @return list<list<string>>
+     */
+    private function normalizedTermTokens(array $terms): array
+    {
+        $normalized = [];
+        $seen = [];
+        foreach ($terms as $term) {
+            if (!is_string($term)) {
+                continue;
+            }
+            preg_match_all('/[\p{L}\p{N}\p{M}_]+/u', TermNormalizer::normalize($term), $matches);
+            $tokens = array_values(array_filter($matches[0], static fn(string $token): bool => mb_strlen($token) >= 2));
+            if ($tokens === []) {
+                continue;
+            }
+            $key = implode("\0", $tokens);
+            if (!isset($seen[$key])) {
+                $seen[$key] = true;
+                $normalized[] = $tokens;
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param array $queryTerms
+     * @param list<list<string>> $termTokens
+     * @return list<string>
+     */
+    private function eligibleRawQueryTokens(array $queryTerms, array $termTokens): array
+    {
+        $matchedTokens = [];
+        foreach ($termTokens as $tokens) {
+            if (count($tokens) === 1) {
+                $matchedTokens[] = $tokens[0];
+            }
+        }
+
+        $rawTokens = [];
+        foreach ($this->normalizedTermTokens($queryTerms) as $tokens) {
+            if (count($tokens) !== 1) {
+                continue;
+            }
+            $rawToken = $tokens[0];
+            foreach ($matchedTokens as $matchedToken) {
+                if ($rawToken === $matchedToken || $this->isStrictPrefix($rawToken, $matchedToken)) {
+                    $rawTokens[$rawToken] = true;
+                    break;
+                }
+            }
+        }
+
+        return array_keys($rawTokens);
+    }
+
+    private function isStrictPrefix(string $prefix, string $word): bool
+    {
+        return mb_strlen($word) > mb_strlen($prefix) && str_starts_with($word, $prefix);
+    }
+
+    private function prefixByteLength(string $word, string $normalizedPrefix): int
+    {
+        $characters = preg_split('//u', $word, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $normalized = '';
+        $prefix = '';
+        $targetLength = mb_strlen($normalizedPrefix);
+        $reachedTarget = false;
+
+        foreach ($characters as $character) {
+            $characterNormalized = TermNormalizer::normalize($character);
+            if ($reachedTarget && $characterNormalized !== '') {
+                break;
+            }
+
+            $prefix .= $character;
+            $normalized .= $characterNormalized;
+            $reachedTarget = mb_strlen($normalized) >= $targetLength;
+        }
+
+        return strlen($prefix);
     }
 
     /**

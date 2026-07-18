@@ -58,9 +58,9 @@ final class WidgetFrontendHardeningTest extends TestCase
         self::assertStringContainsString('const safeTag = normalizeHighlightTag(tag);', $source);
         self::assertStringContainsString('const classTokens = normalizeClassTokens(className);', $source);
         self::assertStringContainsString('const classAttr = ` class="${escapeHtml(classes.join(\' \'))}"`;', $source);
-        self::assertStringContainsString('return applyHighlightRanges(text, termList, safeTag, classAttr);', $source);
+        self::assertStringContainsString('return applyHighlightRanges(text, termList, safeTag, classAttr, queryTerms);', $source);
         self::assertStringNotContainsString('classes.push(className);', $source);
-        self::assertStringNotContainsString('return applyHighlightRanges(text, termList, tag, classAttr);', $source);
+        self::assertStringNotContainsString('return applyHighlightRanges(text, termList, tag, classAttr, queryTerms);', $source);
     }
 
     public function testWidgetUsesPublicHeadingsAndClientSnippetHighlighting(): void

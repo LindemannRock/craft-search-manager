@@ -133,6 +133,8 @@ Highlight search terms in text by wrapping them with an HTML tag.
 
 When `terms` is a query string, pass the display area's `field` so `title:` terms paint titles only and `content:` terms paint content only; unscoped terms paint both. If every query term belongs to the other field, the helper returns the text without highlights. Omitting `field` preserves the legacy scope-blind behavior. Arrays contain no scope metadata and are highlighted as provided.
 
+Exact and typo-corrected matches paint the whole matched word. Strict prefix extensions paint only the typed word-start prefix (`test` → `<mark>Test</mark>ing), and mid-word substrings are never painted.
+
 ### `snippets(text, terms, options)`
 
 Generate context snippets with highlighted terms.

@@ -4,7 +4,7 @@ Search Manager can highlight matched terms in your results and generate context 
 
 ## How It Works
 
-Highlighting wraps matched search terms with an HTML tag (default: `<mark>`). Snippets extract portions of text around the matched terms so users can see the match in context.
+Highlighting wraps matched search terms with an HTML tag (default: `<mark>`). Exact and typo-corrected matches paint the whole matched word, while a prefix extension paints only the part the visitor typed: `test` in “Testing” becomes `<mark>Test</mark>ing`. Matches must begin at a word boundary, so `to` never paints the middle of “stop”. Snippets extract portions of text around the matched terms so users can see the match in context.
 
 Both features work on any text you pass in — they're not limited to indexed fields. You can highlight titles, body content, custom fields, or any string.
 

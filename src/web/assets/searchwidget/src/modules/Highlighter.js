@@ -86,6 +86,8 @@ export function escapeRegex(string) {
  * for use when explicit matched terms are not available.
  * Scope contract: unscoped terms paint both fields, scoped terms paint only
  * their matching field, and no eligible terms paint nothing.
+ * Painting contract: exact and typo terms paint whole words, strict raw-query
+ * prefix extensions paint only at word starts, and mid-word text never paints.
  *
  * @param {string} query - The search query to parse
  * @param {'title'|'content'|null} field - Optional display-field scope
@@ -226,12 +228,12 @@ export function highlightMatches(text, query, options = {}) {
     const classes = ['sm-highlight', ...classTokens];
     const classAttr = ` class="${escapeHtml(classes.join(' '))}"`;
 
-    const termList = buildHighlightTerms(query, terms);
+    const { termList, queryTerms } = buildHighlightTerms(query, terms);
     if (termList.length === 0) {
         return escapeHtml(text);
     }
 
-    return applyHighlightRanges(text, termList, safeTag, classAttr);
+    return applyHighlightRanges(text, termList, safeTag, classAttr, queryTerms);
 }
 
 export function normalizeHighlightTag(tag) {
@@ -248,15 +250,23 @@ export function normalizeClassTokens(className) {
 }
 
 function buildHighlightTerms(query, terms) {
-    if (Array.isArray(terms)) {
-        return normalizeTerms(terms);
-    }
+    const termList = Array.isArray(terms)
+        ? normalizeTerms(terms)
+        : normalizeTerms(parseQueryTerms(query));
+    const normalizedMatchedTerms = termList
+        .map(term => normalizedWordTokens(term))
+        .filter(tokens => tokens.length === 1)
+        .map(tokens => tokens[0]);
+    const queryTerms = normalizeTerms(parseQueryTerms(query)).filter(term => {
+        const tokens = normalizedWordTokens(term);
+        if (tokens.length !== 1) return false;
 
-    if (!query) {
-        return [];
-    }
+        return normalizedMatchedTerms.some(matched => (
+            tokens[0] === matched || isStrictPrefix(tokens[0], matched)
+        ));
+    });
 
-    return normalizeTerms(parseQueryTerms(query));
+    return { termList, queryTerms };
 }
 
 function normalizeTerms(terms) {
@@ -265,28 +275,58 @@ function normalizeTerms(terms) {
         .filter(w => typeof w === 'string' && w.length > 0)
         .sort((a, b) => b.length - a.length)
         .filter(w => {
-            const lower = w.toLowerCase();
-            if (seen.has(lower)) return false;
-            seen.add(lower);
+            const normalized = normalizeForHighlight(w);
+            if (seen.has(normalized)) return false;
+            seen.add(normalized);
             return true;
         });
 }
 
-function applyHighlightRanges(text, terms, tag, classAttr) {
-    const lowerText = text.toLowerCase();
+function applyHighlightRanges(text, terms, tag, classAttr, queryTerms) {
+    const words = textWords(text);
     const ranges = [];
+    const termTokens = terms
+        .map(term => normalizedWordTokens(term))
+        .filter(tokens => tokens.length > 0);
+    const rawTokens = queryTerms
+        .map(term => normalizedWordTokens(term))
+        .filter(tokens => tokens.length === 1)
+        .map(tokens => tokens[0]);
+    const rawExact = new Set(rawTokens);
+    const prefixExtensions = new Set();
 
-    terms.forEach(term => {
-        const lowerTerm = term.toLowerCase();
-        if (!lowerTerm) return;
-
-        let start = 0;
-        while (start < lowerText.length) {
-            const index = lowerText.indexOf(lowerTerm, start);
-            if (index === -1) break;
-            ranges.push({ start: index, end: index + lowerTerm.length });
-            start = index + lowerTerm.length;
+    termTokens.forEach(tokens => {
+        if (tokens.length !== 1 || rawExact.has(tokens[0])) return;
+        if (rawTokens.some(rawToken => isStrictPrefix(rawToken, tokens[0]))) {
+            prefixExtensions.add(tokens[0]);
         }
+    });
+
+    termTokens.forEach(tokens => {
+        if (tokens.length === 1 && prefixExtensions.has(tokens[0])) return;
+
+        const lastStart = words.length - tokens.length;
+        for (let i = 0; i <= lastStart; i += 1) {
+            const matches = tokens.every((token, offset) => words[i + offset].normalized === token);
+            if (matches) {
+                ranges.push({
+                    start: words[i].start,
+                    end: words[i + tokens.length - 1].end,
+                    type: 'whole',
+                });
+            }
+        }
+    });
+
+    rawTokens.forEach(rawToken => {
+        words.forEach(word => {
+            if (!isStrictPrefix(rawToken, word.normalized)) return;
+            ranges.push({
+                start: word.start,
+                end: word.start + prefixCodeUnitLength(word.text, rawToken),
+                type: 'prefix',
+            });
+        });
     });
 
     if (ranges.length === 0) {
@@ -295,7 +335,9 @@ function applyHighlightRanges(text, terms, tag, classAttr) {
 
     ranges.sort((a, b) => {
         if (a.start !== b.start) return a.start - b.start;
-        return (b.end - b.start) - (a.end - a.start);
+        const length = (b.end - b.start) - (a.end - a.start);
+        if (length !== 0) return length;
+        return a.type === 'whole' ? -1 : 1;
     });
 
     const merged = [];
@@ -321,6 +363,56 @@ function applyHighlightRanges(text, terms, tag, classAttr) {
     }
 
     return result;
+}
+
+function normalizeForHighlight(value) {
+    return String(value || '')
+        .normalize('NFKC')
+        .replace(/\u0640/gu, '')
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/\p{M}/gu, mark => (mark === '\u3099' || mark === '\u309A' ? mark : ''))
+        .normalize('NFC');
+}
+
+function normalizedWordTokens(value) {
+    return normalizeForHighlight(value).match(/[\p{L}\p{N}\p{M}_]+/gu) || [];
+}
+
+function textWords(text) {
+    const words = [];
+    const pattern = /[\p{L}\p{N}\p{M}_]+/gu;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+        words.push({
+            text: match[0],
+            normalized: normalizeForHighlight(match[0]),
+            start: match.index,
+            end: match.index + match[0].length,
+        });
+    }
+    return words;
+}
+
+function isStrictPrefix(prefix, word) {
+    return word.length > prefix.length && word.startsWith(prefix);
+}
+
+function prefixCodeUnitLength(word, normalizedPrefix) {
+    let normalized = '';
+    let prefix = '';
+    let reachedTarget = false;
+
+    for (const character of Array.from(word)) {
+        const characterNormalized = normalizeForHighlight(character);
+        if (reachedTarget && characterNormalized !== '') break;
+
+        prefix += character;
+        normalized += characterNormalized;
+        reachedTarget = Array.from(normalized).length >= Array.from(normalizedPrefix).length;
+    }
+
+    return prefix.length;
 }
 
 /**

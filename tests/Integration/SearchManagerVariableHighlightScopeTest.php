@@ -53,6 +53,20 @@ final class SearchManagerVariableHighlightScopeTest extends TestCase
         self::assertSame('beta remains plain', $highlighted);
     }
 
+    public function testPrefixPaintingRunsAfterFieldScopeFiltering(): void
+    {
+        $variable = new SearchManagerVariable();
+
+        self::assertSame(
+            '<mark>Test</mark>ing Tools',
+            $variable->highlight('Testing Tools', 'title:test content:tool', ['field' => 'title', 'class' => '']),
+        );
+        self::assertSame(
+            'Testing <mark>Tool</mark>s',
+            $variable->highlight('Testing Tools', 'title:test content:tool', ['field' => 'content', 'class' => '']),
+        );
+    }
+
     public function testUnscopedAndDefaultBehaviorRemainUnchanged(): void
     {
         $variable = new SearchManagerVariable();

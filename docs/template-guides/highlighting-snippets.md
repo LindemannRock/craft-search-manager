@@ -22,6 +22,8 @@ The `|raw` filter is required because highlighting inserts HTML tags.
 
 For query strings that use `title:` or `content:`, pass the area being rendered as `field: 'title'` or `field: 'content'`. Unscoped terms remain eligible in both areas, terms scoped to the other area are ignored, and a query with no eligible terms leaves the text unhighlighted. Omitting `field` keeps the legacy scope-blind output.
 
+Painting follows word starts. Exact and typo-corrected matches paint the whole matched word (`jaket` → `<mark>jacket</mark>`), while strict prefix extensions paint only the typed prefix (`test` → `<mark>Test</mark>ing`, `tool` → `<mark>Tool</mark>s`). Mid-word substrings never paint, and a whole-word range wins if it overlaps a shorter prefix range.
+
 ### Custom Options
 
 ```twig
@@ -299,7 +301,7 @@ const html = SearchManagerHighlighter.highlight(
 | `enabled` | `boolean` | `true` | Set to `false` to return escaped text without highlights |
 | `tag` | `string` | `'mark'` | HTML tag to wrap matches |
 | `className` | `string` | `''` | Additional CSS class (always includes `sm-highlight`) |
-| `terms` | `array\|null` | `null` | Explicit terms array (overrides query parsing). Use this for phrase highlighting — pass full phrases as array items (e.g., `['craft cms', 'search']`) |
+| `terms` | `array\|null` | `null` | Explicit matched terms array. These determine which words are eligible; the query still supplies raw tokens for prefix-extension painting. Use full phrases as array items for phrase highlighting (e.g., `['craft cms', 'search']`) |
 
 #### `escapeHtml(text)`
 
@@ -369,8 +371,9 @@ Without explicit `terms`, the highlighter parses the query automatically — ext
 The JavaScript highlighter includes several smart features:
 
 - **CamelCase splitting**: Searching "date" will highlight the "Date" part in "DateRangeHelper"
-- **Longest-first matching**: Prevents nested/overlapping tags when longer and shorter terms overlap
-- **Overlap resolution**: When candidate matches overlap, the earliest match wins (the longest on ties) and the overlapping candidate is dropped — each match gets its own highlight tag
+- **Word-start matching**: Exact and typo terms paint whole words; prefix extensions paint only the typed prefix; mid-word substrings are ignored
+- **Longest-first matching**: Prevents nested/overlapping tags when longer and shorter ranges start together
+- **Overlap resolution**: When candidate matches overlap, the earliest match wins and the longer whole-word range wins on the same word
 - **HTML escaping**: All text is escaped before inserting highlight tags, preventing XSS
 
 ### Example: Custom Search UI
