@@ -40,7 +40,7 @@ class AnalyticsRulesService
                 'ruleName',
                 'actionType',
                 'COUNT(*) as hits',
-                'AVG(resultsCount) as avgResults',
+                'AVG([[resultsCount]]) as [[avgResults]]',
             ])
             ->from('{{%searchmanager_rule_analytics}}')
             ->groupBy(['queryRuleId', 'ruleName', 'actionType'])
@@ -109,7 +109,7 @@ class AnalyticsRulesService
             ->select([
                 'query',
                 'COUNT(*) as count',
-                'COUNT(DISTINCT queryRuleId) as rulesTriggered',
+                'COUNT(DISTINCT [[queryRuleId]]) as [[rulesTriggered]]',
             ])
             ->from('{{%searchmanager_rule_analytics}}')
             ->groupBy('query')
@@ -153,11 +153,11 @@ class AnalyticsRulesService
         // Get summary stats
         $totalTriggers = (int)(clone $query)->count();
         $uniqueQueries = (int)(clone $query)->select('COUNT(DISTINCT query)')->scalar();
-        $avgResultsAfter = (float)(clone $query)->select('AVG(resultsCount)')->scalar();
+        $avgResultsAfter = (float)(clone $query)->select('AVG([[resultsCount]])')->scalar();
 
         // Get top queries
         $topQueries = (clone $query)
-            ->select(['query', 'COUNT(*) as count', 'AVG(resultsCount) as avgResults', 'MAX(dateCreated) as lastTriggered'])
+            ->select(['query', 'COUNT(*) as count', 'AVG([[resultsCount]]) as [[avgResults]]', 'MAX([[dateCreated]]) as [[lastTriggered]]'])
             ->groupBy('query')
             ->orderBy(['count' => SORT_DESC])
             ->limit(10)
@@ -214,7 +214,7 @@ class AnalyticsRulesService
                 'elementTitle',
                 'position',
                 'COUNT(*) as impressions',
-                'COUNT(DISTINCT query) as uniqueQueries',
+                'COUNT(DISTINCT query) as [[uniqueQueries]]',
             ])
             ->from('{{%searchmanager_promotion_analytics}}')
             ->groupBy(['promotionId', 'elementId', 'elementTitle', 'position'])
@@ -284,7 +284,7 @@ class AnalyticsRulesService
             ->select([
                 'query',
                 'COUNT(*) as count',
-                'COUNT(DISTINCT promotionId) as promotionsShown',
+                'COUNT(DISTINCT [[promotionId]]) as [[promotionsShown]]',
             ])
             ->from('{{%searchmanager_promotion_analytics}}')
             ->groupBy('query')
@@ -332,7 +332,7 @@ class AnalyticsRulesService
 
         // Get top queries
         $topQueries = (clone $query)
-            ->select(['query', 'COUNT(*) as count', 'AVG(position) as avgPosition', 'MAX(dateCreated) as lastShown'])
+            ->select(['query', 'COUNT(*) as count', 'AVG([[position]]) as [[avgPosition]]', 'MAX([[dateCreated]]) as [[lastShown]]'])
             ->groupBy('query')
             ->orderBy(['count' => SORT_DESC])
             ->limit(10)
