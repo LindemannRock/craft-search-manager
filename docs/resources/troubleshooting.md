@@ -196,6 +196,18 @@ This happens when content contains Unicode character variants that MySQL's `utf8
 
 **Fix:** Update to the latest version of Search Manager and rebuild your indices. The current version normalizes all text before storage (tatweel removal, digit folding, accent folding) and uses upsert writes on MySQL to handle any remaining collation equivalences gracefully. See [Text Normalization](../feature-tour/search-features.md#text-normalization) for details.
 
+## SQL Errors on PostgreSQL (Column Does Not Exist / Ambiguous / Boolean Max)
+
+```text
+SQLSTATE[42703]: column "resultscount" does not exist
+SQLSTATE[42702]: column reference "frequency" is ambiguous
+SQLSTATE[42883]: function max(boolean) does not exist
+```
+
+Any of these on a PostgreSQL install — during indexing, in the analytics dashboard, or in storage stats — means you're on a version whose SQL was only exercised on MySQL. PostgreSQL folds unquoted identifiers to lowercase, resolves upsert column references differently, and has no `MAX()`/`MIN()` over boolean columns; MySQL surfaces none of these, so they were invisible there.
+
+**Fix:** Update to the latest version of Search Manager. All plugin SQL is now dialect-safe and verified against a live PostgreSQL install. After updating, rebuild your indices if indexing was previously failing.
+
 ## Connection Refused (Redis)
 
 ```text

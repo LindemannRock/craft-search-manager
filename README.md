@@ -5,7 +5,7 @@
 [![Latest Version](https://img.shields.io/packagist/v/lindemannrock/craft-search-manager.svg)](https://packagist.org/packages/lindemannrock/craft-search-manager)
 [![Craft CMS](https://img.shields.io/badge/Craft%20CMS-5.10%2B-orange.svg)](https://craftcms.com/)
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-blue.svg)](https://php.net/)
-[![Logging Library](https://img.shields.io/badge/Logging%20Library-5.15.1%2B-green.svg)](https://github.com/LindemannRock/craft-logging-library)
+[![Logging Library](https://img.shields.io/badge/Logging%20Library-5.16%2B-green.svg)](https://github.com/LindemannRock/craft-logging-library)
 [![License](https://img.shields.io/packagist/l/lindemannrock/craft-search-manager.svg)](LICENSE.md)
 
 Advanced multi-backend search management for Craft CMS with BM25 ranking, analytics, caching, query rules, promotions, and a frontend search widget.
@@ -46,7 +46,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 
 - Craft CMS 5.10+
 - PHP 8.2+
-- [Logging Library](https://github.com/LindemannRock/craft-logging-library) 5.15.1+ (required by Composer; install in CP for log viewing)
+- [Logging Library](https://github.com/LindemannRock/craft-logging-library) 5.16+ (required by Composer; install in CP for log viewing)
 
 ## Installation
 
