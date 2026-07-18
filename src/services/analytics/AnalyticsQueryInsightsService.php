@@ -45,8 +45,8 @@ class AnalyticsQueryInsightsService
             ->select([
                 'query',
                 'siteId',
-                'SUM(resultsCount) AS actionResults',
-                'MAX(dateCreated) AS actionLastSearched',
+                'SUM([[resultsCount]]) AS [[actionResults]]',
+                'MAX([[dateCreated]]) AS [[actionLastSearched]]',
             ])
             ->from('{{%searchmanager_analytics}}')
             ->groupBy(['query', 'siteId', new Expression($identityExpr)]);
@@ -68,8 +68,8 @@ class AnalyticsQueryInsightsService
                 'query',
                 'siteId',
                 'COUNT(*) AS count',
-                'SUM(actionResults) AS totalResults',
-                'MAX(actionLastSearched) AS lastSearched',
+                'SUM([[actionResults]]) AS [[totalResults]]',
+                'MAX([[actionLastSearched]]) AS [[lastSearched]]',
             ])
             ->from(['t' => $perAction])
             ->groupBy(['query', 'siteId'])
@@ -342,11 +342,11 @@ class AnalyticsQueryInsightsService
         $perAction = (new Query())
             ->select([
                 'query',
-                'MAX(dateCreated) AS actionLastSearched',
+                'MAX([[dateCreated]]) AS [[actionLastSearched]]',
             ])
             ->from('{{%searchmanager_analytics}}')
             ->groupBy(['query', new Expression($identityExpr)])
-            ->having('MAX(isHit) = 0 AND MAX(wasRedirected) = 0 AND MAX(promotionsShown) = 0');
+            ->having($this->zeroOutcomeHaving());
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
@@ -356,7 +356,7 @@ class AnalyticsQueryInsightsService
 
         // 2. Cluster candidates: count zero-result actions per query.
         $query = (new Query())
-            ->select(['query', 'COUNT(*) as count', 'MAX(actionLastSearched) as lastSearched'])
+            ->select(['query', 'COUNT(*) as count', 'MAX([[actionLastSearched]]) as [[lastSearched]]'])
             ->from(['t' => $perAction])
             ->groupBy('query')
             ->orderBy(['count' => SORT_DESC])
