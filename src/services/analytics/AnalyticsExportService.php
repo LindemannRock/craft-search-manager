@@ -12,6 +12,7 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
 use lindemannrock\base\helpers\DateFormatHelper;
+use lindemannrock\base\helpers\DbHelper;
 use lindemannrock\base\helpers\ExportHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
@@ -68,7 +69,7 @@ class AnalyticsExportService
         $zeroResultsSub = (clone $query)
             ->select(new Expression("$identityExpr AS action"))
             ->groupBy(new Expression($identityExpr))
-            ->having('MAX(isHit) = 0 AND MAX(wasRedirected) = 0 AND MAX(promotionsShown) = 0');
+            ->having($this->zeroOutcomeHaving());
         $zeroResults = (int)(new Query())->from(['t' => $zeroResultsSub])->count();
         $zeroResultsRate = $totalSearches > 0 ? round(($zeroResults / $totalSearches) * 100, 1) : 0;
 
@@ -98,9 +99,9 @@ class AnalyticsExportService
         $perActionPerDay = (new Query())
             ->select([
                 'date' => $localDateExpr,
-                'MAX(isHit) AS isHit',
-                'MAX(wasRedirected) AS wasRedirected',
-                'MAX(promotionsShown) AS promotionsShown',
+                'MAX(' . DbHelper::boolToInt('isHit') . ') AS [[isHit]]',
+                'MAX(' . DbHelper::boolToInt('wasRedirected') . ') AS [[wasRedirected]]',
+                'MAX([[promotionsShown]]) AS [[promotionsShown]]',
             ])
             ->from('{{%searchmanager_analytics}}')
             ->groupBy([$localDateExpr, new Expression($identityExpr)]);
@@ -118,8 +119,8 @@ class AnalyticsExportService
             ->select([
                 'date',
                 'COUNT(*) as total',
-                'SUM(CASE WHEN isHit = 1 OR wasRedirected = 1 OR promotionsShown > 0 THEN 1 ELSE 0 END) as withResults',
-                'SUM(CASE WHEN isHit = 0 AND wasRedirected = 0 AND promotionsShown = 0 THEN 1 ELSE 0 END) as zeroResults',
+                'SUM(CASE WHEN [[isHit]] = 1 OR [[wasRedirected]] = 1 OR [[promotionsShown]] > 0 THEN 1 ELSE 0 END) as [[withResults]]',
+                'SUM(CASE WHEN [[isHit]] = 0 AND [[wasRedirected]] = 0 AND [[promotionsShown]] = 0 THEN 1 ELSE 0 END) as [[zeroResults]]',
             ])
             ->from(['t' => $perActionPerDay])
             ->groupBy('date')
