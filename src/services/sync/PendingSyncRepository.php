@@ -14,6 +14,7 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use craft\queue\Queue;
+use lindemannrock\base\helpers\DbHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\jobs\BatchSyncJob;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -110,6 +111,11 @@ class PendingSyncRepository extends Component
         $now = Db::prepareDateForDb(new \DateTime());
         $submitted = 0;
 
+        // Existing-row references inside the upsert's DO UPDATE expressions —
+        // see DbHelper::existingColumn() for the PostgreSQL ambiguity this avoids.
+        $existing = static fn(string $column): string => DbHelper::existingColumn('searchmanager_pending_syncs', $column);
+        $existingStatus = $existing('status');
+
         foreach ($rows as $row) {
             $data = [
                 'indexHandle' => (string)$row['indexHandle'],
@@ -139,53 +145,53 @@ class PendingSyncRepository extends Component
                         'elementType' => $data['elementType'],
                         'op' => $data['op'],
                         'status' => new Expression(
-                            'CASE WHEN [[status]] = :processing THEN [[status]] ELSE :pending END',
+                            "CASE WHEN $existingStatus = :processing THEN $existingStatus ELSE :pending END",
                             [
                                 ':processing' => self::STATUS_PROCESSING,
                                 ':pending' => self::STATUS_PENDING,
                             ],
                         ),
                         'attemptCount' => new Expression(
-                            'CASE WHEN [[status]] = :processing THEN [[attemptCount]] ELSE 0 END',
+                            "CASE WHEN $existingStatus = :processing THEN " . $existing('attemptCount') . ' ELSE 0 END',
                             [
                                 ':processing' => self::STATUS_PROCESSING,
                             ],
                         ),
                         'queuedAt' => $now,
                         'nextAttemptAt' => new Expression(
-                            'CASE WHEN [[status]] = :processing THEN [[nextAttemptAt]] ELSE :now END',
+                            "CASE WHEN $existingStatus = :processing THEN " . $existing('nextAttemptAt') . ' ELSE :now END',
                             [
                                 ':processing' => self::STATUS_PROCESSING,
                                 ':now' => $now,
                             ],
                         ),
                         'claimedAt' => new Expression(
-                            'CASE WHEN [[status]] = :processing THEN [[claimedAt]] ELSE NULL END',
+                            "CASE WHEN $existingStatus = :processing THEN " . $existing('claimedAt') . ' ELSE NULL END',
                             [
                                 ':processing' => self::STATUS_PROCESSING,
                             ],
                         ),
                         'claimToken' => new Expression(
-                            'CASE WHEN [[status]] = :processing THEN [[claimToken]] ELSE NULL END',
+                            "CASE WHEN $existingStatus = :processing THEN " . $existing('claimToken') . ' ELSE NULL END',
                             [
                                 ':processing' => self::STATUS_PROCESSING,
                             ],
                         ),
                         'dirtyAt' => new Expression(
-                            'CASE WHEN [[status]] = :processing THEN :now ELSE NULL END',
+                            "CASE WHEN $existingStatus = :processing THEN :now ELSE NULL END",
                             [
                                 ':processing' => self::STATUS_PROCESSING,
                                 ':now' => $now,
                             ],
                         ),
                         'lastError' => new Expression(
-                            'CASE WHEN [[status]] = :processing THEN [[lastError]] ELSE NULL END',
+                            "CASE WHEN $existingStatus = :processing THEN " . $existing('lastError') . ' ELSE NULL END',
                             [
                                 ':processing' => self::STATUS_PROCESSING,
                             ],
                         ),
                         'lastProcessedAt' => new Expression(
-                            'CASE WHEN [[status]] = :processing THEN [[lastProcessedAt]] ELSE NULL END',
+                            "CASE WHEN $existingStatus = :processing THEN " . $existing('lastProcessedAt') . ' ELSE NULL END',
                             [
                                 ':processing' => self::STATUS_PROCESSING,
                             ],
