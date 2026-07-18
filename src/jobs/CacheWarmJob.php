@@ -157,7 +157,7 @@ class CacheWarmJob extends BaseJob implements RetryableJobInterface
         // Query the analytics table for popular query identities. Keep a stable
         // display query so warming preserves original user-entered casing.
         $results = (new \craft\db\Query())
-            ->select(['MIN(query) AS query', 'normalizedQuery', 'siteId', 'COUNT(*) as searchCount'])
+            ->select(['MIN(query) AS query', 'normalizedQuery', 'siteId', 'COUNT(*) as [[searchCount]]'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['indexHandle' => $indexHandle])
             ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb($cutoffDate)])
