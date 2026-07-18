@@ -32,10 +32,12 @@ These settings control the default behavior. You can override them per-call in y
     {% set entry = craft.entries.id(hit.elementId).one() %}
 
     {# Highlight matched terms in the title #}
-    <h2>{{ craft.searchManager.highlight(entry.title, 'craft cms')|raw }}</h2>
+    <h2>{{ craft.searchManager.highlight(entry.title, query, { field: 'title' })|raw }}</h2>
     {# Output: This is about <mark>craft</mark> <mark>cms</mark> #}
 {% endfor %}
 ```
+
+When the query can contain `title:` or `content:`, pass `field: 'title'` for titles and `field: 'content'` for body text or snippets. Unscoped terms paint both areas; scoped terms paint only their matching area; and no eligible terms means nothing is painted. Leave `field` unset only when the legacy scope-blind behavior is intentional.
 
 ### Custom Options
 
@@ -44,6 +46,7 @@ These settings control the default behavior. You can override them per-call in y
     tag: 'em',
     class: 'search-highlight',
     stripTags: true,
+    field: 'content',
 })|raw }}
 ```
 

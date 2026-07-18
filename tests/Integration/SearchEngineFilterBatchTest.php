@@ -46,6 +46,11 @@ final class SearchEngineFilterBatchTest extends TestCase
                 '1:2' => 'de',
                 '1:3' => 'en',
             ],
+            documentTermsById: [
+                '1:1' => ['protein' => 1],
+                '1:2' => ['protein' => 1],
+                '1:3' => ['protein' => 1],
+            ],
         );
     }
 
@@ -73,5 +78,20 @@ final class SearchEngineFilterBatchTest extends TestCase
         $this->assertSame(0, $storage->getDocumentLanguageCalls);
         $this->assertSame([3], $storage->getDocumentLanguagesBatchSizes);
         $this->assertSame([1, 3], array_keys($results));
+    }
+
+    public function testContentFieldFilterUsesTitleAndDocumentTermBatches(): void
+    {
+        $storage = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'test-index');
+
+        $results = $engine->search('content:protein', self::SITE_ID);
+
+        $this->assertSame(0, $storage->getTitleTermsCalls);
+        $this->assertSame([3, 3], $storage->getTitleTermsBatchSizes);
+        $this->assertSame(0, $storage->getDocumentTermsCalls);
+        $this->assertSame(1, $storage->getDocumentTermsBatchCalls);
+        $this->assertSame([3], $storage->getDocumentTermsBatchSizes);
+        $this->assertSame([2], array_keys($results));
     }
 }

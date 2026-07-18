@@ -84,6 +84,8 @@ export function escapeRegex(string) {
  * boolean operators (AND/OR/NOT in multiple languages), field prefixes,
  * wildcards, and boost markers. This mirrors the backend QueryParser logic
  * for use when explicit matched terms are not available.
+ * Scope contract: unscoped terms paint both fields, scoped terms paint only
+ * their matching field, and no eligible terms paint nothing.
  *
  * @param {string} query - The search query to parse
  * @param {'title'|'content'|null} field - Optional display-field scope

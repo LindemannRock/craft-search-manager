@@ -1293,20 +1293,25 @@ class SearchEngine
      */
     private function applyFieldFilters(array $docScores, array $fieldFilters, int $siteId): array
     {
-        // For now, only support 'title' and 'content' fields
-        // This is a simplified implementation - full field support requires indexing changes
+        $documentKeys = [];
+        foreach (array_keys($docScores) as $docId) {
+            $documentKeys[] = $this->documentKeyFromDocId((string)$docId);
+        }
+        $documentKeys = array_values(array_unique($documentKeys));
+        $documentStorage = $this->documentKeyStorage();
 
         $titleTermsByElement = [];
-        if (isset($fieldFilters['title'])) {
-            $titleDocumentKeys = [];
-            foreach (array_keys($docScores) as $docId) {
-                $titleDocumentKeys[] = $this->documentKeyFromDocId((string)$docId);
-            }
-
-            $documentStorage = $this->documentKeyStorage();
+        if (isset($fieldFilters['title']) || isset($fieldFilters['content'])) {
             $titleTermsByElement = $documentStorage !== null
-                ? $documentStorage->getTitleTermsBatchByKeys($siteId, array_values(array_unique($titleDocumentKeys)))
-                : $this->storage->getTitleTermsBatch($siteId, array_map('intval', array_values(array_unique($titleDocumentKeys))));
+                ? $documentStorage->getTitleTermsBatchByKeys($siteId, $documentKeys)
+                : $this->storage->getTitleTermsBatch($siteId, array_map('intval', $documentKeys));
+        }
+
+        $documentTermsByElement = [];
+        if (isset($fieldFilters['content'])) {
+            $documentTermsByElement = $documentStorage !== null
+                ? $documentStorage->getDocumentTermsBatchByKeys($siteId, $documentKeys)
+                : $this->storage->getDocumentTermsBatch($siteId, array_map('intval', $documentKeys));
         }
 
         $filteredScores = [];
@@ -1332,8 +1337,27 @@ class SearchEngine
                         $matchesAllFilters = false;
                         break;
                     }
+                } elseif ($field === 'content') {
+                    // Content is the exact inverse of title attribution: only
+                    // document terms not present in the title qualify.
+                    $documentKey = $this->documentKeyFromDocId((string)$docId);
+                    $titleTerms = $titleTermsByElement[$documentKey] ?? $titleTermsByElement[(int)$documentKey] ?? [];
+                    $documentTerms = $documentTermsByElement[$documentKey] ?? $documentTermsByElement[(int)$documentKey] ?? [];
+                    $contentTerms = array_diff(array_keys($documentTerms), $titleTerms);
+
+                    $hasMatch = false;
+                    foreach ($terms as $term) {
+                        if (in_array($term, $contentTerms, true)) {
+                            $hasMatch = true;
+                            break;
+                        }
+                    }
+
+                    if (!$hasMatch) {
+                        $matchesAllFilters = false;
+                        break;
+                    }
                 }
-                // Content field is default, so we assume documents already match
             }
 
             if ($matchesAllFilters) {

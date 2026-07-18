@@ -114,11 +114,12 @@ See [Client-Side Highlighting](../template-guides/highlighting-snippets.md#clien
 Highlight search terms in text by wrapping them with an HTML tag.
 
 ```twig
-{{ craft.searchManager.highlight(entry.title, 'craft cms')|raw }}
+{{ craft.searchManager.highlight(entry.title, query, { field: 'title' })|raw }}
 {{ craft.searchManager.highlight(text, query, {
     tag: 'em',
     class: 'highlight',
     stripTags: true,
+    field: 'content',
 })|raw }}
 ```
 
@@ -126,9 +127,11 @@ Highlight search terms in text by wrapping them with an HTML tag.
 |-----------|------|-------------|
 | `text` | `string` | Text to highlight |
 | `terms` | `string\|array` | Search terms or query string |
-| `options` | `array` | Options: `tag`, `class`, `stripTags` |
+| `options` | `array` | Options: `tag`, `class`, `stripTags`, `field` (`title`, `content`, or omitted) |
 
 **Returns:** `string` with highlighted terms (use `|raw` in templates).
+
+When `terms` is a query string, pass the display area's `field` so `title:` terms paint titles only and `content:` terms paint content only; unscoped terms paint both. If every query term belongs to the other field, the helper returns the text without highlights. Omitting `field` preserves the legacy scope-blind behavior. Arrays contain no scope metadata and are highlighted as provided.
 
 ### `snippets(text, terms, options)`
 

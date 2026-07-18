@@ -12,13 +12,15 @@ Use `craft.searchManager.highlight()` to wrap matched terms with an HTML tag:
 {% for hit in results.hits %}
     {% set entry = craft.entries.id(hit.elementId).one() %}
     {% if entry %}
-        <h3>{{ craft.searchManager.highlight(entry.title, query)|raw }}</h3>
+        <h3>{{ craft.searchManager.highlight(entry.title, query, { field: 'title' })|raw }}</h3>
         {# "About <mark>craft</mark> <mark>cms</mark> development" #}
     {% endif %}
 {% endfor %}
 ```
 
 The `|raw` filter is required because highlighting inserts HTML tags.
+
+For query strings that use `title:` or `content:`, pass the area being rendered as `field: 'title'` or `field: 'content'`. Unscoped terms remain eligible in both areas, terms scoped to the other area are ignored, and a query with no eligible terms leaves the text unhighlighted. Omitting `field` keeps the legacy scope-blind output.
 
 ### Custom Options
 
@@ -27,6 +29,7 @@ The `|raw` filter is required because highlighting inserts HTML tags.
     tag: 'em',                    // Use <em> instead of <mark>
     class: 'search-highlight',    // Add a CSS class
     stripTags: true,              // Strip existing HTML before highlighting
+    field: 'content',              // Respect title:/content: query scope
 })|raw }}
 ```
 
@@ -110,7 +113,7 @@ Twig templates pass the same snippet options through the search call:
         <article class="search-result">
             <h3>
                 <a href="{{ hit.url }}">
-                    {{ craft.searchManager.highlight(hit.title, query)|raw }}
+                    {{ craft.searchManager.highlight(hit.title, query, { field: 'title' })|raw }}
                 </a>
             </h3>
 

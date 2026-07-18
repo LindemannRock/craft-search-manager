@@ -181,6 +181,7 @@ class SearchManagerVariable
      * @param string|array $terms Search term(s) or query string
      * @param array $options Highlighting options
      * @return string Highlighted text
+     * @since 5.54.0 Added the optional `field` highlighting scope.
      */
     public function highlight(string $text, $terms, array $options = []): string
     {
@@ -206,7 +207,10 @@ class SearchManagerVariable
             // Get current site's language for localized operators
             $language = \Craft::$app->getSites()->getCurrentSite()->language ?? 'en';
             $parsed = \lindemannrock\searchmanager\search\QueryParser::parse($terms, $language);
-            $terms = $highlighter->extractTermsFromParsedQuery($parsed);
+            $field = isset($options['field']) && in_array($options['field'], ['title', 'content'], true)
+                ? $options['field']
+                : null;
+            $terms = $highlighter->extractTermsFromParsedQuery($parsed, $field);
         }
 
         return $highlighter->highlight($text, $terms, $options['stripTags'] ?? true);

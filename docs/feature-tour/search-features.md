@@ -49,7 +49,9 @@ Search within the supported built-in document fields:
 {% set results = craft.searchManager.search('entries', 'title:craft content:plugin') %}
 ```
 
-The query parser accepts `title:` and `content:` field filters. Other transformer fields can still be exposed for filtering through backend-specific filter options, but they are not parsed as `field:value` search operators.
+`title:` and `content:` are the only query field scopes. They are Search Manager pseudo-scopes, not transformer or custom-field handles. On the built-in MySQL, PostgreSQL, Redis, and File backends, `title:` requires exact membership in the indexed title tokens, while `content:` requires exact membership in the non-title document tokens. Combining them requires every scope to pass; the filter itself doesn't fuzzy-expand its value.
+
+Algolia, Meilisearch, and Typesense receive the original query string unchanged. Search Manager doesn't translate these pseudo-scopes into provider-specific field controls, so `title:` and `content:` aren't portable field operators on external backends; any interpretation there is provider-native. Use provider-specific configuration or supported backend options when external field targeting is required.
 
 ### Wildcards
 

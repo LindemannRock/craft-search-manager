@@ -252,15 +252,17 @@ class Highlighter
     /**
      * Extract search terms from a ParsedQuery
      *
+     * Scope contract: unscoped terms paint both fields, scoped terms paint only
+     * their matching field, and no eligible terms paint nothing.
+     *
      * @param ParsedQuery $parsed Parsed query object
+     * @param string|null $field Optional display-field scope (`title` or `content`)
      * @return array Array of terms to highlight
+     * @since 5.54.0 Added the optional display-field scope.
      */
-    public function extractTermsFromParsedQuery(ParsedQuery $parsed): array
+    public function extractTermsFromParsedQuery(ParsedQuery $parsed, ?string $field = null): array
     {
-        $terms = [];
-
-        // Add regular terms
-        $terms = array_merge($terms, $parsed->terms);
+        $terms = $parsed->terms;
 
         // Add phrase words
         foreach ($parsed->phrases as $phrase) {
@@ -271,9 +273,33 @@ class Highlighter
         // Add wildcard terms (without the *)
         $terms = array_merge($terms, $parsed->wildcards);
 
-        // Add field filter terms
-        foreach ($parsed->fieldFilters as $field => $fieldTerms) {
-            $terms = array_merge($terms, $fieldTerms);
+        if ($field === null) {
+            // Preserve the legacy scope-blind output exactly when no display
+            // field is requested.
+            foreach ($parsed->fieldFilters as $fieldTerms) {
+                $terms = array_merge($terms, $fieldTerms);
+            }
+        } else {
+            // QueryParser keeps field-filter values in regular terms so they
+            // participate in scoring. Remove those duplicated scoped values,
+            // then add back only the values eligible for this display field.
+            $scopedTermCounts = [];
+            foreach ($parsed->fieldFilters as $fieldTerms) {
+                foreach ($fieldTerms as $term) {
+                    $scopedTermCounts[$term] = ($scopedTermCounts[$term] ?? 0) + 1;
+                }
+            }
+
+            $unscopedTerms = [];
+            foreach ($terms as $term) {
+                if (($scopedTermCounts[$term] ?? 0) > 0) {
+                    --$scopedTermCounts[$term];
+                    continue;
+                }
+                $unscopedTerms[] = $term;
+            }
+
+            $terms = array_merge($unscopedTerms, $parsed->fieldFilters[$field] ?? []);
         }
 
         // Remove duplicates and empty values
