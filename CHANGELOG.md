@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.53.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.53.1...v5.53.2) (2026-07-18)
+
+
+### Fixed
+
+* **backends:** ensure query_by and query_by_weights match for Typesense ([f7b8aaf](https://github.com/LindemannRock/craft-search-manager/commit/f7b8aaf3f237cb5c463f1d4d54e49dcad2f970b6))
+* **highlighter:** paint prefix extensions at word starts ([17ce151](https://github.com/LindemannRock/craft-search-manager/commit/17ce151ecd5cefaf125834b5b84f0e040b9d8fad))
+* **highlighter:** respect field-scoped query terms ([e3720e0](https://github.com/LindemannRock/craft-search-manager/commit/e3720e0b655a7eb9c2706b8406850edddcda5988))
+* **search:** enforce field scopes across filtering and highlighting ([1f7ec71](https://github.com/LindemannRock/craft-search-manager/commit/1f7ec7100bd5ccc7f948249f1d3c19545eff561d))
+* **search:** enforce typo budgets on fuzzy candidates ([f386f41](https://github.com/LindemannRock/craft-search-manager/commit/f386f41fb23ea324530b441548e10537592f0e23))
+* **search:** reject ultra-short fuzzy candidates ([87f8b80](https://github.com/LindemannRock/craft-search-manager/commit/87f8b800c289d8c7be7e7107aa96fc96e0bd6d00))
+* **templates:** include plugin credit in snippets settings template ([fe3eff5](https://github.com/LindemannRock/craft-search-manager/commit/fe3eff58df9b42c62d16159d4cd33b3dc2bd02d4))
+
 ## [5.53.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.53.0...v5.53.1) - 2026-07-18
 
 
