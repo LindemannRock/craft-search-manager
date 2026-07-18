@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\search\storage;
 
 use Craft;
 use craft\db\Query;
+use lindemannrock\base\helpers\DbHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\search\TermNormalizer;
@@ -425,9 +426,10 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface, ElementSuggestio
             $values,
             [
                 // Keep the larger frequency to avoid inflating BM25 from equivalent variants.
-                'frequency' => new Expression('GREATEST([[frequency]], :incomingFrequency)', [
-                    ':incomingFrequency' => $frequency,
-                ]),
+                'frequency' => new Expression(
+                    'GREATEST(' . DbHelper::existingColumn('searchmanager_search_terms', 'frequency') . ', :incomingFrequency)',
+                    [':incomingFrequency' => $frequency],
+                ),
                 'language' => $language,
             ]
         )->execute();
