@@ -106,7 +106,9 @@ final class AuditBatch7RegressionTest extends TestCase
         foreach (['trafficType', 'isSystemAgent', 'botCategory', 'botProducerName'] as $column) {
             self::assertStringContainsString("'{$column}' => true", $source);
         }
-        self::assertStringContainsString('new Expression("NULL AS {$column}")', $source);
+        // [[...]]-bracketed so the alias keeps its case on PostgreSQL (an
+        // unquoted alias folds to lowercase, breaking $row['botCategory'] reads).
+        self::assertStringContainsString('new Expression("NULL AS [[$column]]")', $source);
     }
 
     public function testAnalyticsGeoConfigDelegatesToSharedHelper(): void

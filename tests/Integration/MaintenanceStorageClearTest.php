@@ -92,7 +92,8 @@ final class MaintenanceStorageClearTest extends TestCase
 
             self::assertStringContainsString('SELECT COUNT(*) FROM {{%searchmanager_search_compounds}}', $methodSource, $label);
             self::assertStringContainsString("'compoundRows' => \$compoundRows", $methodSource, $label);
-            self::assertStringContainsString('SELECT indexHandle FROM {{%searchmanager_search_compounds}}', $methodSource, $label);
+            // [[...]]-bracketed so the identifier keeps its case on PostgreSQL.
+            self::assertStringContainsString('SELECT [[indexHandle]] FROM {{%searchmanager_search_compounds}}', $methodSource, $label);
         }
 
         self::assertStringContainsString("'totalRows' => \$documentRows + \$termRows + \$compoundRows", self::methodSource($utilitiesSource, 'getDatabaseStats'));
