@@ -40,10 +40,10 @@ class AnalyticsPerformanceService
         $query = (new Query())
             ->select([
                 'date' => $localDate,
-                'AVG(executionTime) as avgTime',
-                'MIN(executionTime) as minTime',
-                'MAX(executionTime) as maxTime',
-                'COUNT(*) as indexSearches',
+                'AVG([[executionTime]]) as [[avgTime]]',
+                'MIN([[executionTime]]) as [[minTime]]',
+                'MAX([[executionTime]]) as [[maxTime]]',
+                'COUNT(*) as [[indexSearches]]',
             ])
             ->from('{{%searchmanager_analytics}}')
             ->groupBy($localDate)
@@ -134,11 +134,11 @@ class AnalyticsPerformanceService
             ->select([
                 'query',
                 'siteId',
-                'AVG(executionTime) as avgTime',
-                'MIN(executionTime) as minTime',
-                'MAX(executionTime) as maxTime',
-                'COUNT(*) as indexSearches',
-                'AVG(resultsCount) as avgResults',
+                'AVG([[executionTime]]) as [[avgTime]]',
+                'MIN([[executionTime]]) as [[minTime]]',
+                'MAX([[executionTime]]) as [[maxTime]]',
+                'COUNT(*) as [[indexSearches]]',
+                'AVG([[resultsCount]]) as [[avgResults]]',
             ])
             ->from('{{%searchmanager_analytics}}')
             ->andWhere(['>', 'executionTime', 0]) // Exclude cache hits
@@ -189,11 +189,11 @@ class AnalyticsPerformanceService
             ->select([
                 'query',
                 'siteId',
-                'AVG(executionTime) as avgTime',
-                'MIN(executionTime) as minTime',
-                'MAX(executionTime) as maxTime',
-                'COUNT(*) as indexSearches',
-                'AVG(resultsCount) as avgResults',
+                'AVG([[executionTime]]) as [[avgTime]]',
+                'MIN([[executionTime]]) as [[minTime]]',
+                'MAX([[executionTime]]) as [[maxTime]]',
+                'COUNT(*) as [[indexSearches]]',
+                'AVG([[resultsCount]]) as [[avgResults]]',
             ])
             ->from('{{%searchmanager_analytics}}')
             ->andWhere(['>', 'executionTime', 0]) // Exclude cache hits
@@ -239,7 +239,7 @@ class AnalyticsPerformanceService
     public function getAverageExecutionTime(int|array|null $siteId, int $days = 30): float
     {
         $query = (new Query())
-            ->select(['AVG(executionTime) as avgTime'])
+            ->select(['AVG([[executionTime]]) as [[avgTime]]'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['executionTime' => null]])
             ->andWhere(['source' => 'frontend'])
