@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\services\analytics;
 use Craft;
 use craft\db\Query;
 use lindemannrock\base\helpers\DateFormatHelper;
+use lindemannrock\base\helpers\DbHelper;
 use lindemannrock\base\helpers\GeoHelper;
 use lindemannrock\base\traits\GeoLookupTrait;
 use lindemannrock\searchmanager\helpers\AnalyticsGeoConfigHelper;
@@ -151,12 +152,12 @@ class AnalyticsBreakdownService
 
         if ($hasTrafficType) {
             $perAction->select([
-                'MAX(isRobot) AS actionIsRobot',
-                "MAX(CASE WHEN trafficType = 'system' THEN 1 ELSE 0 END) AS actionIsSystem",
-                "MAX(CASE WHEN trafficType = 'bot' THEN 1 ELSE 0 END) AS actionIsBot",
+                'MAX(' . DbHelper::boolToInt('isRobot') . ') AS [[actionIsRobot]]',
+                "MAX(CASE WHEN [[trafficType]] = 'system' THEN 1 ELSE 0 END) AS [[actionIsSystem]]",
+                "MAX(CASE WHEN [[trafficType]] = 'bot' THEN 1 ELSE 0 END) AS [[actionIsBot]]",
             ]);
         } else {
-            $perAction->select(['MAX(isRobot) AS actionIsRobot']);
+            $perAction->select(['MAX(' . DbHelper::boolToInt('isRobot') . ') AS [[actionIsRobot]]']);
         }
 
         $this->applyDateRangeFilter($perAction, $dateRange);
@@ -173,13 +174,13 @@ class AnalyticsBreakdownService
         if ($hasTrafficType) {
             $summaryQuery->select([
                 'COUNT(*) as total',
-                'SUM(CASE WHEN actionIsBot = 1 THEN 1 ELSE 0 END) as bots',
-                'SUM(CASE WHEN actionIsSystem = 1 THEN 1 ELSE 0 END) as systems',
+                'SUM(CASE WHEN [[actionIsBot]] = 1 THEN 1 ELSE 0 END) as bots',
+                'SUM(CASE WHEN [[actionIsSystem]] = 1 THEN 1 ELSE 0 END) as systems',
             ]);
         } else {
             $summaryQuery->select([
                 'COUNT(*) as total',
-                'SUM(CASE WHEN actionIsRobot = 1 THEN 1 ELSE 0 END) as bots',
+                'SUM(CASE WHEN [[actionIsRobot]] = 1 THEN 1 ELSE 0 END) as bots',
                 new Expression('0 AS systems'),
             ]);
         }
