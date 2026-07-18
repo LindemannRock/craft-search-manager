@@ -850,12 +850,12 @@ class MaintenanceController extends Controller
         )->queryScalar();
 
         $indexHandles = $db->createCommand(
-            'SELECT DISTINCT indexHandle FROM (
-                SELECT indexHandle FROM {{%searchmanager_search_documents}}
+            'SELECT DISTINCT [[indexHandle]] FROM (
+                SELECT [[indexHandle]] FROM {{%searchmanager_search_documents}}
                 UNION
-                SELECT indexHandle FROM {{%searchmanager_search_compounds}}
-            ) storageIndexHandles
-            ORDER BY indexHandle'
+                SELECT [[indexHandle]] FROM {{%searchmanager_search_compounds}}
+            ) storage_index_handles
+            ORDER BY [[indexHandle]]'
         )->queryColumn();
 
         return [
