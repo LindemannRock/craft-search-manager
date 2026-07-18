@@ -36,7 +36,9 @@ final class TermResolverPolicyTest extends TestCase
 
         if (!self::$seeded) {
             $this->deleteRowsForIndex();
-            $engine = new SearchEngine(new MySqlStorage(self::INDEX_HANDLE), self::INDEX_HANDLE);
+            $engine = new SearchEngine(new MySqlStorage(self::INDEX_HANDLE), self::INDEX_HANDLE, [
+                'enableStopWords' => false,
+            ]);
 
             $engine->indexDocument(self::SITE_ID, 100001, 'Testing tools', 'testing tools guide');
             $engine->indexDocument(self::SITE_ID, 100002, 'Template variables', 'tool reference template');
@@ -44,6 +46,7 @@ final class TermResolverPolicyTest extends TestCase
             $engine->indexDocument(self::SITE_ID, 100004, 'Tooling', 'tooling setup notes');
             $engine->indexDocument(self::SITE_ID, 100005, 'Toolkit', 'toolkit overview details');
             $engine->indexDocument(self::SITE_ID, 100006, 'البحث', 'بحث متقدم', 'ar');
+            $engine->indexDocument(self::SITE_ID, 100007, 'Guide to Search', 'how to configure search');
 
             self::$seeded = true;
         }
@@ -94,6 +97,17 @@ final class TermResolverPolicyTest extends TestCase
         // Jaccard(tool, tools) with n-gram sizes [2,3]: 7 shared / 13 union.
         self::assertNotNull($tools);
         self::assertEqualsWithDelta(7 / 13, $tools['similarity'], 0.0001);
+    }
+
+    public function testFuzzyExpansionRejectsShortCandidateAndPreservesLegitimateVariants(): void
+    {
+        $toolTerms = array_column($this->makeResolver()->resolve('tool', self::SITE_ID), 'term');
+
+        self::assertNotContains('to', $toolTerms);
+        self::assertContains('tools', $toolTerms);
+
+        $testTerms = array_column($this->makeResolver()->resolve('test', self::SITE_ID), 'term');
+        self::assertContains('testing', $testTerms);
     }
 
     public function testZeroExactTokenGetsFullFallbackBreadth(): void

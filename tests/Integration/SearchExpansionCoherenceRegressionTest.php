@@ -45,13 +45,17 @@ final class SearchExpansionCoherenceRegressionTest extends TestCase
         if (!self::$seeded) {
             self::deleteRowsForIndexes();
 
-            $engine = new SearchEngine(new MySqlStorage(self::INDEX_HANDLE), self::INDEX_HANDLE);
+            $engine = new SearchEngine(new MySqlStorage(self::INDEX_HANDLE), self::INDEX_HANDLE, [
+                'enableStopWords' => false,
+            ]);
             $this->seedCorpus($engine);
 
             // Same corpus under the PREFIXED name the real backend resolves to,
             // for the backend-level searchDebug forwarding test.
             $fullBackendIndex = SearchManager::$plugin->getSettings()->getFullIndexName(self::BACKEND_INDEX_HANDLE);
-            $backendEngine = new SearchEngine(new MySqlStorage($fullBackendIndex), $fullBackendIndex);
+            $backendEngine = new SearchEngine(new MySqlStorage($fullBackendIndex), $fullBackendIndex, [
+                'enableStopWords' => false,
+            ]);
             $this->seedCorpus($backendEngine);
 
             self::$seeded = true;
@@ -137,6 +141,19 @@ final class SearchExpansionCoherenceRegressionTest extends TestCase
         self::assertSame(TermResolver::MATCH_FUZZY, $toolByTerm['tools']['matchType']);
         self::assertGreaterThan(0.0, $toolByTerm['tools']['similarity']);
         self::assertLessThan(1.0, $toolByTerm['tools']['similarity']);
+        self::assertArrayNotHasKey('to', $toolByTerm, 'sub-three-character terms must not become fuzzy expansions');
+    }
+
+    public function testLiteralShortQueryStillFindsExactToken(): void
+    {
+        $engine = $this->makeEngine();
+        $results = $engine->search('to', self::SITE_ID);
+
+        self::assertArrayHasKey(100006, $results);
+
+        $resolved = $engine->getLastSearchDebug()['resolvedTerms']['to'];
+        self::assertSame('to', $resolved[0]['term']);
+        self::assertSame(TermResolver::MATCH_EXACT, $resolved[0]['matchType']);
     }
 
     public function testBackendForwardsSearchDebugAndResolverDrivenMatchedIn(): void
@@ -158,7 +175,9 @@ final class SearchExpansionCoherenceRegressionTest extends TestCase
 
     private function makeEngine(): SearchEngine
     {
-        return new SearchEngine(new MySqlStorage(self::INDEX_HANDLE), self::INDEX_HANDLE);
+        return new SearchEngine(new MySqlStorage(self::INDEX_HANDLE), self::INDEX_HANDLE, [
+            'enableStopWords' => false,
+        ]);
     }
 
     private function seedCorpus(SearchEngine $engine): void
@@ -168,6 +187,7 @@ final class SearchExpansionCoherenceRegressionTest extends TestCase
         $engine->indexDocument(self::SITE_ID, 100003, 'Template Variables', 'tool reference material');
         $engine->indexDocument(self::SITE_ID, 100004, 'Redis Backend', 'redis connection storage');
         $engine->indexDocument(self::SITE_ID, 100005, 'Excel Export', 'excel export spreadsheet');
+        $engine->indexDocument(self::SITE_ID, 100006, 'Guide to Search', 'how to configure search');
     }
 
     private static function deleteRowsForIndexes(): void

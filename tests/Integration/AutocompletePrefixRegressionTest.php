@@ -72,6 +72,32 @@ final class AutocompletePrefixRegressionTest extends TestCase
         self::assertArrayNotHasKey('profile', array_flip($suggestions));
     }
 
+    public function testTwoCharacterPrefixAutocompleteRemainsAvailable(): void
+    {
+        $storage = new RecordingStorage(
+            termDocs: [],
+            titleByElement: [],
+            docLengths: [],
+            totalDocs: 0,
+            avgDocLength: 0.0,
+            autocompleteTerms: [
+                'tools' => 8,
+                'toolbar' => 5,
+                'testing' => 3,
+            ],
+        );
+        $this->swapPluginComponent('search-manager', 'backend', new AutocompletePrefixBackendService($storage));
+
+        $suggestions = SearchManager::$plugin->autocomplete->suggest('to', 'content', [
+            'limit' => 2,
+            'minLength' => 2,
+            'siteId' => 1,
+        ]);
+
+        self::assertSame(['tools', 'toolbar'], $suggestions);
+        self::assertSame('to', $storage->getTermsForAutocompleteCalls[0]['prefix'] ?? null);
+    }
+
     public function testCompoundAutocompleteUsesStoredCompoundPrefixWithoutLastTokenFallback(): void
     {
         $storage = new RecordingStorage(

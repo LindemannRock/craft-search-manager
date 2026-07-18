@@ -176,7 +176,11 @@ final class TermResolver
                 foreach ($candidates as $term => $similarity) {
                     $term = (string)$term;
 
-                    if ($term === $token || isset($resolved[$term])) {
+                    if (
+                        mb_strlen($term) < FuzzyMatcher::MIN_CANDIDATE_LENGTH
+                        || $term === $token
+                        || isset($resolved[$term])
+                    ) {
                         continue;
                     }
 

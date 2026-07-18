@@ -26,6 +26,16 @@ class FuzzyMatcher
     use LoggingTrait;
 
     /**
+     * Minimum length for a term to qualify as a fuzzy candidate.
+     *
+     * Exact and prefix matching use separate paths and are not subject to
+     * this floor.
+     *
+     * @since 5.54.0
+     */
+    public const MIN_CANDIDATE_LENGTH = 3;
+
+    /**
      * @var NgramGenerator
      */
     private NgramGenerator $ngramGenerator;
@@ -99,7 +109,16 @@ class FuzzyMatcher
             $this->maxCandidates // Pass configurable limit to storage
         );
 
-        $matchedTerms = array_keys($candidates);
+        $matchedTerms = [];
+        foreach (array_keys($candidates) as $candidate) {
+            $candidate = (string)$candidate;
+
+            if (mb_strlen($candidate) < self::MIN_CANDIDATE_LENGTH) {
+                continue;
+            }
+
+            $matchedTerms[] = $candidate;
+        }
 
         $this->logInfo('Fuzzy match candidates found', [
             'term' => $searchTerm,
