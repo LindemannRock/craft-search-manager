@@ -68,7 +68,22 @@ trait AnalyticsQueryTrait
      */
     public function actionIdentityExpression(): string
     {
-        return 'COALESCE(sessionId, ' . DbHelper::castToText('id') . ')';
+        return 'COALESCE([[sessionId]], ' . DbHelper::castToText('id') . ')';
+    }
+
+    /**
+     * HAVING condition for "action had no successful outcome" — no hit, no
+     * redirect, no promotion shown — lifted from row level to action level.
+     *
+     * isHit/wasRedirected are boolean columns, so they go through
+     * DbHelper::boolToInt() — PostgreSQL has no MAX() over boolean.
+     * promotionsShown is an integer and aggregates directly.
+     */
+    protected function zeroOutcomeHaving(): string
+    {
+        return 'MAX(' . DbHelper::boolToInt('isHit') . ') = 0'
+            . ' AND MAX(' . DbHelper::boolToInt('wasRedirected') . ') = 0'
+            . ' AND MAX([[promotionsShown]]) = 0';
     }
 
     /**
@@ -98,7 +113,7 @@ trait AnalyticsQueryTrait
             throw new \InvalidArgumentException("Unsupported optional analytics column: {$column}");
         }
 
-        return $this->hasAnalyticsColumn($column) ? $column : new Expression("NULL AS {$column}");
+        return $this->hasAnalyticsColumn($column) ? $column : new Expression("NULL AS [[$column]]");
     }
 
     /**
