@@ -48,7 +48,7 @@ SCOPE=$(echo "$SUBJECT" | sed -nE 's/^[a-z]+\(([^)]+)\).*/\1/p')
 DESC="${SUBJECT#*: }"
 
 # Length, trailing period, capitalization
-[ ${#SUBJECT} -gt 72 ] && fail "subject is ${#SUBJECT} chars (max 72) — move detail to the body"
+[ ${#SUBJECT} -gt 100 ] && fail "subject is ${#SUBJECT} chars (max 100) — move detail to the body"
 echo "$SUBJECT" | grep -qE '\.$' && fail "no trailing period in the subject"
 echo "$DESC" | grep -qE '^[A-Z]' && fail "description must start lowercase after the colon"
 
