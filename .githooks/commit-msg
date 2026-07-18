@@ -1,0 +1,136 @@
+#!/bin/bash
+#
+# commit-msg hook: validates the commit message against the suite's
+# Conventional Commits rules (the same rules the Copilot instructions in the
+# workspace .vscode/settings.json ask the generator to follow). This is the
+# deterministic backstop — a malformed message is rejected no matter what
+# produced it (Copilot sparkle, an agent session, or a human).
+#
+# Auto-installed via composer post-install/post-update — those scripts run
+# `git config core.hooksPath .githooks` so this file is what git invokes.
+#
+# Scope policy:
+#   - Changelog-visible types (feat, fix, security, perf, revert) must use a
+#     scope from .githooks/commit-scopes, OR the lowercased name of a single
+#     class file under src/, OR no scope at all.
+#   - Hidden types (docs, chore, refactor, style, test, build, ci) get format
+#     and verb checks only — their scopes never reach the changelog.
+
+MSG_FILE="$1"
+
+# Subject = first non-comment, non-empty line above the verbose-commit scissors
+SUBJECT=$(sed -e '/^# ------------------------ >8 ------------------------$/,$d' "$MSG_FILE" \
+  | grep -v '^#' | grep -m1 -v '^[[:space:]]*$')
+
+fail() {
+  echo "commit-msg: REJECTED — $1" >&2
+  echo "  subject: $SUBJECT" >&2
+  exit 1
+}
+
+# Pass-throughs: merges, git-revert autogen, autosquash, release-please
+case "$SUBJECT" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
+esac
+echo "$SUBJECT" | grep -qE '^chore(\(main\))?: release' && exit 0
+
+# The split wrapper is generator guidance, never a commit message
+grep -qi '^Split into separate commits:' "$MSG_FILE" \
+  && fail "'Split into separate commits:' is a suggestion wrapper — commit each part separately"
+
+TYPES='feat|fix|security|perf|revert|refactor|style|docs|chore|test|build|ci'
+FORMAT="^($TYPES)(\([a-z0-9][a-z0-9-]*\))?!?: .+"
+echo "$SUBJECT" | grep -qE "$FORMAT" \
+  || fail "subject must be '<type>(<scope>): <lowercase imperative description>' with type one of: $(echo "$TYPES" | tr '|' ' ') — scope lowercase kebab-case or omitted"
+
+TYPE=$(echo "$SUBJECT" | sed -E 's/^([a-z]+).*/\1/')
+SCOPE=$(echo "$SUBJECT" | sed -nE 's/^[a-z]+\(([^)]+)\).*/\1/p')
+DESC="${SUBJECT#*: }"
+
+# Length, trailing period, capitalization
+[ ${#SUBJECT} -gt 72 ] && fail "subject is ${#SUBJECT} chars (max 72) — move detail to the body"
+echo "$SUBJECT" | grep -qE '\.$' && fail "no trailing period in the subject"
+echo "$DESC" | grep -qE '^[A-Z]' && fail "description must start lowercase after the colon"
+
+# Banned vague verbs — checked as the leading verb and after ' and '
+BANNED='(update[sd]?|improve[sd]?|improving|enhance[sd]?|enhancing|refine[sd]?|refining|adjust(s|ed|ing)?|tweak(s|ed)?|modif(y|ies|ied)|refresh(es|ed)?|polish(es|ed)?|misc|various|change[sd]?|changing|rework(s|ed)?)'
+echo "$DESC" | grep -qiE "^${BANNED}\b" \
+  && fail "banned vague verb '$(echo "$DESC" | cut -d' ' -f1)' — use a concrete verb (add/remove/rename/replace/guard/escape/sanitize/bump/...)"
+echo "$DESC" | grep -qiE "\band ${BANNED}\b" \
+  && fail "banned vague verb after 'and' — use a concrete verb"
+echo "$DESC" | grep -qiE '^(clean(s|ed)? ?up|work(s|ed)? on)\b' \
+  && fail "banned vague verb — use 'remove X' / 'drop unused X' / 'normalize X'"
+
+# Process-speak: internal audit/tracker references never belong in a changelog
+echo "$DESC" | grep -qiE '(audit[- ](finding|findings|batch|regression)|batch [a-z0-9]+ audit|(close|resolve)[sd]? .*finding[s]? [0-9])' \
+  && fail "internal audit/tracker reference — state what the change does to the plugin, not which finding prompted it"
+
+# Plugin-name and category-word scopes are banned for EVERY type.
+# The plugin name is derived from composer.json (and the repo folder name),
+# compared case-/hyphen-/underscore-insensitively — so in search-manager,
+# (search-manager), (searchmanager), (SearchManager), (search_manager) and
+# the craft-prefixed composer handle are all rejected, in any repo, with no
+# per-plugin configuration.
+if [ -n "$SCOPE" ]; then
+  NSCOPE=$(echo "$SCOPE" | tr 'A-Z' 'a-z' | tr -d '_-')
+  echo "$NSCOPE" | grep -qxE '(security|robustness|audit|bug|bugs|cleanup|deletes|dependency|misc|general|core|frontend|plugin|redis|test|tests)' \
+    && fail "scope '($SCOPE)' is a banned category word — use a real sub-area scope or omit the scope"
+  HANDLE=$(sed -nE 's/.*"name":[[:space:]]*"[^"]*\/([^"]+)".*/\1/p' composer.json 2>/dev/null | head -1)
+  ROOT=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null)
+  for cand in "$HANDLE" "${HANDLE#craft-}" "$ROOT"; do
+    [ -n "$cand" ] || continue
+    NCAND=$(echo "$cand" | tr 'A-Z' 'a-z' | tr -d '_-')
+    [ "$NSCOPE" = "$NCAND" ] \
+      && fail "scope '($SCOPE)' is the plugin name — single-plugin repo, the repo IS the plugin; use a sub-area scope or omit the scope"
+  done
+fi
+
+# Scope vocabulary — enforced for changelog-visible types only
+if echo "$TYPE" | grep -qE '^(feat|fix|security|perf|revert)$' && [ -n "$SCOPE" ]; then
+  HOOK_DIR=$(dirname "$0")
+  SCOPES_FILE="$HOOK_DIR/commit-scopes"
+  ok=no
+  if [ -f "$SCOPES_FILE" ] && sed -e 's/#.*//' -e 's/[[:space:]]*$//' "$SCOPES_FILE" | grep -qx "$SCOPE"; then
+    ok=yes
+  fi
+  # Single-class scope: a PHP class file under src/ whose name matches the scope
+  if [ "$ok" = no ] && [ -d src ] && find src -type f -iname "${SCOPE}.php" 2>/dev/null | grep -q .; then
+    ok=yes
+  fi
+  [ "$ok" = no ] && fail "scope '($SCOPE)' is not in .githooks/commit-scopes and matches no class under src/ — use a canonical scope, the class name, or omit the scope"
+fi
+
+# (i18n) scope on a changelog-visible commit requires a catalog-only staging —
+# locale files riding along with a code change take the CODE change's type and
+# scope (Gate 2 RIDE-ALONG EXCEPTION). Catches the observed sparkle hijack
+# where an escaping fix was re-labeled fix(i18n) on a second generation.
+if [ "$SCOPE" = "i18n" ] && echo "$TYPE" | grep -qE '^(feat|fix|security|perf|revert)$'; then
+  NONCATALOG=$(git diff --cached --name-only 2>/dev/null | grep -vE '(^|/)translations/' | head -5)
+  if [ -n "$NONCATALOG" ]; then
+    echo "commit-msg: REJECTED — (i18n) scope, but non-catalog files are staged:" >&2
+    echo "$NONCATALOG" | sed 's/^/    /' >&2
+    echo "  locale files riding along with a code change take the CODE change's type/scope; note the locale updates in the body instead" >&2
+    echo "  subject: $SUBJECT" >&2
+    exit 1
+  fi
+fi
+
+# A tests-only staging must be type test: — a new test class is not
+# user-facing functionality (catches feat/fix drift like
+# "feat(tests): add PostgresDialectSafetyTest").
+if ! echo "$TYPE" | grep -qE '^(test|revert)$'; then
+  STAGED=$(git diff --cached --name-only 2>/dev/null)
+  if [ -n "$STAGED" ] && ! echo "$STAGED" | grep -qvE '^tests/|(^|/)phpunit\.xml(\.dist)?$'; then
+    fail "staging is tests-only — type must be test: (a new test class is not a feat/fix); scope the area under test or omit"
+  fi
+fi
+
+# Pre-release (0.x.x): breaking-change markers are banned
+if grep -qE '"version":[[:space:]]*"0\.' composer.json 2>/dev/null; then
+  echo "$SUBJECT" | grep -qE '^[a-z]+(\([^)]*\))?!:' \
+    && fail "pre-release plugin (0.x.x) — no '!' breaking marker; breaking nature is implied by 0.x semver"
+  grep -q 'BREAKING CHANGE' "$MSG_FILE" \
+    && fail "pre-release plugin (0.x.x) — no BREAKING CHANGE footer"
+fi
+
+exit 0
