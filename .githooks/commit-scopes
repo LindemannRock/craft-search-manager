@@ -15,10 +15,13 @@ cache
 cli
 controllers
 cp
+dashboard
 deps
+geo
 gql
 helpers
 i18n
+import-export
 indexing
 jobs
 migrations
