@@ -4,6 +4,7 @@
 {% do view.registerAssetBundle('lindemannrock\\searchmanager\\web\\assets\\widgetconfig\\WidgetConfigAsset') %}
 
 {% set title = isNew ? "New Widget Config"|t('search-manager') : widgetConfig.name %}
+{% set isPro = craft.app.plugins.getPlugin('search-manager').isPro() %}
 {% set fullPageForm = true %}
 {% set selectedSubnavItem = 'widgets' %}
 {% set saveShortcutRedirect = cpUrl('search-manager/widgets/edit/{id}') %}
@@ -164,6 +165,7 @@
 	<div id="results"{% if selectedTab != 'results' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/_partials/results" with {
 			widgetConfig: widgetConfig,
+			isPro: isPro,
 		} %}
 	</div>
 
@@ -185,6 +187,7 @@
 	<div id="analytics"{% if selectedTab != 'analytics' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/_partials/analytics" with {
 			widgetConfig: widgetConfig,
+			isPro: isPro,
 		} %}
 	</div>
 
@@ -259,30 +262,37 @@
 		}) }}
 
 		{# Style Preset #}
-		{% set _defaultStyles = widgetConfig.defaultStyleValues() %}
-		{% set _styleMap = {} %}
-		{% for style in widgetStyles %}
-			{% set _styleMap = _styleMap|merge({ (style.handle): _defaultStyles|merge(style.getStyles()) }) %}
-		{% endfor %}
-		<div id="sidebar-style-data" class="hidden"
-			data-style-map="{{ _styleMap|json_encode|e('html_attr') }}"
-			data-default-styles="{{ _defaultStyles|json_encode|e('html_attr') }}"
-		></div>
-		{% set _styleOptions = [] %}
-		{% for style in widgetStyles %}
-			{% set _styleOptions = _styleOptions|merge([{
-				value: style.handle,
-				label: style.name
-			}]) %}
-		{% endfor %}
-		{{ forms.selectField({
-			label: 'Widget Style'|t('search-manager'),
-			id: 'sidebarStylePreset',
-			name: 'styleHandle',
-			value: widgetConfig.styleHandle ?? '',
-			options: _styleOptions,
-			errors: widgetConfig.getErrors('styleHandle')
-		}) }}
+		{% if isPro %}
+			{% set _defaultStyles = widgetConfig.defaultStyleValues() %}
+			{% set _styleMap = {} %}
+			{% for style in widgetStyles %}
+				{% set _styleMap = _styleMap|merge({ (style.handle): _defaultStyles|merge(style.getStyles()) }) %}
+			{% endfor %}
+			<div id="sidebar-style-data" class="hidden"
+				data-style-map="{{ _styleMap|json_encode|e('html_attr') }}"
+				data-default-styles="{{ _defaultStyles|json_encode|e('html_attr') }}"
+			></div>
+			{% set _styleOptions = [] %}
+			{% for style in widgetStyles %}
+				{% set _styleOptions = _styleOptions|merge([{
+					value: style.handle,
+					label: style.name
+				}]) %}
+			{% endfor %}
+			{{ forms.selectField({
+				label: 'Widget Style'|t('search-manager'),
+				id: 'sidebarStylePreset',
+				name: 'styleHandle',
+				value: widgetConfig.styleHandle ?? '',
+				options: _styleOptions,
+				errors: widgetConfig.getErrors('styleHandle')
+			}) }}
+		{% else %}
+			{% include 'search-manager/_partials/upgrade-prompt' with {
+				featureName: 'Widget Styles',
+				compact: true,
+			} only %}
+		{% endif %}
 	</div>
 
 	{# Widget Preview #}
@@ -400,6 +410,7 @@ if (saveShortcut) {
 	window.lrIdentifiers.bindSlugHandle(nameInput, handleInput, { isNew });
 })();
 
+{% if isPro %}
 // Sidebar style preset → update preview
 (function() {
 	const sidebarSelect = document.getElementById('sidebarStylePreset');
@@ -421,6 +432,7 @@ if (saveShortcut) {
 	// Update preview when style changes
 	sidebarSelect.addEventListener('change', applySelectedStyle);
 })();
+{% endif %}
 
 // Preview color scheme toggle
 SearchManagerPreview.initColorSchemeToggle();

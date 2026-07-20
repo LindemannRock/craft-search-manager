@@ -17,6 +17,7 @@ use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\WidgetStyle;
+use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 
 /**
@@ -167,6 +168,8 @@ class WidgetStyleService extends Component
      */
     public function save(WidgetStyle $style): bool
     {
+        SearchManager::$plugin->requireEdition(SearchManager::EDITION_PRO, 'Widget Styles');
+
         if ($style->source === 'config') {
             $this->logWarning('Cannot save config-file widget style', ['handle' => $style->handle]);
             return false;
@@ -216,6 +219,8 @@ class WidgetStyleService extends Component
      */
     public function delete(int $id): bool
     {
+        SearchManager::$plugin->requireEdition(SearchManager::EDITION_PRO, 'Widget Styles');
+
         $style = $this->getById($id);
         if (!$style) {
             return false;

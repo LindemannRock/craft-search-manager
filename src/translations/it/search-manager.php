@@ -18,6 +18,10 @@ return [
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'Configura backend, regola l\'indicizzazione e gestisci il comportamento di ricerca da un unico spazio di lavoro nel pannello di controllo.',
     'Complete setup' => 'Completa configurazione',
     'Quick Actions' => 'Azioni rapide',
+    'This feature' => 'Questa funzione',
+    '{feature} requires Search Manager Pro' => '{feature} richiede Search Manager Pro',
+    'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro aggiunge analisi, regole di query, promozioni, operazioni di sincronizzazione in sospeso e preset di stile widget riutilizzabili.',
+    'View Search Manager Pro in the Plugin Store' => 'Visualizza Search Manager Pro nello Store plugin',
 
     // Navigation
     'Dashboard' => 'Pannello',
@@ -1834,6 +1838,8 @@ return [
     'Clear All Caches' => 'Svuota tutte le cache',
     'Clear Device Cache' => 'Svuota cache dispositivi',
     'Clear All Analytics' => 'Cancella tutte le analisi',
+    'Export All Analytics' => 'Esporta tutte le analisi',
+    'Export or permanently delete all analytics tracking data.' => 'Esportare o eliminare definitivamente tutti i dati di tracciamento delle analisi.',
     'Are you sure you want to clear all caches?' => 'Si è sicuri di voler svuotare tutte le cache?',
     'Are you sure you want to clear ALL data from' => 'Sei sicuro di voler cancellare TUTTI i dati da',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Eliminare definitivamente tutti i dati di tracciamento delle analisi. Questa azione non può essere annullata!',

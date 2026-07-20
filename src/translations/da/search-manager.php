@@ -18,6 +18,10 @@ return [
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'Konfigurer backends, tilpas indeksering og administrer søgeadfærd fra ét arbejdsområde i kontrolpanelet.',
     'Complete setup' => 'Fuldfør opsætning',
     'Quick Actions' => 'Hurtige handlinger',
+    'This feature' => 'Denne funktion',
+    '{feature} requires Search Manager Pro' => '{feature} kræver Search Manager Pro',
+    'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro tilføjer analyser, forespørgselsregler, kampagner, handlinger for afventende synkroniseringer og genanvendelige widgetstilforudindstillinger.',
+    'View Search Manager Pro in the Plugin Store' => 'Vis Search Manager Pro i Pluginbutik',
 
     // Navigation
     'Dashboard' => 'Oversigt',
@@ -1834,6 +1838,8 @@ return [
     'Clear All Caches' => 'Ryd alle caches',
     'Clear Device Cache' => 'Ryd enhedscache',
     'Clear All Analytics' => 'Ryd alle analyser',
+    'Export All Analytics' => 'Eksporter alle analyser',
+    'Export or permanently delete all analytics tracking data.' => 'Eksporter eller slet alle analysesporingsdata permanent.',
     'Are you sure you want to clear all caches?' => 'Er du sikker på, at du vil rydde alle caches?',
     'Are you sure you want to clear ALL data from' => 'Er du sikker på at du vil rydde ALL data fra',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Slet alle analysesporingsdata permanent. Denne handling kan ikke fortrydes!',

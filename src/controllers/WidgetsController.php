@@ -290,7 +290,9 @@ class WidgetsController extends Controller
         // Get indices for multi-select
         $indices = SearchIndex::findAll();
         $settings = SearchManager::$plugin->getSettings();
-        $widgetStyles = SearchManager::$plugin->widgetStyles->getAll('modal');
+        $widgetStyles = SearchManager::$plugin->isPro()
+            ? SearchManager::$plugin->widgetStyles->getAll('modal')
+            : [];
         $widgetApiKeys = SearchManager::$plugin->apiKeys->widgetUsablePublicKeys();
 
         return $this->renderTemplate('search-manager/widgets/edit', [
@@ -330,6 +332,8 @@ class WidgetsController extends Controller
             $widgetConfig = new WidgetConfig();
         }
 
+        $storedSettings = $widgetConfig->getSettingsArray();
+
         // Set basic attributes
         $widgetConfig->name = $request->getBodyParam('name');
         $widgetConfig->handle = SlugHandleHelper::normalizeSlug(
@@ -352,6 +356,21 @@ class WidgetsController extends Controller
         // Strip unknown keys — only allow keys defined in defaults
         $mergedSettings = $this->_filterSettingsKeys($mergedSettings, $defaults);
 
+        // Standard does not submit Pro-only editor fields. Preserve their
+        // stored values across unrelated edits so a downgrade never destroys
+        // configuration that should become active again after re-upgrading.
+        if (!SearchManager::$plugin->isPro()) {
+            foreach (['promotionDisplay', 'promotionBadgeText', 'promotionBadgePosition'] as $key) {
+                $mergedSettings['behavior'][$key] = $storedSettings['behavior'][$key]
+                    ?? $defaults['behavior'][$key];
+            }
+
+            $storedAnalytics = $storedSettings['analytics'] ?? [];
+            $mergedSettings['analytics'] = is_array($storedAnalytics)
+                ? $this->_filterSettingsKeys(array_replace($defaults['analytics'], $storedAnalytics), $defaults['analytics'])
+                : $defaults['analytics'];
+        }
+
         // Handle indexHandles - ensure it's always an array
         if (isset($mergedSettings['search']['indexHandles'])) {
             $indexHandles = $mergedSettings['search']['indexHandles'];
@@ -367,7 +386,9 @@ class WidgetsController extends Controller
 
         $pluginSettings = SearchManager::$plugin->getSettings();
         $indices = SearchIndex::findAll();
-        $widgetStyles = SearchManager::$plugin->widgetStyles->getAll('modal');
+        $widgetStyles = SearchManager::$plugin->isPro()
+            ? SearchManager::$plugin->widgetStyles->getAll('modal')
+            : [];
         $widgetApiKeys = SearchManager::$plugin->apiKeys->widgetUsablePublicKeys();
 
         // Common route params for error returns (template needs all of these)
@@ -386,18 +407,20 @@ class WidgetsController extends Controller
         ];
 
         // Set style handle from form
-        $styleHandle = $request->getBodyParam('styleHandle');
-        if ($styleHandle) {
-            $existingStyle = SearchManager::$plugin->widgetStyles->getByHandle($styleHandle);
-            if ($existingStyle === null) {
-                $widgetConfig->addError('styleHandle', Craft::t('search-manager', 'Selected style preset not found'));
-                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected style preset not found'));
-                Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
-                return null;
+        if (SearchManager::$plugin->isPro()) {
+            $styleHandle = $request->getBodyParam('styleHandle');
+            if ($styleHandle) {
+                $existingStyle = SearchManager::$plugin->widgetStyles->getByHandle($styleHandle);
+                if ($existingStyle === null) {
+                    $widgetConfig->addError('styleHandle', Craft::t('search-manager', 'Selected style preset not found'));
+                    Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected style preset not found'));
+                    Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
+                    return null;
+                }
+                $widgetConfig->styleHandle = $styleHandle;
+            } else {
+                $widgetConfig->styleHandle = null;
             }
-            $widgetConfig->styleHandle = $styleHandle;
-        } else {
-            $widgetConfig->styleHandle = null;
         }
 
         // Validate
@@ -699,6 +722,11 @@ class WidgetsController extends Controller
      */
     public function actionStylesIndex(): Response
     {
+        $upgradeResponse = SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        if ($upgradeResponse !== null) {
+            return $upgradeResponse;
+        }
+
         $this->requirePermission('searchManager:manageWidgetStyles');
 
         $request = Craft::$app->getRequest();
@@ -850,6 +878,11 @@ class WidgetsController extends Controller
      */
     public function actionViewStyle(?string $handle = null): Response
     {
+        $upgradeResponse = SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        if ($upgradeResponse !== null) {
+            return $upgradeResponse;
+        }
+
         $this->requirePermission('searchManager:manageWidgetStyles');
 
         if (!$handle) {
@@ -880,6 +913,11 @@ class WidgetsController extends Controller
      */
     public function actionEditStyle(?int $styleId = null, ?WidgetStyle $widgetStyle = null): Response
     {
+        $upgradeResponse = SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        if ($upgradeResponse !== null) {
+            return $upgradeResponse;
+        }
+
         if (!$widgetStyle) {
             if ($styleId) {
                 $this->requirePermission('searchManager:editWidgetStyles');
@@ -911,6 +949,7 @@ class WidgetsController extends Controller
      */
     public function actionSaveStyle(): ?Response
     {
+        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
         $this->requirePostRequest();
 
         $request = Craft::$app->getRequest();
@@ -982,6 +1021,7 @@ class WidgetsController extends Controller
      */
     public function actionDeleteStyle(): Response
     {
+        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
         $this->requirePostRequest();
         $this->requirePermission('searchManager:deleteWidgetStyles');
 
@@ -1025,6 +1065,7 @@ class WidgetsController extends Controller
      */
     public function actionBulkDeleteStyle(): Response
     {
+        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:deleteWidgetStyles');
@@ -1063,6 +1104,7 @@ class WidgetsController extends Controller
      */
     public function actionDuplicateStyle(): Response
     {
+        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
         $this->requirePostRequest();
         $this->requirePermission('searchManager:createWidgetStyles');
 
@@ -1113,6 +1155,7 @@ class WidgetsController extends Controller
      */
     public function actionBulkEnableStyle(): Response
     {
+        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:editWidgetStyles');
@@ -1140,6 +1183,7 @@ class WidgetsController extends Controller
      */
     public function actionBulkDisableStyle(): Response
     {
+        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:editWidgetStyles');

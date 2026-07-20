@@ -72,6 +72,14 @@
     ]
   },
   {
+    "title": "Pricing",
+    "collapsable": true,
+    "open": true,
+    "children": [
+      "pricing/editions"
+    ]
+  },
+  {
     "title": "Developers",
     "collapsable": true,
     "open": false,

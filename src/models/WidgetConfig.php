@@ -493,9 +493,11 @@ class WidgetConfig extends Model
     // Styles - returns styles from style preset or inline config
     public function getStyles(): array
     {
-        // Style preset takes priority
-        if ($this->styleHandle) {
-            $preset = \lindemannrock\searchmanager\SearchManager::$plugin->widgetStyles->getByHandle($this->styleHandle);
+        // Reusable presets are a Pro authoring/rendering surface. Keep the
+        // reference stored across downgrades, but resolve through the normal
+        // inline/default fallback path while Standard is active.
+        if (SearchManager::$plugin->isPro() && $this->styleHandle) {
+            $preset = SearchManager::$plugin->widgetStyles->getByHandle($this->styleHandle);
             if ($preset && $preset->enabled) {
                 return $preset->getStyles();
             }

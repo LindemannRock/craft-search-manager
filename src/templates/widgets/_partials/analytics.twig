@@ -1,25 +1,31 @@
 {% import "_includes/forms" as forms %}
 
-{{ forms.textField({
-	label: 'Analytics Source'|t('search-manager'),
-	instructions: 'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.'|t('search-manager'),
-	tip: 'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.'|t('search-manager'),
-	id: 'analytics-source',
-	name: 'settings[analytics][analyticsSource]',
-	value: widgetConfig.getAnalyticsSource(),
-	placeholder: 'frontend-widget',
-	errors: widgetConfig.getErrors('settings.analytics.analyticsSource')
-}) }}
+{% if isPro %}
+	{{ forms.textField({
+		label: 'Analytics Source'|t('search-manager'),
+		instructions: 'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.'|t('search-manager'),
+		tip: 'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.'|t('search-manager'),
+		id: 'analytics-source',
+		name: 'settings[analytics][analyticsSource]',
+		value: widgetConfig.getAnalyticsSource(),
+		placeholder: 'frontend-widget',
+		errors: widgetConfig.getErrors('settings.analytics.analyticsSource')
+	}) }}
 
-{{ forms.textField({
-	label: 'Analytics Idle Timeout'|t('search-manager'),
-	instructions: 'Track search after user stops typing for this duration (milliseconds). Set to 0 to disable idle tracking.'|t('search-manager'),
-	tip: 'Min: 0 (disabled), Max: 10000 (10 seconds). Default: 1500 (1.5 seconds)'|t('search-manager'),
-	id: 'analytics-analyticsIdleTimeoutMs',
-	name: 'settings[analytics][analyticsIdleTimeoutMs]',
-	value: widgetConfig.getAnalyticsIdleTimeoutMs(),
-	type: 'number',
-	min: 0,
-	max: 10000,
-	errors: widgetConfig.getErrors('settings.analytics.analyticsIdleTimeoutMs')
-}) }}
+	{{ forms.textField({
+		label: 'Analytics Idle Timeout'|t('search-manager'),
+		instructions: 'Track search after user stops typing for this duration (milliseconds). Set to 0 to disable idle tracking.'|t('search-manager'),
+		tip: 'Min: 0 (disabled), Max: 10000 (10 seconds). Default: 1500 (1.5 seconds)'|t('search-manager'),
+		id: 'analytics-analyticsIdleTimeoutMs',
+		name: 'settings[analytics][analyticsIdleTimeoutMs]',
+		value: widgetConfig.getAnalyticsIdleTimeoutMs(),
+		type: 'number',
+		min: 0,
+		max: 10000,
+		errors: widgetConfig.getErrors('settings.analytics.analyticsIdleTimeoutMs')
+	}) }}
+{% else %}
+	{% include 'search-manager/_partials/upgrade-prompt' with {
+		featureName: 'Analytics',
+	} only %}
+{% endif %}

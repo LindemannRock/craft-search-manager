@@ -1,6 +1,6 @@
 # Frontend widget
 
-Drop a fast, accessible search experience onto any page with one line of Twig — no custom search UI to build. The frontend widget is Search Manager's ready-to-use search interface, built as a web component (`<search-modal>`) with full keyboard navigation, theming, and click analytics.
+Drop a fast, accessible search experience onto any page with one line of Twig — no custom search UI to build. The frontend widget is Search Manager's ready-to-use search interface, built as a web component (`<search-modal>`) with full keyboard navigation and theming in every edition. Pro adds built-in analytics, promotion display controls, and reusable style presets.
 
 ## What you'll use it for
 
@@ -29,14 +29,14 @@ That's it — the widget renders a trigger button and the search modal. Press CM
 - **Keyboard navigation** — arrow keys, Enter, Escape, configurable hotkey (default: CMD+K / Ctrl+K)
 - **Modal search widget** — CMD+K overlay with backdrop, focus handling, and scroll locking
 - **Light & dark themes** — built-in theme support with customizable colors
-- **Reusable style presets** — define [Widget Styles](styles.md) once and share across configs
+- **Reusable style presets (Pro)** — define [Widget Styles](styles.md) once and share across configs
 - **Recently viewed** — optional locally stored history of the results a visitor opened, offered back for quick return
 - **Grouped results** — group flat results by source, Entry section, or type; hierarchical layouts can group by any public hit field via `hierarchyGroupBy`
 - **Heading matching** — show matched headings under results for documentation sites
 - **Split section rendering** — split SourceDoc and AutoTransformer-family hits can render as parent rows with matched heading children in hierarchical layouts
 - **Snippet modes** — early, balanced, or deep snippet extraction
 - **Term highlighting** — highlight matched terms in results; the same highlighter is also available as a [standalone utility](../template-guides/highlighting-snippets.md#client-side-highlighting) for custom search UIs
-- **Click analytics** — track which results users click
+- **Click analytics (Pro)** — track which results users click with Search Manager's built-in analytics; public JavaScript events remain available in Standard
 - **RTL support** — full right-to-left language support
 - **Shadow DOM** — styles are encapsulated and don't affect your site
 
@@ -73,7 +73,7 @@ See [Widget Configuration](configuration.md) for all parameters.
 
 ## Manage widgets in the CP
 
-Each widget config links to a **Widget Style** preset from the sidebar — that's where colors, spacing, and other appearance settings live (see [Widget Styles](styles.md)), not a dedicated tab. The sidebar also shows a live preview of the widget in light and dark mode.
+In Pro, each widget config links to a **Widget Style** preset from the sidebar — that's where colors, spacing, and other appearance settings live (see [Widget Styles](styles.md)), not a dedicated tab. Standard shows an upgrade prompt in that position and uses the built-in default style; Twig inline `styles:` overrides still apply. The sidebar preview remains available in both editions.
 
 The config's own tabs cover behavior:
 
@@ -81,14 +81,14 @@ The config's own tabs cover behavior:
 - **Search Input** — placeholder, debounce, minimum characters
 - **Modal & Trigger** — hotkey, prevent body scroll, loading indicator, trigger button and label
 - **Recently Viewed** — the "Recently viewed" section (results the visitor opened) and its stored-entry limit
-- **Results** — result limit, URL requirement, layout (default or hierarchical, with grouping field/style/heading-limit when hierarchical), and promotions display
+- **Results** — result limit, URL requirement, and layout (default or hierarchical, with grouping field/style/heading-limit when hierarchical); Pro also exposes promotion display controls
 - **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
 - **Destination Highlighting** — destination-page highlight toggle, persisted query, query param, content selector
-- **Analytics** — source identifier, idle timeout
+- **Analytics** — Pro source identifier and idle timeout controls; Standard keeps the tab visible with an upgrade prompt
 
 Manage configs at Search Manager > Widgets.
 
-## Widget analytics
+## Widget analytics (Pro)
 
 The widget tracks searches and clicks to provide meaningful analytics without keystroke spam:
 
@@ -99,6 +99,8 @@ The widget tracks searches and clicks to provide meaningful analytics without ke
   - Stopping typing for the idle timeout (default: 1.5s)
 - **Source identification** — use `analyticsSource` to distinguish widget placements (e.g., `'header-search'`, `'mobile-nav'`)
 - **Cache telemetry** @since(5.46.0) — the intent ping carries the final search response's `meta.cached` and `meta.took` forward so the recorded row has an accurate `executionTime` (`0` for cache hits, `took` ms for misses). This makes widget activity contribute to the dashboard's Cache Hit Rate, Cache Hits / Misses, and other performance metrics — without resurrecting per-keystroke spam.
+
+Standard does not collect built-in widget analytics. Tracking endpoints accept and discard stale requests after a downgrade, so an existing Pro-configured widget keeps searching without browser-console errors. Public [JavaScript events](javascript-api.md) still fire in Standard for integrations with your own analytics platform.
 
 ## Next steps
 

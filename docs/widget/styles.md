@@ -2,6 +2,8 @@
 
 Design your search modal's look once — colors, spacing, dimensions — and reuse it across every widget placement on your site, instead of repeating the same overrides in every include. Widget styles are reusable appearance presets for the [frontend widget](overview.md): define colors, spacing, dimensions, and other visual properties once, then share them across multiple widget configurations.
 
+Reusable Widget Style presets and their Control Panel/config-file management surface require Pro. Standard renders the widget with its built-in style defaults and still accepts per-include Twig `styles:` overrides.
+
 ## What you'll use it for
 
 - Keep every search placement on-brand without repeating color and spacing values in each Twig include
@@ -13,7 +15,7 @@ Design your search modal's look once — colors, spacing, dimensions — and reu
 
 Widget configs control **behavior** (debounce, max results, hotkey, etc.) while widget styles control **appearance** (colors, border radius, padding, etc.). This separation lets you reuse the same visual design across different search widgets without duplicating style settings.
 
-Each widget config can reference a style preset via `styleHandle`. If no style is linked, the widget uses the built-in WCAG 2.1 AA compliant defaults.
+In Pro, each widget config can reference a style preset via `styleHandle`. If no style is linked, the widget uses the built-in WCAG 2.1 AA compliant defaults. In Standard, a stored preset reference is preserved but not resolved; the widget follows the same default-style path without an error.
 
 ## Widget type
 
@@ -23,7 +25,7 @@ Each style has a `type` that determines which widget surface it supports. For th
 |------|----------|-------------|
 | Modal | `modal` | CMD+K overlay — opens on top of the page with a backdrop |
 
-## Create a style
+## Create a style (Pro)
 
 ### Via Control Panel
 
@@ -114,7 +116,7 @@ You can also override individual style properties at render time using the `styl
 } %}
 ```
 
-Inline `styles` merge on top of the widget config's style preset. If the referenced preset doesn't exist or is disabled, the widget falls back to the built-in defaults.
+In Pro, inline `styles` merge on top of the widget config's style preset. If the referenced preset doesn't exist or is disabled, the widget falls back to the built-in defaults. In Standard, the preset is skipped and inline `styles` merge directly on top of those defaults.
 
 ## Style properties
 

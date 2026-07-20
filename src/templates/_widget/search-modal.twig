@@ -22,7 +22,7 @@
  * } %}
  *
  * @link https://lindemannrock.com
- * @copyright Copyright (c) 2025 LindemannRock
+ * @copyright Copyright (c) 2025-2026 LindemannRock
  */
 #}
 
@@ -42,6 +42,7 @@
 
 {# Get plugin instance and widget config #}
 {% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set isPro = plugin.isPro() %}
 {% set widgetConfig = plugin.widgetConfigs.getConfigForWidget(configHandle ?? null) %}
 
 {# Search settings - support indexHandles as an array or comma-separated string #}
@@ -65,11 +66,15 @@
 {% set searchMinChars = searchMinChars ?? widgetConfig.getSearchMinChars() %}
 {% set recentlyViewedEnabled = recentlyViewedEnabled ?? widgetConfig.isRecentlyViewedEnabled() %}
 {% set recentlyViewedLimit = recentlyViewedLimit ?? widgetConfig.getRecentlyViewedLimit() %}
-{% set promotionDisplay = promotionDisplay ?? widgetConfig.getPromotionDisplay() %}
-{# Default badge text is localized from the plugin; custom text goes through the site category #}
-{% set promotionBadgeTextRaw = promotionBadgeText ?? widgetConfig.getPromotionBadgeText() %}
-{% set promotionBadgeText = promotionBadgeTextRaw == 'Featured' ? 'Featured'|t('search-manager') : promotionBadgeTextRaw|t('site') %}
-{% set promotionBadgePosition = promotionBadgePosition ?? widgetConfig.getPromotionBadgePosition() %}
+{% if isPro %}
+    {% set promotionDisplay = promotionDisplay ?? widgetConfig.getPromotionDisplay() %}
+    {# Default badge text is localized from the plugin; custom text goes through the site category #}
+    {% set promotionBadgeTextRaw = promotionBadgeText ?? widgetConfig.getPromotionBadgeText() %}
+    {% set promotionBadgeText = promotionBadgeTextRaw == 'Featured' ? 'Featured'|t('search-manager') : promotionBadgeTextRaw|t('site') %}
+    {% set promotionBadgePosition = promotionBadgePosition ?? widgetConfig.getPromotionBadgePosition() %}
+{% else %}
+    {% set promotionDisplay = 'none' %}
+{% endif %}
 {% set resultsGroupingEnabled = resultsGroupingEnabled ?? widgetConfig.isResultsGroupingEnabled() %}
 {% set triggerHotkey = triggerHotkey ?? widgetConfig.getTriggerHotkey() %}
 {% set resultsRequireUrl = resultsRequireUrl ?? widgetConfig.isResultsRequireUrlEnabled() %}
@@ -85,9 +90,11 @@
 {% set triggerLabel = triggerLabel ?? widgetConfig.getTriggerLabel()|t('search-manager') %}
 {% set triggerSelector = triggerSelector ?? '' %}
 
-{# Analytics settings — forwarded to the web component as HTML attributes #}
-{% set analyticsSource = analyticsSource ?? widgetConfig.getAnalyticsSource() %}
-{% set analyticsIdleTimeoutMs = analyticsIdleTimeoutMs ?? widgetConfig.getAnalyticsIdleTimeoutMs() %}
+{# Analytics settings — Pro-only and forwarded as HTML attributes only in Pro #}
+{% if isPro %}
+    {% set analyticsSource = analyticsSource ?? widgetConfig.getAnalyticsSource() %}
+    {% set analyticsIdleTimeoutMs = analyticsIdleTimeoutMs ?? widgetConfig.getAnalyticsIdleTimeoutMs() %}
+{% endif %}
 
 {# Public API key — render-time override wins over the saved widget setting.
    Sent as the X-Search-Manager-Key header by the widget when requireApiKey is on. #}
@@ -196,9 +203,11 @@
     search-min-chars="{{ searchMinChars }}"
     recently-viewed-enabled="{{ _self.toBool(recentlyViewedEnabled, widgetConfig.isRecentlyViewedEnabled()) }}"
     recently-viewed-limit="{{ recentlyViewedLimit }}"
-    promotion-display="{{ promotionDisplay }}"
-    promotion-badge-text="{{ promotionBadgeText }}"
-    promotion-badge-position="{{ promotionBadgePosition }}"
+    {% if isPro %}
+        promotion-display="{{ promotionDisplay }}"
+        promotion-badge-text="{{ promotionBadgeText }}"
+        promotion-badge-position="{{ promotionBadgePosition }}"
+    {% endif %}
     results-grouping-enabled="{{ _self.toBool(resultsGroupingEnabled, widgetConfig.isResultsGroupingEnabled()) }}"
     trigger-hotkey="{{ triggerHotkey }}"
     results-require-url="{{ _self.toBool(resultsRequireUrl, widgetConfig.isResultsRequireUrlEnabled()) }}"
@@ -212,8 +221,10 @@
     {% if siteId %}site-id="{{ siteId }}"{% endif %}
     {% if cssClass %}class="{{ cssClass }}"{% endif %}
     {% if apiKey %}api-key="{{ apiKey|e('html_attr') }}"{% endif %}
-    {% if analyticsSource %}analytics-source="{{ analyticsSource|e('html_attr') }}"{% endif %}
-    analytics-idle-timeout-ms="{{ analyticsIdleTimeoutMs }}"
+    {% if isPro %}
+        {% if analyticsSource %}analytics-source="{{ analyticsSource|e('html_attr') }}"{% endif %}
+        analytics-idle-timeout-ms="{{ analyticsIdleTimeoutMs }}"
+    {% endif %}
     dir="{{ dir }}"
     highlight-results-enabled="{{ _self.toBool(highlightResultsEnabled, true) }}"
     highlight-tag="{{ highlightTag|e('html_attr') }}"

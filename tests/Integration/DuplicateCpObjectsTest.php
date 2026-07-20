@@ -176,6 +176,7 @@ final class DuplicateCpObjectsTest extends TestCase
 
     public function testWidgetStyleDuplicateCreatesDisabledUniqueCopy(): void
     {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
         $this->actWithPermission('searchManager:createWidgetStyles');
 
         $source = new WidgetStyle();
@@ -248,6 +249,7 @@ final class DuplicateCpObjectsTest extends TestCase
 
     public function testConfigBackedWidgetStyleDuplicateDoesNotSave(): void
     {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
         $this->actWithPermission('searchManager:createWidgetStyles');
         $this->swapPluginComponent('search-manager', 'widgetStyles', new class extends WidgetStyleService {
             public function getById(int $id): ?WidgetStyle

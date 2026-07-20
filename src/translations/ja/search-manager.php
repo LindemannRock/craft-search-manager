@@ -18,6 +18,10 @@ return [
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'バックエンドの設定、インデックスの調整、検索動作の管理をコントロールパネルの 1 つのワークスペースから行います。',
     'Complete setup' => 'セットアップを完了する',
     'Quick Actions' => 'クイックアクション',
+    'This feature' => 'この機能',
+    '{feature} requires Search Manager Pro' => '{feature} には Search Manager Pro が必要です',
+    'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro では、アナリティクス、クエリルール、プロモーション、保留中の同期操作、再利用可能なウィジェットスタイルプリセットを利用できます。',
+    'View Search Manager Pro in the Plugin Store' => 'プラグインストアで Search Manager Pro を表示する',
 
     // Navigation
     'Dashboard' => 'ダッシュボード',
@@ -1834,6 +1838,8 @@ return [
     'Clear All Caches' => 'すべてのキャッシュを削除する',
     'Clear Device Cache' => 'デバイスキャッシュを削除する',
     'Clear All Analytics' => 'すべてのアナリティクスを削除する',
+    'Export All Analytics' => 'すべてのアナリティクスをエクスポートする',
+    'Export or permanently delete all analytics tracking data.' => 'すべてのアナリティクス追跡データをエクスポートするか、完全に削除します。',
     'Are you sure you want to clear all caches?' => 'すべてのキャッシュを削除しますか？',
     'Are you sure you want to clear ALL data from' => 'すべてのデータを削除しますか：',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'すべてのアナリティクス追跡データを完全に削除します。この操作は取り消せません！',

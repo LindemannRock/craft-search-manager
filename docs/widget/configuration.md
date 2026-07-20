@@ -12,9 +12,17 @@ Twig parameters take highest priority, followed by config file values, then CP s
 
 A widget referenced without a `configHandle` falls back to the **default widget**, set via `defaultWidgetHandle` — see [Default widget](#default-widget) below.
 
+## Edition behavior
+
+The modal widget's complete functional core is available in Standard: search and results, grouping and hierarchy, snippets, recently viewed history, destination highlighting, autocomplete APIs, Twig inline `styles:` overrides, and public JavaScript events.
+
+Pro adds three configuration areas: promotion display controls, the Analytics tab's source and idle-timeout fields, and reusable Widget Style presets. Standard keeps the eight-tab editor intact and shows upgrade prompts where those Pro fields would appear.
+
+On a downgraded site, stored Pro values are preserved but omitted from rendered widget HTML. A referenced style preset falls back to the built-in default style, promotion attributes are omitted, and analytics attributes are omitted. Hand-added client-side attributes cannot bypass the server-side edition gates.
+
 ## Manage widgets in the CP
 
-Create and edit widget configs at Search Manager > Widgets. Each config links to a **Widget Style** preset from the sidebar — that's where colors, spacing, and other appearance settings live (see [Widget Styles](styles.md)), not a dedicated tab. The sidebar also shows a live preview of the widget in light and dark mode.
+Create and edit widget configs at Search Manager > Widgets. In Pro, each config links to a **Widget Style** preset from the sidebar — that's where colors, spacing, and other appearance settings live (see [Widget Styles](styles.md)), not a dedicated tab. Standard shows an upgrade prompt there and renders with the built-in defaults plus any Twig inline styles. The sidebar also shows a live preview of the widget in light and dark mode.
 
 The config's own tabs cover behavior:
 
@@ -22,10 +30,10 @@ The config's own tabs cover behavior:
 - **Search Input** — placeholder, debounce, minimum characters
 - **Modal & Trigger** — hotkey, prevent body scroll, loading indicator, trigger button and label
 - **Recently Viewed** — the "Recently viewed" section (results the visitor opened) and its stored-entry limit
-- **Results** — result limit, URL requirement, layout (default or hierarchical, with grouping field/style/heading-limit when hierarchical), and promotions display
+- **Results** — result limit, URL requirement, and layout (default or hierarchical, with grouping field/style/heading-limit when hierarchical); promotion display controls require Pro
 - **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
 - **Destination Highlighting** — destination-page highlight toggle, persisted query, query param, content selector
-- **Analytics** — source identifier, idle timeout
+- **Analytics** — Pro source identifier and idle timeout controls; Standard shows an upgrade prompt
 
 Config-defined widgets (below) show a "Config" badge here and can't be edited in this UI; database-defined widgets show a "Database" badge and are fully editable.
 
@@ -167,6 +175,13 @@ A handful of parameters in the tables below read like behavior settings but actu
 |-----------|------|---------|-------------|
 | `recentlyViewedEnabled` | `bool` | `true` | Show the "Recently viewed" section — results the visitor previously opened, stored in their browser |
 | `recentlyViewedLimit` | `int` | `5` | Maximum recently viewed entries to store (1-50) |
+
+### Promotion display (Pro)
+
+Standard omits these parameters from rendered widget HTML and always follows the hidden-display path. Stored values remain intact for a later re-upgrade.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
 | `promotionDisplay` | `string` | `none` | How promoted results are marked: `badge`, `tint` (row background), or `none`. Colors come from the widget style's Promoted section |
 | `promotionBadgeText` | `string` | `Featured` | Badge label; also the screen-reader label in tint mode. The default is localized per site language; custom text runs through Craft's `site` translation category |
 | `promotionBadgePosition` | `string` | `inline` | Badge placement: `inline` (before the title), `above` (own line above the title), or `below` (own line below it) — badge mode only |
@@ -223,6 +238,8 @@ The widget uses `highlightTag` and `highlightClass` client-side for titles and s
 | `highlightDestinationContentSelector` | `string` | `'main, article, [data-search-content]'` | CSS selector for page content areas to scan for highlighting |
 
 ### Analytics
+
+These parameters require Pro. Standard omits them from rendered widget HTML even if they remain in stored configuration or are supplied as Twig parameters.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
