@@ -125,6 +125,17 @@ if ! echo "$TYPE" | grep -qE '^(test|revert)$'; then
   fi
 fi
 
+# A dev-tooling-only staging (git hooks, dev scripts, editor config) must be
+# type chore: — repo tooling ships nothing to users. Catches content-based
+# drift like "feat(cli): add commit-msg hook" or "feat(editions): add
+# editions scope to commit scopes" on .githooks/scripts/.vscode changes.
+if ! echo "$TYPE" | grep -qE '^(chore|revert)$'; then
+  STAGED=$(git diff --cached --name-only 2>/dev/null)
+  if [ -n "$STAGED" ] && ! echo "$STAGED" | grep -qvE '^(\.githooks/|scripts/|\.vscode/)'; then
+    fail "staging is dev-tooling only (.githooks / scripts / .vscode) — type must be chore: (repo tooling ships nothing to users)"
+  fi
+fi
+
 # Pre-release (0.x.x): breaking-change markers are banned
 if grep -qE '"version":[[:space:]]*"0\.' composer.json 2>/dev/null; then
   echo "$SUBJECT" | grep -qE '^[a-z]+(\([^)]*\))?!:' \
