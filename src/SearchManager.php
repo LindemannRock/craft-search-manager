@@ -1106,7 +1106,7 @@ class SearchManager extends Plugin
             'label' => Craft::t('search-manager', 'Pending Syncs'),
             'url' => 'search-manager/pending-syncs',
             'permissionsAll' => ['searchManager:managePendingSyncs'],
-            'when' => $hasBackends,
+            'when' => $this->isPro() && $hasBackends,
         ];
 
         $sections[] = [

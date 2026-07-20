@@ -36,6 +36,16 @@ class PendingSyncsController extends Controller
         $this->setLoggingHandle('search-manager');
     }
 
+    /** @inheritdoc */
+    public function beforeAction($action): bool
+    {
+        if (SearchManager::$plugin->requireProOrPrompt('Pending Syncs') !== null) {
+            return false;
+        }
+
+        return parent::beforeAction($action);
+    }
+
     /**
      * Pending Syncs list view. Default shows every row in the buffer; operator
      * narrows via the Status filter. The dropdown carries individual statuses
