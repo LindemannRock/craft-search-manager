@@ -64,6 +64,11 @@ class BackendService extends Component
 
     private ?BackendInterface $_activeBackend = null;
 
+    /**
+     * @var array<string, list<array{backendId: string|null, elementId: int|null, title: string|null, error: string}>>
+     */
+    private array $lastBatchIndexingFailures = [];
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -307,10 +312,16 @@ class BackendService extends Component
         $backend = $this->getBackendForIndex($indexName);
         if (!$backend) {
             $this->logError('No backend available for batch indexing', ['index' => $indexName]);
+            $this->lastBatchIndexingFailures[$indexName] = [];
             return false;
         }
 
-        return $backend->batchIndex($indexName, $items);
+        $result = $backend->batchIndex($indexName, $items);
+        $this->lastBatchIndexingFailures[$indexName] = $backend instanceof BaseBackend
+            ? $backend->getLastIndexingFailures()
+            : [];
+
+        return $result;
     }
 
     /**
@@ -319,6 +330,10 @@ class BackendService extends Component
      */
     public function getLastIndexingFailures(string $indexName): array
     {
+        if (array_key_exists($indexName, $this->lastBatchIndexingFailures)) {
+            return $this->lastBatchIndexingFailures[$indexName];
+        }
+
         $backend = $this->getBackendForIndex($indexName);
         if (!$backend instanceof BaseBackend) {
             return [];

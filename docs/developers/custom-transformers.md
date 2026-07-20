@@ -55,6 +55,16 @@ Choose one of these extension models:
 
 The `supports(ElementInterface $element)` method is required by `TransformerInterface`, but it is not used as a safety gate for an index-specific configured transformer override. If an index points at your class, Search Manager uses that class for that index. Choose the class carefully and keep one transformer focused on the element type it is assigned to.
 
+### Rebuild failures and intentional skips
+
+A full rebuild distinguishes a deliberate event skip from a transformer failure:
+
+- A listener that sets `handled = true` on `EVENT_BEFORE_TRANSFORM` intentionally skips that element. The skip does not fail the rebuild and does not increase the index's document count.
+- A transformer that cannot be constructed, throws from `transform()`, or violates the array return contract records a failure. Search Manager continues processing the remaining elements, writes the documents that transformed successfully, updates the index count to the number of source elements whose complete document set the backend accepted, and then marks the queue job failed with the affected element IDs.
+- If every matching element fails transformation, the cleared backend stays empty, the index count is `0`, and the queue job fails. A criteria query that genuinely matches no elements remains a successful empty rebuild.
+
+This partial-failure contract makes the stored count describe completed source elements rather than the number of elements merely selected by the criteria query. Fix the transformer and run the rebuild again to replace the partial index with a complete one.
+
 ## Choosing an extension path
 
 The extension path controls how much Search Manager does for you:

@@ -36,6 +36,8 @@ final class RebuildIndexJobPreflightTest extends TestCase
     private const ALL_BAD_INDEX = '__sm_rebuild_all_bad';
     private const ALL_GOOD_INDEX = '__sm_rebuild_all_good';
     private const CLEAR_FAILURE_INDEX = '__sm_rebuild_clear_failure';
+    private const THROWING_CLOSURE_INDEX = '__sm_rebuild_throwing_closure';
+    private const WRONG_TYPE_CLOSURE_INDEX = '__sm_rebuild_wrong_type_closure';
 
     private mixed $originalConfigCache = null;
 
@@ -117,6 +119,70 @@ final class RebuildIndexJobPreflightTest extends TestCase
         self::assertSame(
             [['elementId' => 902, 'title' => 'Stored before sync']],
             $backend->documentsFor(self::FAILED_SYNC_INDEX),
+        );
+    }
+
+    public function testThrowingCriteriaClosureFailsBeforeClearingStoredDocuments(): void
+    {
+        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        $index = $this->indexModel(self::THROWING_CLOSURE_INDEX, User::class, $siteId);
+        $index->criteria = static function(): never {
+            throw new \RuntimeException('Synthetic criteria Closure failure');
+        };
+
+        $backend = new RebuildPreflightRecordingBackendService();
+        $backend->seedDocument(self::THROWING_CLOSURE_INDEX, [
+            'elementId' => 905,
+            'title' => 'Stored before throwing Closure',
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $error = $this->withOnlySearchIndices(
+            [$index],
+            fn(): \RuntimeException => $this->captureRuntimeException(static function(): void {
+                (new RebuildIndexJob())->execute(Craft::$app->queue);
+            }),
+        );
+
+        self::assertStringContainsString(self::THROWING_CLOSURE_INDEX, $error->getMessage());
+        self::assertStringContainsString("site {$siteId}", $error->getMessage());
+        self::assertStringContainsString('Synthetic criteria Closure failure', $error->getMessage());
+        self::assertSame([], $backend->clearCallsFor(self::THROWING_CLOSURE_INDEX));
+        self::assertSame(
+            [['elementId' => 905, 'title' => 'Stored before throwing Closure']],
+            $backend->documentsFor(self::THROWING_CLOSURE_INDEX),
+            'A throwing criteria Closure must fail preflight without removing existing backend documents.',
+        );
+    }
+
+    public function testWrongTypeCriteriaClosureFailsBeforeClearingStoredDocuments(): void
+    {
+        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        $index = $this->indexModel(self::WRONG_TYPE_CLOSURE_INDEX, User::class, $siteId);
+        $index->criteria = static fn(): string => 'not an element query';
+
+        $backend = new RebuildPreflightRecordingBackendService();
+        $backend->seedDocument(self::WRONG_TYPE_CLOSURE_INDEX, [
+            'elementId' => 906,
+            'title' => 'Stored before wrong-type Closure',
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $error = $this->withOnlySearchIndices(
+            [$index],
+            fn(): \RuntimeException => $this->captureRuntimeException(static function(): void {
+                (new RebuildIndexJob())->execute(Craft::$app->queue);
+            }),
+        );
+
+        self::assertStringContainsString(self::WRONG_TYPE_CLOSURE_INDEX, $error->getMessage());
+        self::assertStringContainsString("site {$siteId}", $error->getMessage());
+        self::assertStringContainsString('ElementQuery', $error->getMessage());
+        self::assertSame([], $backend->clearCallsFor(self::WRONG_TYPE_CLOSURE_INDEX));
+        self::assertSame(
+            [['elementId' => 906, 'title' => 'Stored before wrong-type Closure']],
+            $backend->documentsFor(self::WRONG_TYPE_CLOSURE_INDEX),
+            'A wrong-type criteria Closure must fail preflight without removing existing backend documents.',
         );
     }
 
@@ -285,6 +351,8 @@ final class RebuildIndexJobPreflightTest extends TestCase
             self::ALL_BAD_INDEX,
             self::ALL_GOOD_INDEX,
             self::CLEAR_FAILURE_INDEX,
+            self::THROWING_CLOSURE_INDEX,
+            self::WRONG_TYPE_CLOSURE_INDEX,
         ];
         $indexIds = (new Query())
             ->select('id')

@@ -286,58 +286,95 @@ class TransformerService extends Component
      */
     public function transform(ElementInterface $element, string $indexName = '', ?string $transformerClass = null, ?array $headingLevels = null): ?array
     {
-        $transformer = $this->getTransformer($element, $transformerClass, $headingLevels);
+        $result = $this->transformWithResult($element, $indexName, $transformerClass, $headingLevels);
 
-        if (!$transformer) {
-            return null;
-        }
+        return $result['status'] === 'transformed' ? $result['data'] : null;
+    }
 
-        // Configure heading levels for BaseTransformer-family transformers.
-        if ($headingLevels !== null && $transformer instanceof BaseTransformer) {
-            $transformer->setHeadingLevels($headingLevels);
-        }
-
-        $resolvedClass = get_class($transformer);
-
-        // Fire before event — allows skipping transformation
-        if ($this->hasEventHandlers(self::EVENT_BEFORE_TRANSFORM)) {
-            $beforeEvent = new TransformEvent([
-                'element' => $element,
-                'indexName' => $indexName,
-                'transformerClass' => $resolvedClass,
-            ]);
-            $this->trigger(self::EVENT_BEFORE_TRANSFORM, $beforeEvent);
-
-            if ($beforeEvent->handled) {
-                return null;
-            }
-        }
-
+    /**
+     * Transform an element while distinguishing intentional skips from failures.
+     *
+     * @param array<int>|null $headingLevels
+     * @return array{status: 'transformed'|'skipped'|'failed', data: array<string, mixed>|null, error: string|null}
+     * @since 5.54.0
+     */
+    public function transformWithResult(
+        ElementInterface $element,
+        string $indexName = '',
+        ?string $transformerClass = null,
+        ?array $headingLevels = null,
+    ): array {
         try {
+            $transformer = $this->getTransformer($element, $transformerClass, $headingLevels);
+
+            if (!$transformer) {
+                $resolvedClass = $this->resolveTransformerClass($element, $transformerClass);
+
+                return [
+                    'status' => 'failed',
+                    'data' => null,
+                    'error' => "Transformer '{$resolvedClass}' could not be created.",
+                ];
+            }
+
+            // Configure heading levels for BaseTransformer-family transformers.
+            if ($headingLevels !== null && $transformer instanceof BaseTransformer) {
+                $transformer->setHeadingLevels($headingLevels);
+            }
+
+            $resolvedClass = get_class($transformer);
+
+            // Fire before event — allows skipping transformation
+            if ($this->hasEventHandlers(self::EVENT_BEFORE_TRANSFORM)) {
+                $beforeEvent = new TransformEvent([
+                    'element' => $element,
+                    'indexName' => $indexName,
+                    'transformerClass' => $resolvedClass,
+                ]);
+                $this->trigger(self::EVENT_BEFORE_TRANSFORM, $beforeEvent);
+
+                if ($beforeEvent->handled) {
+                    return [
+                        'status' => 'skipped',
+                        'data' => null,
+                        'error' => null,
+                    ];
+                }
+            }
+
             $data = $transformer->transform($element);
+
+            // Fire after event — allows enriching/modifying document data
+            if ($this->hasEventHandlers(self::EVENT_AFTER_TRANSFORM)) {
+                $afterEvent = new TransformEvent([
+                    'element' => $element,
+                    'indexName' => $indexName,
+                    'transformerClass' => $resolvedClass,
+                    'document' => $data,
+                ]);
+                $this->trigger(self::EVENT_AFTER_TRANSFORM, $afterEvent);
+
+                $data = $afterEvent->document;
+            }
+
+            return [
+                'status' => 'transformed',
+                'data' => $data,
+                'error' => null,
+            ];
         } catch (\Throwable $e) {
             $this->logError('Failed to transform element', [
                 'elementId' => $element->id,
                 'elementType' => get_class($element),
                 'error' => $e->getMessage(),
             ]);
-            return null;
+
+            return [
+                'status' => 'failed',
+                'data' => null,
+                'error' => $e->getMessage(),
+            ];
         }
-
-        // Fire after event — allows enriching/modifying document data
-        if ($this->hasEventHandlers(self::EVENT_AFTER_TRANSFORM)) {
-            $afterEvent = new TransformEvent([
-                'element' => $element,
-                'indexName' => $indexName,
-                'transformerClass' => $resolvedClass,
-                'document' => $data,
-            ]);
-            $this->trigger(self::EVENT_AFTER_TRANSFORM, $afterEvent);
-
-            $data = $afterEvent->document;
-        }
-
-        return $data;
     }
 
     /**

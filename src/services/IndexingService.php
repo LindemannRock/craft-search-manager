@@ -38,6 +38,23 @@ class IndexingService extends Component
     public const EVENT_BEFORE_INDEX = 'beforeIndex';
     public const EVENT_AFTER_INDEX = 'afterIndex';
 
+    /**
+     * @var array{
+     *     indexHandle: string,
+     *     acceptedElementCount: int,
+     *     acceptedDocumentCount: int,
+     *     transformationFailures: list<array{elementId: int|null, error: string}>,
+     *     backendFailures: list<array{backendId: string|null, elementId: int|null, title: string|null, error: string}>
+     * }
+     */
+    private array $lastBatchResult = [
+        'indexHandle' => '',
+        'acceptedElementCount' => 0,
+        'acceptedDocumentCount' => 0,
+        'transformationFailures' => [],
+        'backendFailures' => [],
+    ];
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -330,21 +347,54 @@ class IndexingService extends Component
     public function batchIndex(array $elements, string $indexHandle): bool
     {
         $items = [];
+        $elementDocumentIndexes = [];
+        $transformationFailures = [];
+        $this->lastBatchResult = [
+            'indexHandle' => $indexHandle,
+            'acceptedElementCount' => 0,
+            'acceptedDocumentCount' => 0,
+            'transformationFailures' => [],
+            'backendFailures' => [],
+        ];
 
         // Get index config for transformer class and heading levels
         $index = SearchIndex::findByHandle($indexHandle);
 
-        SearchManager::$plugin->transformers->withTransformerReuse(function() use ($elements, $indexHandle, $index, &$items): void {
+        SearchManager::$plugin->transformers->withTransformerReuse(function() use (
+            $elements,
+            $indexHandle,
+            $index,
+            &$items,
+            &$elementDocumentIndexes,
+            &$transformationFailures,
+        ): void {
             foreach ($elements as $element) {
                 // Transform via TransformerService (fires before/after events)
-                $data = SearchManager::$plugin->transformers->transform(
+                $transformResult = SearchManager::$plugin->transformers->transformWithResult(
                     $element,
                     $indexHandle,
                     $index?->transformerClass,
                     $index?->headingLevels,
                 );
 
+                if ($transformResult['status'] === 'skipped') {
+                    continue;
+                }
+
+                if ($transformResult['status'] === 'failed') {
+                    $transformationFailures[] = [
+                        'elementId' => $element->id !== null ? (int)$element->id : null,
+                        'error' => $transformResult['error'] ?? 'Unknown transformation failure.',
+                    ];
+                    continue;
+                }
+
+                $data = $transformResult['data'];
                 if ($data === null) {
+                    $transformationFailures[] = [
+                        'elementId' => $element->id !== null ? (int)$element->id : null,
+                        'error' => 'Transformer reported success without document data.',
+                    ];
                     continue;
                 }
 
@@ -361,18 +411,60 @@ class IndexingService extends Component
                     $data['siteId'] = $element->siteId;
                 }
 
-                foreach ($this->documentsForIndex($index, $element, $data) as $document) {
+                $elementKey = get_class($element) . ':' . (string)$element->id . ':' . (string)$element->siteId;
+                $documents = $this->documentsForIndex($index, $element, $data);
+                if ($documents === []) {
+                    $transformationFailures[] = [
+                        'elementId' => $element->id !== null ? (int)$element->id : null,
+                        'error' => 'Transformer produced no indexable documents.',
+                    ];
+                    continue;
+                }
+
+                foreach ($documents as $document) {
+                    $documentIndex = count($items);
                     $items[] = $document;
+                    $elementDocumentIndexes[$elementKey][] = $documentIndex;
                 }
             }
         });
 
         if (empty($items)) {
-            return true;
+            $this->lastBatchResult['transformationFailures'] = $transformationFailures;
+
+            return $transformationFailures === [];
         }
 
         try {
             $result = SearchManager::$plugin->backend->batchIndex($indexHandle, $items);
+            $backendFailures = $result
+                ? []
+                : SearchManager::$plugin->backend->getLastIndexingFailures($indexHandle);
+            $acceptedDocumentIndexes = $result
+                ? array_keys($items)
+                : $this->acceptedDocumentIndexes($items, $backendFailures);
+            $acceptedDocumentLookup = array_fill_keys($acceptedDocumentIndexes, true);
+            $acceptedElementCount = 0;
+            foreach ($elementDocumentIndexes as $documentIndexes) {
+                $allDocumentsAccepted = true;
+                foreach ($documentIndexes as $documentIndex) {
+                    if (!isset($acceptedDocumentLookup[$documentIndex])) {
+                        $allDocumentsAccepted = false;
+                        break;
+                    }
+                }
+                if ($allDocumentsAccepted) {
+                    $acceptedElementCount++;
+                }
+            }
+
+            $this->lastBatchResult = [
+                'indexHandle' => $indexHandle,
+                'acceptedElementCount' => $acceptedElementCount,
+                'acceptedDocumentCount' => count($acceptedDocumentIndexes),
+                'transformationFailures' => $transformationFailures,
+                'backendFailures' => $backendFailures,
+            ];
 
             if ($result) {
                 // Clear caches for this index (if enabled)
@@ -387,14 +479,78 @@ class IndexingService extends Component
                 ]);
             }
 
-            return $result;
+            if ($transformationFailures !== []) {
+                $this->logWarning($this->lastBatchIndexingFailureMessage($indexHandle), [
+                    'indexHandle' => $indexHandle,
+                    'failures' => $transformationFailures,
+                ]);
+            }
+
+            return $result && $transformationFailures === [];
         } catch (\Throwable $e) {
+            $this->lastBatchResult['transformationFailures'] = $transformationFailures;
+            $this->lastBatchResult['backendFailures'] = [[
+                'backendId' => null,
+                'elementId' => null,
+                'title' => null,
+                'error' => $e->getMessage(),
+            ]];
             $this->logError('Failed to batch index elements', [
                 'count' => count($items),
                 'error' => $e->getMessage(),
             ]);
             return false;
         }
+    }
+
+    /**
+     * Return accounting for the most recent batch call.
+     *
+     * `acceptedElementCount` counts source elements whose complete generated
+     * document set was accepted. Intentional transform-event skips are omitted
+     * without being reported as failures.
+     *
+     * @return array{
+     *     indexHandle: string,
+     *     acceptedElementCount: int,
+     *     acceptedDocumentCount: int,
+     *     transformationFailures: list<array{elementId: int|null, error: string}>,
+     *     backendFailures: list<array{backendId: string|null, elementId: int|null, title: string|null, error: string}>
+     * }
+     * @since 5.54.0
+     */
+    public function getLastBatchResult(): array
+    {
+        return $this->lastBatchResult;
+    }
+
+    /**
+     * Return the most recent transform/backend batch failures in a job-visible form.
+     *
+     * @since 5.54.0
+     */
+    public function lastBatchIndexingFailureMessage(string $indexHandle): string
+    {
+        $messages = [];
+        if ($this->lastBatchResult['indexHandle'] === $indexHandle) {
+            foreach ($this->lastBatchResult['transformationFailures'] as $failure) {
+                $label = $failure['elementId'] !== null ? 'element ' . $failure['elementId'] : 'unknown element';
+                $messages[] = $label . ': ' . $failure['error'];
+            }
+        }
+
+        if ($messages !== []) {
+            $message = "Element transformation failed for {$indexHandle}: " . implode('; ', array_slice($messages, 0, 5))
+                . (count($messages) > 5 ? ' +' . (count($messages) - 5) . ' more' : '');
+
+            if ($this->lastBatchResult['backendFailures'] !== []) {
+                $message .= ' | ' . $this->lastIndexingFailureMessage($indexHandle);
+            }
+
+            return $message;
+        }
+
+        return $this->lastIndexingFailureMessage($indexHandle);
     }
 
     /**
@@ -421,6 +577,45 @@ class IndexingService extends Component
         $suffix = count($failures) > 5 ? ' +' . (count($failures) - 5) . ' more' : '';
 
         return "Batch index failed for {$indexHandle}: " . implode('; ', $summary) . $suffix;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $items
+     * @param list<array{backendId: string|null, elementId: int|null, title: string|null, error: string}> $failures
+     * @return list<int>
+     */
+    private function acceptedDocumentIndexes(array $items, array $failures): array
+    {
+        if ($failures === []) {
+            return [];
+        }
+
+        $acceptedIndexes = [];
+        foreach ($items as $index => $item) {
+            $documentId = SearchHitIdentityHelper::documentId($item);
+            $elementId = SearchHitIdentityHelper::elementId($item);
+            $failed = false;
+            foreach ($failures as $failure) {
+                if ($failure['backendId'] !== null && $failure['backendId'] === $documentId) {
+                    $failed = true;
+                    break;
+                }
+                if (
+                    $failure['backendId'] === null
+                    && $failure['elementId'] !== null
+                    && $failure['elementId'] === $elementId
+                ) {
+                    $failed = true;
+                    break;
+                }
+            }
+
+            if (!$failed) {
+                $acceptedIndexes[] = $index;
+            }
+        }
+
+        return $acceptedIndexes;
     }
 
     // =========================================================================

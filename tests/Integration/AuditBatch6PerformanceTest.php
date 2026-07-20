@@ -110,7 +110,7 @@ final class AuditBatch6PerformanceTest extends TestCase
         $body = $this->methodBody($source, 'batchIndex', 'public');
 
         self::assertStringContainsString('->withTransformerReuse(function()', $body);
-        self::assertStringContainsString('->transform(', $body);
+        self::assertStringContainsString('->transformWithResult(', $body);
     }
 
     public function testTransformerReuseCacheIsScopedByClassElementTypeAndHeadingLevels(): void

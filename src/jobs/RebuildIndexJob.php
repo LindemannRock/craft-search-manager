@@ -83,6 +83,7 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         }
 
         $totalIndexed = 0;
+        $indexingFailures = [];
         $batchSize = SearchManager::$plugin->getSettings()->batchSize;
 
         foreach (array_values($siteQueries) as $siteIndex => $siteQuery) {
@@ -120,10 +121,12 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
                 }
 
                 if (!empty($elements)) {
-                    if (!SearchManager::$plugin->indexing->batchIndex($elements, $indexHandle)) {
-                        throw new \RuntimeException(SearchManager::$plugin->indexing->lastIndexingFailureMessage($indexHandle));
+                    $batchSucceeded = SearchManager::$plugin->indexing->batchIndex($elements, $indexHandle);
+                    $batchResult = SearchManager::$plugin->indexing->getLastBatchResult();
+                    $totalIndexed += $batchResult['acceptedElementCount'];
+                    if (!$batchSucceeded) {
+                        $indexingFailures[] = SearchManager::$plugin->indexing->lastBatchIndexingFailureMessage($indexHandle);
                     }
-                    $totalIndexed += count($elements);
 
                     // Free memory after each batch to prevent exhaustion
                     unset($elements, $batchElements);
@@ -153,11 +156,19 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         }
 
         // Update index stats
-        $index->updateStats($totalIndexed);
+        if (!$index->updateStats($totalIndexed)) {
+            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': document count metadata update failed.");
+        }
 
         // Clear caches for this index
         SearchManager::$plugin->backend->clearSearchCache($indexHandle);
         SearchManager::$plugin->autocomplete->clearCache($indexHandle);
+
+        if ($indexingFailures !== []) {
+            throw new \RuntimeException(
+                "Cannot rebuild index '{$indexHandle}': " . implode(' | ', $indexingFailures),
+            );
+        }
 
         $this->logInfo('Index rebuild completed', [
             'handle' => $indexHandle,
