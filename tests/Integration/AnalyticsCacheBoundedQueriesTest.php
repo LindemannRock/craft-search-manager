@@ -39,6 +39,7 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
 
         $this->originalRequest = Craft::$app->getRequest();
 

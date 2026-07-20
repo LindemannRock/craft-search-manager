@@ -1,7 +1,12 @@
 {% set featureName = (featureName ?? 'This feature')|t('search-manager') %}
+{% set compact = compact ?? false %}
 
-<div class="pane">
-    <h2>{{ '{feature} requires Search Manager Pro'|t('search-manager', {feature: featureName}) }}</h2>
-    <p class="light">{{ 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.'|t('search-manager') }}</p>
+<div{% if not compact %} class="pane"{% endif %}>
+    {% if compact %}
+        <p class="light">{{ '{feature} requires Search Manager Pro'|t('search-manager', {feature: featureName}) }}</p>
+    {% else %}
+        <h2>{{ '{feature} requires Search Manager Pro'|t('search-manager', {feature: featureName}) }}</h2>
+        <p class="light">{{ 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.'|t('search-manager') }}</p>
+    {% endif %}
     <a class="btn submit" href="{{ url('plugin-store/search-manager') }}">{{ 'View Search Manager Pro in the Plugin Store'|t('search-manager') }}</a>
 </div>

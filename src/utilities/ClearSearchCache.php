@@ -86,9 +86,12 @@ class ClearSearchCache extends Utility
             }
         }
 
-        // Get analytics count only if user can view analytics, scoped to editable sites
+        // Retained analytics remain manageable after a Pro-to-Standard downgrade.
         $analyticsCount = 0;
-        if ($settings->enableAnalytics && $user->getIdentity() && $user->checkPermission('searchManager:viewAnalytics')) {
+        if ($user->getIdentity() && (
+            $user->checkPermission('searchManager:exportAnalytics') ||
+            $user->checkPermission('searchManager:clearAnalytics')
+        )) {
             $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
             $analyticsCount = (int) (new \craft\db\Query())
                 ->from('{{%searchmanager_analytics}}')

@@ -100,6 +100,23 @@ final class RecurringJobsRescheduleTest extends TestCase
         self::assertStringContainsString($this->expectedDailyRunTime(), (string) $row['description']);
     }
 
+    public function testCleanupSchedulingDoesNotDependOnAnalyticsCollection(): void
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $settings->enableAnalytics = false;
+        $settings->analyticsRetention = 30;
+
+        $this->invokePrivate(SearchManager::$plugin, 'scheduleAnalyticsCleanup');
+        $this->assertSame(1, $this->countQueueRows('CleanupAnalyticsJob'));
+
+        $method = new ReflectionMethod(CleanupAnalyticsJob::class, 'scheduleNextCleanup');
+        $method->invoke(new CleanupAnalyticsJob([
+            'reschedule' => true,
+        ]));
+
+        $this->assertSame(2, $this->countQueueRows('CleanupAnalyticsJob'));
+    }
+
     public function testCleanupBootstrapCollapsesDuplicatePendingCleanupRows(): void
     {
         $settings = SearchManager::$plugin->getSettings();

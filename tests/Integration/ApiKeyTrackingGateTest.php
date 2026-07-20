@@ -47,6 +47,7 @@ final class ApiKeyTrackingGateTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
         $this->seedCounter = 0;
         $this->originalRequireApiKey = SearchManager::$plugin->getSettings()->requireApiKey;
         $this->originalTrackingAllowedOrigins = SearchManager::$plugin->getSettings()->trackingAllowedOrigins;

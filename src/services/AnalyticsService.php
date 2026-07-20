@@ -72,6 +72,10 @@ class AnalyticsService extends Component
         array $analyticsOptions = [],
         ?string $sessionId = null,
     ): void {
+        if (!SearchManager::$plugin->isPro()) {
+            return;
+        }
+
         $this->_tracking->trackSearch($indexHandle, $query, $resultsCount, $executionTime, $backend, $siteId, $analyticsOptions, $sessionId);
     }
 

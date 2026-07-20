@@ -44,6 +44,7 @@ final class AuditItem385TrackSearchCapTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
         $this->originalRequest = Craft::$app->getRequest();
         $this->originalResponse = Craft::$app->getResponse();
         $this->originalRequireApiKey = SearchManager::$plugin->getSettings()->requireApiKey;

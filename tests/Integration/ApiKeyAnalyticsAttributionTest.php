@@ -61,6 +61,7 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
         $this->originalRequest = Craft::$app->getRequest();
         $this->originalResponse = Craft::$app->getResponse();
         $this->truncateAnalytics();

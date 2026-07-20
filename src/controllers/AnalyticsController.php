@@ -40,6 +40,14 @@ class AnalyticsController extends Controller
     }
 
     /**
+     * Require Pro for analytics reporting while preserving the CP upgrade prompt.
+     */
+    private function requireProAnalytics(): ?Response
+    {
+        return SearchManager::$plugin->requireProOrPrompt('Analytics');
+    }
+
+    /**
      * Validate a site ID against the current user's editable sites and resolve
      * to either the specific site or all editable sites.
      *
@@ -112,6 +120,11 @@ class AnalyticsController extends Controller
      */
     public function actionIndex(): Response
     {
+        $upgradeResponse = $this->requireProAnalytics();
+        if ($upgradeResponse !== null) {
+            return $upgradeResponse;
+        }
+
         $this->requirePermission('searchManager:viewAnalytics');
 
         $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
@@ -557,6 +570,12 @@ class AnalyticsController extends Controller
     public function actionGetData(): Response
     {
         $this->requireAcceptsJson();
+
+        $upgradeResponse = $this->requireProAnalytics();
+        if ($upgradeResponse !== null) {
+            return $upgradeResponse;
+        }
+
         $this->requirePermission('searchManager:viewAnalytics');
 
         $request = Craft::$app->getRequest();
@@ -934,6 +953,12 @@ class AnalyticsController extends Controller
     public function actionExportRuleAnalytics(): Response
     {
         $this->requirePostRequest();
+
+        $upgradeResponse = $this->requireProAnalytics();
+        if ($upgradeResponse !== null) {
+            return $upgradeResponse;
+        }
+
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
@@ -1001,6 +1026,12 @@ class AnalyticsController extends Controller
     public function actionExportPromotionAnalytics(): Response
     {
         $this->requirePostRequest();
+
+        $upgradeResponse = $this->requireProAnalytics();
+        if ($upgradeResponse !== null) {
+            return $upgradeResponse;
+        }
+
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
@@ -1067,6 +1098,12 @@ class AnalyticsController extends Controller
     public function actionExportTab(): Response
     {
         $this->requirePostRequest();
+
+        $upgradeResponse = $this->requireProAnalytics();
+        if ($upgradeResponse !== null) {
+            return $upgradeResponse;
+        }
+
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
@@ -1241,6 +1278,12 @@ class AnalyticsController extends Controller
     public function actionExportContentGaps(): Response
     {
         $this->requirePostRequest();
+
+        $upgradeResponse = $this->requireProAnalytics();
+        if ($upgradeResponse !== null) {
+            return $upgradeResponse;
+        }
+
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();

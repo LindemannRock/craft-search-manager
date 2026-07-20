@@ -127,8 +127,8 @@ class CleanupAnalyticsJob extends BaseJob implements RetryableJobInterface
     {
         $settings = SearchManager::$plugin->getSettings();
 
-        // Only reschedule if analytics is enabled and retention is set
-        if (!$settings->enableAnalytics || $settings->analyticsRetention <= 0) {
+        // Retention remains active even when analytics collection is unavailable.
+        if ($settings->analyticsRetention <= 0) {
             return;
         }
 

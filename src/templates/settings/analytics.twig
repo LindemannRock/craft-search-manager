@@ -4,6 +4,7 @@
 {% set title = "Analytics Settings"|t('search-manager') %}
 {% set fullPageForm = true %}
 {% set selectedSettingsItem = 'analytics' %}
+{% set isPro = craft.app.plugins.getPlugin('search-manager').isPro() %}
 
 
 {% set crumbs = [
@@ -33,7 +34,8 @@
 	{{ redirectInput('search-manager/settings/analytics') }}
 	{{ hiddenInput('section', 'analytics') }}
 
-		<h2 class="first">{{ "Analytics Settings"|t('search-manager') }}</h2>
+        {% if isPro %}
+			<h2 class="first">{{ "Analytics Settings"|t('search-manager') }}</h2>
 
 		{{ forms.lightswitchField({
             label: 'Enable Analytics'|t('search-manager'),
@@ -94,6 +96,14 @@
             </p>
         </div>
 
+        </div>{# end #analytics-settings #}
+        {% else %}
+            {% include 'search-manager/_partials/upgrade-prompt' with {
+                featureName: 'Analytics',
+                compact: true,
+            } only %}
+        {% endif %}
+
         <hr>
 
         <h2>{{ "Data Retention"|t('search-manager') }}</h2>
@@ -136,9 +146,7 @@
             </div>
         {% endif %}
 
-    </div>{# end #analytics-settings #}
-
-	{% include 'lindemannrock-base/_components/plugin-credit' %}
+		{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
 
 {% js %}

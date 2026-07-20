@@ -69,6 +69,10 @@ class AnalyticsTrackingService
         array $analyticsOptions = [],
         ?string $sessionId = null,
     ): void {
+        if (!SearchManager::$plugin->isPro()) {
+            return;
+        }
+
         $settings = SearchManager::$plugin->getSettings();
 
         // Check if global analytics is enabled

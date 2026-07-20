@@ -24,6 +24,7 @@ final class SettingsControllerSectionScopeTest extends TestCase
 {
     public function testSettingsSectionsMatchRenderedFormScopes(): void
     {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
         $controller = new SettingsController('settings', SearchManager::$plugin);
         $method = new \ReflectionMethod($controller, '_validationAttributesForSection');
 

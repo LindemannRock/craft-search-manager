@@ -87,7 +87,7 @@ class SearchController extends Controller
 
         if ($isTracking) {
             $this->enableCsrfValidation = false;
-            if (!$this->requireTrustedTrackingOrigin()) {
+            if (SearchManager::$plugin->isPro() && !$this->requireTrustedTrackingOrigin()) {
                 return false;
             }
         }
@@ -96,7 +96,7 @@ class SearchController extends Controller
             return false;
         }
 
-        if ($isTracking && SearchManager::$plugin->getSettings()->requireApiKey) {
+        if ($isTracking && SearchManager::$plugin->isPro() && SearchManager::$plugin->getSettings()->requireApiKey) {
             $request = Craft::$app->getRequest();
             $headers = $request->getHeaders();
             $header = $headers->get(ApiKeyService::REQUEST_HEADER);
@@ -157,6 +157,10 @@ class SearchController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
+        if (!SearchManager::$plugin->isPro()) {
+            return Craft::$app->getResponse()->setStatusCode(204);
+        }
+
         $request = Craft::$app->getRequest();
         $elementId = self::normalizeTrackingElementId($request->getParam('elementId'));
         $query = $request->getParam('query', '');
@@ -216,6 +220,10 @@ class SearchController extends Controller
     {
         $this->requirePostRequest();
         $this->requireAcceptsJson();
+
+        if (!SearchManager::$plugin->isPro()) {
+            return Craft::$app->getResponse()->setStatusCode(204);
+        }
 
         $request = Craft::$app->getRequest();
         $query = $request->getParam('q', '');

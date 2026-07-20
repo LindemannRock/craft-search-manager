@@ -8,13 +8,14 @@
 {% set canRebuildIndices = currentUser.can('searchManager:rebuildIndices') %}
 {% set canClearCache = currentUser.can('searchManager:clearCache') %}
 {% set canClearAnalytics = currentUser.can('searchManager:clearAnalytics') %}
+{% set canExportAnalytics = currentUser.can('searchManager:exportAnalytics') %}
 {% set canViewAnalytics = currentUser.can('searchManager:viewAnalytics') %}
 {% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
 
 {% set hasNavigation = canManageBackends or canManageIndices or (settings.enableAnalytics and canViewAnalytics) or canManageSettings %}
 {% set hasIndexManagement = canRebuildIndices %}
 {% set hasCacheManagement = canClearCache and (settings.cacheDeviceDetection or settings.enableCache or settings.enableAutocompleteCache) %}
-{% set hasAnalyticsManagement = canClearAnalytics and settings.enableAnalytics %}
+{% set hasAnalyticsManagement = analyticsCount > 0 and (canExportAnalytics or canClearAnalytics) %}
 {% set hasAnyQuickAction = hasNavigation or hasIndexManagement or hasCacheManagement or hasAnalyticsManagement %}
 
 {# Backend labels #}
@@ -251,12 +252,22 @@
         {% if hasAnalyticsManagement %}
             {% include 'lindemannrock-base/_layouts/cp-utilities/_action-section' with {
                 title: 'Analytics Data Management'|t('search-manager'),
-                description: 'Permanently delete all analytics tracking data. This action cannot be undone!'|t('search-manager'),
+                description: 'Export or permanently delete all analytics tracking data.'|t('search-manager'),
                 showSeparator: hasNavigation or hasIndexManagement or hasCacheManagement,
                 buttons: [
-                    {id: 'clear-all-analytics', label: 'Clear All Analytics'|t('search-manager'), class: 'btn secondary', count: analyticsCount},
+                    {id: 'export-all-analytics', label: 'Export All Analytics'|t('search-manager'), permission: 'searchManager:exportAnalytics'},
+                    {id: 'clear-all-analytics', label: 'Clear All Analytics'|t('search-manager'), class: 'btn secondary', count: analyticsCount, permission: 'searchManager:clearAnalytics'},
                 ],
             } only %}
+
+            {% if canExportAnalytics %}
+                <form id="export-all-analytics-form" method="post" accept-charset="UTF-8" class="hidden">
+                    {{ csrfInput() }}
+                    {{ actionInput('search-manager/analytics/export') }}
+                    {{ hiddenInput('dateRange', 'all') }}
+                    {{ hiddenInput('format', 'csv') }}
+                </form>
+            {% endif %}
         {% endif %}
 
         {% if canManageSettings %}
@@ -427,6 +438,13 @@ $('#clear-storage-by-type').on('click', function() {
 {% endif %}
 
 {% if hasAnalyticsManagement %}
+{% if canExportAnalytics %}
+$('#export-all-analytics').on('click', function() {
+    $('#export-all-analytics-form').trigger('submit');
+});
+{% endif %}
+
+{% if canClearAnalytics %}
 {% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
     id: 'clear-all-analytics',
     action: actionUrl('search-manager/utilities/clear-all-analytics'),
@@ -435,6 +453,7 @@ $('#clear-storage-by-type').on('click', function() {
     errorMessage: 'Failed to clear analytics'|t('search-manager'),
     reloadDelay: 2000,
 } only %}
+{% endif %}
 {% endif %}
 {% endjs %}
 {% endblock %}

@@ -1487,7 +1487,9 @@ class SettingsController extends Controller
         return match ($section) {
             'general' => ['pluginName', 'defaultBackendHandle', 'defaultWidgetHandle', 'requireApiKey', 'logLevel'],
             'indexing' => ['autoIndex', 'batchSize', 'lastIndexedDebounceSeconds', 'syncBatchSize', 'batchFlushInterval', 'pendingMaxAge', 'batchMaxAttempts', 'indexPrefix'],
-            'analytics' => ['enableAnalytics', 'enableGeoDetection', 'geoProvider', 'geoApiKey', 'anonymizeIpAddress', 'analyticsRetention'],
+            'analytics' => SearchManager::$plugin->isPro()
+                ? ['enableAnalytics', 'enableGeoDetection', 'geoProvider', 'geoApiKey', 'anonymizeIpAddress', 'analyticsRetention']
+                : ['analyticsRetention'],
             'search' => ['replaceNativeSearch', 'bm25K1', 'bm25B', 'titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor', 'enableFuzzy', 'similarityThreshold', 'maxFuzzyCandidates', 'ngramSizes'],
             'autocomplete' => ['enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit'],
             'language' => ['defaultLanguage', 'enableStopWords'],

@@ -910,7 +910,7 @@ class SearchManager extends Plugin
     {
         $settings = $this->getSettings();
 
-        if (!$settings->enableAnalytics || $settings->analyticsRetention <= 0) {
+        if ($settings->analyticsRetention <= 0) {
             return;
         }
 
@@ -1147,7 +1147,7 @@ class SearchManager extends Plugin
             'label' => Craft::t('search-manager', 'Analytics'),
             'url' => 'search-manager/analytics',
             'permissionsAll' => ['searchManager:viewAnalytics'],
-            'when' => $settings->enableAnalytics && $hasBackends,
+            'when' => $this->isPro() && $settings->enableAnalytics && $hasBackends,
         ];
 
         $sections[] = [

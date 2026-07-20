@@ -1838,6 +1838,8 @@ return [
     'Clear All Caches' => 'Clear All Caches',
     'Clear Device Cache' => 'Clear Device Cache',
     'Clear All Analytics' => 'Clear All Analytics',
+    'Export All Analytics' => 'Export All Analytics',
+    'Export or permanently delete all analytics tracking data.' => 'Export or permanently delete all analytics tracking data.',
     'Are you sure you want to clear all caches?' => 'Are you sure you want to clear all caches?',
     'Are you sure you want to clear ALL data from' => 'Are you sure you want to clear ALL data from',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Permanently delete all analytics tracking data. This action cannot be undone!',

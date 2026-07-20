@@ -46,6 +46,7 @@ class AnalyticsSummaryWidget extends Widget
     public static function isSelectable(): bool
     {
         return parent::isSelectable() &&
+            SearchManager::$plugin->isPro() &&
             Craft::$app->getUser()->checkPermission('searchManager:viewAnalytics');
     }
 
@@ -98,6 +99,13 @@ class AnalyticsSummaryWidget extends Widget
      */
     public function getBodyHtml(): ?string
     {
+        if (!SearchManager::$plugin->isPro()) {
+            return Craft::$app->getView()->renderTemplate('search-manager/_partials/upgrade-prompt', [
+                'featureName' => 'Analytics',
+                'compact' => true,
+            ]);
+        }
+
         if (!Craft::$app->getUser()->checkPermission('searchManager:viewAnalytics')) {
             return '<p class="light">' . Craft::t('search-manager', 'You don\'t have permission to view analytics.') . '</p>';
         }
