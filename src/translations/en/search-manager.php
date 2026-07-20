@@ -18,6 +18,10 @@ return [
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'Configure backends, tune indexing, and manage search behavior from one control panel workspace.',
     'Complete setup' => 'Complete setup',
     'Quick Actions' => 'Quick Actions',
+    'This feature' => 'This feature',
+    '{feature} requires Search Manager Pro' => '{feature} requires Search Manager Pro',
+    'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.',
+    'View Search Manager Pro in the Plugin Store' => 'View Search Manager Pro in the Plugin Store',
 
     // Navigation
     'Dashboard' => 'Dashboard',

@@ -29,6 +29,10 @@ use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\services\Utilities;
 use craft\utilities\ClearCaches;
+use craft\web\Application as WebApplication;
+use craft\web\Controller as WebController;
+use craft\web\Request as WebRequest;
+use craft\web\Response;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
 use craft\web\View;
@@ -38,6 +42,7 @@ use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\base\helpers\RecurringQueueHelper;
 use lindemannrock\base\helpers\ScheduleHelper;
+use lindemannrock\base\traits\EditionTrait;
 use lindemannrock\logginglibrary\LoggingLibrary;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\gql\queries\SearchQuery;
@@ -109,6 +114,7 @@ use yii\base\Event;
  */
 class SearchManager extends Plugin
 {
+    use EditionTrait;
     use LoggingTrait;
 
     // =========================================================================
@@ -143,6 +149,56 @@ class SearchManager extends Plugin
      * @var bool Whether the plugin registers a control panel section
      */
     public bool $hasCpSection = true;
+
+    /**
+     * @inheritdoc
+     */
+    public static function editions(): array
+    {
+        return [self::EDITION_STANDARD, self::EDITION_PRO];
+    }
+
+    /**
+     * Require Pro access, rendering an upgrade prompt for CP page requests.
+     *
+     * Action, JSON, site, API, and console requests retain the exception-based
+     * contract provided by {@see EditionTrait::requireEdition()}.
+     *
+     * @param string|null $featureName
+     * @return Response|null
+     * @since 5.54.0
+     */
+    public function requireProOrPrompt(?string $featureName = null): ?Response
+    {
+        if ($this->isPro()) {
+            return null;
+        }
+
+        $request = Craft::$app->getRequest();
+        $application = Craft::$app;
+
+        if (
+            $application instanceof WebApplication &&
+            $request instanceof WebRequest &&
+            $request->getIsCpRequest() &&
+            !$request->getIsActionRequest() &&
+            !$request->getAcceptsJson()
+        ) {
+            $controller = $application->controller;
+
+            if ($controller instanceof WebController) {
+                return $controller->asCpScreen()
+                    ->title($this->getSettings()->getFullName())
+                    ->contentTemplate('search-manager/_partials/upgrade-prompt', [
+                        'featureName' => $featureName,
+                    ]);
+            }
+        }
+
+        $this->requireEdition(self::EDITION_PRO, $featureName);
+
+        return null;
+    }
 
     // =========================================================================
     // INITIALIZATION
@@ -564,45 +620,110 @@ class SearchManager extends Plugin
                 $settings = $this->getSettings();
                 $fullName = $settings->getFullName();
 
-                $event->permissions[] = [
-                    'heading' => $fullName,
-                    'permissions' => [
-                        // Backends - grouped (first, as indices depend on backends)
-                        'searchManager:manageBackends' => [
-                            'label' => Craft::t('search-manager', 'Manage backends'),
-                            'nested' => [
-                                'searchManager:createBackends' => [
-                                    'label' => Craft::t('search-manager', 'Create backends'),
-                                ],
-                                'searchManager:editBackends' => [
-                                    'label' => Craft::t('search-manager', 'Edit backends'),
-                                ],
-                                'searchManager:deleteBackends' => [
-                                    'label' => Craft::t('search-manager', 'Delete backends'),
+                $permissions = [
+                    // Backends - grouped (first, as indices depend on backends)
+                    'searchManager:manageBackends' => [
+                        'label' => Craft::t('search-manager', 'Manage backends'),
+                        'nested' => [
+                            'searchManager:createBackends' => [
+                                'label' => Craft::t('search-manager', 'Create backends'),
+                            ],
+                            'searchManager:editBackends' => [
+                                'label' => Craft::t('search-manager', 'Edit backends'),
+                            ],
+                            'searchManager:deleteBackends' => [
+                                'label' => Craft::t('search-manager', 'Delete backends'),
+                            ],
+                        ],
+                    ],
+                    // Indices - grouped
+                    'searchManager:manageIndices' => [
+                        'label' => Craft::t('search-manager', 'Manage indices'),
+                        'nested' => [
+                            'searchManager:createIndices' => [
+                                'label' => Craft::t('search-manager', 'Create indices'),
+                            ],
+                            'searchManager:editIndices' => [
+                                'label' => Craft::t('search-manager', 'Edit indices'),
+                            ],
+                            'searchManager:deleteIndices' => [
+                                'label' => Craft::t('search-manager', 'Delete indices'),
+                            ],
+                            'searchManager:rebuildIndices' => [
+                                'label' => Craft::t('search-manager', 'Rebuild indices'),
+                            ],
+                            'searchManager:clearIndices' => [
+                                'label' => Craft::t('search-manager', 'Clear indices'),
+                            ],
+                        ],
+                    ],
+                    // API Keys - grouped (parent grants page access + view, destructive actions nested)
+                    'searchManager:manageApiKeys' => [
+                        'label' => Craft::t('search-manager', 'Manage API keys'),
+                        'nested' => [
+                            'searchManager:createApiKeys' => [
+                                'label' => Craft::t('search-manager', 'Create API keys'),
+                            ],
+                            'searchManager:editApiKeys' => [
+                                'label' => Craft::t('search-manager', 'Edit API keys'),
+                            ],
+                            'searchManager:revokeApiKeys' => [
+                                'label' => Craft::t('search-manager', 'Revoke API keys'),
+                            ],
+                        ],
+                    ],
+                    // Widget Configs - grouped
+                    'searchManager:manageWidgetConfigs' => [
+                        'label' => Craft::t('search-manager', 'Manage widget configs'),
+                        'nested' => [
+                            'searchManager:createWidgetConfigs' => [
+                                'label' => Craft::t('search-manager', 'Create widget configs'),
+                            ],
+                            'searchManager:editWidgetConfigs' => [
+                                'label' => Craft::t('search-manager', 'Edit widget configs'),
+                            ],
+                            'searchManager:deleteWidgetConfigs' => [
+                                'label' => Craft::t('search-manager', 'Delete widget configs'),
+                            ],
+                        ],
+                    ],
+                    // Analytics data controls remain available after a downgrade.
+                    'searchManager:exportAnalytics' => [
+                        'label' => Craft::t('search-manager', 'Export analytics'),
+                    ],
+                    'searchManager:clearAnalytics' => [
+                        'label' => Craft::t('search-manager', 'Clear analytics'),
+                    ],
+                    // Cache
+                    'searchManager:clearCache' => [
+                        'label' => Craft::t('search-manager', 'Clear cache'),
+                    ],
+                    // Debug (for testing search in production without devMode)
+                    'searchManager:viewDebug' => [
+                        'label' => Craft::t('search-manager', 'View debug info in search responses'),
+                    ],
+                    // Logs - grouped
+                    'searchManager:viewLogs' => [
+                        'label' => Craft::t('search-manager', 'View logs'),
+                        'nested' => [
+                            'searchManager:viewSystemLogs' => [
+                                'label' => Craft::t('search-manager', 'View system logs'),
+                                'nested' => [
+                                    'searchManager:downloadSystemLogs' => [
+                                        'label' => Craft::t('search-manager', 'Download system logs'),
+                                    ],
                                 ],
                             ],
                         ],
-                        // Indices - grouped
-                        'searchManager:manageIndices' => [
-                            'label' => Craft::t('search-manager', 'Manage indices'),
-                            'nested' => [
-                                'searchManager:createIndices' => [
-                                    'label' => Craft::t('search-manager', 'Create indices'),
-                                ],
-                                'searchManager:editIndices' => [
-                                    'label' => Craft::t('search-manager', 'Edit indices'),
-                                ],
-                                'searchManager:deleteIndices' => [
-                                    'label' => Craft::t('search-manager', 'Delete indices'),
-                                ],
-                                'searchManager:rebuildIndices' => [
-                                    'label' => Craft::t('search-manager', 'Rebuild indices'),
-                                ],
-                                'searchManager:clearIndices' => [
-                                    'label' => Craft::t('search-manager', 'Clear indices'),
-                                ],
-                            ],
-                        ],
+                    ],
+                    // Settings
+                    'searchManager:manageSettings' => [
+                        'label' => Craft::t('search-manager', 'Manage settings'),
+                    ],
+                ];
+
+                if ($this->isPro()) {
+                    $permissions += [
                         // Pending Syncs - grouped (parent grants page access, destructive actions nested)
                         'searchManager:managePendingSyncs' => [
                             'label' => Craft::t('search-manager', 'Manage pending syncs'),
@@ -630,21 +751,6 @@ class SearchManager extends Plugin
                                 ],
                             ],
                         ],
-                        // API Keys - grouped (parent grants page access + view, destructive actions nested)
-                        'searchManager:manageApiKeys' => [
-                            'label' => Craft::t('search-manager', 'Manage API keys'),
-                            'nested' => [
-                                'searchManager:createApiKeys' => [
-                                    'label' => Craft::t('search-manager', 'Create API keys'),
-                                ],
-                                'searchManager:editApiKeys' => [
-                                    'label' => Craft::t('search-manager', 'Edit API keys'),
-                                ],
-                                'searchManager:revokeApiKeys' => [
-                                    'label' => Craft::t('search-manager', 'Revoke API keys'),
-                                ],
-                            ],
-                        ],
                         // Query Rules - grouped
                         'searchManager:manageQueryRules' => [
                             'label' => Craft::t('search-manager', 'Manage query rules'),
@@ -657,21 +763,6 @@ class SearchManager extends Plugin
                                 ],
                                 'searchManager:deleteQueryRules' => [
                                     'label' => Craft::t('search-manager', 'Delete query rules'),
-                                ],
-                            ],
-                        ],
-                        // Widget Configs - grouped
-                        'searchManager:manageWidgetConfigs' => [
-                            'label' => Craft::t('search-manager', 'Manage widget configs'),
-                            'nested' => [
-                                'searchManager:createWidgetConfigs' => [
-                                    'label' => Craft::t('search-manager', 'Create widget configs'),
-                                ],
-                                'searchManager:editWidgetConfigs' => [
-                                    'label' => Craft::t('search-manager', 'Edit widget configs'),
-                                ],
-                                'searchManager:deleteWidgetConfigs' => [
-                                    'label' => Craft::t('search-manager', 'Delete widget configs'),
                                 ],
                             ],
                         ],
@@ -690,45 +781,15 @@ class SearchManager extends Plugin
                                 ],
                             ],
                         ],
-                        // Analytics - grouped
                         'searchManager:viewAnalytics' => [
                             'label' => Craft::t('search-manager', 'View analytics'),
-                            'nested' => [
-                                'searchManager:exportAnalytics' => [
-                                    'label' => Craft::t('search-manager', 'Export analytics'),
-                                ],
-                                'searchManager:clearAnalytics' => [
-                                    'label' => Craft::t('search-manager', 'Clear analytics'),
-                                ],
-                            ],
                         ],
-                        // Cache
-                        'searchManager:clearCache' => [
-                            'label' => Craft::t('search-manager', 'Clear cache'),
-                        ],
-                        // Debug (for testing search in production without devMode)
-                        'searchManager:viewDebug' => [
-                            'label' => Craft::t('search-manager', 'View debug info in search responses'),
-                        ],
-                        // Logs - grouped
-                        'searchManager:viewLogs' => [
-                            'label' => Craft::t('search-manager', 'View logs'),
-                            'nested' => [
-                                'searchManager:viewSystemLogs' => [
-                                    'label' => Craft::t('search-manager', 'View system logs'),
-                                    'nested' => [
-                                        'searchManager:downloadSystemLogs' => [
-                                            'label' => Craft::t('search-manager', 'Download system logs'),
-                                        ],
-                                    ],
-                                ],
-                            ],
-                        ],
-                        // Settings
-                        'searchManager:manageSettings' => [
-                            'label' => Craft::t('search-manager', 'Manage settings'),
-                        ],
-                    ],
+                    ];
+                }
+
+                $event->permissions[] = [
+                    'heading' => $fullName,
+                    'permissions' => $permissions,
                 ];
             }
         );

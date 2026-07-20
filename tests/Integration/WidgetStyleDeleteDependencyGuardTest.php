@@ -39,6 +39,7 @@ final class WidgetStyleDeleteDependencyGuardTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
         $this->purgeMarkedRows();
     }
 

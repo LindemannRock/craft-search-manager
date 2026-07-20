@@ -52,6 +52,8 @@ abstract class TestCase extends IntegrationTestCase
      */
     private ?array $settingsRowSnapshot = null;
 
+    private ?string $pluginEditionSnapshot = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -71,10 +73,27 @@ abstract class TestCase extends IntegrationTestCase
             $this->restoreSettingsRow();
             SearchIndex::clearCache();
         } finally {
+            $this->restorePluginEdition();
             // Parent restores swapped components (including any StubBackend)
             // after our plugin-local cleanup runs against the real DB.
             parent::tearDown();
         }
+    }
+
+    /**
+     * Force Search Manager to an edition for the remainder of the test.
+     *
+     * The original edition and Craft's permission registry are restored
+     * automatically during teardown.
+     */
+    protected function forcePluginEdition(string $edition): void
+    {
+        if ($this->pluginEditionSnapshot === null) {
+            $this->pluginEditionSnapshot = SearchManager::$plugin->edition;
+        }
+
+        SearchManager::$plugin->edition = $edition;
+        Craft::$app->getUserPermissions()->reset();
     }
 
     /**
@@ -200,6 +219,17 @@ abstract class TestCase extends IntegrationTestCase
         $settings = SearchManager::$plugin->getSettings();
         $freshSettings = Settings::loadFromDatabase();
         $settings->setAttributes($freshSettings->getAttributes(), false);
+    }
+
+    private function restorePluginEdition(): void
+    {
+        if ($this->pluginEditionSnapshot === null) {
+            return;
+        }
+
+        SearchManager::$plugin->edition = $this->pluginEditionSnapshot;
+        $this->pluginEditionSnapshot = null;
+        Craft::$app->getUserPermissions()->reset();
     }
 
     /**
