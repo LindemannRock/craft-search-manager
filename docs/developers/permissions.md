@@ -6,6 +6,13 @@ Give an editor read-only access to analytics, let one team manage backends while
 
 Permissions are grouped by the Control Panel section they gate. Most groups follow the same shape: a parent permission (bold below) that controls whether the section is visible at all, plus child permissions — indented with `└─` — for the specific write operations within it. A few sections (Cache, Debug, Settings) are single standalone permissions with no children.
 
+## Editions and permissions
+
+Permissions for Pro-only features — view analytics, and the manage groups for query rules, promotions, pending syncs, and Widget Styles — are only registered while the [Pro edition](../pricing/editions.md) is active; on Standard they don't appear in the permission UI. The analytics data controls (`searchManager:exportAnalytics`, `searchManager:clearAnalytics`) are always registered in every edition, because exporting and purging retained analytics data remains available on Standard.
+
+> [!NOTE]
+> Craft removes assignments of unregistered permissions when a user or user group is re-saved. If you edit and save a user group while the site is on Standard, any Pro permission assignments that group had are dropped and must be re-granted after upgrading to Pro again.
+
 ### Backends
 
 | Permission | Description |

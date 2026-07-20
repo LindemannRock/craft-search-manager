@@ -48,6 +48,11 @@ Downgrading never deletes Pro-created data or breaks a live widget. Existing que
 
 In Standard, a widget that references a preset renders with the built-in default style, promotion markers are omitted, and built-in widget tracking silently stops. Its search, results, snippets, hierarchy, recently viewed history, destination highlighting, Twig inline styles, and public JavaScript events continue working. Re-upgrading restores the stored Pro configuration.
 
+Two behaviors to be aware of after a downgrade:
+
+- **Analytics retention keeps running.** The [retention setting](../feature-tour/analytics.md#retention) continues to auto-delete analytics records older than the configured number of days in every edition — it is a privacy control, not a Pro feature. Retained data can be exported or permanently purged at any time from **Utilities → Search Manager → Analytics Data Management**.
+- **Pro permission assignments and group saves.** Pro-only permissions (view analytics, manage query rules, promotions, pending syncs, and Widget Styles) are only registered while Pro is active. Craft removes assignments of unregistered permissions when a user or user group is **re-saved** — so if you edit and save a user group while on Standard, those Pro permission assignments are dropped and need re-granting after upgrading again. Simply being on Standard changes nothing; only an explicit user/group save triggers this.
+
 ## Upgrading
 
 You can upgrade from Standard to Pro at any time in the Craft Plugin Store. Existing data and configuration are preserved, with no migration required.
