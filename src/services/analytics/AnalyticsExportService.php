@@ -350,9 +350,7 @@ class AnalyticsExportService
             $condition = ['siteId' => $siteId];
         }
 
-        return Craft::$app->getDb()->createCommand()
-            ->delete('{{%searchmanager_analytics}}', $condition)
-            ->execute();
+        return $this->deleteAnalyticsData($condition);
     }
 
     /**
@@ -371,18 +369,51 @@ class AnalyticsExportService
 
         $date = (new \DateTime())->modify("-{$retention} days");
 
-        $deleted = Craft::$app->getDb()->createCommand()
-            ->delete(
-                '{{%searchmanager_analytics}}',
-                ['<', 'dateCreated', Db::prepareDateForDb($date)]
-            )
-            ->execute();
+        $deleted = $this->deleteAnalyticsData([
+            '<',
+            'dateCreated',
+            Db::prepareDateForDb($date),
+        ]);
 
         if ($deleted > 0) {
             $this->logInfo('Cleaned up old analytics', ['deleted' => $deleted, 'retention' => $retention]);
         }
 
         return $deleted;
+    }
+
+    /**
+     * Delete primary and detailed analytics rows under one transaction.
+     *
+     * The returned count intentionally remains the primary analytics count so
+     * existing controller notices and API consumers keep their established
+     * meaning while rule/promotion detail rows follow the same purge boundary.
+     *
+     * @param array<string, mixed>|array<int, mixed> $condition
+     */
+    private function deleteAnalyticsData(array $condition): int
+    {
+        $db = Craft::$app->getDb();
+        $transaction = $db->beginTransaction();
+
+        try {
+            foreach (['{{%searchmanager_rule_analytics}}', '{{%searchmanager_promotion_analytics}}'] as $table) {
+                $db->createCommand()
+                    ->delete($table, $condition)
+                    ->execute();
+            }
+
+            $deleted = $db->createCommand()
+                ->delete('{{%searchmanager_analytics}}', $condition)
+                ->execute();
+
+            $transaction->commit();
+
+            return $deleted;
+        } catch (\Throwable $exception) {
+            $transaction->rollBack();
+            throw $exception;
+        }
     }
 
     /**
