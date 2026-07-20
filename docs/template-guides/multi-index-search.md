@@ -1,8 +1,10 @@
-# Multi-Index Search
+# Multi-index search
 
-Search across multiple indices at once and get one merged result set.
+Search several indices — products, blog, pages, whatever you've configured — in a single call and get back one merged result set instead of running (and combining) separate queries yourself.
 
-## Basic Multi-Index Search
+Reach for this when you're building one search box that spans multiple content types. If you only need one index, [Basic search](basic-search.md) is simpler. If you need to narrow a single index by document kind instead of querying several indices, see [Document type filtering](filtering-facets.md#document-type-filtering).
+
+## Basic multi-index search
 
 ```twig
 {% set results = craft.searchManager.searchMultiple(['products', 'blog', 'pages'], query) %}
@@ -20,7 +22,7 @@ Search across multiple indices at once and get one merged result set.
 {% endfor %}
 ```
 
-## Response Structure
+## Response structure
 
 ```php
 [
@@ -43,7 +45,7 @@ Search across multiple indices at once and get one merged result set.
 
 Scores are backend-specific. Built-in backends use Search Manager's BM25 score, Meilisearch and Typesense can expose provider ranking values, Algolia may not include a comparable numeric score, and promoted results can use `score: null`. Do not compare scores across different backend types.
 
-## Per-Index Breakdown
+## Per-index breakdown
 
 Show result counts per index:
 
@@ -60,9 +62,9 @@ Show result counts per index:
 </div>
 ```
 
-## Grouped Display
+## Grouped display
 
-Group results by their source index:
+Group results by their source index instead of a flat list:
 
 ```twig
 {% set results = craft.searchManager.searchMultiple(['products', 'blog', 'pages'], query) %}
@@ -90,7 +92,7 @@ Group results by their source index:
 {% endfor %}
 ```
 
-## Using a Specific Backend
+## Using a specific backend
 
 By default, multi-index search uses the default backend. To query a specific backend:
 
@@ -128,7 +130,7 @@ The `withBackend()` proxy supports all the same methods:
 ]) %}
 ```
 
-## Batch Queries (External Backends)
+## Batch queries (external backends)
 
 For Algolia, Meilisearch, and Typesense, `multipleQueries()` sends all queries in a single API call:
 
@@ -150,3 +152,10 @@ Built-in backends fall back to sequential queries automatically.
 
 > [!NOTE]
 > `multipleQueries()` returns each provider's raw response, so the totals field differs per backend: Algolia uses `nbHits`, Meilisearch uses `estimatedTotalHits`, Typesense uses `found`, and the built-in backends use `total`.
+
+## Next steps
+
+- [Basic search](basic-search.md) — single-index search and the indexed-data-vs-live-element tradeoff
+- [Filtering & facets](filtering-facets.md) — narrow one index by type or site instead of combining several
+- [Backends](../backends/backends.md) — what `withBackend()` targets and how backend selection works
+- [API endpoints](api-endpoints.md) — the REST equivalent for JavaScript/headless callers

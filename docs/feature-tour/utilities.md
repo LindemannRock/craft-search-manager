@@ -1,8 +1,20 @@
 # Utilities
 
-The Utilities page provides index management, storage cleanup, cache clearing, and analytics data management. Access it from **Utilities > Search Manager** in the Craft CP.
+Rebuild a broken index, clear out orphaned storage after switching backends, flush a stale cache, or reset analytics data — all from one page, no console access required.
 
-## Overview Cards
+**CP:** Utilities → Search Manager
+
+The Utilities page gathers Search Manager's maintenance tools in one place: index management, storage cleanup, cache clearing, and analytics data management.
+
+## What you'll use it for
+
+- Rebuild every index after a bulk content change or a schema update
+- Clear orphaned storage after moving an index from Redis to MySQL (or the reverse)
+- Clear a stuck or stale cache without waiting for it to expire
+- Wipe analytics data before a site launch, after testing, or for a GDPR deletion request
+- Grab the bundled Postman collection to test the API outside Craft
+
+## Overview cards
 
 The top of the page shows three status cards:
 
@@ -10,13 +22,13 @@ The top of the page shows three status cards:
 - **Backend Distribution** — How many indices use each backend type, plus the default backend
 - **Cache Status** — Active cache types (search, autocomplete, device detection) with counts
 
-## Index Management
+## Index management
 
 ### Rebuild All Indices
 
 Queues a rebuild of every configured index. Each index is cleared and re-indexed from scratch. This runs via Craft's queue, so it won't block the CP.
 
-### Clear Storage by Type
+### Clear storage by type
 
 Clear ALL search index data from a specific storage type. The dropdown shows three options:
 
@@ -42,7 +54,7 @@ Each option shows a live count (rows, keys, or files) loaded via AJAX.
 
 The "Database" option automatically detects whether you're running MySQL or PostgreSQL and labels accordingly.
 
-### Orphaned Handles
+### Orphaned handles
 
 If you only need to remove data for handles that no longer exist, use the console command instead of clearing an entire storage type:
 
@@ -52,7 +64,7 @@ php craft search-manager/maintenance/purge-orphaned-storage --dry-run
 
 This is useful after removing a config-file index or renaming an index handle. The command only considers stored handles that carry the current environment's `indexPrefix`, and it compares them against both database-backed and config-file indices before deleting anything.
 
-## Cache Management
+## Cache management
 
 Clear temporary cached data. Only shows cache types that are currently enabled in settings.
 
@@ -69,7 +81,7 @@ Cache storage depends on your `cacheStorageMethod` setting — either file-based
 
 See [Caching](caching.md) for configuration details.
 
-## Analytics Data Management
+## Analytics data management
 
 Permanently deletes all search analytics tracking data (queries, performance metrics). This cannot be undone.
 
@@ -78,7 +90,7 @@ Use this when:
 - Clearing data before a site launch
 - GDPR data deletion requests
 
-## Developer Resources
+## Developer resources
 
 Download the bundled Postman collection and environment from the Utilities page, or from **Settings → Test**. The ZIP contains the collection, environment template, and README so developers can test the Search Manager API outside Craft. See [Testing tools](../resources/testing-tools.md) for the full Settings → Test workflow, including live search, autocomplete, promotions, query rules, debug metadata, and backend diagnostics.
 
@@ -95,9 +107,9 @@ Each section requires specific permissions:
 
 Sections are hidden from users who don't have the required permission. See [Permissions](../developers/permissions.md) for the full permission tree.
 
-## Console Alternatives
+## Console alternatives
 
-All utility actions are also available as console commands:
+Every action above has a console equivalent, for scripts and CI:
 
 ```bash
 # Rebuild all indices

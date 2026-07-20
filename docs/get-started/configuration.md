@@ -1,10 +1,16 @@
 # Configuration
 
-Search Manager can be configured through the Control Panel settings UI or via a config file at `config/search-manager.php`. Settings defined in the config file take precedence and show a lock icon in the CP.
+Tune Search Manager's indexing, ranking, caching, and analytics behavior from the Control Panel, or from a version-controlled config file at `config/search-manager.php`. Settings defined in the config file take precedence and show a lock icon in the CP.
 
-Most settings can be managed from the CP without touching config files. The config file is recommended when you need environment-specific values, version-controlled settings, or backend/index definitions.
+Use this page to:
 
-## Config File
+- Adjust CP-manageable settings — indexing, ranking, language, autocomplete, highlighting, analytics, privacy, and caching
+- Move settings into the config file for environment-specific values or version control
+- Define backends, indices, widgets, and widget styles in code, in addition to their CP screens
+
+Most settings can be managed from the CP without touching config files.
+
+## Config file
 
 Copy the sample config file to your project:
 
@@ -41,7 +47,7 @@ return [
 
 The `*` key applies to all environments. Environment-specific keys (`dev`, `staging`, `production`) override the defaults for that environment.
 
-## Settings Reference
+## Settings reference
 
 Settings are grouped by area. All settings can be set in the config file or managed via the CP (unless noted otherwise).
 
@@ -62,6 +68,25 @@ Settings are grouped by area. All settings can be set in the config file or mana
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `itemsPerPage` | `int` | `100` | Items per page in CP listings |
+
+### Base display and export overrides
+
+The **Settings → Interface** screen also includes base-owned display and export controls after **Items per page**. Leave these unset to inherit from `config/lindemannrock-base.php`; set them in `config/search-manager.php` only when Search Manager should override the global base value.
+
+Each of these settings resolves in three steps: a value in `config/search-manager.php` wins and locks the setting (the matching CP field is disabled with an override warning); otherwise a specific value picked in the Control Panel (anything other than **Use global default**) is saved with the plugin's settings and applies; otherwise the setting cascades from `config/lindemannrock-base.php` (or the built-in default when that file doesn't set it either). In practice you'll usually just pick a value in the CP — reach for the config file only when the value should be locked per environment.
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `timeFormat` | `string\|null` | `null` | Time display override: `'12'` (AM/PM) or `'24'` |
+| `monthFormat` | `string\|null` | `null` | Month display override: `'numeric'`, `'short'`, or `'long'` |
+| `dateOrder` | `string\|null` | `null` | Date order override: `'dmy'`, `'mdy'`, or `'ymd'` |
+| `dateSeparator` | `string\|null` | `null` | Date separator override: `'/'`, `'-'`, or `'.'` |
+| `showSeconds` | `bool\|null` | `null` | Whether timestamps include seconds |
+| `defaultDateRange` | `string\|null` | `null` | Default date range for analytics, logs, dashboard widgets, and other date-filtered views. Values: `today`, `yesterday`, `thisWeek`, `lastWeek`, `last7days`, `last14days`, `last30days`, `last90days`, `thisMonth`, `lastMonth`, `thisQuarter`, `lastQuarter`, `thisYear`, `lastYear`, `last12months`, `all` |
+| `exports` | `array\|null` | `null` | Export format overrides, e.g. `['csv' => true, 'json' => true, 'excel' => true]` |
+
+> [!NOTE]
+> `exports` is the config-file shape only. In the Control Panel these appear as three separate dropdowns (CSV, JSON, Excel) on **Settings → Interface**, stored internally as individual settings — there is no single "Exports" field.
 
 ### Indexing
 **CP:** Settings → Indexing
@@ -89,7 +114,7 @@ These settings control how content gets indexed.
 > [!NOTE]
 > The `indexPrefix` setting is especially useful when sharing an Algolia or Meilisearch account across environments. See [Indices](../feature-tour/indices.md) for details.
 
-### Search Algorithm
+### Search algorithm
 **CP:** Settings → Search
 
 These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The defaults work well for most sites — only adjust these if you understand information retrieval scoring.
@@ -139,7 +164,7 @@ See [Autocomplete](../feature-tour/autocomplete.md) for details.
 | `highlightTag` | `string` | `'mark'` | HTML tag wrapping highlighted terms (`mark`, `em`, `strong`, `b`, `i`, `span`) |
 | `highlightClass` | `?string` | `null` | CSS class added to the highlight tag — space-separated plain class tokens (letters, digits, `-`, `_`) |
 
-### Template Helper Snippets
+### Template helper snippets
 **CP:** Settings → Snippets
 
 These settings apply to `craft.searchManager.snippets()` and `craft.searchManager.highlight()` template-helper output. Search-result snippets for widgets and API requests are configured per widget or request.
@@ -162,7 +187,7 @@ See [Highlighting](../feature-tour/highlighting.md) and the [Highlighting & Snip
 
 Analytics can also be toggled per-index, so you can track searches on your public indices without tracking internal/admin searches. See [Analytics](../feature-tour/analytics.md).
 
-### Privacy & Geo-Detection
+### Privacy & geo-detection
 **CP:** Settings → Analytics
 
 | Option | Type | Default | Description |
@@ -198,7 +223,7 @@ Saving any settings section from the CP clears both the search-results cache and
 
 See [Caching](../feature-tour/caching.md) for cache strategies and recommendations.
 
-### Status Sync
+### Status sync
 **CP:** Settings → Cache
 
 | Option | Type | Default | Description |
@@ -207,7 +232,7 @@ See [Caching](../feature-tour/caching.md) for cache strategies and recommendatio
 
 Status sync automatically indexes entries that become live (postDate passed) or removes expired entries, without needing a manual save. This runs as a periodic queue job.
 
-### Device Detection
+### Device detection
 **CP:** Settings → Cache
 
 | Option | Type | Default | Description |
@@ -215,7 +240,9 @@ Status sync automatically indexes entries that become live (postDate passed) or 
 | `cacheDeviceDetection` | `bool` | `true` | Cache parsed user-agent strings |
 | `deviceDetectionCacheDuration` | `int` | `3600` | Device cache TTL in seconds |
 
-## Backends Configuration
+Everything above can be managed from the CP. The sections below define backends, indices, widgets, and widget styles in code instead — useful when you want them version-controlled or duplicated across environments. Each also has its own CP screen for one-off edits: **Search Manager → Backends**, **→ Indices**, **→ Widgets**, and **→ Widgets → Styles**.
+
+## Backends configuration
 
 Backends are defined as named instances in the config file. Each backend has a unique handle, a type, and type-specific settings:
 
@@ -242,7 +269,7 @@ Backends are defined as named instances in the config file. Each backend has a u
 
 See [Backends](../backends/backends.md) for backend-specific settings and configuration examples.
 
-## Indices Configuration
+## Indices configuration
 
 Indices define what content gets indexed and how it's transformed:
 
@@ -273,7 +300,7 @@ Leave `transformer` unset for automatic transformer resolution. If you configure
 
 Extending `BaseTransformer` is recommended for custom document shapes; extending `AutoTransformer` works well when you want automatic field extraction plus extra project fields.
 
-## Widgets Configuration
+## Widgets configuration
 
 Widget configurations define how the frontend search widget appears and behaves:
 
@@ -317,7 +344,7 @@ Widget configurations define how the frontend search widget appears and behaves:
 
 See [Widget Configuration](../widget/configuration.md) for all widget options.
 
-## Widget Styles Configuration
+## Widget styles configuration
 
 Widget styles are reusable appearance presets that control colors, spacing, and dimensions. Define them in the `widgetStyles` key and reference them from widget configs via `styleHandle`:
 
@@ -342,9 +369,9 @@ Widget styles are reusable appearance presets that control colors, spacing, and 
 ],
 ```
 
-See [Widget Styles](../widget/styles.md) for all style properties and validation ranges.
+Style values are always written as quoted strings in PHP — including numeric ones like `modalBorderRadius` and `backdropOpacity` — because the CP editor posts them as form values and they're stored as JSON strings. `backdropOpacity` is validated as an integer between 0 and 100; the quotes are a storage-format detail, not a different value. See [Widget Styles](../widget/styles.md) for each property's type, range, and default.
 
-### Inline Styles (Alternative to Style Presets)
+### Inline styles (alternative to style presets)
 
 Instead of referencing a style preset via `styleHandle`, you can define styles directly on the widget config under `settings.styles`. This is useful for one-off widgets that don't share their appearance with others:
 
@@ -376,7 +403,7 @@ Instead of referencing a style preset via `styleHandle`, you can define styles d
 > [!NOTE]
 > If both `styleHandle` and `settings.styles` are set, the style preset takes priority. See [Widget Styles](../widget/styles.md) for all available style properties.
 
-## Full Multi-Environment Example
+## Full multi-environment example
 
 ```php
 <?php
@@ -388,6 +415,23 @@ return [
         // General
         'pluginName' => 'Search Manager',
         'logLevel' => 'error',
+
+        // Interface
+        'itemsPerPage' => 100,
+
+        // Optional base-setting overrides for this plugin only
+        // Leave unset to inherit from config/lindemannrock-base.php.
+        // 'timeFormat' => '24',
+        // 'monthFormat' => 'short',
+        // 'dateOrder' => 'dmy',
+        // 'dateSeparator' => '/',
+        // 'showSeconds' => false,
+        // 'defaultDateRange' => 'last30days',
+        // 'exports' => [
+        //     'csv' => true,
+        //     'json' => true,
+        //     'excel' => true,
+        // ],
 
         // Indexing
         'autoIndex' => true,
@@ -511,7 +555,7 @@ return [
 ];
 ```
 
-## Environment Variables
+## Environment variables
 
 These environment variables are commonly used with Search Manager:
 

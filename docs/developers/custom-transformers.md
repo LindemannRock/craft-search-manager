@@ -1,8 +1,10 @@
-# Custom Transformers
+# Custom transformers
 
-Transformers convert Craft elements into searchable documents. When the index's transformer class is blank, Search Manager resolves a transformer from registered integration-specific transformers first, then falls back to `AutoTransformer`. Create a project-specific transformer class when an index needs a different document shape.
+Reach for a custom transformer when the automatic document Search Manager builds for an element doesn't have what you need — a computed field, a different excerpt, a relation flattened into a search string. Transformers convert Craft elements into the array that gets indexed, and Search Manager already ships transformers for the common cases; you only need to write one when those don't fit.
 
-## Built-in Transformers
+When the index's transformer class is blank, Search Manager resolves a transformer from registered integration-specific transformers first, then falls back to `AutoTransformer`. Create a project-specific transformer class when an index needs a different document shape.
+
+## Built-in transformers
 
 Search Manager includes these transformers out of the box:
 
@@ -12,7 +14,7 @@ Search Manager includes these transformers out of the box:
 | `DocsManagerTransformer` | Docs Manager (`SourceDoc`) | Full page content, headings, description, and keywords. Auto-selected when [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed. |
 | `CommerceTransformer` | Craft Commerce Products and Variants | Product and variant metadata, product type name/handle, variant SKUs, variant titles, option labels/values, and parent product data for variants. Auto-selected when Craft Commerce is installed and the index targets Product or Variant elements. |
 
-### Transformer Resolution Order
+### Transformer resolution order
 
 When indexing an element, Search Manager resolves the transformer in this order:
 
@@ -25,7 +27,7 @@ In most cases, you don't need to specify a transformer. Leave the field blank fo
 > [!NOTE]
 > `CommerceTransformer` is a built-in integration transformer for Craft Commerce. Post-processing its `parent::transform()` output is technically possible, but it is not the recommended public extension base. For Commerce customization, prefer `BaseTransformer`, `AutoTransformer`, or transform events unless you intentionally accept coupling to Search Manager's built-in Commerce document shape.
 
-## When You Need a Custom Transformer
+## When you need a custom transformer
 
 You need a custom transformer when you want to:
 - Index custom fields (body content, categories, tags, etc.)
@@ -35,7 +37,7 @@ You need a custom transformer when you want to:
 
 For entries, start with the automatic path. Add a project-specific transformer only when you need fields or metadata that the automatic document does not provide.
 
-## Extension Contract
+## Extension contract
 
 A configured transformer class must be:
 
@@ -53,7 +55,7 @@ Choose one of these extension models:
 
 The `supports(ElementInterface $element)` method is required by `TransformerInterface`, but it is not used as a safety gate for an index-specific configured transformer override. If an index points at your class, Search Manager uses that class for that index. Choose the class carefully and keep one transformer focused on the element type it is assigned to.
 
-## Choosing an Extension Path
+## Choosing an extension path
 
 The extension path controls how much Search Manager does for you:
 
@@ -64,7 +66,7 @@ The extension path controls how much Search Manager does for you:
 
 Split Sections follows the same transformer-family boundary. An index can split rich-text sections when its resolved transformer is `AutoTransformer` or a subclass, including project-level subclasses such as `modules\search\transformers\ProductTransformer`. The section slicer uses the automatic searchable rich-text field sources, keeps non-section prose on the intro record, and keeps fields from crossing into each other. The built-in `DocsManagerTransformer` (for SourceDoc indices) is the one explicitly supported exception — it extends `BaseTransformer` directly and has its own split-section path. Any other transformer that extends `BaseTransformer` directly keeps full control over its document shape but does not opt into automatic rich-text section slicing.
 
-## Creating a Transformer
+## Creating a transformer
 
 Create a class that extends `BaseTransformer`:
 
@@ -102,7 +104,7 @@ class ProductTransformer extends BaseTransformer
 }
 ```
 
-## Registering a Transformer
+## Registering a transformer
 
 Assign your transformer to an index in `config/search-manager.php`:
 
@@ -145,7 +147,7 @@ class ProductTransformer extends AutoTransformer
 }
 ```
 
-## Custom Fields in API and GraphQL
+## Custom fields in API and GraphQL
 
 The array returned by `transform()` is the indexed document. Search Manager sends that document to the selected backend, so custom fields such as `price`, `brand`, `latitude`, `availability`, or `vehicleModel` can be searched, filtered, and sorted depending on backend configuration. Returning those values in public REST and GraphQL hits is controlled separately by the index's `retrievableFields` setting.
 
@@ -179,7 +181,7 @@ Provider-specific setup still applies to custom transformer fields:
 - **Meilisearch** — configure custom fields as filterable or sortable attributes when you use them in filters or sorts.
 - **Typesense** — include custom searchable fields in `query_by`, and define/filter/sort fields according to your Typesense schema needs.
 
-## BaseTransformer Methods
+## BaseTransformer methods
 
 ### `getCommonData(ElementInterface $element)`
 
@@ -234,7 +236,7 @@ protected function getElementType(): string
 }
 ```
 
-## Required Fields
+## Required fields
 
 Your `transform()` method **must** return an array containing:
 
@@ -261,12 +263,12 @@ public function transform(ElementInterface $element): array
 }
 ```
 
-## Multi-Site Behavior
+## Multi-site behavior
 
 - **With `siteId`**: Documents use composite IDs (`123_1`) preventing collisions across sites
 - **Without `siteId`**: Documents use simple IDs (`123`) — only safe for single-site setups
 
-## Document Type Fields
+## Document type fields
 
 `type` is the public document classification key. Search Manager filters and facets target `type`, and custom transformers may set it to a project-specific lowercase machine value such as `recipe`. Built-in documents use:
 
@@ -304,7 +306,7 @@ $data['type'] = 'custom-type';
 
 ## Examples
 
-### Product Transformer
+### Product transformer
 
 ```php
 class ProductTransformer extends BaseTransformer
@@ -334,7 +336,7 @@ class ProductTransformer extends BaseTransformer
 }
 ```
 
-### Asset Transformer
+### Asset transformer
 
 ```php
 use craft\elements\Asset;
@@ -364,7 +366,7 @@ class AssetTransformer extends BaseTransformer
 }
 ```
 
-### Transformer with Relations
+### Transformer with relations
 
 ```php
 class ArticleTransformer extends BaseTransformer
@@ -402,6 +404,6 @@ class ArticleTransformer extends BaseTransformer
 }
 ```
 
-## Modifying Data via Events
+## Modifying data via events
 
 You can also modify indexed data without a custom transformer by using the `EVENT_AFTER_TRANSFORM` event. See [Events](events.md) for details.

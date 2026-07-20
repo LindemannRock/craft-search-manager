@@ -4,7 +4,7 @@ Search Manager exposes read-only GraphQL queries for headless sites, SPA fronten
 
 Use GraphQL when the frontend needs the same search and autocomplete behavior as the REST API, but you want the request to travel through a Craft GraphQL schema instead of a public action URL. No mutations are registered.
 
-## Schema Permission
+## Schema permission
 
 Enable **Query Search Manager data** on the GraphQL schema that will serve these requests. Site access is still controlled by Craft's normal schema site settings; if the schema cannot query a site, Craft will reject the request before Search Manager resolves it.
 
@@ -233,7 +233,7 @@ Backend filter examples:
 | Meilisearch | `type = "entry" AND siteId = 1` |
 | Typesense | `type:=\`entry\` && siteId:=\`1\`` |
 
-## Backend Examples
+## Backend examples
 
 The GraphQL response shape stays the same across backends. The index handle selects the backend, and backend-specific differences mainly show up in `score`, filter syntax, and raw provider behavior that GraphQL intentionally keeps behind typed fields.
 
@@ -385,7 +385,7 @@ query {
 }
 ```
 
-## Indexed Snippets
+## Indexed snippets
 
 GraphQL search returns the same index-backed hit shape as the REST API. Snippets, headings, and fields are derived from indexed document data; GraphQL does not hydrate Craft elements while shaping public results.
 
@@ -475,7 +475,7 @@ Autocomplete does not record search analytics.
 When multiple indices return the same element suggestion, Search Manager keeps the first result per `siteId`, element `id`, and `type`.
 If more than 5 explicit `indexHandles` are passed, `suggestions` and `results` are empty and `error` contains the validation message.
 
-## Multi-Index Counts
+## Multi-index counts
 
 When a search spans multiple indices, request the `indices` field to see per-index totals:
 
@@ -491,7 +491,7 @@ query {
 }
 ```
 
-## No Match
+## No match
 
 If no results are found, Search Manager returns an empty hit list:
 

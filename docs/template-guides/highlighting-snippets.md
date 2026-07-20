@@ -1,8 +1,10 @@
-# Highlighting & Snippets
+# Highlighting & snippets
 
-This guide shows how to highlight matched search terms and generate context snippets in your templates.
+Wrap matched terms in `<mark>` tags and show short, context snippets around them, so a result reads as "why this matched" instead of just a title and a link. This guide covers the server-side Twig helpers and the standalone JavaScript highlighter used by custom search UIs.
 
-## Highlighting Text
+If you're using the bundled [Frontend Widget](../widget/overview.md), highlighting and snippets are already wired up — this guide is for template and JavaScript developers building their own results UI.
+
+## Highlighting text
 
 Use `craft.searchManager.highlight()` to wrap matched terms with an HTML tag:
 
@@ -24,7 +26,7 @@ For query strings that use `title:` or `content:`, pass the area being rendered 
 
 Painting follows word starts. Exact and typo-corrected matches paint the whole matched word (`jaket` → `<mark>jacket</mark>`), while strict prefix extensions paint only the typed prefix (`test` → `<mark>Test</mark>ing`, `tool` → `<mark>Tool</mark>s`). Mid-word substrings never paint, and a whole-word range wins if it overlaps a shorter prefix range.
 
-### Custom Options
+### Custom options
 
 ```twig
 {{ craft.searchManager.highlight(text, query, {
@@ -35,7 +37,7 @@ Painting follows word starts. Exact and typo-corrected matches paint the whole m
 })|raw }}
 ```
 
-## Generating Snippets
+## Generating snippets
 
 Use `craft.searchManager.snippets()` to extract text excerpts around matched terms:
 
@@ -52,7 +54,7 @@ Use `craft.searchManager.snippets()` to extract text excerpts around matched ter
 
 Each snippet is a string with matched terms already highlighted.
 
-## Search Result Snippets @since(5.53.0)
+## Search result snippets @since(5.53.0)
 
 When you call `craft.searchManager.search()`, `craft.searchManager.searchMultiple()`, the REST API, or GraphQL, Search Manager returns presented hits with a plain-text `snippet`. Matched headings can also include their own plain-text `snippet`:
 
@@ -100,7 +102,7 @@ Twig templates pass the same snippet options through the search call:
 }) %}
 ```
 
-## Complete Search Results Template
+## Complete search results template
 
 ```twig
 {% set query = craft.app.request.getParam('q') %}
@@ -144,9 +146,9 @@ Twig templates pass the same snippet options through the search call:
 {% endif %}
 ```
 
-## CSS Styling
+## CSS styling
 
-### Default `<mark>` Tag
+### Default `<mark>` tag
 
 ```css
 mark {
@@ -156,7 +158,7 @@ mark {
 }
 ```
 
-### Custom Class
+### Custom class
 
 Configure in your config file:
 
@@ -175,7 +177,7 @@ Then style the class in your frontend CSS:
 }
 ```
 
-### Snippet Styling
+### Snippet styling
 
 ```css
 .snippet {
@@ -189,7 +191,7 @@ Then style the class in your frontend CSS:
 }
 ```
 
-## Configuration Defaults
+## Configuration defaults
 
 These settings apply when you don't pass options to the template functions:
 
@@ -204,11 +206,11 @@ These settings apply when you don't pass options to the template functions:
 
 Per-call options override these defaults.
 
-## Code Snippets @since(5.39.0)
+## Code snippets @since(5.39.0)
 
 By default, block-level code in your content is included in search results but excluded from result snippets. That includes HTML `<pre>` blocks and fenced Markdown code blocks. The `snippetIncludeCodeBlocks` setting controls this behavior.
 
-### How It Works
+### How it works
 
 When custom field content is indexed, Search Manager keeps searchable field text in a private snippet source. The index's `retrievableFields` setting controls which of those values appear under public API/GraphQL `fields`, but snippets can still use searchable field values that are omitted from the public payload. Docs Manager SourceDoc records and AutoTransformer-family section records also store an internal code-included body alongside the normal code-free body after indexing. At display time, Search Manager chooses whether to include block-level code while building snippets from those stored values:
 
@@ -261,17 +263,17 @@ Via Twig:
 }) %}
 ```
 
-### When to Enable
+### When to enable
 
 Enable `snippetIncludeCodeBlocks` when code is the primary content users are searching for — API references, code snippet libraries, or developer tools where seeing the matching code in the result snippet is more useful than seeing the surrounding prose.
 
 Keep it disabled (the default) for documentation sites, blogs, and general content where code blocks are supplementary and prose snippets provide better context.
 
-## Client-Side Highlighting @since(5.40.0)
+## Client-side highlighting @since(5.40.0)
 
 Search Manager provides a standalone JavaScript highlighter for use in custom search UIs — the same highlighter used by the [Search Widget](../widget/overview.md).
 
-### Loading the Highlighter
+### Loading the highlighter
 
 Register the asset in your template:
 
@@ -351,7 +353,7 @@ SearchManagerHighlighter.parseQuery('title:blog test^2 search*');
 
 This is the same parser that `highlight()` uses internally when no explicit `terms` are passed. Useful for inspecting what terms will be highlighted or for building custom highlighting logic.
 
-### Phrase Highlighting
+### Phrase highlighting
 
 When the search backend returns `matchedPhrases` and `matchedTerms` on each hit, pass them as the `terms` option for precise phrase-aware highlighting:
 
@@ -376,7 +378,7 @@ The JavaScript highlighter includes several smart features:
 - **Overlap resolution**: When candidate matches overlap, the earliest match wins and the longer whole-word range wins on the same word
 - **HTML escaping**: All text is escaped before inserting highlight tags, preventing XSS
 
-### Example: Custom Search UI
+### Example: custom search UI
 
 ```twig
 {% do craft.searchManager.registerHighlighter() %}
@@ -403,3 +405,9 @@ document.getElementById('search-input').addEventListener('input', async function
 });
 </script>
 ```
+
+## Next steps
+
+- [Basic search](basic-search.md) — the results loop these helpers highlight and annotate
+- [API endpoints](api-endpoints.md) — `snippetMode`, `snippetMaxLength`, and other snippet parameters for REST callers
+- [Autocomplete & suggestions](autocomplete-suggestions.md) — pairs well with highlighting in a live dropdown

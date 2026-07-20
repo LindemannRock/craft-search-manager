@@ -1,13 +1,15 @@
 # Requirements
 
-## System Requirements
+Make sure your environment meets these requirements before you install Search Manager. This page covers Craft CMS and PHP versions, the extra infrastructure some search backends need, and the Composer packages the plugin installs automatically.
+
+## System requirements
 
 | Requirement | Version |
 |-------------|---------|
 | [Craft CMS](https://craftcms.com/) | 5.10+ |
 | [PHP](https://php.net/) | 8.2+ |
 
-## Search Backends
+## Search backends
 
 Depending on which search backend you choose, you may need additional infrastructure:
 

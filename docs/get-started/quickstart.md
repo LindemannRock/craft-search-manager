@@ -1,6 +1,6 @@
 # Quickstart
 
-Get Search Manager running in under 5 minutes. By the end of this guide you'll have your content indexed and searchable from a Twig template.
+By the end of this page, your content is indexed and searchable from a Twig template — three steps: pick a backend, create an index, and query it.
 
 ## Before you start
 
@@ -20,7 +20,7 @@ Go to **Search Manager > Backends**, click **New Backend**, and create one. For 
 
 ## 3. Search from a template
 
-Add a basic search form to any Twig template:
+Steps 1 and 2 were all Control Panel work. This last step is code — add a basic search form to any Twig template:
 
 ```twig
 {% set results = craft.searchManager.search('main', 'hello world') %}

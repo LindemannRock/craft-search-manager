@@ -1,8 +1,8 @@
-# Console Commands
+# Console commands
 
-Search Manager provides CLI commands for index management, maintenance, and security operations.
+Reach for the CLI when the Control Panel isn't available or isn't the right tool — deploy scripts, cron jobs, CI pipelines, or a quick terminal fix. Search Manager provides commands for index management, maintenance, security, and API key provisioning.
 
-## Command Help
+## Command help
 
 Use the plugin help command when you need to discover available commands or confirm the correct command group.
 
@@ -28,7 +28,7 @@ php craft help search-manager/maintenance/clear-storage
 ddev craft help search-manager/maintenance/clear-storage
 ```
 
-## Index Commands
+## Index commands
 
 ### `search-manager/index/list`
 
@@ -105,7 +105,7 @@ ddev craft search-manager/index/clear --handle=entries-en
 |--------|------|-------------|
 | `--handle` | `string` | Optional index handle to clear. Omit to clear all. |
 
-## Maintenance Commands
+## Maintenance commands
 
 ### `search-manager/maintenance/status`
 
@@ -176,7 +176,7 @@ ddev craft search-manager/maintenance/purge-orphaned-storage --type=database
 
 Use this after removing an index from `config/search-manager.php`, renaming an index handle, or finding old prefixed handles in storage. Storage under a different `indexPrefix` is ignored so shared services can hold data for multiple environments.
 
-## Security Commands
+## Security commands
 
 ### `search-manager/security/generate-salt`
 
@@ -197,7 +197,7 @@ This command:
 
 Run this once after installation. Copy the salt value to your staging and production `.env` files manually. See [Privacy & Security](../feature-tour/privacy-security.md) for details.
 
-## API Keys
+## API keys
 
 ### `search-manager/api-keys/create`
 
@@ -274,9 +274,9 @@ Search Manager stores authentication hashes for all keys. Public keys also store
 
 See [API Keys](../feature-tour/api-keys.md) for the full feature tour and lifecycle (active / disabled / expired / revoked).
 
-## Common Workflows
+## Common workflows
 
-### Fresh Setup
+### Fresh setup
 
 1. Install the plugin:
 
@@ -318,7 +318,7 @@ php craft search-manager/index/rebuild
 ddev craft search-manager/index/rebuild
 ```
 
-### Rebuilding After Config Changes
+### Rebuilding after config changes
 
 After changing index configuration or transformers, rebuild the affected index:
 

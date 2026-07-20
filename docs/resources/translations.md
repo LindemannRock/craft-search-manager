@@ -1,8 +1,8 @@
 # Translations
 
-Search Manager includes full translations for 12 languages out of the box.
+Search Manager's Control Panel ships translated into 12 languages — switch your language in Craft and the plugin's UI follows automatically, no extra setup required. Need different wording for any string? You can override it without touching the plugin's files.
 
-## Supported Languages
+## Supported languages
 
 | Language | Code |
 |----------|------|
@@ -19,9 +19,7 @@ Search Manager includes full translations for 12 languages out of the box.
 | Danish | `da` |
 | Norwegian | `no` |
 
-Translations are automatically applied based on the user's preferred language in Craft's Control Panel settings.
-
-## Overriding Translations
+## Overriding translations
 
 You can override any translation string by creating a static translation file in your project:
 
@@ -54,7 +52,7 @@ If you have [Translation Manager](https://github.com/LindemannRock/craft-transla
 
 Available languages are based on the site languages active in your Craft installation.
 
-## Contributing Translations
+## Contributing translations
 
 If you find a translation error or want to improve a translation, please [open an issue](https://github.com/LindemannRock/craft-search-manager/issues) with:
 

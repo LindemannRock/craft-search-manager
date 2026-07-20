@@ -1,8 +1,14 @@
 # JavaScript API
 
-The search widget exposes a JavaScript API for programmatic control and event handling. This is useful for custom integrations, triggering search from other components, or responding to search activity.
+Control the search modal from your own JavaScript — open it from a custom button, log analytics on every search, or reuse the widget's own term-highlighting logic in a search UI you build yourself. The search widget exposes a JavaScript API for programmatic control and event handling, useful for custom integrations, triggering search from other components, or responding to search activity.
 
-## Accessing the Widget
+## What you'll use it for
+
+- Open, close, or toggle the modal from your own buttons or app logic
+- Listen for opens, closes, searches, result clicks, and errors to wire up analytics or a custom UI
+- Reuse the widget's term highlighter in a search UI you build yourself — see [Standalone highlighter](#standalone-highlighter)
+
+## Accessing the widget
 
 The widget is a web component registered as `<search-modal>`. Access it via standard DOM methods:
 
@@ -104,7 +110,7 @@ widget.addEventListener('search-error', (e) => {
 
 ## Examples
 
-### Custom Analytics Integration
+### Custom analytics integration
 
 Track search activity with a third-party analytics service:
 
@@ -126,7 +132,7 @@ widget.addEventListener('search-result-click', (e) => {
 });
 ```
 
-### Open Search from a Custom Button
+### Open search from a custom button
 
 ```javascript
 document.getElementById('my-button').addEventListener('click', () => {
@@ -134,7 +140,7 @@ document.getElementById('my-button').addEventListener('click', () => {
 });
 ```
 
-### Respond to Search State
+### Respond to search state
 
 ```javascript
 const widget = document.querySelector('search-modal');
@@ -158,7 +164,7 @@ The widget uses Shadow DOM to encapsulate its styles. This means:
 
 To customize appearance, use [Widget Styles](styles.md) or the `styles` Twig parameter. The widget exposes CSS custom properties that you can override from outside the shadow DOM.
 
-## Keyboard Shortcuts
+## Keyboard shortcuts
 
 The widget registers a global keyboard listener for the configurable hotkey (default: CMD+K / Ctrl+K). This listener is active whenever the widget is in the DOM.
 
@@ -169,7 +175,7 @@ The widget registers a global keyboard listener for the configurable hotkey (def
 | Enter | Select highlighted result |
 | Escape | Close modal |
 
-## Standalone Highlighter
+## Standalone highlighter
 
 The same highlighting logic used internally by the widget is available as a standalone utility for custom search UIs. See [Client-Side Highlighting](../template-guides/highlighting-snippets.md#client-side-highlighting) for details.
 

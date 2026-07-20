@@ -2,13 +2,21 @@
 
 **CP:** Search Manager → Pending Syncs
 
-A visibility + operations page for the L3 pending-sync buffer (`searchmanager_pending_syncs`). When an element is saved or deleted, the plugin queues a row in the buffer; `BatchSyncJob` drains the buffer to your configured search backend in the background.
+Watch every save and delete flow into your search backend, and step in — retry, purge, or investigate — the moment a row gets stuck. Pending Syncs is the visibility and operations page for the plugin's sync buffer (`searchmanager_pending_syncs`): when an element is saved or deleted, the plugin queues a row here, and `BatchSyncJob` drains the buffer to your configured search backend in the background.
 
-In a healthy system you rarely visit this page. It exists for when something needs operator attention — failed rows, stuck workers, or simply wanting to see the queue in flight.
+In a healthy system you rarely visit this page — it's here for when something needs operator attention.
+
+## What you'll use it for
+
+- Check why a save isn't showing up in search results yet
+- Watch a large import drain from the buffer in real time
+- Retry every failed row in one click after a backend outage
+- Discard queued work for an index or backend you've decommissioned
+- Diagnose why rows keep failing before they pile up as abandoned
 
 ## How saves reach the search backend
 
-You don't need to do anything for this. Saving an entry triggers the auto-sync listener (when `autoIndex` is on), which queues rows into the buffer. `BatchSyncJob` then runs as part of Craft's queue and drains the buffer to your backend, claiming rows in `syncBatchSize` chunks and looping until empty (or until its time budget is exhausted on a true mega-import, in which case it schedules a continuation).
+Saving an entry triggers the auto-sync listener (when `autoIndex` is on), which queues rows into the buffer. `BatchSyncJob` then runs as part of Craft's queue and drains the buffer to your backend, claiming rows in `syncBatchSize` chunks and looping until empty (or until its time budget is exhausted on a true mega-import, in which case it schedules a continuation).
 
 Save entry → rows queue → `BatchSyncJob` drains → search backend updated. Sub-10-second round trip.
 

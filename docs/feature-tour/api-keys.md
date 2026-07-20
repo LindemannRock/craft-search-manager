@@ -2,12 +2,32 @@
 
 **CP:** Search Manager → API Keys
 
-A CRUD surface for generating, scoping, and revoking API keys that gate access to the public search, autocomplete, and analytics tracking endpoints.
+Generate a scoped, revocable key and hand it to whatever needs to call your public search — a browser widget, a JavaScript search page, or a trusted backend service — without opening the endpoints to everyone.
+
+API Keys is a CRUD surface for generating, scoping, and revoking the keys that gate access to the public search, autocomplete, and analytics tracking endpoints.
+
+## What you'll use it for
+
+- Restrict a public browser widget or search page to specific referrer domains and indices
+- Give a trusted backend service unrestricted server-side access with a wildcard-scoped server key
+- Cap hits-per-page or requests-per-minute on a public key to bound bandwidth and abuse
+- Issue a key with an expiry date for a temporary integration, so it stops working on its own
+- Pause a misbehaving integration without losing its configuration, or permanently revoke a leaked key
 
 > [!IMPORTANT]
 > **What keys gate.** When **Require API Key** is enabled (Settings → General → API Access), the public **search** and **autocomplete** endpoints require a valid public key in the `X-Search-Manager-Key` header — requests without a valid, active, in-scope public key are rejected (`401` for a missing/invalid key, including server keys on public endpoints; `403` for a disabled or expired key). When the setting is disabled (the default), those endpoints stay anonymous and behave exactly as before.
 >
 > The `track-search` / `track-click` analytics endpoints are gated too when the setting is on — same key + referrer + allowed-indices checks — so analytics writes also require a valid key. Tracking pings are **not** rate-limited (they're noisy by design). When the setting is off, all four endpoints stay anonymous.
+
+## Create your first API key
+
+1. Go to **Search Manager → API Keys** and click **New API Key**.
+2. Give it a **Name** — an internal label so you can identify it in the list (never exposed to callers) — and a **Handle**, the stable identifier widget configs use to reference it.
+3. Pick the **Type**: **Public** for anything that runs in a browser, **Server** for backend-to-backend calls only. Type is locked once you save.
+4. Under **Allowed indices**, leave **All indices (current and future)** on for a trusted server key, or turn it off and tick specific indices under **Specific indices**.
+5. Under **Allowed referrers**, list the hosts this key should be accepted from — one pattern per line (`example.com`, `*.example.com`) — or leave it empty to allow any referrer.
+6. In the sidebar, optionally set **Max hits**, **Rate limit**, and **Valid until**, and confirm **Enabled** is on.
+7. Click **Save**. The plaintext key is revealed once, in a copy-to-clipboard banner — copy it now if an external caller needs the raw value. The CP never shows it again.
 
 ## What a key is
 
@@ -155,18 +175,9 @@ API key management is gated by four permissions, granted via **Settings → User
 
 See [Permissions](../developers/permissions.md) for the full permission matrix.
 
-## Provisioning workflows
+## Provisioning from the command line
 
-### From the Control Panel
-
-1. Search Manager → API Keys → **New API key**.
-2. Pick the type, name, restrictions, and (optionally) expiry.
-3. Save. The full plaintext key is revealed in a copy-to-clipboard banner.
-4. Copy it into your secrets store or environment file if external callers need the full value. CP widget configs select public keys by name, handle, and prefix and do not display the full key. The banner cannot be re-displayed once you leave the page.
-
-### From the command line
-
-For automated provisioning (CI bootstrap, fresh install, scripted deploys), use the console command:
+For automated provisioning — CI bootstrap, a fresh install, or a scripted deploy — skip the CP and use the console command:
 
 ```bash
 php craft search-manager/api-keys/create \

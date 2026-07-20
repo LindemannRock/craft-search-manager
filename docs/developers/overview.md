@@ -1,6 +1,6 @@
-# Developers Overview
+# Developers overview
 
-This section covers the technical APIs and extension points for integrating Search Manager into your plugins, modules, or custom code.
+Building something on top of Search Manager — a custom results page, a sync job, a headless frontend, a permission-gated dashboard? Start here. This page maps the plugin's extension points to the reference page that documents each one, so you can go straight to the API you need instead of reading everything.
 
 ## Architecture
 
@@ -10,25 +10,25 @@ Search Manager follows a modular architecture:
 - **Indices** — Define what content gets indexed and how fields are mapped
 - **Transformers** — Convert Craft elements into indexable documents
 - **Services** — PHP API for search, indexing, analytics, autocomplete, and widget management
-- **Frontend Widget** — Web component (`<search-modal>`) with a [JavaScript API](../widget/javascript-api.md)
+- **Frontend widget** — Web component (`<search-modal>`) with a [JavaScript API](../widget/javascript-api.md)
 
-## Extension Points
+## Extension points
 
-| What | How | Documentation |
+| What you want to do | How | Documentation |
 |------|-----|---------------|
-| Search programmatically | `BackendService::search()` | [API Reference](api-reference.md) |
-| Index custom elements | Custom transformer class | [Custom Transformers](custom-transformers.md) |
+| Search programmatically | `BackendService::search()` | [API reference](api-reference.md) |
+| Index custom elements | Custom transformer class | [Custom transformers](custom-transformers.md) |
 | React to search events | Event listeners | [Events](events.md) |
-| Add Twig functionality | Template variables and globals | [Template Variables](template-variables.md), [Twig Globals](twig-globals.md) |
-| Query search from a SPA | Craft GraphQL queries | [GraphQL](graphql.md) |
-| Manage from CLI | Console commands | [Console Commands](console-commands.md) |
+| Add Twig functionality | Template variables and globals | [Template variables](template-variables.md), [Twig globals](twig-globals.md) |
+| Query search from a SPA or headless frontend | Craft GraphQL queries | [GraphQL](graphql.md) |
+| Manage from CLI | Console commands | [Console commands](console-commands.md) |
 | Control access | Permissions | [Permissions](permissions.md) |
 | Test configured search behavior | Settings → Test | [Testing tools](../resources/testing-tools.md) |
-| Base plugin utilities | Shared features from lindemannrock-base | [Shared Features](shared-features.md) |
+| Understand what comes from the base plugin | Shared features from lindemannrock-base | [Shared features](shared-features.md) |
 
-## Quick Reference
+## Quick reference
 
-Access services from PHP:
+Every service is reachable from the plugin instance. Access them from PHP:
 
 ```php
 use lindemannrock\searchmanager\SearchManager;
@@ -48,4 +48,4 @@ $plugin->transformers;     // Document transformer management
 $plugin->indexedSnippets;  // Snippets and headings from indexed hit data
 ```
 
-See [API Reference](api-reference.md) for full method documentation.
+See [API reference](api-reference.md) for full method documentation.

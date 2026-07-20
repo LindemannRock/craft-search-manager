@@ -1,13 +1,24 @@
 # File Backend
 
-The File backend stores search data as files in Craft's storage directory. It's the simplest option for development and small sites — no database tables, no external services.
+Get search running with nothing but PHP: the File backend stores search data as files in Craft's storage directory — no database tables, no external services, no dependencies beyond PHP itself.
 
-## When to Use File
+## What you'll use it for
 
 - Development and testing environments
-- Sites with fewer than ~500 indexed elements
-- When you want zero dependencies beyond PHP
 - Quick prototyping before choosing a production backend
+- Sites with fewer than ~500 indexed elements
+- Zero dependencies beyond PHP
+
+## Create your first File backend
+
+1. Go to **Search Manager → Backends** and click **New Backend**.
+2. Give it a **Name** (e.g. "Local File Storage") — the **Handle** fills in automatically as you type, or edit it yourself.
+3. Set **Backend Type** to **File**.
+4. Optionally set **Storage Path** to a custom directory. Leave it blank and Search Manager stores index files under `storage/runtime/search-manager/indices/` — see [Storage location](#storage-location) below. The field supports environment-variable autosuggest — start typing `$` to pick from your defined environment variables.
+5. In the sidebar, confirm **Enabled** is on, and turn on **Default** if this should be the backend new indices use automatically.
+6. Click **Save**. Search Manager tests the connection and switches to a **Diagnostics** tab showing the result, response time, and whether this backend supports **Browse** and **Multi-Query** (both **No** for File — see [Built-in vs external backends](backends.md#built-in-vs-external-backends)). Use **Refresh Connection** to retest anytime.
+
+For environment-specific setups, define the backend in `config/search-manager.php` instead — see [Configuration](#configuration) below.
 
 ## Features
 
@@ -19,7 +30,7 @@ The File backend stores search data as files in Craft's storage directory. It's 
 - Native search replacement (front-end `Entry::find()->search()` template queries only — Control Panel search always uses Craft's native search)
 - No external dependencies whatsoever
 
-## Storage Location
+## Storage location
 
 Index data is stored in:
 
@@ -53,7 +64,7 @@ These directories are created automatically and can be safely deleted — they'l
 
 No additional settings are needed. By default, index files are stored in `storage/runtime/search-manager/indices/`.
 
-### Custom Storage Path
+### Custom storage path
 
 You can specify a custom directory for index storage:
 

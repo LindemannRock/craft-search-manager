@@ -1,8 +1,18 @@
-# Search Features
+# Search features
 
-Search Manager's built-in backends (MySQL, PostgreSQL, Redis, File) provide a powerful search engine with BM25 ranking, boolean operators, fuzzy matching, and more. These features work identically across all four built-in backends.
+Get relevance-ranked, typo-tolerant search out of the box. Search Manager's built-in backends (MySQL, PostgreSQL, Redis, File) ship a full search engine with BM25 ranking, boolean operators, fuzzy matching, and more — these features work identically across all four.
 
-## BM25 Ranking
+## What you'll use it for
+
+- Rank results by real relevance (BM25) instead of a simple keyword match
+- Let visitors search exact phrases, exclude terms, or target specific fields from a query string
+- Tune how much titles, phrases, and exact matches outweigh a plain keyword hit
+- Get typo-tolerant results automatically, with no special syntax needed
+- Support boolean search operators in visitors' own language, across all 12 supported languages
+
+Two kinds of controls live on this page: **relevance tuning** — global settings you set once in the CP (Search Manager > Settings > Search) or config file — and **query operators** — syntax your templates and users type into a search box. The reference below covers both, starting with relevance tuning.
+
+## BM25 ranking
 
 All search results are ranked using the BM25 algorithm — the same algorithm used by Elasticsearch and other major search engines. BM25 considers three factors:
 
@@ -10,7 +20,7 @@ All search results are ranked using the BM25 algorithm — the same algorithm us
 2. **Inverse document frequency** — how rare the term is across all documents (rarer terms are more important)
 3. **Document length** — shorter documents with the term rank higher than longer documents
 
-The defaults work well for most sites, but you can tune the parameters:
+The defaults work well for most sites. Tune them in the CP under **Search Manager > Settings > Search > BM25 Ranking Algorithm** ("Term Frequency Weight (K1)" and "Document Length Impact (B)"), or set them in config:
 
 ```php
 // config/search-manager.php
@@ -18,9 +28,9 @@ The defaults work well for most sites, but you can tune the parameters:
 'bm25B' => 0.75,   // Length normalization (0 = ignore length, 1 = full penalty)
 ```
 
-## Search Operators
+## Search operators
 
-### Phrase Search
+### Phrase search
 
 Wrap terms in double quotes to find exact sequences:
 
@@ -30,7 +40,7 @@ Wrap terms in double quotes to find exact sequences:
 
 Only matches documents where "craft" is immediately followed by "cms". Phrase matches receive a 4x boost by default.
 
-### NOT Operator
+### NOT operator
 
 Exclude documents containing specific terms:
 
@@ -39,7 +49,7 @@ Exclude documents containing specific terms:
 {% set results = craft.searchManager.search('entries', '"craft cms" NOT plugin NOT theme') %}
 ```
 
-### Field-Specific Search
+### Field-specific search
 
 Search within the supported built-in document fields:
 
@@ -63,7 +73,7 @@ Use `*` for prefix matching:
 
 Matches: test, tests, testing, tested, etc.
 
-### Per-Term Boosting
+### Per-term boosting
 
 Assign custom weights to individual terms:
 
@@ -74,7 +84,7 @@ Assign custom weights to individual terms:
 
 Higher numbers = more weight for that term.
 
-### Boolean Operators
+### Boolean operators
 
 ```twig
 {# OR: find documents with either term #}
@@ -85,7 +95,7 @@ Higher numbers = more weight for that term.
 {% set results = craft.searchManager.search('entries', 'craft cms') %}
 ```
 
-### Combined Operators
+### Combined operators
 
 All operators can be combined in a single query:
 
@@ -102,19 +112,21 @@ This query:
 - Gives a 2x boost to the term "getting"
 - Boosts the exact phrase "started guide" with the configured phrase boost
 
-## Ranking Priority
+## Ranking priority
 
 When multiple boost factors apply, they stack. From highest to lowest impact:
 
-| Rank | Factor | Default Boost |
-|------|--------|--------------|
-| 1 | Title matches | 5x |
-| 2 | Phrase matches (`"exact phrase"`) | 4x |
-| 3 | Exact matches (ordered contiguous query-term sequence) | 3x |
-| 4 | Per-term boosts (`term^2`) | Custom multiplier |
-| 5 | Base BM25 score | 1x |
+| Rank | Factor | Default Boost | Setting |
+|------|--------|--------------|---------|
+| 1 | Title matches | 5x | `titleBoostFactor` |
+| 2 | Phrase matches (`"exact phrase"`) | 4x | `phraseBoostFactor` |
+| 3 | Exact matches (ordered contiguous query-term sequence) | 3x | `exactMatchBoostFactor` |
+| 4 | Per-term boosts (`term^2`) | Custom multiplier | Set per query with `^`, not a config setting |
+| 5 | Base BM25 score | 1x | `bm25K1` / `bm25B` |
 
-## Fuzzy Matching
+`titleBoostFactor`, `phraseBoostFactor`, and `exactMatchBoostFactor` are each tunable from 1.0 to 20.0, in the CP under **Search Manager > Settings > Search > Boost Factors** or in config alongside `bm25K1`/`bm25B` above.
+
+## Fuzzy matching
 
 Search Manager automatically finds similar terms using n-gram similarity. This works transparently — no special syntax needed — and runs as a **two-tier expander**:
 
@@ -146,11 +158,11 @@ Configuration options:
 
 A lower `similarityThreshold` lets more terms enter the candidate pool, but it doesn't bypass the fixed typo budget. The default of `0.25` provides broad candidate recall while the precision filter removes candidates outside the query-length tier. This is query-time behavior, so changing plugin versions doesn't require a reindex for this rule.
 
-## Relaxed Matching
+## Relaxed matching
 
 Multi-word queries require every word to match the same document (AND logic). When a multi-word query would return zero results, Search Manager broadens it to match any word (OR logic) over the same expanded terms instead of dead-ending — documents covering more of the query words still rank first. When this happens, the response debug meta includes `relaxedMatching: true`, so a frontend can render a "showing related results" notice.
 
-## Stop Words
+## Stop words
 
 Common words like "the", "a", "is" are automatically filtered from queries to improve relevance. Stop words are supported in twelve languages:
 
@@ -169,7 +181,7 @@ Common words like "the", "a", "is" are automatically filtered from queries to im
 
 Stop words can be disabled globally or per-index. See [Multi-Language](multi-language.md) for language details.
 
-## Text Normalization
+## Text normalization
 
 Search Manager normalizes text during both indexing and querying so that equivalent characters always match, regardless of how they were typed or stored. This runs automatically — no configuration needed.
 
@@ -183,7 +195,7 @@ Search Manager normalizes text during both indexing and querying so that equival
 
 This means a search for `البحـر` (with tatweel) matches content stored as `البحر` (without), and a search for `٢` matches content containing `2`. All built-in backends (MySQL, PostgreSQL, Redis, File) produce identical results because normalization happens before any storage.
 
-## Localized Boolean Operators
+## Localized boolean operators
 
 Boolean operators work in all 12 supported languages:
 
@@ -214,7 +226,7 @@ The language is auto-detected from the current site's locale. English operators 
 
 See [Multi-Language](multi-language.md) and [Advanced Operators](../template-guides/advanced-operators.md) for more examples.
 
-## Native Search Replacement
+## Native search replacement
 
 When `replaceNativeSearch` is enabled, Search Manager can answer front-end template `.search()` calls with a Search Manager index. This is for Craft element queries such as `craft.entries.search(query).orderBy('score')` or `Entry::find()->search($query)`.
 

@@ -1,8 +1,8 @@
-# Widget Configuration
+# Widget configuration
 
-Widget behavior can be controlled in three ways: CP settings, config file, and Twig parameters.
+Tune result limits, keyboard shortcuts, snippets, highlighting, and analytics per widget — from the Control Panel, a config file, or a single Twig include — and layer overrides on top without touching plugin code. Widget behavior can be controlled in three ways: CP settings, config file, and Twig parameters.
 
-## Configuration Sources
+## Configuration sources
 
 1. **CP settings** — Search Manager > Widgets > create/edit a configuration
 2. **Config file** — define widget configs in `config/search-manager.php`
@@ -10,7 +10,28 @@ Widget behavior can be controlled in three ways: CP settings, config file, and T
 
 Twig parameters take highest priority, followed by config file values, then CP settings.
 
-## Config File
+A widget referenced without a `configHandle` falls back to the **default widget**, set via `defaultWidgetHandle` — see [Default widget](#default-widget) below.
+
+## Manage widgets in the CP
+
+Create and edit widget configs at Search Manager > Widgets. Each config links to a **Widget Style** preset from the sidebar — that's where colors, spacing, and other appearance settings live (see [Widget Styles](styles.md)), not a dedicated tab. The sidebar also shows a live preview of the widget in light and dark mode.
+
+The config's own tabs cover behavior:
+
+- **General** — name, handle, API key, search indices
+- **Search Input** — placeholder, debounce, minimum characters
+- **Modal & Trigger** — hotkey, prevent body scroll, loading indicator, trigger button and label
+- **Recently Viewed** — the "Recently viewed" section (results the visitor opened) and its stored-entry limit
+- **Results** — result limit, URL requirement, layout (default or hierarchical, with grouping field/style/heading-limit when hierarchical), and promotions display
+- **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
+- **Destination Highlighting** — destination-page highlight toggle, persisted query, query param, content selector
+- **Analytics** — source identifier, idle timeout
+
+Config-defined widgets (below) show a "Config" badge here and can't be edited in this UI; database-defined widgets show a "Database" badge and are fully editable.
+
+Need the same widget defined in code instead — for version control or multi-environment setups? Everything above has a config-file equivalent, covered next.
+
+## Config file
 
 Define widget configs in `config/search-manager.php`:
 
@@ -45,7 +66,7 @@ Define widget configs in `config/search-manager.php`:
 
 Config-defined widgets show a "Config" badge in the CP and cannot be edited there. Database-defined widgets show a "Database" badge and are fully editable. The supported widget `type` is `modal`; other type values are rejected during validation or config loading.
 
-## Twig Parameters
+## Twig parameters
 
 Override settings per-include:
 
@@ -93,7 +114,16 @@ Override settings per-include:
 } %}
 ```
 
-## All Parameters
+### Configs vs. styles
+
+Widget **configs** and widget **styles** are separate layers:
+
+- **Config** — each widget's own tabs (Search Manager > Widgets > your widget) — controls behavior: result limits, hotkeys, snippet length, and so on.
+- **Style** — a shared preset (Search Manager > Widgets > Styles) linked via `styleHandle` — controls appearance: colors, spacing, and a few values that travel with appearance rather than behavior.
+
+A handful of parameters in the tables below read like behavior settings but actually come from the linked style: `modalBackdropOpacity` and `modalBackdropBlurEnabled` (backdrop), and `highlightResultsEnabled`, `highlightTag`, and `highlightClass` (result highlighting). Setting them via Twig or `settings.styles` overrides just that render; to change the default everywhere the style is used, edit the style preset instead. See [Widget Styles](styles.md) for the full appearance reference.
+
+## All parameters
 
 ### General
 
@@ -108,7 +138,7 @@ Override settings per-include:
 | `apiKey` | `string` | — | Optional raw **public** [API key](../feature-tour/api-keys.md) value emitted into page HTML as `X-Search-Manager-Key` request material. Prefer `settings.apiKeyHandle` for saved/config references to CP-managed public keys by handle. Use `apiKey` only for render-time overrides or config-only widgets that intentionally provide the actual public key value. Never use a server key. |
 | `styles` | `object` | `{}` | Override individual [style properties](styles.md) at render time |
 
-### Search Input
+### Search input
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -116,7 +146,10 @@ Override settings per-include:
 | `searchMinChars` | `int` | `2` | Minimum characters before searching (1-10) |
 | `loadingIndicatorEnabled` | `bool` | `true` | Show loading spinner during search |
 
-### Modal & Trigger
+### Modal & trigger
+
+> [!NOTE]
+> `modalBackdropOpacity` and `modalBackdropBlurEnabled` are style-layer overrides — they come from the style preset's `backdropOpacity`/`backdropBlur` and can be overridden inline. The rest of this table (`modalPreventBodyScroll`, `triggerEnabled`, `triggerHotkey`, `triggerLabel`, `triggerSelector`) is config-layer behavior.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -128,7 +161,7 @@ Override settings per-include:
 | `triggerLabel` | `string` | `'Search'` | Trigger button text |
 | `triggerSelector` | `string` | — | CSS selector for an external trigger element |
 
-### Recently Viewed
+### Recently viewed
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -166,7 +199,8 @@ When a searched split-capable index uses split sections, `resultsLayout: 'defaul
 | `snippetMaxLength` | `int` | `150` | Maximum snippet length in characters for page and section snippets (50-1000) |
 | `snippetIncludeCodeBlocks` | `bool` | `false` | Allow snippets to use block-level code from page or section bodies; inline code text is always preserved |
 | `snippetCleanMarkdown` | `bool` | `false` | Clean Markdown markers from page and section snippet display text without changing indexed content |
-### Result Highlighting
+
+### Result highlighting
 
 > [!NOTE]
 > `highlightResultsEnabled`, `highlightTag`, and `highlightClass` are style-layer overrides — they come from the style preset and can be overridden inline. The destination page highlighting params below are config-layer behavior settings.
@@ -179,7 +213,7 @@ When a searched split-capable index uses split sections, `resultsLayout: 'defaul
 
 The widget uses `highlightTag` and `highlightClass` client-side for titles and snippets. Search responses return plain snippet text; the widget applies highlighting while rendering.
 
-### Destination Highlighting
+### Destination highlighting
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -201,7 +235,7 @@ The widget uses `highlightTag` and `highlightClass` client-side for titles and s
 |-----------|------|---------|-------------|
 | `debugEnabled` | `bool` | `false` | Enable debug toolbar overlay. Requires `devMode` or `searchManager:viewDebug` permission. |
 
-## External Trigger
+## External trigger
 
 Connect any element on your page to open the search modal:
 
@@ -218,7 +252,7 @@ Connect any element on your page to open the search modal:
 
 Any element matching the `triggerSelector` will open the modal when clicked.
 
-## Default Widget
+## Default widget
 
 Set a default widget via `defaultWidgetHandle` in config or CP settings:
 
@@ -228,19 +262,3 @@ Set a default widget via `defaultWidgetHandle` in config or CP settings:
 ```
 
 If the default widget is deleted, another enabled widget is automatically assigned.
-
-## CP Widget Management
-
-Widget configurations can be managed at Search Manager > Widgets. Each config uses these sections:
-
-- **General** — name, handle, search indices
-- **Search Input** — placeholder, debounce, minimum characters, loading indicator
-- **Modal & Trigger** — hotkey, trigger button, scroll lock, backdrop behavior
-- **Recent Searches** — the "Recently viewed" section (results the visitor opened) and its stored-entry limit
-- **Results** — result limit, grouping, URL requirement, line clamping
-- **Hierarchy** — result layout, grouping field, hierarchy style, heading limit
-- **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
-- **Destination Highlighting** — destination-page highlight toggle, persisted query, query param, content selector
-- **Analytics** — source identifier, idle timeout
-
-Visual appearance and result highlighting are controlled via the **Widget Style** selector in the sidebar, not a dedicated tab.

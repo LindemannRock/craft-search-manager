@@ -1,8 +1,80 @@
 # Analytics
 
-Search Manager tracks every search query and provides detailed analytics to help you understand what your users are searching for, identify content gaps, and optimize performance.
+See exactly what your visitors search for, where they come up empty, and how fast results come back. Search Manager tracks every query and turns it into an analytics dashboard — no separate analytics service required.
 
-## What Gets Tracked
+## What you'll use it for
+
+- See top and trending queries, and how search volume changes over time
+- Find zero-result content gaps — searches that came up empty, clustered by similarity
+- Track performance: cache hit rate, response times, fastest and slowest queries
+- Break down traffic by device, browser, OS, and (optionally) geography
+- Export any section as CSV, JSON, or Excel
+
+## View your analytics
+
+Go to **Search Manager > Analytics**. Analytics is on by default — toggle it in the CP under Search Manager > Settings > Analytics, or set `enableAnalytics` in config. The dashboard is organized into tabs:
+
+### Overview
+
+Summary statistics and trends:
+- Total searches, hits vs. zero-hit split, and success rate
+- Search trends over time
+- Intent and source breakdown charts
+- Top queries
+- **API Key Usage** — searches grouped by the API key that made them, with each key's share of traffic. Only shown when there is keyed traffic (see [API key attribution](#api-key-attribution) below)
+
+### Recent searches
+
+Detailed log of individual searches with columns for:
+- Date, query, site, hits
+- Synonyms expanded, rules matched, promotions shown
+- Source, device, location
+- Filterable and exportable
+
+### Query rules
+
+Only shown when query rules exist:
+- Top triggered rules and frequency
+- Rules by action type
+- Queries that triggered each rule
+
+### Promotions
+
+Only shown when promotions exist:
+- Top promoted elements and impression counts
+- Impressions by position
+- Queries that triggered promotions
+
+### Content gaps
+
+Identifies searches that returned no results:
+- Zero-hit query clusters (grouped by similarity)
+- Recent failed queries
+- Helps you identify missing content
+
+### Performance
+
+Cache and speed metrics:
+- Cache hit rate
+- Response time trends
+- Fastest and slowest queries
+
+### Traffic & devices
+
+Visitor breakdown:
+- Device type (desktop, mobile, tablet)
+- Browser distribution
+- Operating system distribution
+- Peak search hours
+
+### Geographic
+
+Only shown when geo-detection is enabled:
+- Country breakdown
+- City breakdown
+- Regional search patterns
+
+## What gets tracked
 
 Every search records:
 
@@ -22,7 +94,7 @@ Every search records:
 | Platform, app version | For mobile app tracking |
 | API key | The key that made the request, when [API key enforcement](api-keys.md) is enabled (anonymous otherwise) |
 
-## How Searches Are Counted @since(5.46.0)
+## How searches are counted @since(5.46.0)
 
 A single user search may hit one index or several. To preserve per-index detail without inflating totals, Search Manager stores analytics like this:
 
@@ -44,77 +116,13 @@ The stored `resultsCount` value is the backend-native `total` for that index res
 
 A zero-result *action* is one where **every** row in that action returned no hits, no redirect, and no promotion. A multi-index search that succeeded on at least one of its indices is not a content gap.
 
-### Widget Searches and Cache Stats
+### Widget searches and cache stats
 
-The frontend widget skips per-keystroke analytics to avoid spam — instead, it writes a single row on user intent (Enter, click, or idle). That intent row carries cache telemetry forward from the final search response (`cached` and `took` from `meta`), so widget activity contributes to the cache hit rate just like server-side callers do.
+The frontend search widget skips per-keystroke analytics to avoid spam — instead, it writes a single row on user intent (Enter, click, or idle). That intent row carries cache telemetry forward from the final search response (`cached` and `took` from `meta`), so widget activity contributes to the cache hit rate just like server-side callers do.
 
 Legacy widget builds or callers that don't supply telemetry write rows with `executionTime = NULL`, and those are silently excluded from cache stats (they represent user intent, not a backend execution measurement). After upgrading to 5.46.0 and rebuilding the widget bundle, you'll see widget cache hits appear in the Performance tab.
 
-## Analytics Tabs
-
-The Analytics dashboard is organized into tabs:
-
-### Overview
-
-Summary statistics and trends:
-- Total searches, hits vs. zero-hit split, and success rate
-- Search trends over time
-- Intent and source breakdown charts
-- Top queries
-- **API Key Usage** — searches grouped by the API key that made them, with each key's share of traffic. Only shown when there is keyed traffic (see [API key attribution](#api-key-attribution) below)
-
-### Recent Searches
-
-Detailed log of individual searches with columns for:
-- Date, query, site, hits
-- Synonyms expanded, rules matched, promotions shown
-- Source, device, location
-- Filterable and exportable
-
-### Query Rules
-
-Only shown when query rules exist:
-- Top triggered rules and frequency
-- Rules by action type
-- Queries that triggered each rule
-
-### Promotions
-
-Only shown when promotions exist:
-- Top promoted elements and impression counts
-- Impressions by position
-- Queries that triggered promotions
-
-### Content Gaps
-
-Identifies searches that returned no results:
-- Zero-hit query clusters (grouped by similarity)
-- Recent failed queries
-- Helps you identify missing content
-
-### Performance
-
-Cache and speed metrics:
-- Cache hit rate
-- Response time trends
-- Fastest and slowest queries
-
-### Traffic & Devices
-
-Visitor breakdown:
-- Device type (desktop, mobile, tablet)
-- Browser distribution
-- Operating system distribution
-- Peak search hours
-
-### Geographic
-
-Only shown when geo-detection is enabled:
-- Country breakdown
-- City breakdown
-- Regional search patterns
-
-## Per-Index Analytics
+## Per-index analytics
 
 Analytics can be enabled or disabled per index. This is useful for excluding internal or admin-facing indices from tracking:
 
@@ -126,7 +134,7 @@ Analytics can be enabled or disabled per index. This is useful for excluding int
 ],
 ```
 
-## Source Detection
+## Source detection
 
 Search Manager automatically detects where a search came from:
 
@@ -152,7 +160,7 @@ Or via the REST API:
 GET /actions/search-manager/api/search?q=shoes&analyticsSource=ios-app&platform=iOS%2017.2&appVersion=2.1.0
 ```
 
-## API Key Attribution
+## API key attribution
 
 When [API key enforcement](api-keys.md) is enabled, each search and `track-search` analytics row is attributed to the API key that made the request. Three columns are recorded:
 
@@ -172,7 +180,7 @@ Analytics can be exported as CSV, JSON, or Excel from the Export button in the p
 
 ## Retention
 
-Configure how long analytics data is kept:
+Configure how long analytics data is kept, in the CP under Search Manager > Settings > Analytics > Data Retention, or in config:
 
 ```php
 'analyticsRetention' => 90,  // Days (0 = keep forever)
@@ -180,7 +188,7 @@ Configure how long analytics data is kept:
 
 An automatic cleanup job removes old records based on this setting.
 
-## Bot Filtering
+## Bot filtering
 
 Search Manager uses Matomo DeviceDetector to identify bot traffic (GoogleBot, BingBot, etc.). Bot searches are flagged in analytics so you can filter them out.
 

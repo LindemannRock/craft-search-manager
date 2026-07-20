@@ -1,6 +1,8 @@
-# API Endpoints
+# API endpoints
 
-Search Manager provides REST API endpoints for building instant search interfaces, mobile app integrations, and headless search.
+Query search, get autocomplete suggestions, and track search analytics over plain HTTP — no PHP or Twig required. Search Manager exposes these as REST endpoints for instant-search JavaScript, mobile apps, and headless frontends.
+
+If you're rendering results in a Twig template, use `craft.searchManager.search()` directly instead — see [Basic search](basic-search.md). Reach for these HTTP endpoints when your caller isn't Twig.
 
 ## Authentication
 
@@ -62,7 +64,7 @@ GET /actions/search-manager/api/search
 | `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |
 | `skipAnalytics` | `0` | Skip analytics tracking for this search |
 
-#### Snippet Parameters
+#### Snippet parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -143,7 +145,7 @@ Top-level hit fields are reserved for Search Manager identity, ranking, and kind
 
 Structure Entries, Categories, and public Assets can also return breadcrumb metadata at the top level. `ancestors` is ordered from root to parent; Entries and Categories can include `level`; public Assets can include `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, and private-volume Assets omit these keys.
 
-### Search Response
+### Search response
 
 Search returns one canonical hit shape:
 
@@ -227,7 +229,7 @@ Search returns one canonical hit shape:
 
 For split SourceDoc and AutoTransformer-family indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `elementId` with the parent element, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Headingless elements in a split-enabled index remain normal page-mode hits. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
 
-### Response Fields
+### Response fields
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -237,7 +239,7 @@ For split SourceDoc and AutoTransformer-family indices, each returned hit is a f
 | `resultsLimit` | `int` | Results per page |
 | `totalPages` | `int` | Total number of pages |
 
-### Hit Fields
+### Hit fields
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -349,7 +351,7 @@ GET /actions/search-manager/api/autocomplete
 | `only` | (none) | Return only `suggestions` or `results` |
 | `type` | (none) | Filter results by element type |
 
-### Response Formats
+### Response formats
 
 **Default** (no `only` param) — returns both suggestions and element results:
 
@@ -404,7 +406,7 @@ const suggestions = await response.json();
 const response = await fetch('/actions/search-manager/api/autocomplete?q=test&only=results&type=product');
 ```
 
-## Search Operators in API
+## Search operators in API
 
 All search operators work in API queries:
 
@@ -418,7 +420,9 @@ Boosting:       ?q=coffee^2 beans
 Localized:      ?q=kaffee ODER tee&language=de
 ```
 
-## Mobile App Integration
+See [Advanced operators](advanced-operators.md) for what each operator does.
+
+## Mobile app integration
 
 The API is designed for mobile app use. Pass analytics context for proper tracking:
 
@@ -440,11 +444,15 @@ This ensures:
 - Analytics records the request as coming from your iOS app
 - Platform and version info are tracked for analysis
 
-## Analytics Tracking Endpoints
+## Analytics tracking endpoints
 
-These endpoints are used by the frontend widget to track search activity. When **Require API Key** is enabled, they require the same `X-Search-Manager-Key` header as search/autocomplete. When the setting is disabled, they accept anonymous requests. They do not require a CSRF token, which keeps them compatible with full-page static caching (Blitz, Servd, etc.).
+If you're using the bundled [Frontend Widget](../widget/overview.md), it already calls these endpoints for you — a result click fires Track Click, and search intent (pressing Enter, clicking a result, or an idle pause) fires Track Search. You don't need to wire anything up.
 
-### Track Search
+Call them yourself only when you're building a custom search UI instead of the widget — a bespoke JavaScript autocomplete, a mobile app, or any other headless frontend that renders its own results and needs to report activity back to Search Manager's analytics.
+
+When **Require API Key** is enabled, both endpoints require the same `X-Search-Manager-Key` header as search/autocomplete. When the setting is disabled, they accept anonymous requests. They do not require a CSRF token, which keeps them compatible with full-page static caching (Blitz, Servd, etc.).
+
+### Track search
 
 ```text
 POST /actions/search-manager/search/track-search
@@ -471,7 +479,7 @@ Returns `"tracked": false` when analytics is disabled or no valid indices match.
 
 Omitting `cached` / `took` is supported and writes `executionTime = NULL` (legacy behaviour — the row counts as a search action but is excluded from cache hit rate calculations).
 
-### Track Click
+### Track click
 
 ```text
 POST /actions/search-manager/search/track-click
@@ -493,7 +501,7 @@ Records when a user clicks a search result.
 > [!NOTE]
 > Both tracking endpoints require a `POST` request with `Accept: application/json` header. They silently succeed when analytics is disabled.
 
-## Instant Search Example
+## Instant search example
 
 ```html
 <input type="search" id="search" placeholder="Search...">
@@ -530,3 +538,11 @@ input.addEventListener('input', (e) => {
 });
 </script>
 ```
+
+## Next steps
+
+- [Basic search](basic-search.md) — the Twig equivalent for template-rendered results
+- [Autocomplete & suggestions](autocomplete-suggestions.md) — full autocomplete UI patterns built on this endpoint
+- [Highlighting & snippets](highlighting-snippets.md) — the standalone JS highlighter for API-driven results
+- [API keys](../feature-tour/api-keys.md) — create and scope a public key
+- [Testing tools](../resources/testing-tools.md) — compare a CP test result against the raw REST response

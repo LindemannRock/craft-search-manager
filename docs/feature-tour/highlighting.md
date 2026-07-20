@@ -1,16 +1,31 @@
 # Highlighting & Snippets
 
-Search Manager can highlight matched terms in your results and generate context snippets — short excerpts that show where the match occurs within the content.
+Show visitors exactly where their search terms matched. Search Manager wraps matched words in a tag of your choosing and pulls short excerpts of surrounding text — so results, and the page a visitor lands on after clicking one, show the hit in context.
 
-## How It Works
+There are two independent ways to get this: highlight and snippet text yourself in PHP/Twig (or read plain-text snippets off the REST/GraphQL response), or let the frontend search widget do it for you — both in its results list and on the destination page after a click. Pick the section below that matches how you're building your search experience.
 
-Highlighting wraps matched search terms with an HTML tag (default: `<mark>`). Exact and typo-corrected matches paint the whole matched word, while a prefix extension paints only the part the visitor typed: `test` in “Testing” becomes `<mark>Test</mark>ing`. Matches must begin at a word boundary, so `to` never paints the middle of “stop”. Snippets extract portions of text around the matched terms so users can see the match in context.
+## What you'll use it for
 
-Both features work on any text you pass in — they're not limited to indexed fields. You can highlight titles, body content, custom fields, or any string.
+- Wrap matched words in `<mark>` (or another tag) inside your own search results template
+- Show a short excerpt of surrounding text so visitors see the match in context before they click
+- Let the built-in search widget highlight matches in its results list automatically
+- Highlight the same search terms on the page a visitor lands on after clicking a result
+- Match the highlight styling to your site's branding with a custom CSS class
 
-## Configuration
+Both highlighting and snippets work on any text you pass in — they're not limited to indexed fields. You can highlight titles, body content, custom fields, or any string.
 
-These settings control the default behavior. You can override them per-call in your templates.
+## Server-side highlighting
+
+For PHP/Twig templates, and for reading the REST/GraphQL response directly.
+
+### CP settings
+
+Set the defaults in the Control Panel — no code required:
+
+- **Settings → Highlighting** — the **Result Highlighting Enabled** lightswitch turns highlighting on or off by default; **HTML Tag** picks what wraps a match (`<mark>`, `<em>`, `<strong>`, `<span>`, `<b>`, or `<i>`); **CSS Class** adds an optional class. A live preview shows the exact HTML output as you change either field.
+- **Settings → Snippets** — **Snippet Length** (50–1000 characters, default 200) and **Max Snippets** (1–10, default 3) control the `craft.searchManager.snippets()` template helper specifically. Widget and API snippets are configured per widget or per request — see [Widget highlighting](#widget-highlighting) below.
+
+Each of these maps to a config-file setting, and locks (with a warning) when a `config/search-manager.php` entry overrides it:
 
 ```php
 // config/search-manager.php
@@ -21,9 +36,9 @@ These settings control the default behavior. You can override them per-call in y
 'maxSnippets' => 3,             // Max snippets per result
 ```
 
-## Usage
+### Highlighting text in Twig
 
-### Highlighting Text
+Highlighting wraps matched search terms with an HTML tag (default: `<mark>`). Exact and typo-corrected matches paint the whole matched word, while a prefix extension paints only the part the visitor typed: `test` in "Testing" becomes `<mark>Test</mark>ing`. Matches must begin at a word boundary, so `to` never paints the middle of "stop".
 
 ```twig
 {% set results = craft.searchManager.search('entries', 'craft cms') %}
@@ -39,7 +54,7 @@ These settings control the default behavior. You can override them per-call in y
 
 When the query can contain `title:` or `content:`, pass `field: 'title'` for titles and `field: 'content'` for body text or snippets. Unscoped terms paint both areas; scoped terms paint only their matching area; and no eligible terms means nothing is painted. Leave `field` unset only when the legacy scope-blind behavior is intentional.
 
-### Custom Options
+### Custom options
 
 ```twig
 {{ craft.searchManager.highlight(text, query, {
@@ -50,9 +65,9 @@ When the query can contain `title:` or `content:`, pass `field: 'title'` for tit
 })|raw }}
 ```
 
-### Generating Snippets
+### Generating snippets
 
-Snippets extract portions of text around matched terms:
+Snippets extract portions of text around matched terms so users can see the match in context:
 
 ```twig
 {% set snippets = craft.searchManager.snippets(entry.body, 'craft cms', {
@@ -66,7 +81,7 @@ Snippets extract portions of text around matched terms:
 {% endfor %}
 ```
 
-## Styling
+### Styling
 
 The default `<mark>` tag has browser-default styling (yellow background). You can customize it with CSS:
 
@@ -95,42 +110,39 @@ Then style that class in your frontend CSS:
 }
 ```
 
+### REST and GraphQL
+
+The REST and GraphQL search endpoints return `snippet` (and `headings[].snippet`) as plain text — Search Manager does not wrap matched terms in these responses. Apply highlighting in your own client code. GraphQL additionally accepts `highlightTag`, `highlightClass`, `highlightResultsEnabled`, and the `highlightDestination*` arguments, but they're reserved for client renderers and are not applied server-side.
+
+See [API Endpoints](../template-guides/api-endpoints.md) and [GraphQL](../developers/graphql.md#search) for the full response shape.
+
 See the [Highlighting & Snippets](../template-guides/highlighting-snippets.md) template guide for complete implementation examples.
 
-## Destination Page Highlighting
+## Widget highlighting
 
-The widget can also highlight search terms on the page a user navigates to after clicking a result. After the user clicks a result, the widget appends the search query to the destination URL, and the widget's script on the destination page reads that parameter and highlights matching terms in the page content.
+The frontend search widget handles highlighting for you — no Twig helpers needed. It has two independent behaviors, configured in two different places.
 
-This feature is independent from in-widget result highlighting (`highlightResultsEnabled`), which wraps matched terms inside the search results list. Destination page highlighting applies to the actual content of the target page after navigation.
+### Highlighting matches in the results list
 
-### How It Works
+The widget's **Result Highlighting** style options wrap matched terms in results the same way `craft.searchManager.highlight()` does — with their own **Result Highlighting Enabled** toggle, **HTML Tag** (or **Use global default**, which falls back to the Settings → Highlighting choice above), **CSS Class**, and light/dark colors. These live in the widget's **Style** editor, not on the widget config's tabs. The widget applies this client-side while rendering; the search response itself always returns plain snippet text, per [REST and GraphQL](#rest-and-graphql) above.
 
-1. User types a search query and clicks a result
-2. The widget appends the query to the destination URL (e.g., `/blog/my-post?smq=redis+performance`)
-3. The widget script on the destination page reads the `smq` parameter on load
-4. Matching terms in the configured content areas are wrapped in `<mark>` tags
+See [Widget Configuration → Result Highlighting](../widget/configuration.md#result-highlighting) for every option.
 
-### Configuration
+### Highlighting matches on the destination page
 
-These parameters control destination page highlighting. They can be set in the CP (Highlights tab), in the config file, or passed as Twig parameters per-include.
+After a visitor clicks a result, the widget can also highlight the same search terms on the page they land on — independent of the in-results highlighting above (`highlightResultsEnabled`), which only affects the results list itself.
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `highlightDestinationEnabled` | `bool` | `true` | Enable destination page highlighting |
-| `highlightDestinationPersistQuery` | `bool` | `true` | Append the search query to the destination URL |
-| `highlightDestinationQueryParam` | `string` | `'smq'` | URL parameter name for the persisted query |
-| `highlightDestinationContentSelector` | `string` | `'main, article, [data-search-content]'` | CSS selector for page content areas to scan |
+1. User types a search query and clicks a result.
+2. The widget appends the query to the destination URL (e.g., `/blog/my-post?smq=redis+performance`).
+3. The widget script on the destination page reads the `smq` parameter on load.
+4. Matching terms in the configured content areas are wrapped in `<mark>` tags.
 
 > [!TIP]
-> Change `highlightDestinationQueryParam` if `smq` conflicts with an existing query parameter in your site. For example, set it to `'q'` or `'highlight'`.
+> Change the query parameter if `smq` conflicts with an existing one on your site — for example, set it to `q` or `highlight`.
 
 > [!NOTE]
-> `highlightDestinationPersistQuery` controls whether the query is appended to the URL at all. If disabled, the destination page cannot know what to highlight and no highlighting will occur, even if `highlightDestinationEnabled` is `true`.
+> Highlighting only happens if the search query is actually appended to the destination URL. If that's turned off, the destination page has no way to know what to highlight, even with destination highlighting itself enabled.
 
-### Multi-Widget Support
+These options live on each widget config's **Destination Highlighting** tab, in a config-file widget override, or as Twig parameters per-include. See [Widget Configuration → Destination Highlighting](../widget/configuration.md#destination-highlighting) for the full parameter table.
 
-When multiple widgets are included on the same page, each widget registers independently using a keyed internal registry. Highlights from one widget will not be duplicated or overridden by another widget on the same page.
-
-### CP Configuration
-
-In the CP, destination page highlighting settings are on the **Highlights** tab of each widget config. The `highlightDestinationEnabled` toggle reveals or hides the sub-options (`highlightDestinationPersistQuery`, `highlightDestinationQueryParam`, `highlightDestinationContentSelector`) when toggled off.
+When multiple widgets are included on the same page, each one registers independently using a keyed internal registry — highlights from one widget will not be duplicated or overridden by another.

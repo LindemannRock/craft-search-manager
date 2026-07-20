@@ -1,8 +1,10 @@
-# Advanced Operators
+# Advanced operators
 
-Search Manager supports powerful query operators for the built-in backends (MySQL, PostgreSQL, Redis, File). This guide shows how to use each operator with practical examples.
+Give your users phrase search, exclusions, wildcards, and per-term boosting — the built-in engines (MySQL, PostgreSQL, Redis, File) parse all of the operators below directly out of the query string, no extra template code needed. This guide shows each operator with practical examples.
 
-## Phrase Search
+These operators are for the **built-in backends' query syntax**. Algolia, Meilisearch, and Typesense receive the query string unchanged — Search Manager doesn't translate these operators for them, so external-provider query syntax (if any) is provider-native. See [Field-specific search](#field-specific-search) below for how this plays out with `title:`/`content:` specifically.
+
+## Phrase search
 
 Wrap terms in double quotes to find exact sequences:
 
@@ -12,7 +14,7 @@ Wrap terms in double quotes to find exact sequences:
 
 Only matches documents where "craft" is immediately followed by "cms". Phrase matches are boosted 4x by default.
 
-## NOT Operator
+## NOT operator
 
 Exclude documents containing specific terms:
 
@@ -24,7 +26,7 @@ Exclude documents containing specific terms:
 {% set results = craft.searchManager.search('entries', '"craft cms" NOT plugin NOT theme') %}
 ```
 
-## Field-Specific Search
+## Field-specific search
 
 Target supported built-in document fields:
 
@@ -55,7 +57,7 @@ Use `*` for prefix matching:
 {% set results = craft.searchManager.search('entries', 'test* OR craft*') %}
 ```
 
-## Per-Term Boosting
+## Per-term boosting
 
 Assign custom weights to individual terms:
 
@@ -67,7 +69,7 @@ Assign custom weights to individual terms:
 {% set results = craft.searchManager.search('entries', 'craft^3 plugin^2 tutorial^1.5') %}
 ```
 
-## Boolean Operators
+## Boolean operators
 
 ```twig
 {# OR: documents with either term #}
@@ -78,9 +80,9 @@ Assign custom weights to individual terms:
 {% set results = craft.searchManager.search('entries', 'craft cms') %}
 ```
 
-## Localized Boolean Operators
+## Localized boolean operators
 
-On non-English sites, boolean operators work in the site's language. Supported languages:
+On non-English sites, boolean operators work in the site's language:
 
 | Language | AND | OR | NOT |
 |---|---|---|---|
@@ -115,7 +117,7 @@ All operators are case-insensitive. English operators always work as a fallback 
 {% set results = craft.searchManager.search('products', 'kaffe ELLER te') %}
 ```
 
-## Combining Operators
+## Combining operators
 
 All operators can be combined in a single query:
 
@@ -132,16 +134,16 @@ This query:
 - Gives a 2x boost to the term "getting"
 - Boosts the exact phrase "started guide" with the configured phrase boost
 
-## Practical Examples
+## Practical examples
 
-### Site Search with Exclusions
+### Site search with exclusions
 
 ```twig
 {# Search blog but exclude archived content #}
 {% set results = craft.searchManager.search('blog', query ~ ' NOT archived NOT draft') %}
 ```
 
-### Product Search Restricted to Titles
+### Product search restricted to titles
 
 ```twig
 {# Only match products whose TITLE contains the query — body-only matches are excluded #}
@@ -150,7 +152,7 @@ This query:
 
 `title:` is a hard filter, not a boost — results that match only in body content are dropped entirely. Title matches are already boosted automatically in relevance ranking (the `titleBoostFactor` setting), so you don't need `title:` to make titles rank higher.
 
-### Multi-Language Search Form
+### Multi-language search form
 
 ```twig
 {# Let users use operators in their language #}
@@ -158,6 +160,12 @@ This query:
 {# On a German site, "laptop ODER tablet" works automatically #}
 ```
 
-## Fuzzy Matching
+## Fuzzy matching
 
-Fuzzy matching is automatic — no special syntax needed. If a user searches for "tst", Search Manager finds documents containing "test". Configure sensitivity in [Fuzzy Matching](../feature-tour/search-features.md#fuzzy-matching).
+Fuzzy matching is automatic — no special syntax needed. If a user searches for "tst", Search Manager finds documents containing "test". Configure sensitivity in [Fuzzy matching](../feature-tour/search-features.md#fuzzy-matching).
+
+## Next steps
+
+- [Basic search](basic-search.md) — the search form and results loop these operators plug into
+- [Filtering & facets](filtering-facets.md) — narrow results by type or site instead of query terms
+- [API endpoints](api-endpoints.md#search-operators-in-api) — the same operators over REST

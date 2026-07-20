@@ -1,8 +1,8 @@
-# Widget Integration
+# Widget integration
 
-This guide walks through adding the Search Manager frontend widget to your site and customizing its appearance and behavior.
+Add the search modal to any template in one line, then layer on styling, triggers, and analytics as you need them. This guide walks through adding the Search Manager frontend widget to your site and customizing its appearance and behavior.
 
-## Quick Start
+## Simplest example
 
 The simplest integration — one line in your layout template:
 
@@ -12,9 +12,9 @@ The simplest integration — one line in your layout template:
 
 This renders a trigger button and the search modal. Users press CMD+K (or Ctrl+K) or click the button to open search.
 
-## Using a Widget Config
+## Complete example
 
-Create a widget configuration in the CP (Search Manager > Widgets) or config file, then reference it:
+Reference a saved widget config, then override anything per-include:
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
@@ -22,7 +22,24 @@ Create a widget configuration in the CP (Search Manager > Widgets) or config fil
 } %}
 ```
 
-## API Key (when Require API Key is on)
+Or skip the saved config entirely and set everything inline:
+
+```twig
+{% include 'search-manager/_widget/search-modal' with {
+    indexHandles: ['blog', 'products'],
+    placeholder: 'Search articles and products...',
+    theme: 'dark',
+    resultsLimit: 12,
+    recentlyViewedEnabled: true,
+    resultsGroupingEnabled: true,
+} %}
+```
+
+Create the widget configuration in the CP (Search Manager > Widgets) or config file first — see [Widget Configuration](configuration.md) for every parameter. Any parameter passed here overrides that saved config for this include only.
+
+## Options and customization
+
+### API key (when Require API Key is on)
 
 If [**Require API Key**](../feature-tour/api-keys.md) is enabled, the widget must send a valid **public** API key — on search, autocomplete, **and** the analytics tracking pings. Select a public key on the widget config's **API Key** field (Search Manager → Widgets → your widget). The selector shows the key name, handle, and prefix. Saved/config references should use `settings.apiKeyHandle` to point at the CP-managed key by handle. You can also pass the raw public key value at render time:
 
@@ -37,73 +54,9 @@ A render-time `apiKey` overrides the saved/config `apiKeyHandle` reference. Use 
 
 Public keys selected by widget configs cannot be deleted, disabled, expired, renamed by handle, or narrowed in a way that breaks those widgets. Remove or reassign the key from the widget configs first.
 
-## Overriding Styles Inline
+### Theming
 
-Override specific visual styles at render time. These merge on top of the widget config's [style preset](styles.md):
-
-```twig
-{% include 'search-manager/_widget/search-modal' with {
-    configHandle: 'main-search',
-    styles: {
-        modalBg: '#0f172a',
-        inputBg: '#1e293b',
-        spinnerColor: '#818cf8',
-    },
-} %}
-```
-
-> Style presets are assigned to widget configs via `styleHandle` in the [config file](../get-started/configuration.md) or the CP. The `styles` Twig parameter lets you override individual properties at render time without changing the preset.
-
-## Customizing Inline
-
-Override specific settings without creating a config:
-
-```twig
-{% include 'search-manager/_widget/search-modal' with {
-    indexHandles: ['blog', 'products'],
-    placeholder: 'Search articles and products...',
-    theme: 'dark',
-    resultsLimit: 12,
-    recentlyViewedEnabled: true,
-    resultsGroupingEnabled: true,
-} %}
-```
-
-## Live Attribute Updates
-
-The rendered `<search-modal>` element watches its configuration attributes. You can update attributes after the widget has mounted, and the modal will re-read its configuration without losing its trigger wiring:
-
-```javascript
-const widget = document.querySelector('search-modal');
-
-widget.setAttribute('placeholder', 'Search products...');
-widget.setAttribute('theme', 'dark');
-widget.setAttribute('trigger-selector', '#mobile-search-trigger');
-```
-
-If the modal is open while an attribute changes, it stays open and keeps the current query. Styling-only changes such as `theme` apply without rebuilding the modal DOM; structural changes re-render the widget and reconnect the internal controls, external trigger, hotkey, and document-level listeners.
-
-## Custom Trigger Button
-
-Replace the built-in trigger with your own design:
-
-```twig
-<button id="search-trigger" class="my-search-button">
-    <svg><!-- search icon --></svg>
-    Search
-</button>
-
-{% include 'search-manager/_widget/search-modal' with {
-    triggerEnabled: false,
-    triggerSelector: '#search-trigger',
-} %}
-```
-
-Any element matching the `triggerSelector` will open the modal when clicked.
-
-## Theming
-
-### Light and Dark Mode
+#### Light and dark mode
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
@@ -115,26 +68,30 @@ Any element matching the `triggerSelector` will open the modal when clicked.
 } %}
 ```
 
-### Custom Colors
+#### Override styles inline
 
-Override individual style properties:
+Override specific visual styles at render time. These merge on top of the widget config's [style preset](styles.md):
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
+    configHandle: 'main-search',
     styles: {
         modalBg: '#1a1a1a',
         modalBorderColor: '#333',
+        modalBorderRadius: '16',
         inputBg: '#2a2a2a',
         inputTextColor: '#fff',
         resultActiveBg: '#333',
-        modalBorderRadius: '16',
+        spinnerColor: '#818cf8',
     },
 } %}
 ```
 
-### Brand Colors via Config
+> Style presets are assigned to widget configs via `styleHandle` in the [config file](../get-started/configuration.md) or the CP. The `styles` Twig parameter lets you override individual properties at render time without changing the preset.
 
-For consistent branding, define styles in your config file:
+#### Brand colors via config
+
+For consistent branding across every include, define styles in your config file:
 
 ```php
 // config/search-manager.php
@@ -154,7 +111,39 @@ For consistent branding, define styles in your config file:
 ],
 ```
 
-## RTL Support
+### Custom trigger button
+
+Replace the built-in trigger with your own design:
+
+```twig
+<button id="search-trigger" class="my-search-button">
+    <svg><!-- search icon --></svg>
+    Search
+</button>
+
+{% include 'search-manager/_widget/search-modal' with {
+    triggerEnabled: false,
+    triggerSelector: '#search-trigger',
+} %}
+```
+
+Any element matching the `triggerSelector` will open the modal when clicked.
+
+### Live attribute updates
+
+The rendered `<search-modal>` element watches its configuration attributes. You can update attributes after the widget has mounted, and the modal will re-read its configuration without losing its trigger wiring:
+
+```javascript
+const widget = document.querySelector('search-modal');
+
+widget.setAttribute('placeholder', 'Search products...');
+widget.setAttribute('theme', 'dark');
+widget.setAttribute('trigger-selector', '#mobile-search-trigger');
+```
+
+If the modal is open while an attribute changes, it stays open and keeps the current query. Styling-only changes such as `theme` apply without rebuilding the modal DOM; structural changes re-render the widget and reconnect the internal controls, external trigger, hotkey, and document-level listeners.
+
+### RTL support
 
 For right-to-left languages:
 
@@ -164,7 +153,7 @@ For right-to-left languages:
 } %}
 ```
 
-## Analytics Tracking
+### Analytics tracking
 
 Track where searches come from by setting an analytics source identifier:
 
@@ -180,7 +169,7 @@ Track where searches come from by setting an analytics source identifier:
 
 The analytics source appears in analytics so you can compare search behavior across placements.
 
-### Idle Timeout
+#### Idle timeout
 
 By default, a search is tracked after the user stops typing for 1.5 seconds. Adjust or disable:
 
@@ -194,7 +183,42 @@ By default, a search is tracked after the user stops typing for 1.5 seconds. Adj
 } %}
 ```
 
-## Programmatic Control
+### Hierarchical results
+
+For documentation sites, use the hierarchical result layout to group results and show matched headings:
+
+```twig
+{% include 'search-manager/_widget/search-modal' with {
+    configHandle: 'docs-search',
+    resultsLayout: 'hierarchical',
+    hierarchyMaxHeadings: 5,
+} %}
+```
+
+With split SourceDoc or AutoTransformer-family indices, the same hierarchical layout groups flat section hits back under their parent element. Intro hits can provide the parent snippet, heading hits render as children, and promoted page hits render at the parent level. `hierarchyMaxHeadings` limits heading children per page block: the widget keeps the highest-scoring heading hits first, then restores document order for display.
+
+#### Snippet modes
+
+Control how snippets are extracted from eligible fields, page bodies, and split section bodies:
+
+```twig
+{% include 'search-manager/_widget/search-modal' with {
+    snippetMode: 'deep',
+    snippetMaxLength: 200,
+    snippetIncludeCodeBlocks: true,
+    snippetCleanMarkdown: true,
+} %}
+```
+
+| Mode | Description |
+|------|-------------|
+| `early` | Minimal leading context — the matched term appears near the start of the snippet |
+| `balanced` | Moderate leading context before the matched term (default) |
+| `deep` | More leading context — the matched term appears deeper in the snippet |
+
+Each mode returns one snippet per hit; the mode only controls how much text is shown before the matched position.
+
+### Programmatic control
 
 Access the widget from JavaScript:
 
@@ -209,7 +233,7 @@ widget.toggle();
 
 For the full JavaScript API including events and advanced control, see [JavaScript API](javascript-api.md).
 
-## Accessibility
+### Accessibility
 
 The widget is WCAG 2.1 AA compliant:
 
@@ -222,7 +246,7 @@ The widget is WCAG 2.1 AA compliant:
 
 When overriding colors, check that you maintain sufficient contrast ratios.
 
-## Multiple Widgets
+### Multiple widgets
 
 You can include multiple widgets with different configs on the same page:
 
@@ -243,37 +267,8 @@ Only one search modal can be open at a time. Opening a widget from its trigger, 
 
 If multiple widgets share the same hotkey, the currently open matching widget owns the next keypress and closes. If none of the matching widgets are open, the first matching widget on the page opens. Opening a different widget by click or script replaces the active one.
 
-## Hierarchical Results
+## Next steps
 
-For documentation sites, use the hierarchical result layout to group results and show matched headings:
-
-```twig
-{% include 'search-manager/_widget/search-modal' with {
-    configHandle: 'docs-search',
-    resultsLayout: 'hierarchical',
-    hierarchyMaxHeadings: 5,
-} %}
-```
-
-With split SourceDoc or AutoTransformer-family indices, the same hierarchical layout groups flat section hits back under their parent element. Intro hits can provide the parent snippet, heading hits render as children, and promoted page hits render at the parent level. `hierarchyMaxHeadings` limits heading children per page block: the widget keeps the highest-scoring heading hits first, then restores document order for display.
-
-### Snippet Modes
-
-Control how snippets are extracted from eligible fields, page bodies, and split section bodies:
-
-```twig
-{% include 'search-manager/_widget/search-modal' with {
-    snippetMode: 'deep',
-    snippetMaxLength: 200,
-    snippetIncludeCodeBlocks: true,
-    snippetCleanMarkdown: true,
-} %}
-```
-
-| Mode | Description |
-|------|-------------|
-| `early` | Minimal leading context — the matched term appears near the start of the snippet |
-| `balanced` | Moderate leading context before the matched term (default) |
-| `deep` | More leading context — the matched term appears deeper in the snippet |
-
-Each mode returns one snippet per hit; the mode only controls how much text is shown before the matched position.
+- [Widget Configuration](configuration.md) — all behavior parameters and CP walkthrough
+- [Widget Styles](styles.md) — style presets and CSS properties
+- [JavaScript API](javascript-api.md) — programmatic control and events

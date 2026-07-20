@@ -1,20 +1,33 @@
 # Query Rules @since(5.10.0)
 
-Query rules modify search behavior when a user's query matches a specific pattern. They support synonyms, boosting, and redirects.
+Reshape how a specific search behaves — expand it to related terms, boost a section or element above the rest, or send visitors straight to a page instead of a results list — without touching your index or your templates. A query rule is a trigger (a pattern the search query must match) paired with an action (what happens when it does).
 
-## What Are Query Rules?
+## What you'll use it for
 
-A query rule has two parts:
-1. **Trigger** — a pattern that the search query must match
-2. **Action** — what happens when the pattern matches
+- Expand "laptop" searches to also match "notebook" and "macbook" (synonyms)
+- Rank news articles higher when the query is about current events (section boost)
+- Rank Electronics results higher for tech-related queries (category boost)
+- Push a specific FAQ or product page to the top for help-related queries (element boost)
+- Send "contact us" straight to your Contact page instead of a results list (redirect)
 
-For example: when someone searches for "laptop", also include results for "notebook" and "portable computer" (synonym expansion).
+## Create your first query rule
 
-## Creating Query Rules
+1. Go to **Search Manager → Query Rules** and click **New Query Rule**.
+2. Give it a **Name** (e.g., "Laptop Synonyms") — for your own reference.
+3. Pick the **Index** this rule applies to.
+4. Choose a **Match Type** — **Exact Match**, **Contains**, **Starts With**, or **Regex** — and enter the **Match Pattern** to test the query against.
+5. Choose an **Action Type** and fill in the fields it reveals:
+   - **Synonyms** — a comma-separated list of terms to also search for.
+   - **Boost Section** — a **Section** to boost, plus a **Boost Multiplier**.
+   - **Boost Category** — a **Boost Category** element, plus a **Boost Multiplier**.
+   - **Boost Element** — a **Type** (element kind) and a **Boost Element**, plus a **Boost Multiplier**.
+   - **Redirect** — a **Redirect To** target (Custom URL or an element) and its URL or element field.
+6. Set the **Priority** (Highest to Lowest) so overlapping rules resolve predictably.
+7. In the sidebar, confirm **Enabled** is on (and pick a **Site** on multi-site installs), then save.
 
-Go to Search Manager > Query Rules and click "New Query Rule". Rules can also be managed programmatically via the PHP service API (see [API Reference](../developers/api-reference.md)).
+Rules can also be managed programmatically via the PHP service API — see [API Reference](../developers/api-reference.md).
 
-## Action Types
+## Action types
 
 ### Synonyms
 
@@ -30,7 +43,7 @@ Terms: notebook, portable computer, macbook
 
 When someone searches "laptop", the search also finds results containing "notebook", "portable computer", or "macbook". Each synonym triggers a separate search query against the backend, so results are merged and deduplicated.
 
-#### Synonym Limits
+#### Synonym limits
 
 - **Per rule:** Maximum **10 terms** per synonym rule.
 - **Per search:** Maximum **10 total queries** (original + all synonyms combined) per search request. Duplicate terms across rules are automatically removed before counting.
@@ -108,7 +121,7 @@ Redirect To: Custom URL
 URL: /contact
 ```
 
-## Match Types
+## Match types
 
 | Type | Description | Example Pattern | Matches |
 |------|-------------|-----------------|---------|
@@ -117,7 +130,7 @@ URL: /contact
 | Prefix | Query must start with the pattern | `lap` | "laptop", "lapel" |
 | Regex | Regular expression | `^(buy\|purchase)` | "buy shoes", "purchase online" |
 
-### Multi-Language Patterns
+### Multi-language patterns
 
 Use commas to match multiple patterns in one rule (Exact, Contains, Prefix):
 
@@ -133,7 +146,7 @@ For Regex, use the `|` operator:
 ^(sale|تخفيض|soldes|angebot)
 ```
 
-## Priority System
+## Priority system
 
 Rules are applied in priority order — higher priority rules are checked first.
 
@@ -154,7 +167,7 @@ Each rule can be scoped to:
 - **Index** — apply to all indices (leave blank) or a specific index
 - **Site** — apply to all sites (leave blank) or a specific site
 
-## Reindex Requirements
+## Reindex requirements
 
 Boost execution depends on metadata already stored in search documents:
 
@@ -172,7 +185,7 @@ When query rules are active and analytics is enabled, Search Manager tracks:
 
 This data appears in the Analytics > Query Rules tab. See [Analytics](analytics.md) for details.
 
-## API Response
+## API response
 
 When rules are applied, they appear in the search response metadata:
 

@@ -1,30 +1,23 @@
 # Promotions @since(5.10.0)
 
-Promotions let you pin specific elements to fixed positions in search results, bypassing normal relevance scoring. Use them for merchandising, editorial control, or ensuring important content appears first for specific queries.
+Pin a specific product, entry, or page to a fixed spot in your search results — bypassing normal relevance scoring — so it shows up exactly where you want it, every time a query matches. Promotions are built for merchandising, editorial control, and making sure important content wins over whatever the ranking algorithm would otherwise pick.
 
-## Use Cases
+## What you'll use it for
 
 - Feature a specific product when users search for a category
 - Promote sale items for seasonal keywords
 - Ensure FAQ or support pages appear first for help-related queries
 - Pin announcements for time-sensitive searches
 
-## Creating Promotions
+## Create your first promotion
 
-Go to Search Manager > Promotions and click "New Promotion". Each promotion has:
-
-- **Title** — descriptive name for organization (e.g., "Holiday Sale Banner")
-- **Query Pattern** — the search query to match. Use commas for multiple patterns:
-  - Single: `sale`
-  - Multi-language: `sale, تخفيض, soldes, angebot`
-- **Match Type** — how to match the query:
-  - **Exact** — query must exactly match one of the patterns
-  - **Contains** — query must contain one of the patterns
-  - **Prefix** — query must start with one of the patterns
-- **Promoted Element** — the Craft element to promote. Entry, asset, category, and user targets are always available; Commerce product and variant targets appear when Craft Commerce is installed and enabled.
-- **Position** — where to place it (1 = first, 2 = second, etc.)
-- **Index** — all indices or a specific index
-- **Site** — all sites or a specific site
+1. Go to **Search Manager → Promotions** and click **New Promotion**.
+2. Give it a **Title** (e.g., "Holiday Sale Banner") — just a descriptive name to help you find it later.
+3. Pick the **Index** this promotion applies to.
+4. Choose a **Match Type** — **Exact Match**, **Contains**, or **Starts With** — and enter the **Query Pattern** to match. Use commas for multiple patterns, e.g. `sale, تخفيض, soldes, angebot`.
+5. Under **Type**, pick the kind of element to promote (entry, asset, category, or user — plus Commerce product/variant when Commerce is installed), then select the **Promoted Element** itself.
+6. Set the **Position** — 1 for first result, 2 for second, and so on.
+7. In the sidebar, confirm **Enabled** is on (and pick a **Site** on multi-site installs), then save.
 
 ## Examples
 
@@ -51,7 +44,7 @@ Result: Any query containing "sale" (e.g., "laptop sale", "sale items")
 → Black Friday Deals appears first
 ```
 
-### Multi-Language
+### Multi-language
 
 ```text
 Query Pattern: "sale, تخفيض, soldes, angebot"
@@ -62,7 +55,7 @@ Position: 1, Index: All, Site: All
 Result: One promotion works across all languages
 ```
 
-## Indexed Document Availability
+## Indexed document availability
 
 Promotions are applied from the index that is being searched. When a promotion matches a query, Search Manager asks the active backend for the promoted element's indexed document in that index and site:
 
@@ -82,14 +75,14 @@ Example:
 
 This keeps promotions aligned with normal search results: both trust the backend index as the source of truth at search time. Rebuild the affected index after changing promotion targets, URL-bearing fields, category/product metadata, or split-section content that should appear in promoted results.
 
-## Bulk Actions
+## Bulk actions
 
 Select multiple promotions using checkboxes to:
 - Enable or disable in bulk
 - Delete in bulk
 - Filter by status or match type
 
-## API Response
+## API response
 
 In the search widget, each widget chooses how promoted results are marked via its **Promotion Display** setting (widget settings → Results → Promotions): a badge (inline with the title or on its own line), a row tint, or no marker at all. The colors come from the widget style's Promoted section.
 

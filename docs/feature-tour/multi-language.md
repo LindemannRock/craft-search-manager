@@ -1,8 +1,16 @@
-# Multi-Language Support
+# Multi-language support
 
-Search Manager detects language automatically from your Craft site settings and applies per-language stop words and boolean operators. Stop word lists ship for 12 languages, boolean operators for 12.
+Search in German, get German stop words and German boolean operators — automatically. Search Manager detects language from your Craft site settings and applies the right stop-word list and operator set with zero configuration; stop words ship for 12 languages, boolean operators for all 12.
 
-## Stop Words
+## What you'll use it for
+
+- Run search across multi-language sites without configuring language per index
+- Let visitors use boolean operators in their own language ("ODER" on a German site, "أو" on an Arabic site) — English always works as a fallback
+- Filter stop words like "the" or "der" automatically, in any of 12 supported languages
+- Override auto-detection when you need to force a specific language
+- Add custom stop-word files for regional variants (Saudi vs. Egyptian Arabic, etc.)
+
+## Stop words
 
 | Language | Code | Stop Words |
 |----------|------|-----------|
@@ -21,9 +29,16 @@ Search Manager detects language automatically from your Craft site settings and 
 
 Japanese note: written Japanese doesn't use whitespace between words and the built-in tokeniser splits on whitespace/punctuation only. Stop-word filtering helps for space-separated query terms (`東京 から 大阪`) and mixed Latin+Japanese content, but not for uninterrupted Japanese sentences. Full morphological segmentation would require a dedicated CJK tokeniser (MeCab, Kuromoji, Sudachi) which Search Manager doesn't currently ship.
 
-Other site languages still benefit from tokenisation, indexing, and boolean operator parsing — they just don't filter common words. See [Regional Variants](#regional-variants) below to add your own stop word file.
+Other site languages still benefit from tokenisation, indexing, and boolean operator parsing — they just don't filter common words. See [Regional variants](#regional-variants) below to add your own stop word file.
 
-## Boolean Operators
+## Disabling stop words
+
+Stop words can be:
+- **Disabled globally**: turn off **Enable Stop Words** in the CP under Search Manager > Settings > Language > Stop Words Filtering, or set `'enableStopWords' => false` in config
+- **Disabled per-index**: toggle it off on the index's edit screen, or set `'disableStopWords' => true` in that index's config
+- **Customized per-region**: create custom [stop word files](#regional-variants)
+
+## Boolean operators
 
 | Language | Code | AND | OR | NOT |
 |----------|------|-----|-----|-----|
@@ -40,17 +55,17 @@ Other site languages still benefit from tokenisation, indexing, and boolean oper
 | Japanese | `ja` | `かつ` | `または` / `もしくは` | `でない` / `ではない` |
 | Arabic | `ar` | `و` | `أو` / `او` | `ليس` / `لا` |
 
-## Auto-Detection
+## Auto-detection
 
 Language is automatically detected from each site's locale setting. If your Craft site is configured for German (`de`), Search Manager uses German stop words and recognizes German boolean operators.
 
-You don't need to configure anything — it just works. Set `defaultLanguage` only if you want to override auto-detection:
+You don't need to configure anything — it just works. Override it only if you want to force a language: set **Default Language** in the CP under Search Manager > Settings > Language > Language & Stop Words, or set `defaultLanguage` in config:
 
 ```php
 'defaultLanguage' => 'de',  // Force German for all sites
 ```
 
-## Localized Boolean Operators
+## Localized boolean operators
 
 Users can search using operators in their own language:
 
@@ -76,9 +91,9 @@ English operators always work as a fallback regardless of the site language:
 
 All operators are case-insensitive.
 
-## Multi-Language Indices
+## Multi-language indices
 
-### Separate Indices per Language
+### Separate indices per language
 
 The cleanest approach — one index per language:
 
@@ -100,7 +115,7 @@ The cleanest approach — one index per language:
 ],
 ```
 
-### Combined Multi-Site Index
+### Combined multi-site index
 
 One index with content from multiple sites:
 
@@ -121,7 +136,7 @@ When searching a multi-site index, results can be filtered by language:
 
 Without a language filter, the current site's language is used automatically.
 
-## Regional Variants
+## Regional variants
 
 For regional language variants (e.g., Saudi Arabic vs Egyptian Arabic), you can create custom stop word files:
 
@@ -138,7 +153,7 @@ Edit `ar-sa.php` to add or remove stop words for that region.
 ar-sa → config/ar-sa.php → plugin/ar-sa.php → config/ar.php → plugin/ar.php
 ```
 
-## API Language Override
+## API language override
 
 Mobile apps can specify a language explicitly for localized operator support:
 
@@ -148,14 +163,7 @@ GET /actions/search-manager/api/search?q=kaffee+ODER+tee&language=de
 
 This is useful when the API request doesn't come from a Craft site context and language can't be auto-detected.
 
-### Disabling Stop Words
-
-Stop words can be:
-- **Disabled globally**: `'enableStopWords' => false`
-- **Disabled per-index**: `'disableStopWords' => true` in the index config
-- **Customized per-region**: Create custom stop word files as described above
-
-## Text Normalization
+## Text normalization
 
 Search Manager normalizes text during both indexing and querying, which is especially important for Arabic and other scripts with character variants.
 
@@ -166,4 +174,4 @@ Search Manager normalizes text during both indexing and querying, which is espec
 | Accent folding | French, German, Spanish — `jalapeño` → `jalapeno`, `naïve` → `naive` |
 | Unicode compatibility (NFKC) | All languages — fullwidth and ligature variants |
 
-This runs automatically — no configuration needed. See [Text Normalization](search-features.md#text-normalization) for the full details.
+This runs automatically — no configuration needed. See [Text normalization](search-features.md#text-normalization) for the full details.

@@ -1,10 +1,12 @@
-# Autocomplete & Suggestions
+# Autocomplete & suggestions
 
-This guide shows how to add search-as-you-type suggestions to your templates.
+Show a suggestions dropdown that updates as the user types — from a few lines of server-rendered Twig, up to a fully custom JavaScript dropdown with debouncing and keyboard-friendly markup. This guide covers both.
 
-## Twig Suggestions
+Building your own UI is only necessary if you want full control over the markup and behavior. If you just want autocomplete working out of the box, use the bundled [Frontend Widget](../widget/overview.md) instead — it ships with a search-as-you-type dropdown, keyboard navigation, theming, and analytics already wired up.
 
-The simplest approach — render suggestions server-side:
+## Twig suggestions
+
+The simplest approach — render suggestions server-side, no JavaScript required:
 
 ```twig
 {% set query = craft.app.request.getParam('q') %}
@@ -22,7 +24,7 @@ The simplest approach — render suggestions server-side:
 {% endif %}
 ```
 
-### With Options
+### With options
 
 ```twig
 {% set suggestions = craft.searchManager.suggest(query, 'entries-en', {
@@ -33,7 +35,7 @@ The simplest approach — render suggestions server-side:
 }) %}
 ```
 
-## AJAX Autocomplete
+## AJAX autocomplete
 
 For a real-time experience, use the API endpoint with JavaScript:
 
@@ -83,7 +85,7 @@ document.addEventListener('click', (e) => {
 </script>
 ```
 
-## Rich Autocomplete (Suggestions + Results)
+## Rich autocomplete (suggestions + results)
 
 The API can return both term suggestions and matching elements:
 
@@ -143,7 +145,7 @@ input.addEventListener('input', (e) => {
 </script>
 ```
 
-## API Parameters
+## API parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -155,7 +157,7 @@ input.addEventListener('input', (e) => {
 | `only` | (none) | Return only `suggestions` or `results` |
 | `type` | (none) | Filter results by element type |
 
-See [API Endpoints](api-endpoints.md) for full documentation.
+See [API endpoints](api-endpoints.md) for full documentation.
 
 ## Styling
 
@@ -192,6 +194,9 @@ Basic CSS for the autocomplete dropdown:
 }
 ```
 
-## Using the Search Widget Instead
+## Next steps
 
-For a complete out-of-the-box solution with autocomplete, keyboard navigation, themes, and analytics, consider using the [Frontend Widget](../widget/overview.md) instead of building your own.
+- [Basic search](basic-search.md) — the full results page this dropdown usually complements
+- [Highlighting & snippets](highlighting-snippets.md) — highlight matched terms, including a standalone JS highlighter for custom UIs like this one
+- [API endpoints](api-endpoints.md) — full autocomplete and search endpoint reference
+- [Frontend widget](../widget/overview.md) — a ready-made alternative to building your own autocomplete

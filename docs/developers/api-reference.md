@@ -1,8 +1,10 @@
-# API Reference
+# API reference
 
-This page documents the PHP API for interacting with Search Manager programmatically from plugins, modules, or custom code.
+Reach for this page when you're calling Search Manager from PHP — a console command, a queue job, a controller action, or a custom module — rather than from Twig or a GraphQL client. Every service below is available off the plugin instance, with no extra setup beyond `use lindemannrock\searchmanager\SearchManager;`.
 
-## Accessing Services
+If you're writing Twig templates instead, see [Template variables](template-variables.md) — it wraps the same `search()` and `suggest()` calls behind `craft.searchManager`. If you're serving a headless frontend, see [GraphQL](graphql.md).
+
+## Accessing services
 
 ```php
 use lindemannrock\searchmanager\SearchManager;
@@ -147,6 +149,8 @@ SearchManager::$plugin->indexing->rebuildAll();
 
 ## AutocompleteService
 
+Power a type-ahead field or a suggestions dropdown outside Twig — for example, from a custom REST controller or an SPA build step.
+
 ### `suggest(query, indexHandle, options)`
 
 Get autocomplete suggestions.
@@ -179,6 +183,8 @@ SearchManager::$plugin->autocomplete->clearCache(); // All indices
 ```
 
 ## AnalyticsService
+
+Use this for maintenance or data-retention scripts — for example, a scheduled job that clears analytics on a rolling window, per site.
 
 ### `clearAnalytics(siteId)`
 

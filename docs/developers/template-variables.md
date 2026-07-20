@@ -1,8 +1,10 @@
-# Template Variables
+# Template variables
 
-Search Manager provides a Twig variable at `craft.searchManager` with methods for searching, autocomplete, highlighting, and backend-specific operations.
+Building a search results page, a live-search dropdown, or a "did you mean" prompt directly in Twig — without a REST call or a GraphQL client? `craft.searchManager` gives you the same search, autocomplete, and highlighting behavior as the REST API and GraphQL, callable straight from a template.
 
-## Core Search
+For PHP-side code (console commands, jobs, controllers), see [API reference](api-reference.md) instead — it exposes the same underlying services with a slightly different calling convention.
+
+## Core search
 
 ### `search(indexName, query, options)`
 
@@ -176,9 +178,9 @@ Get analytics for a specific promotion.
 
 **Returns:** `array` with promotion analytics data.
 
-## Backend-Specific Methods
+## Backend-specific methods
 
-These methods are designed for Algolia, Meilisearch, and Typesense backends. Built-in backends provide fallback behavior where applicable.
+Reach for these when you need direct access to a specific backend's own capabilities — browsing an Algolia index, running a native multi-index query, or building a filter string in your backend's syntax — rather than going through the standard `search()` call. These methods are designed for Algolia, Meilisearch, and Typesense backends. Built-in backends provide fallback behavior where applicable.
 
 ### `browse(options)`
 
@@ -269,7 +271,7 @@ Check if the active backend supports native batch queries.
 
 **Returns:** `bool`
 
-## Plugin Access
+## Plugin access
 
 ### `getSettings()`
 

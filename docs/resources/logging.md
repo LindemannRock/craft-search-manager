@@ -118,13 +118,15 @@ The level of detail depends on your configured `logLevel`.
 Most sites only need the configuration and CP viewer above. Custom modules or integrations can write to the same Search Manager log when they need related diagnostics:
 
 ```php
-use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\logginglibrary\services\LoggingService;
 
-SearchManager::getInstance()->logError('Operation failed', [
-    'context' => 'import',
+LoggingService::log('Operation failed', 'error', 'search-manager', [
+    'context' => 'custom-indexer',
     'error' => $e->getMessage(),
 ]);
 ```
+
+Use this only for custom code that belongs to the same operational workflow. Inside Search Manager's own classes, the plugin uses Logging Library's protected `LoggingTrait` helpers directly.
 
 ## Permissions
 

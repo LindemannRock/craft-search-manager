@@ -1,8 +1,10 @@
 # Permissions
 
-Search Manager registers granular permissions that can be assigned to user groups via **Settings → Users → User Groups → [Group Name] → Search Manager**.
+Give an editor read-only access to analytics, let one team manage backends while another only manages promotions, or lock API key creation down to admins — Search Manager's permissions are granular enough to model that. Assign them per user group via **Settings → Users → User Groups → [Group Name] → Search Manager**.
 
-## Permission Structure
+## Permission structure
+
+Permissions are grouped by the Control Panel section they gate. Most groups follow the same shape: a parent permission (bold below) that controls whether the section is visible at all, plus child permissions — indented with `└─` — for the specific write operations within it. A few sections (Cache, Debug, Settings) are single standalone permissions with no children.
 
 ### Backends
 
@@ -24,7 +26,7 @@ Search Manager registers granular permissions that can be assigned to user group
 | └─ `searchManager:rebuildIndices` | Rebuild indices |
 | └─ `searchManager:clearIndices` | Clear index data |
 
-### Pending Syncs
+### Pending syncs
 
 | Permission | Description |
 |------------|-------------|
@@ -41,7 +43,7 @@ Search Manager registers granular permissions that can be assigned to user group
 | └─ `searchManager:editPromotions` | Edit existing promotions |
 | └─ `searchManager:deletePromotions` | Delete promotions |
 
-### Query Rules
+### Query rules
 
 | Permission | Description |
 |------------|-------------|
@@ -50,7 +52,7 @@ Search Manager registers granular permissions that can be assigned to user group
 | └─ `searchManager:editQueryRules` | Edit existing query rules |
 | └─ `searchManager:deleteQueryRules` | Delete query rules |
 
-### API Keys
+### API keys
 
 | Permission | Description |
 |------------|-------------|
@@ -61,7 +63,7 @@ Search Manager registers granular permissions that can be assigned to user group
 
 `manageApiKeys` is the parent — without it the section is hidden entirely. Grant it on its own for read-only access (view the list and individual key configurations). The three child permissions are independent: a user can have edit without revoke, or revoke without create. See [API Keys](../feature-tour/api-keys.md) for the lifecycle (active / disabled / expired / revoked) and the difference between disabling (pausing) and revoking (deleting).
 
-### Widget Configs
+### Widget configs
 
 | Permission | Description |
 |------------|-------------|
@@ -70,7 +72,7 @@ Search Manager registers granular permissions that can be assigned to user group
 | └─ `searchManager:editWidgetConfigs` | Edit existing widget configs |
 | └─ `searchManager:deleteWidgetConfigs` | Delete widget configs |
 
-### Widget Styles
+### Widget styles
 
 | Permission | Description |
 |------------|-------------|
@@ -113,7 +115,7 @@ Search Manager registers granular permissions that can be assigned to user group
 |------------|-------------|
 | `searchManager:manageSettings` | Access and modify plugin settings |
 
-## Checking Permissions
+## Checking permissions
 
 In Twig:
 
@@ -138,7 +140,7 @@ if (Craft::$app->getUser()->checkPermission('searchManager:manageBackends')) {
 $this->requirePermission('searchManager:manageIndices');
 ```
 
-## Nested Permission Pattern
+## Nested permission pattern
 
 Craft's nested permissions are a UI convenience — the parent permission does not automatically grant child permissions at runtime.
 

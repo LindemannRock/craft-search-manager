@@ -1,12 +1,32 @@
 # Typesense Backend
 
-The Typesense backend connects to a self-hosted Typesense server. Typesense is an open-source search engine known for its native typo tolerance and easy setup.
+Get self-hosted search with typo tolerance built in, not bolted on: the Typesense backend connects to a self-hosted Typesense server, an open-source search engine known for native typo tolerance and easy setup.
 
-## When to Use Typesense
+## What you'll use it for
 
-- You want self-hosted search with native typo tolerance
-- You need fast, lightweight search infrastructure
-- You prefer schema-based indexing for data integrity
+- Self-hosted search with native typo tolerance
+- Fast, lightweight search infrastructure
+- Schema-based indexing when you want data integrity over Meilisearch/Algolia's schemaless approach
+
+## Create your first Typesense backend
+
+You'll need a running Typesense server. For local testing, `docker run -d -p 8108:8108 typesense/typesense:latest` starts one in seconds.
+
+1. Go to **Search Manager → Backends** and click **New Backend**.
+2. Give it a **Name** (e.g. "Typesense Server") — the **Handle** fills in automatically as you type, or edit it yourself.
+3. Set **Backend Type** to **Typesense**.
+4. Fill in the Typesense fields:
+   - **Host** — your Typesense server hostname
+   - **Port** — server port; leave blank for the default (`8108`)
+   - **Protocol** — `http` or `https` (defaults to `http`)
+   - **Admin API Key** — must permit write access for indexing. In Typesense Cloud, use Generate API Keys. Don't use the bootstrap key (`--api-key`) in production.
+   - **Search-only API Key** *(optional)* — used for search queries; falls back to the Admin API Key when left empty
+
+   The key fields support environment-variable autosuggest — start typing `$` to pick from your defined environment variables instead of pasting a raw key.
+5. In the sidebar, confirm **Enabled** is on, and turn on **Default** if this should be the backend new indices use automatically.
+6. Click **Save**. Search Manager tests the connection and switches to a **Diagnostics** tab showing the result, response time, and whether this backend supports **Browse** and **Multi-Query** (both **Yes** for Typesense). Use **Refresh Connection** to retest anytime.
+
+For environment-specific setups, define the backend in `config/search-manager.php` instead — see [Configuration](#configuration) below.
 
 ## Requirements
 
@@ -64,11 +84,11 @@ TYPESENSE_SEARCH_API_KEY=your-search-key
 | `searchApiKey` | `string` | (optional) | Search-only API key for search queries, autocomplete, and multi-search. Falls back to `adminApiKey` when empty. |
 | `connectionTimeout` | `int` | `5` | Connection timeout in seconds |
 
-## Schema-Based Indexing
+## Schema-based indexing
 
 Unlike Algolia and Meilisearch which are schemaless, Typesense requires explicit field definitions. Search Manager handles this automatically — collections are created with a flexible schema on first index.
 
-### Search Fields (`query_by`)
+### Search fields (`query_by`)
 
 Typesense requires a `query_by` parameter specifying which fields to search. By default, Search Manager searches `title`, `content`, `_bodyClean`, `url` with weights `5, 3, 1, 1` — titles rank highest, body text lowest.
 
@@ -81,7 +101,7 @@ If your custom transformer adds additional fields you want to be searchable, pas
 }) %}
 ```
 
-## Key Behaviors
+## Key behaviors
 
 - Collections are auto-created with a flexible schema on first index
 - Index clearing works by deleting and recreating the collection
@@ -91,7 +111,7 @@ If your custom transformer adds additional fields you want to be searchable, pas
 
 Typesense supports autocomplete natively: Search Manager runs a small prefix search and extracts unique result titles as suggestions. Autocomplete queries search `title` and `content` only (not the full main-search field set).
 
-## Result Scores
+## Result scores
 
 Search Manager maps Typesense's text match value to the public `score` field when Typesense returns it. That value reflects Typesense's text matching and ranking settings, not Search Manager's BM25 algorithm.
 

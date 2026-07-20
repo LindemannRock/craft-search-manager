@@ -1,10 +1,10 @@
 # Troubleshooting
 
-Common issues and solutions for Search Manager.
+When search isn't behaving the way you expect — no results, the wrong results, or a setting that won't save — start here.
 
 Before changing templates or client code, reproduce the same index and query in [Testing tools](testing-tools.md). **Search Manager → Settings → Test** shows the backend, cache state, snippets, promotions, query rules, and debug metadata, which helps separate indexing problems from frontend integration problems.
 
-## Search Returns No Results
+## Search returns no results
 
 **Check the basics first:**
 
@@ -24,7 +24,7 @@ Before changing templates or client code, reproduce the same index and query in 
 - Enable debug logging: set `logLevel` to `'debug'` in your config
 - If using `replaceNativeSearch`, verify it only works with built-in backends (MySQL, PostgreSQL, Redis, File)
 
-## Multi-Word Query Returns Nothing (or "Related Results")
+## Multi-word query returns nothing (or "related results")
 
 **Symptom:** A multi-word query like `testing tool` returns fewer results than expected, or you want to understand when broader results appear.
 
@@ -38,7 +38,7 @@ Before changing templates or client code, reproduce the same index and query in 
 - If a variant like singular/plural isn't matching, confirm `enableFuzzy` is on (Settings → Search → Fuzzy Matching) and that `similarityThreshold` hasn't been raised far above the `0.25` default — a config-file override wins over the CP value (the CP shows the effective value in the override warning).
 - To see exactly which terms each query word matched, call the search API with `debugEnabled=1` (requires `devMode` or the *View debug meta* permission) and inspect `meta.resolvedTerms`.
 
-## A Similar-Looking Word Is Not Matched
+## A similar-looking word is not matched
 
 **Symptom:** A term clears the n-gram similarity threshold but doesn't appear in search results or autocomplete. For example, `test` doesn't match `best`.
 
@@ -56,13 +56,13 @@ Prefix extensions bypass the typo budget because they are completions rather tha
 
 External Algolia, Meilisearch, and Typesense backends use their own native typo-tolerance policies instead of this built-in-backend rule.
 
-## Backend Cannot Be Deleted
+## Backend cannot be deleted
 
 Search Manager blocks backend deletion when an index still references that backend. The error lists each dependency as `Index: Name`.
 
 **Fix:** Edit the listed indices and either choose another backend or leave the backend field empty to use the default backend. Rebuild those indices after changing backend storage so the new backend has current search data. Once no resolved index uses the backend, the backend can be deleted.
 
-## Index Cannot Be Deleted
+## Index cannot be deleted
 
 Search Manager blocks index deletion when a widget or a specifically scoped API key still references that index. The error lists each dependency as `Widget: Name` or `API key: Name`.
 
@@ -70,7 +70,7 @@ API keys set to **All indices (current and future)** do not block index deletion
 
 **Fix:** Edit the listed widgets and remove the index from their Search Indices setting, or update the listed API keys so the index is no longer allowed. Once no resolved widget or API key uses the index, the index can be deleted.
 
-## Indexing Is Slow
+## Indexing is slow
 
 - **Adjust batch size**: The `batchSize` setting (default: 100) controls how many elements are loaded per batch. Increase to 250–500 for faster indexing on servers with plenty of memory. On shared or memory-constrained hosting, **lower it** to 25–50 to prevent out-of-memory errors — the rebuild takes longer but completes reliably.
 - **Keep queue workers running**: Automatic and native-search indexing paths write pending-sync rows that `BatchSyncJob` drains.
@@ -83,7 +83,7 @@ Automatic save/delete syncs use a pending buffer and `BatchSyncJob`. For large i
 
 In Craft's queue manager, rows named **Updating search indexes** are Craft's native search-index jobs, not Search Manager pending-sync rows. They often display `0%` until each individual job finishes, then the next queued row starts. A long list after a docs sync, Feed Me import, or project-content update can be normal as long as the queue worker keeps reserving and completing jobs.
 
-## Pending Syncs Are Not Draining
+## Pending syncs are not draining
 
 If saved elements are not appearing in search:
 
@@ -95,7 +95,7 @@ If saved elements are not appearing in search:
 
 For a triage view of the buffer with filters, per-row retry, and a one-click "Failed & Abandoned" preset, open **Search Manager → Pending Syncs**. See [Pending Syncs](../feature-tour/pending-syncs.md) for the operator runbook.
 
-## Scheduled Cleanup or Status Sync Does Not Reappear
+## Scheduled cleanup or status sync does not reappear
 
 Search Manager schedules recurring queue jobs for analytics cleanup and entry status syncs. If the queue is empty after one of those jobs runs, the next occurrence was not scheduled correctly.
 
@@ -112,7 +112,7 @@ If the job is still missing:
 - Check that `analyticsRetention` is greater than `0` for cleanup jobs.
 - Check that `statusSyncInterval` is greater than `0` for status sync jobs.
 
-## `autoIndex` Is Off but Rows Still Appear
+## `autoIndex` is off but rows still appear
 
 Search Manager checks the current `autoIndex` setting each time Craft fires `Elements::EVENT_AFTER_SAVE_ELEMENT` or `Elements::EVENT_AFTER_DELETE_ELEMENT`. Turning `autoIndex` off stops those listeners from adding pending sync rows.
 
@@ -126,19 +126,19 @@ If rows still appear after disabling `autoIndex`:
 
 Rows already in the buffer before `autoIndex` was disabled will still drain normally through `BatchSyncJob`.
 
-## Settings Save Shows Numeric Field Errors
+## Settings save shows numeric field errors
 
 Numeric settings such as cache duration, autocomplete cache duration, batch size, analytics retention, scoring boosts, and highlighting limits must use values within the range shown in the field instructions.
 
 If a settings save fails, keep the submitted form open and check the inline field errors. Search Manager validates posted values before saving and does not partially save invalid settings.
 
-## Last Indexed Does Not Update After Every Save
+## Last indexed does not update after every save
 
 Automatic save/delete syncs debounce `lastIndexed` updates for 60 seconds by default. This is expected: the element is still indexed, but the metadata timestamp is only touched once per debounce window to avoid extra database writes during imports or rapid editing.
 
 Set `lastIndexedDebounceSeconds` to `0` if you need the timestamp updated after every successful auto-sync, or lower it to a smaller value such as `5` while testing.
 
-## Document Count Looks Wrong After a Bulk Import
+## Document count looks wrong after a bulk import
 
 The "Documents" column on the Indices index page is **eventually consistent**. Automatic save/delete syncs don't adjust this counter — doing so would require a backend probe per element, which would undo the API-amplification reduction that batch sync provides.
 
@@ -151,14 +151,14 @@ This is by design, not a bug. Search results themselves are correct (the underly
 
 If you regularly need real-time counts (e.g. for editor-facing dashboards), schedule a periodic rebuild for that index rather than relying on the live counter.
 
-## Out of Memory During Rebuild
+## Out of memory during rebuild
 
 Each batch loads full elements with their relations into memory. If your server runs out of memory during a rebuild:
 
 - **Lower `batchSize`**: Set it to `25` or `50` in your config. The default of 100 works on servers with 256 MB+ PHP memory limit, but shared hosting or entries with many relations (Matrix blocks, categories, assets) may need less.
 - **Check your PHP `memory_limit`**: The rebuild respects your server's memory limit. If you can't increase it, lower `batchSize` instead.
 
-## Rebuild Job Times Out
+## Rebuild job times out
 
 ```text
 The process "'/usr/local/bin/php' './craft' 'queue/exec' '1008994' '300' ..."
@@ -181,7 +181,7 @@ Other tips for large rebuilds:
 - **Rebuild individual indices** instead of all at once: `php craft search-manager/index/rebuild --handle=my-index`
 - **Check your transformer** — slow transformers (heavy relation queries, API calls) multiply rebuild time
 
-## Connection Refused (Redis)
+## Connection refused (Redis)
 
 ```text
 [ERROR] Redis connection error | {"host":"127.0.0.1","port":6379,"error":"Connection refused"}
@@ -195,7 +195,7 @@ REDIS_HOST=redis
 
 `127.0.0.1` refers to localhost inside the container, not your host machine.
 
-## Redis Data Lost After Cache Clear
+## Redis data lost after cache clear
 
 If your search index disappears when Craft's cache is cleared:
 
@@ -204,14 +204,14 @@ If your search index disappears when Craft's cache is cleared:
 
 See [Redis Backend](../backends/backend-redis.md) for database isolation details.
 
-## Algolia/Meilisearch/Typesense Connection Issues
+## Algolia/Meilisearch/Typesense connection issues
 
 1. **Check API keys**: Verify keys in your `.env` file are correct
 2. **Check host URL**: For Meilisearch, ensure the full URL including protocol: `http://localhost:7700`
 3. **Check firewall**: Ensure your server can reach the external service
 4. **Check logs**: Look for specific error messages in Search Manager > Logs
 
-## Old Indices Still Visible in My Algolia/Meilisearch/Typesense Dashboard
+## Old indices still visible in my Algolia/Meilisearch/Typesense dashboard
 
 Old provider-side indices can remain visible after removing a config-file index, renaming an index handle, or switching between backends before cleanup was available. Search Manager can clear or rebuild configured external indices, but it does not automatically purge external indices that are no longer part of the live configuration.
 
@@ -220,7 +220,7 @@ Old provider-side indices can remain visible after removing a config-file index,
 > [!WARNING]
 > External search backends run on shared provider accounts, and a matching index-name prefix does not prove Search Manager ownership. Search Manager intentionally leaves orphaned external index cleanup manual because deleting a provider index is unrecoverable and the account may also contain indices from other projects.
 
-## Analytics Not Tracking
+## Analytics not tracking
 
 1. **Is analytics enabled?** Check `enableAnalytics` is `true` in settings.
 2. **Is analytics enabled for the index?** Per-index analytics can be disabled with `enableAnalytics: false`.
@@ -236,7 +236,7 @@ ddev craft search-manager/security/generate-salt
 
 4. **Check queue**: Geo-location runs as a queue job. If your queue isn't processing, geo data won't be recorded.
 
-## Geo-Location Shows Wrong Location
+## Geo-location shows wrong location
 
 **In local development:** Private IPs (127.0.0.1, 192.168.x.x) can't be geolocated. Set defaults:
 
@@ -248,21 +248,21 @@ ddev craft search-manager/security/generate-salt
 
 **In production:** Check that your geo provider is returning data. The free tier of ip-api.com has rate limits. Consider a paid tier or different provider.
 
-## Cache Not Working
+## Cache not working
 
 1. **Is caching enabled?** Check `enableCache` is `true`.
 2. **Is "Clear on Save" wiping your cache?** If `clearCacheOnSave` is `true` (default) and content is saved frequently, the cache may be clearing faster than it fills.
 3. **Check storage permissions**: For file-based caching, ensure `@storage/runtime/search-manager/cache/` is writable.
 4. **If Redis cache storage is enabled, check the logs**: When `cacheStorageMethod` is `redis` but Craft's `cache` component is not Redis-backed, Search Manager logs a cache-component warning and skips Redis-specific cache operations until the component is fixed.
 
-## Widget Not Appearing
+## Widget not appearing
 
 1. **Is the widget included?** Check your template has `{% include 'search-manager/_widget/search-modal' %}`.
 2. **Is a widget config set?** If using `configHandle: 'my-config'`, verify the handle exists in the CP or config file.
 3. **Is the widget enabled?** Check the widget config is enabled in Search Manager > Widgets.
 4. **Check browser console**: Look for JavaScript errors that might prevent the web component from loading.
 
-## Typesense: Search Misses Custom Fields
+## Typesense: search misses custom fields
 
 Typesense requires explicit `query_by` to search custom fields. The default searches `title`, `content`, `url`. For additional fields:
 
@@ -274,7 +274,7 @@ Typesense requires explicit `query_by` to search custom fields. The default sear
 %}
 ```
 
-## Heading Children Missing Snippets
+## Heading children missing snippets
 
 In hierarchical search results, heading children show query-centered snippets from the heading's section in the indexed clean body. If a heading has no snippet:
 
@@ -284,7 +284,7 @@ In hierarchical search results, heading children show query-centered snippets fr
 
 Heading snippets are plain text and are highlighted by the frontend when highlighting is enabled.
 
-## Config File Overrides CP Settings
+## Config file overrides CP settings
 
 **Symptom:** You created or edited a backend, index, widget, or style in the CP, but your changes aren't taking effect — the old values keep appearing.
 
@@ -292,12 +292,12 @@ Heading snippets are plain text and are highlighted by the frontend when highlig
 
 **Fix:** Either rename the CP item to use a different handle, or edit the config file directly. To stop the config override, remove the item from `config/search-manager.php` — the CP version will then take effect.
 
-## Native Search Replacement Not Working
+## Native search replacement not working
 
 > [!WARNING]
 > `replaceNativeSearch` only works with built-in backends (MySQL, PostgreSQL, Redis, File). It does not work with Algolia, Meilisearch, or Typesense.
 
-## Search Returns 401 / 403 After Enabling "Require API Key"
+## Search returns 401 / 403 after enabling "Require API Key"
 
 **Symptom:** After turning on **Require API Key** (Settings → General → API Access), the search and autocomplete endpoints return `401` ("API key required" / "Invalid API key") or `403` — including your own site's search widget.
 
@@ -312,7 +312,7 @@ Heading snippets are plain text and are highlighted by the frontend when highlig
 - A `429` ("API rate limit exceeded") means the key hit its per-minute `rateLimit`. Raise the key's rate limit, spread requests out, or clear it for no cap. The window resets each minute. (Tracking pings are not rate-limited.)
 - If you don't need enforcement, leave **Require API Key** off — all four endpoints stay anonymous and the widget keeps working without a key. See [API Keys](../feature-tour/api-keys.md) and [API Endpoints → Authentication](../template-guides/api-endpoints.md#authentication).
 
-## Getting Help
+## Getting help
 
 - Check plugin logs: Search Manager > Logs
 - Enable debug logging: `'logLevel' => 'debug'` in config

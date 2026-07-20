@@ -1,10 +1,22 @@
 # Caching
 
-Search Manager includes multi-layer caching to reduce backend load and improve response times. Each cache layer can be configured independently.
+Cut backend load and response times without touching your templates. Search Manager caches search results, autocomplete, and device-detection lookups in independently configurable layers.
 
-## Cache Layers
+## What you'll use it for
 
-### Search Results Cache
+- Serve repeated searches from cache instead of re-querying the backend (typically 5–10ms vs 50–200ms uncached)
+- Warm the cache automatically after a rebuild so early visitors don't pay the uncached cost
+- Choose file or Redis storage depending on whether you're running one server or several
+- Clear stale cache automatically on save, or rely on TTL expiry on high-traffic, low-change sites
+- Bound memory use with a Redis eviction policy on busy sites
+
+Every layer below is configurable in the CP under **Search Manager > Settings > Cache**, or in `config/search-manager.php` — the sections below show the config keys, with the matching CP section noted alongside.
+
+## Cache layers
+
+### Search results cache
+
+CP: **Settings > Cache > Search Results Caching**
 
 Caches complete search results so repeated queries don't hit the backend:
 
@@ -14,7 +26,9 @@ Caches complete search results so repeated queries don't hit the backend:
 'cacheStorageMethod' => 'file', // 'file' or 'redis'
 ```
 
-### Autocomplete Cache
+### Autocomplete cache
+
+CP: **Settings > Cache > Autocomplete Caching**
 
 Separate cache for autocomplete suggestions with a shorter TTL:
 
@@ -25,7 +39,9 @@ Separate cache for autocomplete suggestions with a shorter TTL:
 
 Autocomplete is cached per query prefix, index, and language. Uses the same storage method as the search cache.
 
-### Device Detection Cache
+### Device detection cache
+
+CP: **Settings > Cache > Device Detection Caching**
 
 Caches parsed user-agent strings to avoid re-parsing:
 
@@ -36,9 +52,11 @@ Caches parsed user-agent strings to avoid re-parsing:
 
 Device cache follows the same `cacheStorageMethod` setting as the search and autocomplete caches — files at `@storage/runtime/search-manager/cache/device/` by default, or Redis when `cacheStorageMethod` is `redis`.
 
-## Storage Options
+## Storage options
 
-### File Storage (Default)
+CP: **Settings > Cache > Cache Storage Settings**
+
+### File storage (default)
 
 Cache files are stored in:
 - Search: `@storage/runtime/search-manager/cache/search/`
@@ -47,7 +65,7 @@ Cache files are stored in:
 
 Good for: single-server setups, shared hosting, development.
 
-### Redis Storage
+### Redis storage
 
 Uses Craft's Redis cache connection:
 
@@ -59,16 +77,18 @@ Good for: multi-server setups, edge networks (Servd, Platform.sh), sites handlin
 
 If Redis cache storage is selected but Craft's `cache` component is not Redis-backed, Search Manager logs a cache-component warning and falls back to file-based cache clearing where possible. Configure Redis in `config/app.php`, or switch `cacheStorageMethod` back to `file`.
 
-## Bounding Cache Storage
+## Bounding cache storage
 
 Search Manager caches each unique search result until its TTL expires or the cache is cleared. On busy sites, storage limits are best handled by the cache layer rather than delaying cache writes inside Search Manager.
 
 > [!NOTE]
 > For Redis-backed cache storage, set a Redis `maxmemory` limit with an `allkeys-lfu` or `allkeys-lru` eviction policy so frequently-used entries stay hot while long-tail queries are evicted under memory pressure. File cache storage is bounded by `cacheDuration` TTL and normal cache clearing.
 
-## Cache Invalidation
+## Cache invalidation
 
-### Clear on Save
+CP: **Settings > Cache > Cache Invalidation**
+
+### Clear on save
 
 When `clearCacheOnSave` is enabled (default), relevant caches are cleared when elements are saved. Cache is cleared per-index, not globally.
 
@@ -82,7 +102,7 @@ For high-traffic sites where content changes are rare, you may want to disable t
 'clearCacheOnSave' => false,
 ```
 
-### Manual Clearing
+### Manual clearing
 
 - **CP**: Search Manager > Settings > Cache, or Craft's Clear Caches utility
 - **Per-index**: Clear cache for a specific index without affecting others
@@ -98,11 +118,13 @@ ddev craft search-manager/maintenance/clear-storage --type=database
 
 Valid types: `database`, `redis`, `file`.
 
-### Craft Integration
+### Craft integration
 
 Search Manager registers a cache option in Craft's Clear Caches utility. That entry clears the **search-results cache only** — to also clear the autocomplete and device-detection caches, use Search Manager > Settings > Cache (saving that page clears all three) or the CLI `clear-storage` command. Clearing is always safe — caches auto-regenerate on the next search.
 
-## Cache Warming
+## Cache warming
+
+CP: **Settings > Cache > Cache Warming**
 
 After an index rebuild, popular queries can be pre-cached automatically:
 
@@ -118,7 +140,7 @@ Cache warming:
 - Runs as a background queue job (doesn't block the rebuild)
 - Requires analytics to be enabled for the index
 
-## Performance Impact
+## Performance impact
 
 Typical response times for a MySQL/PostgreSQL backend with an index of 1,000–10,000 elements on a standard VPS (2 CPU, 4 GB RAM):
 

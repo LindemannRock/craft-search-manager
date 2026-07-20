@@ -1,25 +1,15 @@
-# Frontend Widget
+# Frontend widget
 
-Search Manager includes a ready-to-use search widget for your frontend. It's built as a web component (`<search-modal>`) with full keyboard navigation, accessibility, theming, and click analytics.
+Drop a fast, accessible search experience onto any page with one line of Twig — no custom search UI to build. The frontend widget is Search Manager's ready-to-use search interface, built as a web component (`<search-modal>`) with full keyboard navigation, theming, and click analytics.
 
-## Key Features
+## What you'll use it for
 
-- **WCAG 2.1 AA compliant** — tested with axe-core, all default colors meet 4.5:1 contrast ratio
-- **Keyboard navigation** — arrow keys, Enter, Escape, configurable hotkey (default: CMD+K / Ctrl+K)
-- **Modal search widget** — CMD+K overlay with backdrop, focus handling, and scroll locking
-- **Light & dark themes** — built-in theme support with customizable colors
-- **Reusable style presets** — define [Widget Styles](styles.md) once and share across configs
-- **Recently viewed** — optional locally stored history of the results a visitor opened, offered back for quick return
-- **Grouped results** — group flat results by source, Entry section, or type; hierarchical layouts can group by any public hit field via `hierarchyGroupBy`
-- **Heading matching** — show matched headings under results for documentation sites
-- **Split section rendering** — split SourceDoc and AutoTransformer-family hits can render as parent rows with matched heading children in hierarchical layouts
-- **Snippet modes** — early, balanced, or deep snippet extraction
-- **Term highlighting** — highlight matched terms in results
-- **Click analytics** — track which results users click
-- **RTL support** — full right-to-left language support
-- **Shadow DOM** — styles are encapsulated and don't affect your site
+- Add sitewide search behind a CMD+K / Ctrl+K shortcut, or wire it to your own trigger button
+- Give documentation sites hierarchical results with matched headings, without custom result-rendering code
+- Run several search placements (header, mobile nav, docs sidebar) that share one visual style but report separately in analytics
+- Ship an accessible, theme-aware, RTL-ready search box without auditing contrast ratios or keyboard traps yourself
 
-## Basic Usage
+## Try it
 
 ```twig
 {# Include with default widget config #}
@@ -33,7 +23,24 @@ Search Manager includes a ready-to-use search widget for your frontend. It's bui
 
 That's it — the widget renders a trigger button and the search modal. Press CMD+K (or click the button) to open it.
 
-## Widget Type
+## What's in the box
+
+- **WCAG 2.1 AA compliant** — tested with axe-core, all default colors meet 4.5:1 contrast ratio
+- **Keyboard navigation** — arrow keys, Enter, Escape, configurable hotkey (default: CMD+K / Ctrl+K)
+- **Modal search widget** — CMD+K overlay with backdrop, focus handling, and scroll locking
+- **Light & dark themes** — built-in theme support with customizable colors
+- **Reusable style presets** — define [Widget Styles](styles.md) once and share across configs
+- **Recently viewed** — optional locally stored history of the results a visitor opened, offered back for quick return
+- **Grouped results** — group flat results by source, Entry section, or type; hierarchical layouts can group by any public hit field via `hierarchyGroupBy`
+- **Heading matching** — show matched headings under results for documentation sites
+- **Split section rendering** — split SourceDoc and AutoTransformer-family hits can render as parent rows with matched heading children in hierarchical layouts
+- **Snippet modes** — early, balanced, or deep snippet extraction
+- **Term highlighting** — highlight matched terms in results; the same highlighter is also available as a [standalone utility](../template-guides/highlighting-snippets.md#client-side-highlighting) for custom search UIs
+- **Click analytics** — track which results users click
+- **RTL support** — full right-to-left language support
+- **Shadow DOM** — styles are encapsulated and don't affect your site
+
+## Widget type
 
 Each widget config has a `type`. For this release, use the modal widget type:
 
@@ -52,7 +59,7 @@ Set the type in the CP when creating a widget config, or in the config file:
 ],
 ```
 
-## Configuration Sources
+## Configuration sources
 
 Widget behavior can be controlled in three ways:
 
@@ -60,29 +67,28 @@ Widget behavior can be controlled in three ways:
 2. **Config file** — define widget configs in `config/search-manager.php`
 3. **Twig parameters** — override per-include
 
+A widget config referenced without a `configHandle` falls back to the **default widget**, set via `defaultWidgetHandle` in config or CP settings. If the default widget is deleted, another enabled widget is automatically assigned.
+
 See [Widget Configuration](configuration.md) for all parameters.
 
-## CP Widget Management
+## Manage widgets in the CP
 
-Widget configurations can be managed at Search Manager > Widgets. Each config uses these sections:
+Each widget config links to a **Widget Style** preset from the sidebar — that's where colors, spacing, and other appearance settings live (see [Widget Styles](styles.md)), not a dedicated tab. The sidebar also shows a live preview of the widget in light and dark mode.
 
-- **General** — name, handle, search indices
-- **Search Input** — placeholder, debounce, minimum characters, loading indicator
-- **Modal & Trigger** — hotkey, trigger button, scroll lock, backdrop behavior
-- **Recent Searches** — the "Recently viewed" section (results the visitor opened) and its stored-entry limit
-- **Results** — result limit, grouping, URL requirement, line clamping
-- **Hierarchy** — result layout, grouping field, hierarchy style, heading limit
+The config's own tabs cover behavior:
+
+- **General** — name, handle, API key, search indices
+- **Search Input** — placeholder, debounce, minimum characters
+- **Modal & Trigger** — hotkey, prevent body scroll, loading indicator, trigger button and label
+- **Recently Viewed** — the "Recently viewed" section (results the visitor opened) and its stored-entry limit
+- **Results** — result limit, URL requirement, layout (default or hierarchical, with grouping field/style/heading-limit when hierarchical), and promotions display
 - **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
 - **Destination Highlighting** — destination-page highlight toggle, persisted query, query param, content selector
 - **Analytics** — source identifier, idle timeout
 
-Visual appearance and result highlighting are controlled via the **Widget Style** selector in the sidebar, not a dedicated tab. The sidebar also shows a live preview of the widget in light and dark mode.
+Manage configs at Search Manager > Widgets.
 
-## Default Widget
-
-Set a default widget via `defaultWidgetHandle` in config or CP settings. If the default widget is deleted, another enabled widget is automatically assigned.
-
-## Widget Analytics
+## Widget analytics
 
 The widget tracks searches and clicks to provide meaningful analytics without keystroke spam:
 
@@ -94,7 +100,7 @@ The widget tracks searches and clicks to provide meaningful analytics without ke
 - **Source identification** — use `analyticsSource` to distinguish widget placements (e.g., `'header-search'`, `'mobile-nav'`)
 - **Cache telemetry** @since(5.46.0) — the intent ping carries the final search response's `meta.cached` and `meta.took` forward so the recorded row has an accurate `executionTime` (`0` for cache hits, `took` ms for misses). This makes widget activity contribute to the dashboard's Cache Hit Rate, Cache Hits / Misses, and other performance metrics — without resurrecting per-keystroke spam.
 
-## Next Steps
+## Next steps
 
 - [Widget Configuration](configuration.md) — all behavior parameters
 - [Widget Styles](styles.md) — style presets and CSS properties

@@ -1,14 +1,21 @@
-# Widget Styles @since(5.39.0)
+# Widget styles @since(5.39.0)
 
-Widget Styles are reusable appearance presets for the [Frontend Widget](overview.md). Define colors, spacing, dimensions, and other visual properties once, then share them across multiple widget configurations.
+Design your search modal's look once — colors, spacing, dimensions — and reuse it across every widget placement on your site, instead of repeating the same overrides in every include. Widget styles are reusable appearance presets for the [frontend widget](overview.md): define colors, spacing, dimensions, and other visual properties once, then share them across multiple widget configurations.
 
-## How It Works
+## What you'll use it for
+
+- Keep every search placement on-brand without repeating color and spacing values in each Twig include
+- Switch between a light default look and a full dark-mode brand preset without touching any behavior settings
+- Preview appearance changes live, in both light and dark mode, before saving
+- Override one or two properties per page with the `styles` Twig parameter, without creating a whole new preset
+
+## How it works
 
 Widget configs control **behavior** (debounce, max results, hotkey, etc.) while widget styles control **appearance** (colors, border radius, padding, etc.). This separation lets you reuse the same visual design across different search widgets without duplicating style settings.
 
 Each widget config can reference a style preset via `styleHandle`. If no style is linked, the widget uses the built-in WCAG 2.1 AA compliant defaults.
 
-## Widget Type
+## Widget type
 
 Each style has a `type` that determines which widget surface it supports. For this release, use the modal widget type:
 
@@ -16,21 +23,23 @@ Each style has a `type` that determines which widget surface it supports. For th
 |------|----------|-------------|
 | Modal | `modal` | CMD+K overlay — opens on top of the page with a backdrop |
 
-## Creating Styles
+## Create a style
 
 ### Via Control Panel
 
-Go to **Search Manager > Widgets > Styles** and click "New Style". The editor is organized into six tabs:
+Go to Search Manager > Widgets > Styles and click "New Style". The editor is organized into five tabs:
 
 - **General** — name and handle
-- **Modal** — max width, max height, border radius, padding, backdrop opacity
-- **Input** — search header (container background, border, padding) and search input (font size, colors, borders, padding)
+- **Modal** — modal colors, dimensions, and padding; the search header container (background, border, padding); the footer (background, text, padding); and the backdrop (opacity, blur toggle)
+- **Input** — search input colors (background, text, placeholder, icons, border) and dimensions (font size, border radius, border width, padding)
 - **Results** — gap, border radius, padding, resting/active/selected colors, icons and hierarchy connector, term highlighting, promoted badge
-- **Controls** — trigger button styling (border radius, padding, font size, colors, hover states), keyboard badge styling (border radius, colors)
+- **Controls** — trigger button styling (border radius, padding, font size, colors, hover states), keyboard badge styling (border radius, colors), and the loading spinner color
 
-### Via Config File
+A live preview in the sidebar shows the widget in both light and dark mode as you edit.
 
-Define styles in `config/search-manager.php` under the `widgetStyles` key:
+### Via config file
+
+Prefer defining styles in code — for version control or multi-environment setups? Define them in `config/search-manager.php` under the `widgetStyles` key:
 
 ```php
 'widgetStyles' => [
@@ -79,7 +88,7 @@ Define styles in `config/search-manager.php` under the `widgetStyles` key:
 
 Config-defined styles show a "Config" badge in the CP and cannot be edited there. Database-defined styles show a "Database" badge and are fully editable.
 
-## Linking Styles to Configs
+## Link a style to a config
 
 Reference a style preset from a widget config:
 
@@ -107,7 +116,7 @@ You can also override individual style properties at render time using the `styl
 
 Inline `styles` merge on top of the widget config's style preset. If the referenced preset doesn't exist or is disabled, the widget falls back to the built-in defaults.
 
-## Style Properties
+## Style properties
 
 All style properties are optional. Unset properties use the built-in defaults (WCAG 2.1 AA compliant colors).
 
@@ -132,7 +141,7 @@ All style properties are optional. Unset properties use the built-in defaults (W
 
 ### Footer
 
-The footer holds the keyboard shortcut hints and the "Powered by Search Manager" line (the name links to the plugin's GitHub repository). The keyboard chips follow the [Keyboard Badge](#keyboard-badge) properties, and the footer's top divider follows the header's `headerBorderWidth` and border color.
+The footer holds the keyboard shortcut hints and the "Powered by Search Manager" line (the name links to the plugin's GitHub repository). The keyboard chips follow the [Keyboard badge](#keyboard-badge) properties, and the footer's top divider follows the header's `headerBorderWidth` and border color.
 
 | Property | Type | Range | Default | Description |
 |----------|------|-------|---------|-------------|
@@ -172,7 +181,7 @@ The header is the container wrapping the search icon, `<input>` element (with it
 | `headerPaddingX` | `int` | 0-40 | `16` | Horizontal padding in px |
 | `headerPaddingY` | `int` | 0-40 | `12` | Vertical padding in px |
 
-### Search Input
+### Search input
 
 The search input is the bare `<input>` element inside the header. By default it has no border or padding of its own — the header provides the spacing.
 
@@ -246,7 +255,7 @@ The search input is the bare `<input>` element inside the header. By default it 
 | `triggerPaddingY` | `int` | 0-40 | `8` | Vertical padding in px |
 | `triggerFontSize` | `int` | 10-24 | `14` | Font size in px |
 
-### Keyboard Badge
+### Keyboard badge
 
 | Property | Type | Range | Default | Description |
 |----------|------|-------|---------|-------------|
@@ -275,7 +284,7 @@ The search input is the bare `<input>` element inside the header. By default it 
 > [!TIP]
 > If your `resultActiveBg` is close to the highlight background, set the active highlight pair so matches stay legible on the row the user is pointing at.
 
-### Icons & Hierarchy
+### Icons & hierarchy
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|

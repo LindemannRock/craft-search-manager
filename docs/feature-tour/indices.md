@@ -1,8 +1,33 @@
 # Indices
 
-A search index tells Search Manager what content to index and how to transform it into searchable documents. You can create indices through the Control Panel or define them in your config file.
+Point Search Manager at your content and it turns it into fast, searchable documents — no manual document-shape wrangling. A search index tells Search Manager what content to include and how to transform it into those documents; you can create one through the Control Panel or define it in your config file.
 
-## What Is an Index?
+## What you'll use it for
+
+- Index entries, assets, categories, users, Commerce products/variants, or Docs Manager pages into searchable documents
+- Scope an index to one site, several sites, or all sites for multi-language search
+- Filter what gets indexed with a criteria callback — by section, entry type, or any other element-query filter
+- Route different indices to different backends, or prefix index names per environment for shared Algolia/Meilisearch accounts
+- Split long documentation or rich-text pages into per-heading section hits so long pages don't dominate or under-rank in results
+
+## Create your first index
+
+1. Go to **Search Manager > Indices** and click **New Index**.
+2. Give it a **Name** (the display name) and a **Handle** (the identifier you'll use in code, e.g. `entries-en`).
+3. Choose an **Element Type** — Entries, Assets, Categories, Users, or (when the relevant plugin is installed) Commerce Products/Variants, Docs Manager pages, and other supported types. Craft element types show inline criteria — an Entries index, for example, lets you check which **Sections** to include.
+4. Choose which **Sites** to index (leave all unchecked to index every site).
+5. Leave **Language** on auto-detect unless you need to override stemming and stop words for a specific site.
+6. Click **Save**.
+
+That's it — the index queues its first full rebuild automatically as soon as you save it, so it starts filling right away with no separate rebuild step.
+
+The CP form also exposes the same fine-tuning options described in [Index options](#index-options) below — Heading Levels, Retrievable Fields, Split Sections — plus an Advanced Settings area for a custom Transformer Class or a per-index Search Backend override.
+
+Indices you create this way show a **Database** badge and stay fully editable in the CP. Indices defined in `config/search-manager.php` (see [Config file setup](#config-file-setup) below) show a **Config** badge instead and can't be edited in the CP — edit the config file and redeploy.
+
+Everything from here down is reference material: the full option list, the config-file syntax, and the Docs Manager / Commerce integration details. If you're managing indices entirely through the CP, the walkthrough above is all you need — skip ahead only if you want to define indices in code instead.
+
+## What is an index?
 
 An index is a collection of searchable documents derived from Craft elements. Each index specifies:
 
@@ -11,9 +36,26 @@ An index is a collection of searchable documents derived from Craft elements. Ea
 - **How to transform** elements into searchable documents
 - **Which backend** to store the index in (optional — uses default if not specified)
 
-## Creating Indices
+## Index options
 
-### Via Config File
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `name` | `string` | (required) | Display name for the index |
+| `elementType` | `string` | (required) | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, Commerce `Product::class` / `Variant::class`, etc.) |
+| `siteId` | `int\|array\|null` | `null` | Site(s) to index. `null` = all sites |
+| `criteria` | `callable` | `null` | Callback to filter elements (receives an ElementQuery) |
+| `transformer` | `string` | `null` | Autoloadable zero-argument transformer class for custom document structure |
+| `enabled` | `bool` | `true` | Whether the index is active |
+| `backend` | `string` | `null` | Handle of a configured backend to use (overrides global default) |
+| `language` | `string` | `null` | Language code (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`). `null` = auto-detect from site locale |
+| `headingLevels` | `array` | `null` | Heading levels to extract for heading matching (e.g., `[2, 3, 4]`) — see [Heading levels](#heading-levels) below |
+| `splitSections` | `bool` | `false` | For SourceDoc/DocsManagerTransformer-family or AutoTransformer-family indices, index intro and heading sections as separate hits when headings are present |
+| `retrievableFields` | `array` | `['*']` | Which custom-field values public hits return. `['*']` = all, `[]` = none, or list handles — see [Retrievable Fields](#retrievable-fields) |
+| `disableStopWords` | `bool` | `false` | Disable stop word filtering for this index |
+| `skipEntriesWithoutUrl` | `bool` | `false` | Skip entries that don't have a URL |
+| `enableAnalytics` | `bool` | `true` | Whether to track analytics for searches on this index |
+
+## Config file setup
 
 Define indices in `config/search-manager.php`:
 
@@ -40,9 +82,12 @@ Define indices in `config/search-manager.php`:
 ],
 ```
 
-#### Docs Manager Integration
+### Docs Manager integration
 
-If [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed, you can index documentation pages. Create a global index for all docs, or scope to specific sources:
+> [!NOTE]
+> Requires the [Docs Manager](https://lindemannrock.com/plugins/docs-manager) plugin — a separate install. `SourceDoc` only appears as an index element type once Docs Manager is installed and enabled.
+
+If Docs Manager is installed, you can index documentation pages. Create a global index for all docs, or scope to specific sources:
 
 ```php
 // All documentation
@@ -87,7 +132,7 @@ For Algolia-backed documentation, enable Split Sections unless every page is com
 
 Search Manager stores body text once in the dedicated `_bodyClean` snippet source and does not duplicate it into the general `content` field. Matching still covers title, description, searchable custom field text, keywords, and body text: Algolia and Meilisearch search `title`, then `content`, then `_bodyClean`, then `url`; Typesense searches `title,content,_bodyClean,url` with weights `5,3,1,1`; the local backend adds `_bodyClean` to its BM25 term pool alongside `content`.
 
-#### Craft Commerce Integration
+### Craft Commerce integration
 
 When Craft Commerce is installed and enabled, Product and Variant element types are available for indices in the Control Panel. Commerce Product Types are configuration records rather than searchable Craft elements, so they are not listed as index element types.
 
@@ -111,36 +156,11 @@ Use a **Variant** index when the result itself should be a specific variant, suc
 
 Leave the transformer blank for the recommended automatic path. Search Manager automatically uses its Commerce transformer for Product and Variant indices, including Commerce metadata such as product type, variant SKUs, titles, and option values. Use a custom transformer only when your storefront needs project-specific indexing logic. A minimal custom transformer can intentionally reduce the indexed Commerce metadata, which is useful for narrow search records but may remove SKU or option matches shoppers expect.
 
-### Via Control Panel
-
-Go to Search Manager > Indices and click "New Index". The CP provides a form for all the same options.
-
-Config-defined indices show a "Config" badge and cannot be edited in the CP. Database-defined indices show a "Database" badge and are fully editable.
-
-## Index Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `string` | (required) | Display name for the index |
-| `elementType` | `string` | (required) | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, Commerce `Product::class` / `Variant::class`, etc.) |
-| `siteId` | `int\|array\|null` | `null` | Site(s) to index. `null` = all sites |
-| `criteria` | `callable` | `null` | Callback to filter elements (receives an ElementQuery) |
-| `transformer` | `string` | `null` | Autoloadable zero-argument transformer class for custom document structure |
-| `enabled` | `bool` | `true` | Whether the index is active |
-| `backend` | `string` | `null` | Handle of a configured backend to use (overrides global default) |
-| `language` | `string` | `null` | Language code (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`). `null` = auto-detect from site locale |
-| `headingLevels` | `array` | `null` | Heading levels to extract for heading matching (e.g., `[2, 3, 4]`) |
-| `splitSections` | `bool` | `false` | For SourceDoc/DocsManagerTransformer-family or AutoTransformer-family indices, index intro and heading sections as separate hits when headings are present |
-| `retrievableFields` | `array` | `['*']` | Which custom-field values public hits return. `['*']` = all, `[]` = none, or list handles — see [Retrievable Fields](#retrievable-fields) |
-| `disableStopWords` | `bool` | `false` | Disable stop word filtering for this index |
-| `skipEntriesWithoutUrl` | `bool` | `false` | Skip entries that don't have a URL |
-| `enableAnalytics` | `bool` | `true` | Whether to track analytics for searches on this index |
-
-## Multi-Site Indices
+## Multi-site indices
 
 You have three options for site handling:
 
-### Single Site
+### Single site
 
 Index content from one specific site:
 
@@ -151,7 +171,7 @@ Index content from one specific site:
 ],
 ```
 
-### Multiple Sites
+### Multiple sites
 
 Index content from specific sites into one index:
 
@@ -162,7 +182,7 @@ Index content from specific sites into one index:
 ],
 ```
 
-### All Sites
+### All sites
 
 Index content from every site:
 
@@ -175,7 +195,7 @@ Index content from every site:
 
 When indexing multiple sites, each element is stored with its `siteId`. This allows language filtering and per-site search results. Built-in backends store `siteId` as a field; external backends use composite document IDs (`{elementId}_{siteId}`).
 
-## Filtering with Criteria
+## Filtering with criteria
 
 The `criteria` callback receives a Craft ElementQuery and should return it with filters applied:
 
@@ -209,9 +229,9 @@ For project-specific result data, create a transformer in a module namespace and
 
 Custom transformer classes must be autoloadable from your project or module namespace, constructible without required constructor arguments, and implement `TransformerInterface`. Extending `BaseTransformer` is the recommended route for custom document shapes; extending `AutoTransformer` is useful when you want automatic extraction plus project-specific fields. `supports()` is still required by the interface, but Search Manager does not use it to guard an index-specific configured override.
 
-## Per-Index Settings
+## Per-index settings
 
-### Retrievable Fields
+### Retrievable fields
 
 `retrievableFields` controls which indexed custom field values are returned under public hit `fields`:
 
@@ -230,7 +250,16 @@ This setting controls what custom field values are stored in the public `fields`
 
 The concept is similar to Algolia's `attributesToRetrieve`, Meilisearch's displayed attributes, and Typesense's `include_fields`. Search Manager still enforces the public contract after results come back, while provider projection keeps main searches from downloading custom fields that cannot be returned.
 
-### Disable Stop Words
+### Heading levels
+
+`headingLevels` controls which HTML/Markdown heading levels (H1–H6) Search Manager extracts when indexing rich-text or Markdown content. It drives two things:
+
+- **Heading matching** — the headings shown under a search result, so visitors can jump straight to the matching part of a long page.
+- **Split Sections slicing** — when `splitSections` is enabled, it's also where Search Manager cuts a page into separate per-heading records (see [Docs Manager integration](#docs-manager-integration) above).
+
+The default is `[2, 3, 4]` — H2 through H4, the common range for content subheadings, skipping the page-level H1. Change it if your content structure uses different levels: add `5` if your pages nest sections that deep, or narrow to `[2, 3]` if your H4s are decorative rather than structural. Values outside 1–6 are ignored, and if none of the configured levels are valid, Search Manager falls back to the default.
+
+### Disable stop words
 
 Some indices may contain technical content where stop words are meaningful:
 
@@ -241,7 +270,7 @@ Some indices may contain technical content where stop words are meaningful:
 ],
 ```
 
-### Disable Analytics
+### Disable analytics
 
 Internal or admin-facing indices may not need analytics tracking:
 
@@ -252,7 +281,7 @@ Internal or admin-facing indices may not need analytics tracking:
 ],
 ```
 
-### Skip Entries Without URL
+### Skip entries without URL
 
 If your index includes entries that don't have landing pages, you can exclude them:
 
@@ -263,7 +292,7 @@ If your index includes entries that don't have landing pages, you can exclude th
 ],
 ```
 
-## Multi-Environment Index Prefix
+## Multi-environment index prefix
 
 Use `indexPrefix` to automatically prefix index names per environment. Define indices once and deploy everywhere:
 
@@ -288,7 +317,7 @@ Use `indexPrefix` to automatically prefix index names per environment. Define in
 
 This is especially useful when sharing an Algolia or Meilisearch account across environments.
 
-## Building Indices
+## Building indices
 
 ### Via CLI
 
@@ -328,7 +357,7 @@ See [Console Commands](../developers/console-commands.md) for the full CLI refer
 
 Go to Search Manager > Indices and use the rebuild/clear buttons for each index.
 
-### Auto-Indexing
+### Auto-indexing
 
 When `autoIndex` is enabled (default), elements are automatically queued for indexing when saved and queued for removal when deleted. Search Manager stores those save/delete events in a pending sync buffer and drains them with `BatchSyncJob`, so rapid edits or imports can collapse repeated work into fewer backend calls.
 
@@ -342,7 +371,7 @@ When a batch sync drain completes, Search Manager refreshes the affected index c
 
 Manual rebuilds, clears, and backend count refreshes still update index stats immediately.
 
-#### Document Count Is Eventually Consistent
+#### Document count is eventually consistent
 
 The "Documents" column on the Indices index page reflects what the index contained at the last point a count was authoritative — either a full rebuild or an explicit count refresh. Automatic save/delete syncs **do not** update this counter, by design: doing so would require a per-row backend probe for every save, defeating the API-amplification reduction that batch sync provides.
 

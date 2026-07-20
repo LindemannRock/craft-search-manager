@@ -1,6 +1,6 @@
 # Events
 
-Search Manager dispatches events that let you hook into indexing, transformation, and search operations from your own plugin or module.
+Need to add a field to every indexed document, skip indexing for certain elements, or filter search results by permission — without writing a full custom transformer? Listen for one of Search Manager's events instead. Events let you hook into indexing, transformation, and search operations from your own plugin or module, and they're often less code than a one-field change would otherwise require.
 
 ## Overview
 
@@ -13,7 +13,7 @@ Search Manager dispatches events that let you hook into indexing, transformation
 | `BackendService` | `EVENT_BEFORE_SEARCH` | 5.39.0 | Modify queries, add filters, or short-circuit searches |
 | `BackendService` | `EVENT_AFTER_SEARCH` | 5.39.0 | Filter, enrich, or reorder search results |
 
-## Index Events
+## Index events
 
 Triggered when an element is indexed. These fire from both the direct per-element path (`IndexingService::indexElementNow()`) and the auto-sync batch path (`PendingSyncProcessor` draining the pending-sync buffer). Bulk rebuild paths (`IndexingService::batchIndex()`, `RebuildIndexJob`) do not fire these events — listen to `EVENT_AFTER_TRANSFORM` if you need coverage there.
 
@@ -63,7 +63,7 @@ Event::on(
 );
 ```
 
-### IndexEvent Properties
+### IndexEvent properties
 
 | Property | Type | BEFORE | AFTER | Description |
 |----------|------|--------|-------|-------------|
@@ -72,7 +72,7 @@ Event::on(
 | `indexHandle` | `string\|null` | — | Yes | The index handle (e.g., `'entries-en'`) |
 | `isValid` | `bool` | Yes | — | Set to `false` to cancel indexing |
 
-## Transform Events
+## Transform events
 
 @since(5.39.0)
 
@@ -122,7 +122,7 @@ Event::on(
 );
 ```
 
-### TransformEvent Properties
+### TransformEvent properties
 
 | Property | Type | BEFORE | AFTER | Description |
 |----------|------|--------|-------|-------------|
@@ -132,7 +132,7 @@ Event::on(
 | `document` | `array\|null` | — | Yes | The transformed document data (modify to enrich) |
 | `handled` | `bool` | Yes | — | Set to `true` to skip transformation |
 
-## Search Events
+## Search events
 
 @since(5.39.0)
 
@@ -179,7 +179,7 @@ Event::on(
 );
 ```
 
-### SearchEvent Properties
+### SearchEvent properties
 
 | Property | Type | BEFORE | AFTER | Description |
 |----------|------|--------|-------|-------------|
@@ -191,7 +191,7 @@ Event::on(
 | `backend` | `string\|null` | Yes | Yes | Backend adapter name (e.g., `'mysql'`, `'redis'`, `'algolia'`) |
 | `handled` | `bool` | Yes | — | Set to `true` to skip the search and return `$results` directly |
 
-## Registering Event Listeners
+## Registering event listeners
 
 Register your event listeners in a Craft module's `init()` method:
 
@@ -255,9 +255,9 @@ class MyModule extends Module
 }
 ```
 
-## Practical Use Cases
+## Practical use cases
 
-### Add Computed Fields
+### Add computed fields
 
 Use `EVENT_AFTER_TRANSFORM` instead of writing a full custom transformer:
 
@@ -279,7 +279,7 @@ Event::on(
 );
 ```
 
-### Skip Specific Content
+### Skip specific content
 
 Cancel at the index level (skips all indices) or the transform level (skips per-index):
 
@@ -307,7 +307,7 @@ Event::on(
 );
 ```
 
-### Filter Search Results by Permission
+### Filter search results by permission
 
 ```php
 Event::on(
@@ -329,7 +329,7 @@ Event::on(
 );
 ```
 
-### Sync with External Service
+### Sync with external service
 
 ```php
 Event::on(
