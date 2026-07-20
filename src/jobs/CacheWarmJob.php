@@ -52,6 +52,13 @@ class CacheWarmJob extends BaseJob implements RetryableJobInterface
     /** @inheritdoc */
     public function execute($queue): void
     {
+        if (!SearchManager::$plugin->isPro()) {
+            $this->logDebug('Cache warming requires Search Manager Pro, skipping', [
+                'index' => $this->indexHandle,
+            ]);
+            return;
+        }
+
         $settings = SearchManager::$plugin->getSettings();
 
         if (!$settings->enableCacheWarming) {

@@ -4,6 +4,7 @@
 {% set title = "Cache Settings"|t('search-manager') %}
 {% set fullPageForm = true %}
 {% set selectedSettingsItem = 'cache' %}
+{% set isPro = craft.app.plugins.getPlugin('search-manager').isPro() %}
 
 
 {% set crumbs = [
@@ -203,48 +204,55 @@
 
 		<h2>{{ "Cache Warming"|t('search-manager') }}</h2>
 
-		{{ forms.lightswitchField({
-            label: 'Enable Cache Warming'|t('search-manager'),
-            instructions: 'Automatically warm the cache with popular queries after an index rebuild. This ensures first visitors get fast, cached results.'|t('search-manager'),
-            id: 'enableCacheWarming',
-            name: 'settings[enableCacheWarming]',
-            on: settings.enableCacheWarming ?? true,
-            toggle: 'cache-warming-settings',
-            disabled: settings.isOverriddenByConfig('enableCacheWarming'),
-            warning: settings.isOverriddenByConfig('enableCacheWarming') ?
-                "This is being overridden by the <code>enableCacheWarming</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-          }) }}
+		{% if isPro %}
+			{{ forms.lightswitchField({
+                label: 'Enable Cache Warming'|t('search-manager'),
+                instructions: 'Automatically warm the cache with popular queries after an index rebuild. This ensures first visitors get fast, cached results.'|t('search-manager'),
+                id: 'enableCacheWarming',
+                name: 'settings[enableCacheWarming]',
+                on: settings.enableCacheWarming ?? true,
+                toggle: 'cache-warming-settings',
+                disabled: settings.isOverriddenByConfig('enableCacheWarming'),
+                warning: settings.isOverriddenByConfig('enableCacheWarming') ?
+                    "This is being overridden by the <code>enableCacheWarming</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+              }) }}
 
-		<div id="cache-warming-settings" class="{{ not (settings.enableCacheWarming ?? true) ? 'hidden' }}">
-			{{ forms.selectField({
-				label: 'Popular Queries to Warm'|t('search-manager'),
-				instructions: 'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.'|t('search-manager'),
-				id: 'cacheWarmingQueryCount',
-				name: 'settings[cacheWarmingQueryCount]',
-				value: settings.cacheWarmingQueryCount ?? 50,
-				options: [
-					{ value: 10, label: '10 queries (Light)'|t('search-manager') },
-					{ value: 25, label: '25 queries (Moderate)'|t('search-manager') },
-					{ value: 50, label: '50 queries (Recommended)'|t('search-manager') },
-					{ value: 100, label: '100 queries (Thorough)'|t('search-manager') },
-					{ value: 150, label: '150 queries (Extensive)'|t('search-manager') },
-					{ value: 200, label: '200 queries (Maximum)'|t('search-manager') },
-				],
-				tip: 'Higher values warm more cache but take longer to complete'|t('search-manager'),
-				disabled: settings.isOverriddenByConfig('cacheWarmingQueryCount'),
-				warning: settings.isOverriddenByConfig('cacheWarmingQueryCount') ?
-					"This is being overridden by the <code>cacheWarmingQueryCount</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-				errors: settings.getErrors('cacheWarmingQueryCount')
-			}) }}
+			<div id="cache-warming-settings" class="{{ not (settings.enableCacheWarming ?? true) ? 'hidden' }}">
+				{{ forms.selectField({
+					label: 'Popular Queries to Warm'|t('search-manager'),
+					instructions: 'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.'|t('search-manager'),
+					id: 'cacheWarmingQueryCount',
+					name: 'settings[cacheWarmingQueryCount]',
+					value: settings.cacheWarmingQueryCount ?? 50,
+					options: [
+						{ value: 10, label: '10 queries (Light)'|t('search-manager') },
+						{ value: 25, label: '25 queries (Moderate)'|t('search-manager') },
+						{ value: 50, label: '50 queries (Recommended)'|t('search-manager') },
+						{ value: 100, label: '100 queries (Thorough)'|t('search-manager') },
+						{ value: 150, label: '150 queries (Extensive)'|t('search-manager') },
+						{ value: 200, label: '200 queries (Maximum)'|t('search-manager') },
+					],
+					tip: 'Higher values warm more cache but take longer to complete'|t('search-manager'),
+					disabled: settings.isOverriddenByConfig('cacheWarmingQueryCount'),
+					warning: settings.isOverriddenByConfig('cacheWarmingQueryCount') ?
+						"This is being overridden by the <code>cacheWarmingQueryCount</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+					errors: settings.getErrors('cacheWarmingQueryCount')
+				}) }}
 
-			{% include 'lindemannrock-base/_components/info-box' with {
-				message: '<strong>How it works:</strong><br>
+				{% include 'lindemannrock-base/_components/info-box' with {
+					message: '<strong>How it works:</strong><br>
 • After index rebuild completes, a background job warms the cache<br>
 • Popular queries are pulled from search analytics (most searched terms)<br>
 • Both search results and autocomplete suggestions are pre-cached<br>
 • Requires analytics to be enabled for query data'|t('search-manager')
-			} %}
-		</div>
+				} %}
+			</div>
+		{% else %}
+			{% include 'search-manager/_partials/upgrade-prompt' with {
+				featureName: 'Cache Warming',
+				compact: true,
+			} only %}
+		{% endif %}
 
 		{% set syncRunning = craft.app.plugins.getPlugin('search-manager').isStatusSyncRunning() %}
 		{% if settings.statusSyncInterval > 0 %}

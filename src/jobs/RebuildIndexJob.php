@@ -210,7 +210,11 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 
         // Queue cache warming job if enabled
         $settings = SearchManager::$plugin->getSettings();
-        if ($settings->enableCacheWarming && ($settings->enableCache || $settings->enableAutocompleteCache)) {
+        if (
+            SearchManager::$plugin->isPro()
+            && $settings->enableCacheWarming
+            && ($settings->enableCache || $settings->enableAutocompleteCache)
+        ) {
             Craft::$app->getQueue()->push(new CacheWarmJob([
                 'indexHandle' => $indexHandle,
             ]));
