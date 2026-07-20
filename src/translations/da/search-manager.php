@@ -23,6 +23,23 @@ return [
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro tilføjer analyser, forespørgselsregler, kampagner, handlinger for afventende synkroniseringer og genanvendelige widgetstilforudindstillinger.',
     'View Search Manager Pro in the Plugin Store' => 'Vis Search Manager Pro i Pluginbutik',
 
+    // Edition comparison
+    'Local and external backends' => 'Lokale og eksterne backends',
+    'BM25, fuzzy matching, operators, transformers, and native-search replacement' => 'BM25, omtrentlig matching, operatorer, transformere og erstatning af indbygget søgning',
+    'REST, GraphQL, API keys, rate limits, and retrievable-field controls' => 'REST, GraphQL, API-nøgler, hastighedsgrænser og kontrol af felter der kan hentes',
+    'Privacy controls, analytics-data export, and permanent purge' => 'Privatlivskontroller, eksport af analysedata og permanent sletning',
+    'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting' => 'Komplet modal-widget med søgning, resultater, hierarki, uddrag, senest viste elementer og fremhævning på destinationssiden',
+    'Twig inline `styles:` overrides and public JavaScript events' => 'Inline `styles:`-tilsidesættelser i Twig og offentlige JavaScript-hændelser',
+    'Promotion badge, row-tint, and hidden display modes' => 'Kampagnemærke, rækketone og skjulte visningstilstande',
+    'Built-in widget analytics and placement/idle settings' => 'Indbyggede widgetanalyser og indstillinger for placering/inaktivitet',
+    'Reusable Widget Style presets and style editor' => 'Genanvendelige widgetstilforudindstillinger og stileditor',
+    'Automatic index synchronization plus manual rebuild and clear tools' => 'Automatisk indekssynkronisering samt manuelle værktøjer til genopbygning og rydning',
+    'Pending-sync queue browser and row-level operations' => 'Købrowser for afventende synkroniseringer og handlinger på rækkeniveau',
+    'Analytics-driven cache warming' => 'Analysedrevet cache-opvarmning',
+    'Query rules and pinned promotions' => 'Forespørgselsregler og fastgjorte kampagner',
+    'Eight-tab analytics workspace and exports' => 'Analysearbejdsområde med otte faner og eksporter',
+    'Analytics dashboard widgets' => 'Analysewidgets til oversigten',
+
     // Navigation
     'Dashboard' => 'Oversigt',
     'Indices' => 'Indekser',

@@ -23,6 +23,23 @@ return [
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro lägger till analys, frågeregler, kampanjer, åtgärder för väntande synkroniseringar och återanvändbara widgetstilförinställningar.',
     'View Search Manager Pro in the Plugin Store' => 'Visa Search Manager Pro i Plugin Store',
 
+    // Edition comparison
+    'Local and external backends' => 'Lokala och externa backends',
+    'BM25, fuzzy matching, operators, transformers, and native-search replacement' => 'BM25, ungefärlig matchning, operatorer, transformerare och ersättning av inbyggd sökning',
+    'REST, GraphQL, API keys, rate limits, and retrievable-field controls' => 'REST, GraphQL, API-nycklar, hastighetsgränser och kontroller för hämtningsbara fält',
+    'Privacy controls, analytics-data export, and permanent purge' => 'Sekretesskontroller, export av analysdata och permanent rensning',
+    'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting' => 'Komplett modalwidget med sökning, resultat, hierarki, utdrag, nyligen visade objekt och markering på målsidan',
+    'Twig inline `styles:` overrides and public JavaScript events' => 'Inline-åsidosättningar av Twig `styles:` och offentliga JavaScript-händelser',
+    'Promotion badge, row-tint, and hidden display modes' => 'Kampanjmärke, radton och dolda visningslägen',
+    'Built-in widget analytics and placement/idle settings' => 'Inbyggd widgetanalys och inställningar för placering/inaktivitet',
+    'Reusable Widget Style presets and style editor' => 'Återanvändbara widgetstilförinställningar och stilredigerare',
+    'Automatic index synchronization plus manual rebuild and clear tools' => 'Automatisk indexsynkronisering samt manuella verktyg för ombyggnad och rensning',
+    'Pending-sync queue browser and row-level operations' => 'Kövy för väntande synkroniseringar och åtgärder per rad',
+    'Analytics-driven cache warming' => 'Analysdriven cacheuppvärmning',
+    'Query rules and pinned promotions' => 'Frågeregler och fästa kampanjer',
+    'Eight-tab analytics workspace and exports' => 'Analysarbetsyta med åtta flikar och exporter',
+    'Analytics dashboard widgets' => 'Analyswidgetar för instrumentpanelen',
+
     // Navigation
     'Dashboard' => 'Instrumentpanel',
     'Indices' => 'Index',

@@ -23,6 +23,23 @@ return [
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'يضيف Search Manager Pro التحليلات وقواعد الاستعلام والعروض الترويجية وعمليات المزامنة المعلقة وإعدادات مسبقة قابلة لإعادة الاستخدام لأنماط الأدوات.',
     'View Search Manager Pro in the Plugin Store' => 'عرض Search Manager Pro في متجر الملحقات',
 
+    // Edition comparison
+    'Local and external backends' => 'الواجهات الخلفية المحلية والخارجية',
+    'BM25, fuzzy matching, operators, transformers, and native-search replacement' => 'BM25 والمطابقة التقريبية وعوامل التشغيل والمحوّلات واستبدال البحث الأصلي',
+    'REST, GraphQL, API keys, rate limits, and retrievable-field controls' => 'REST وGraphQL ومفاتيح API وحدود المعدل وضوابط الحقول القابلة للاسترجاع',
+    'Privacy controls, analytics-data export, and permanent purge' => 'ضوابط الخصوصية وتصدير بيانات التحليلات والحذف الدائم',
+    'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting' => 'أداة منبثقة كاملة تشمل البحث والنتائج والتسلسل الهرمي والمقتطفات والعناصر المعروضة مؤخرًا وإبراز صفحة الوجهة',
+    'Twig inline `styles:` overrides and public JavaScript events' => 'تجاوزات `styles:` المضمّنة في Twig وأحداث JavaScript العامة',
+    'Promotion badge, row-tint, and hidden display modes' => 'شارة العرض الترويجي وتظليل الصف وأوضاع العرض المخفية',
+    'Built-in widget analytics and placement/idle settings' => 'تحليلات الأدوات المضمّنة وإعدادات الموضع/مهلة الخمول',
+    'Reusable Widget Style presets and style editor' => 'إعدادات مسبقة قابلة لإعادة الاستخدام لأنماط الأدوات ومحرر الأنماط',
+    'Automatic index synchronization plus manual rebuild and clear tools' => 'مزامنة الفهرس تلقائيًا مع أدوات إعادة البناء والمسح اليدوية',
+    'Pending-sync queue browser and row-level operations' => 'متصفح قائمة انتظار المزامنات المعلقة والعمليات على مستوى الصف',
+    'Analytics-driven cache warming' => 'تسخين Cache المستند إلى التحليلات',
+    'Query rules and pinned promotions' => 'قواعد الاستعلام والعروض الترويجية المثبتة',
+    'Eight-tab analytics workspace and exports' => 'مساحة عمل التحليلات ذات ثماني علامات تبويب وعمليات التصدير',
+    'Analytics dashboard widgets' => 'أدوات لوحة معلومات التحليلات',
+
     // Navigation
     'Dashboard' => 'لوحة المعلومات',
     'Indices' => 'الفهارس',

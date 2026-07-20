@@ -23,6 +23,23 @@ return [
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro bietet zusätzlich Analytics, Query-Regeln, Promotions, Operationen für ausstehende Synchronisierungen und wiederverwendbare Widget-Stil-Presets.',
     'View Search Manager Pro in the Plugin Store' => 'Search Manager Pro im Plug-in-Store anzeigen',
 
+    // Edition comparison
+    'Local and external backends' => 'Lokale und externe Backends',
+    'BM25, fuzzy matching, operators, transformers, and native-search replacement' => 'BM25, unscharfe Suche, Operatoren, Transformer und Ersetzung der nativen Suche',
+    'REST, GraphQL, API keys, rate limits, and retrievable-field controls' => 'REST, GraphQL, API-Schlüssel, Ratenbegrenzungen und Steuerung abrufbarer Felder',
+    'Privacy controls, analytics-data export, and permanent purge' => 'Datenschutzkontrollen, Export von Analysedaten und dauerhaftes Löschen',
+    'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting' => 'Vollständiges Modal-Widget einschließlich Suche, Ergebnissen, Hierarchie, Snippets, zuletzt angesehenen Elementen und Zielseiten-Hervorhebung',
+    'Twig inline `styles:` overrides and public JavaScript events' => 'Inline-`styles:`-Überschreibungen in Twig und öffentliche JavaScript-Events',
+    'Promotion badge, row-tint, and hidden display modes' => 'Promotion-Abzeichen, Zeilentönung und ausgeblendete Anzeigemodi',
+    'Built-in widget analytics and placement/idle settings' => 'Integrierte Widget-Analytics sowie Platzierungs- und Leerlauf-Einstellungen',
+    'Reusable Widget Style presets and style editor' => 'Wiederverwendbare Widget-Stil-Presets und Stil-Editor',
+    'Automatic index synchronization plus manual rebuild and clear tools' => 'Automatische Indexsynchronisierung sowie manuelle Tools zum Neuaufbau und Löschen',
+    'Pending-sync queue browser and row-level operations' => 'Browser für ausstehende Synchronisierungen und zeilenbezogene Operationen',
+    'Analytics-driven cache warming' => 'Analytics-gesteuertes Cache-Warming',
+    'Query rules and pinned promotions' => 'Query-Regeln und angeheftete Promotions',
+    'Eight-tab analytics workspace and exports' => 'Analytics-Arbeitsbereich mit acht Tabs und Exporte',
+    'Analytics dashboard widgets' => 'Analytics-Dashboard-Widgets',
+
     // Navigation
     'Dashboard' => 'Dashboard',
     'Indices' => 'Indizes',
@@ -1758,7 +1775,7 @@ return [
     'Browser Version' => 'Browser-Version',
     'Operating Systems' => 'Betriebssysteme',
     'OS' => 'Betriebssystem',
-    'OS Version' => 'BS-Version',
+    'OS Version' => 'Betriebssystem-Version',
     'Platform' => 'Plattform',
     'No bot data available' => 'Keine Bot-Daten verfügbar',
     'No bot data available for the selected filters.' => 'Keine Bot-Daten für die ausgewählten Filter verfügbar.',

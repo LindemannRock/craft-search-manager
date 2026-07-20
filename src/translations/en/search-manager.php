@@ -23,6 +23,23 @@ return [
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.',
     'View Search Manager Pro in the Plugin Store' => 'View Search Manager Pro in the Plugin Store',
 
+    // Edition comparison
+    'Local and external backends' => 'Local and external backends',
+    'BM25, fuzzy matching, operators, transformers, and native-search replacement' => 'BM25, fuzzy matching, operators, transformers, and native-search replacement',
+    'REST, GraphQL, API keys, rate limits, and retrievable-field controls' => 'REST, GraphQL, API keys, rate limits, and retrievable-field controls',
+    'Privacy controls, analytics-data export, and permanent purge' => 'Privacy controls, analytics-data export, and permanent purge',
+    'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting' => 'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting',
+    'Twig inline `styles:` overrides and public JavaScript events' => 'Twig inline `styles:` overrides and public JavaScript events',
+    'Promotion badge, row-tint, and hidden display modes' => 'Promotion badge, row-tint, and hidden display modes',
+    'Built-in widget analytics and placement/idle settings' => 'Built-in widget analytics and placement/idle settings',
+    'Reusable Widget Style presets and style editor' => 'Reusable Widget Style presets and style editor',
+    'Automatic index synchronization plus manual rebuild and clear tools' => 'Automatic index synchronization plus manual rebuild and clear tools',
+    'Pending-sync queue browser and row-level operations' => 'Pending-sync queue browser and row-level operations',
+    'Analytics-driven cache warming' => 'Analytics-driven cache warming',
+    'Query rules and pinned promotions' => 'Query rules and pinned promotions',
+    'Eight-tab analytics workspace and exports' => 'Eight-tab analytics workspace and exports',
+    'Analytics dashboard widgets' => 'Analytics dashboard widgets',
+
     // Navigation
     'Dashboard' => 'Dashboard',
     'Indices' => 'Indices',

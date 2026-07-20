@@ -23,6 +23,23 @@ return [
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro では、アナリティクス、クエリルール、プロモーション、保留中の同期操作、再利用可能なウィジェットスタイルプリセットを利用できます。',
     'View Search Manager Pro in the Plugin Store' => 'プラグインストアで Search Manager Pro を表示する',
 
+    // Edition comparison
+    'Local and external backends' => 'ローカルおよび外部バックエンド',
+    'BM25, fuzzy matching, operators, transformers, and native-search replacement' => 'BM25、ファジーマッチング、演算子、トランスフォーマー、ネイティブ検索の置換',
+    'REST, GraphQL, API keys, rate limits, and retrievable-field controls' => 'REST、GraphQL、API キー、レート制限、取得可能フィールドの制御',
+    'Privacy controls, analytics-data export, and permanent purge' => 'プライバシー制御、アナリティクスデータのエクスポート、完全削除',
+    'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting' => '検索、結果、階層、スニペット、最近表示した項目、移動先のハイライトを含む完全なモーダルウィジェット',
+    'Twig inline `styles:` overrides and public JavaScript events' => 'Twig のインライン `styles:` オーバーライドと公開 JavaScript イベント',
+    'Promotion badge, row-tint, and hidden display modes' => 'プロモーションバッジ、行の色付け、非表示の表示モード',
+    'Built-in widget analytics and placement/idle settings' => '組み込みウィジェットアナリティクスと配置/アイドル設定',
+    'Reusable Widget Style presets and style editor' => '再利用可能なウィジェットスタイルプリセットとスタイルエディター',
+    'Automatic index synchronization plus manual rebuild and clear tools' => 'インデックスの自動同期と手動の再構築/削除ツール',
+    'Pending-sync queue browser and row-level operations' => '保留中の同期キューブラウザと行単位の操作',
+    'Analytics-driven cache warming' => 'アナリティクス駆動のキャッシュウォーミング',
+    'Query rules and pinned promotions' => 'クエリルールと固定プロモーション',
+    'Eight-tab analytics workspace and exports' => '8 タブのアナリティクスワークスペースとエクスポート',
+    'Analytics dashboard widgets' => 'アナリティクスダッシュボードウィジェット',
+
     // Navigation
     'Dashboard' => 'ダッシュボード',
     'Indices' => 'インデックス',

@@ -2,6 +2,8 @@
 
 Cut backend load and response times without touching your templates. Search Manager caches search results, autocomplete, and device-detection lookups in independently configurable layers.
 
+Search, autocomplete, and device-detection caching are available in Standard. Analytics-driven cache warming requires Pro.
+
 ## What you'll use it for
 
 - Serve repeated searches from cache instead of re-querying the backend (typically 5–10ms vs 50–200ms uncached)
@@ -122,7 +124,7 @@ Valid types: `database`, `redis`, `file`.
 
 Search Manager registers a cache option in Craft's Clear Caches utility. That entry clears the **search-results cache only** — to also clear the autocomplete and device-detection caches, use Search Manager > Settings > Cache (saving that page clears all three) or the CLI `clear-storage` command. Clearing is always safe — caches auto-regenerate on the next search.
 
-## Cache warming
+## Cache warming (Pro)
 
 CP: **Settings > Cache > Cache Warming**
 

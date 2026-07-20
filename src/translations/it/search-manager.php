@@ -23,6 +23,23 @@ return [
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro aggiunge analisi, regole di query, promozioni, operazioni di sincronizzazione in sospeso e preset di stile widget riutilizzabili.',
     'View Search Manager Pro in the Plugin Store' => 'Visualizza Search Manager Pro nello Store plugin',
 
+    // Edition comparison
+    'Local and external backends' => 'Backend locali ed esterni',
+    'BM25, fuzzy matching, operators, transformers, and native-search replacement' => 'BM25, corrispondenza approssimativa, operatori, transformer e sostituzione della ricerca nativa',
+    'REST, GraphQL, API keys, rate limits, and retrievable-field controls' => 'REST, GraphQL, chiavi API, limiti di frequenza e controlli dei campi recuperabili',
+    'Privacy controls, analytics-data export, and permanent purge' => 'Controlli privacy, esportazione dati analisi e cancellazione permanente',
+    'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting' => 'Widget modale completo, inclusi ricerca, risultati, gerarchia, frammenti, elementi visualizzati di recente ed evidenziazione nella pagina di destinazione',
+    'Twig inline `styles:` overrides and public JavaScript events' => 'Override `styles:` inline di Twig ed eventi JavaScript pubblici',
+    'Promotion badge, row-tint, and hidden display modes' => 'Badge promozione, tinta della riga e modalità di visualizzazione nascosta',
+    'Built-in widget analytics and placement/idle settings' => 'Analisi widget integrate e impostazioni di posizionamento/timeout di inattività',
+    'Reusable Widget Style presets and style editor' => 'Preset di stile widget riutilizzabili ed editor di stile',
+    'Automatic index synchronization plus manual rebuild and clear tools' => 'Sincronizzazione automatica dell\'indice più strumenti manuali di ricostruzione e cancellazione',
+    'Pending-sync queue browser and row-level operations' => 'Browser della coda delle sincronizzazioni in sospeso e operazioni per riga',
+    'Analytics-driven cache warming' => 'Preriscaldamento cache basato sulle analisi',
+    'Query rules and pinned promotions' => 'Regole di query e promozioni fissate',
+    'Eight-tab analytics workspace and exports' => 'Area di lavoro analisi a otto schede ed esportazioni',
+    'Analytics dashboard widgets' => 'Widget analisi della dashboard',
+
     // Navigation
     'Dashboard' => 'Pannello',
     'Indices' => 'Indici',

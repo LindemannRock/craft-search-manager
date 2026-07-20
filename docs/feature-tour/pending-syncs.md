@@ -6,6 +6,8 @@ Watch every save and delete flow into your search backend, and step in — retry
 
 In a healthy system you rarely visit this page — it's here for when something needs operator attention.
 
+The sync buffer, automatic draining, retries, abandonment, and cleanup remain active in Standard so indices stay correct. The Pending Syncs Control Panel browser and its row-level retry, delete, and purge operations require Pro.
+
 ## What you'll use it for
 
 - Check why a save isn't showing up in search results yet
@@ -20,7 +22,7 @@ Saving an entry triggers the auto-sync listener (when `autoIndex` is on), which 
 
 Save entry → rows queue → `BatchSyncJob` drains → search backend updated. Sub-10-second round trip.
 
-## What the page shows
+## What the page shows (Pro)
 
 By default, every row in the buffer regardless of status. Each row is one pending operation against one (index, element, site) target.
 

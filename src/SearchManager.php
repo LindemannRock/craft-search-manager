@@ -159,6 +159,39 @@ class SearchManager extends Plugin
     }
 
     /**
+     * @inheritdoc
+     */
+    public function getEditionFeatures(string $edition): array
+    {
+        $includesProFeatures = static::editionIsAtLeast($edition, self::EDITION_PRO);
+
+        return [
+            // Search engine and APIs
+            Craft::t('search-manager', 'Local and external backends') => true,
+            Craft::t('search-manager', 'BM25, fuzzy matching, operators, transformers, and native-search replacement') => true,
+            Craft::t('search-manager', 'REST, GraphQL, API keys, rate limits, and retrievable-field controls') => true,
+            Craft::t('search-manager', 'Privacy controls, analytics-data export, and permanent purge') => true,
+
+            // Frontend widget
+            Craft::t('search-manager', 'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting') => true,
+            Craft::t('search-manager', 'Twig inline `styles:` overrides and public JavaScript events') => true,
+            Craft::t('search-manager', 'Promotion badge, row-tint, and hidden display modes') => $includesProFeatures,
+            Craft::t('search-manager', 'Built-in widget analytics and placement/idle settings') => $includesProFeatures,
+            Craft::t('search-manager', 'Reusable Widget Style presets and style editor') => $includesProFeatures,
+
+            // Operations and merchandising
+            Craft::t('search-manager', 'Automatic index synchronization plus manual rebuild and clear tools') => true,
+            Craft::t('search-manager', 'Pending-sync queue browser and row-level operations') => $includesProFeatures,
+            Craft::t('search-manager', 'Analytics-driven cache warming') => $includesProFeatures,
+            Craft::t('search-manager', 'Query rules and pinned promotions') => $includesProFeatures,
+
+            // Analytics
+            Craft::t('search-manager', 'Eight-tab analytics workspace and exports') => $includesProFeatures,
+            Craft::t('search-manager', 'Analytics dashboard widgets') => $includesProFeatures,
+        ];
+    }
+
+    /**
      * Require Pro access, rendering an upgrade prompt for CP page requests.
      *
      * Action, JSON, site, API, and console requests retain the exception-based

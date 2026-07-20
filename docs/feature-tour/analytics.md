@@ -2,6 +2,8 @@
 
 See exactly what your visitors search for, where they come up empty, and how fast results come back. Search Manager tracks every query and turns it into an analytics dashboard — no separate analytics service required.
 
+The eight-tab analytics workspace, analytics collection, and dashboard widgets require Pro. Standard keeps analytics-data export and permanent purge available from the Utilities page so retained data can still be managed after a downgrade.
+
 ## What you'll use it for
 
 - See top and trending queries, and how search volume changes over time
@@ -10,7 +12,7 @@ See exactly what your visitors search for, where they come up empty, and how fas
 - Break down traffic by device, browser, OS, and (optionally) geography
 - Export any section as CSV, JSON, or Excel
 
-## View your analytics
+## View your analytics (Pro)
 
 Go to **Search Manager > Analytics**. Analytics is on by default — toggle it in the CP under Search Manager > Settings > Analytics, or set `enableAnalytics` in config. The dashboard is organized into tabs:
 
@@ -177,6 +179,9 @@ The **API Key Usage** table on the Overview tab groups keyed searches by key, wi
 ## Export
 
 Analytics can be exported as CSV, JSON, or Excel from the Export button in the page toolbar — one export bundles every section (Recent Searches, Trending, Query Rules, Promotions, Performance, Traffic & Devices, Geographic, and Content Gaps). Exports include all columns with clean headers (Hits, Synonyms, Rules, Promotions, Redirected, and — when keyed traffic exists — API Key and API Key Type).
+
+> [!NOTE]
+> In Standard, the Analytics workspace is unavailable and new analytics tracking is disabled. Export and permanent purge of retained analytics data remain available under **Search Manager > Utilities > Analytics Data Management**.
 
 ## Retention
 

@@ -23,6 +23,23 @@ return [
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro voegt analyses, zoekregels, promoties, bewerkingen voor openstaande synchronisaties en herbruikbare widgetstijlvoorinstellingen toe.',
     'View Search Manager Pro in the Plugin Store' => 'Search Manager Pro in de Plugin Store bekijken',
 
+    // Edition comparison
+    'Local and external backends' => 'Lokale en externe backends',
+    'BM25, fuzzy matching, operators, transformers, and native-search replacement' => 'BM25, fuzzy matching, operatoren, transformers en vervanging van de standaardzoekfunctie',
+    'REST, GraphQL, API keys, rate limits, and retrievable-field controls' => 'REST, GraphQL, API-sleutels, snelheidslimieten en beheer van ophaalbare velden',
+    'Privacy controls, analytics-data export, and permanent purge' => 'Privacybeheer, export van analysegegevens en permanent wissen',
+    'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting' => 'Volledige modale widget, inclusief zoeken, resultaten, hiërarchie, fragmenten, onlangs bekeken items en markering op de bestemmingspagina',
+    'Twig inline `styles:` overrides and public JavaScript events' => 'Inline Twig-overschrijvingen voor `styles:` en openbare JavaScript-events',
+    'Promotion badge, row-tint, and hidden display modes' => 'Promotiebadge, rijtint en verborgen weergavemodi',
+    'Built-in widget analytics and placement/idle settings' => 'Ingebouwde widgetanalyses en instellingen voor plaatsing/inactiviteit',
+    'Reusable Widget Style presets and style editor' => 'Herbruikbare widgetstijlvoorinstellingen en stijleditor',
+    'Automatic index synchronization plus manual rebuild and clear tools' => 'Automatische indexsynchronisatie plus handmatige hulpmiddelen voor opnieuw opbouwen en wissen',
+    'Pending-sync queue browser and row-level operations' => 'Wachtrijbrowser voor openstaande synchronisaties en bewerkingen per rij',
+    'Analytics-driven cache warming' => 'Door analyses gestuurde cache-opwarming',
+    'Query rules and pinned promotions' => 'Zoekregels en vastgezette promoties',
+    'Eight-tab analytics workspace and exports' => 'Analysewerkruimte met acht tabbladen en exports',
+    'Analytics dashboard widgets' => 'Dashboardwidgets voor analyses',
+
     // Navigation
     'Dashboard' => 'Dashboard',
     'Indices' => 'Indexen',

@@ -23,6 +23,23 @@ return [
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'O Search Manager Pro adiciona análises, regras de consulta, promoções, operações de sincronização pendentes e predefinições de estilo de widget reutilizáveis.',
     'View Search Manager Pro in the Plugin Store' => 'Ver Search Manager Pro na Loja de plugins',
 
+    // Edition comparison
+    'Local and external backends' => 'Backends locais e externos',
+    'BM25, fuzzy matching, operators, transformers, and native-search replacement' => 'BM25, correspondência aproximada, operadores, transformadores e substituição da pesquisa nativa',
+    'REST, GraphQL, API keys, rate limits, and retrievable-field controls' => 'REST, GraphQL, chaves API, limites de taxa e controlos de campos recuperáveis',
+    'Privacy controls, analytics-data export, and permanent purge' => 'Controlos de privacidade, exportação de dados de análise e eliminação permanente',
+    'Complete modal widget, including search, results, hierarchy, snippets, recently viewed, and destination highlighting' => 'Widget modal completo, incluindo pesquisa, resultados, hierarquia, excertos, itens vistos recentemente e realce na página de destino',
+    'Twig inline `styles:` overrides and public JavaScript events' => 'Substituições `styles:` inline do Twig e eventos JavaScript públicos',
+    'Promotion badge, row-tint, and hidden display modes' => 'Emblema de promoção, tonalidade da linha e modos de exibição ocultos',
+    'Built-in widget analytics and placement/idle settings' => 'Análises integradas do widget e definições de posicionamento/tempo limite de inatividade',
+    'Reusable Widget Style presets and style editor' => 'Predefinições reutilizáveis de estilo de widget e editor de estilos',
+    'Automatic index synchronization plus manual rebuild and clear tools' => 'Sincronização automática do índice e ferramentas manuais de reconstrução e limpeza',
+    'Pending-sync queue browser and row-level operations' => 'Navegador da fila de sincronizações pendentes e operações por linha',
+    'Analytics-driven cache warming' => 'Pré-aquecimento de cache baseado em análises',
+    'Query rules and pinned promotions' => 'Regras de consulta e promoções fixadas',
+    'Eight-tab analytics workspace and exports' => 'Área de trabalho de análises com oito separadores e exportações',
+    'Analytics dashboard widgets' => 'Widgets de análises do painel',
+
     // Navigation
     'Dashboard' => 'Painel',
     'Indices' => 'Índices',

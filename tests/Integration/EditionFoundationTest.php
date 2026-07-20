@@ -56,6 +56,22 @@ final class EditionFoundationTest extends TestCase
         ], SearchManager::editions());
     }
 
+    public function testEditionFeaturesMatchThePublishedSplit(): void
+    {
+        $standard = SearchManager::$plugin->getEditionFeatures(SearchManager::EDITION_STANDARD);
+        $pro = SearchManager::$plugin->getEditionFeatures(SearchManager::EDITION_PRO);
+
+        self::assertCount(15, $standard);
+        self::assertCount(15, $pro);
+        self::assertCount(7, array_filter($standard));
+        self::assertCount(15, array_filter($pro));
+
+        self::assertTrue($standard[Craft::t('search-manager', 'Local and external backends')]);
+        self::assertTrue($standard[Craft::t('search-manager', 'Privacy controls, analytics-data export, and permanent purge')]);
+        self::assertFalse($standard[Craft::t('search-manager', 'Eight-tab analytics workspace and exports')]);
+        self::assertTrue($pro[Craft::t('search-manager', 'Eight-tab analytics workspace and exports')]);
+    }
+
     public function testStandardOmitsProPermissionsButKeepsAnalyticsDataControls(): void
     {
         $permissions = $this->registeredPermissionHandles(SearchManager::EDITION_STANDARD);

@@ -2,6 +2,8 @@
 
 Pin a specific product, entry, or page to a fixed spot in your search results — bypassing normal relevance scoring — so it shows up exactly where you want it, every time a query matches. Promotions are built for merchandising, editorial control, and making sure important content wins over whatever the ranking algorithm would otherwise pick.
 
+Promotions require Pro. In Standard, stored promotions remain intact but are not inserted into search results.
+
 ## What you'll use it for
 
 - Feature a specific product when users search for a category
@@ -9,7 +11,7 @@ Pin a specific product, entry, or page to a fixed spot in your search results �
 - Ensure FAQ or support pages appear first for help-related queries
 - Pin announcements for time-sensitive searches
 
-## Create your first promotion
+## Create your first promotion (Pro)
 
 1. Go to **Search Manager → Promotions** and click **New Promotion**.
 2. Give it a **Title** (e.g., "Holiday Sale Banner") — just a descriptive name to help you find it later.

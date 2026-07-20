@@ -2,6 +2,8 @@
 
 Reshape how a specific search behaves — expand it to related terms, boost a section or element above the rest, or send visitors straight to a page instead of a results list — without touching your index or your templates. A query rule is a trigger (a pattern the search query must match) paired with an action (what happens when it does).
 
+Query rules require Pro. In Standard, stored rules remain intact but are not applied to searches.
+
 ## What you'll use it for
 
 - Expand "laptop" searches to also match "notebook" and "macbook" (synonyms)
@@ -10,7 +12,7 @@ Reshape how a specific search behaves — expand it to related terms, boost a se
 - Push a specific FAQ or product page to the top for help-related queries (element boost)
 - Send "contact us" straight to your Contact page instead of a results list (redirect)
 
-## Create your first query rule
+## Create your first query rule (Pro)
 
 1. Go to **Search Manager → Query Rules** and click **New Query Rule**.
 2. Give it a **Name** (e.g., "Laptop Synonyms") — for your own reference.
