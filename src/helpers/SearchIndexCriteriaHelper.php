@@ -26,6 +26,22 @@ final class SearchIndexCriteriaHelper
     private const SOURCE_DOC_ELEMENT_TYPE = 'lindemannrock\\docsmanager\\elements\\SourceDoc';
 
     /**
+     * Return the supported config selector for an element type.
+     *
+     * @since 5.54.0
+     */
+    public static function selectorForElementType(string $elementType): ?string
+    {
+        return match ($elementType) {
+            Entry::class => 'sections',
+            Asset::class => 'volumes',
+            Category::class => 'groups',
+            self::SOURCE_DOC_ELEMENT_TYPE => 'sourceHandles',
+            default => null,
+        };
+    }
+
+    /**
      * @param array<string, mixed>|\Closure $criteria
      */
     public static function apply(ElementQuery $query, string $elementType, array|\Closure $criteria): ElementQuery

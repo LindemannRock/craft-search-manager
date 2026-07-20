@@ -10,6 +10,8 @@ Use this page to:
 
 Most settings can be managed from the CP without touching config files.
 
+Config-defined indices are validated on **Search Manager > Setup**, and blocking findings are also enforced before a targeted rebuild clears existing storage. See [Indices](../feature-tour/indices.md#config-validation-and-readiness) for the accepted keys, strict value rules, and criteria selector forms.
+
 ## Config file
 
 Copy the sample config file to your project:

@@ -18,8 +18,10 @@ use lindemannrock\searchmanager\backends\FileBackend;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
+use lindemannrock\searchmanager\services\ConfigIndexValidator;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -183,6 +185,44 @@ final class RebuildIndexJobPreflightTest extends TestCase
         self::assertSame([], $backend->batchCallsFor(self::CLEAR_FAILURE_INDEX));
     }
 
+    public function testPreflightConsumesSharedConfigIndexValidatorBeforeClear(): void
+    {
+        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        $index = $this->indexModel(self::ALL_GOOD_INDEX, User::class, $siteId);
+        $backend = new RebuildPreflightRecordingBackendService();
+        $backend->seedDocument(self::ALL_GOOD_INDEX, ['elementId' => 904, 'title' => 'Stored before validation']);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $result = new ConfigIndexValidationResult(ConfigIndexValidationResult::STATUS_PRESENT);
+        $result->addFinding(
+            self::ALL_GOOD_INDEX,
+            ConfigIndexValidationResult::SEVERITY_ERROR,
+            'backend',
+            'Synthetic shared-validator failure',
+        );
+        $this->swapPluginComponent(
+            'search-manager',
+            'configIndexValidator',
+            new RebuildRejectingConfigIndexValidator($result),
+        );
+
+        $error = $this->withOnlySearchIndices(
+            [$index],
+            fn(): \RuntimeException => $this->captureRuntimeException(static function(): void {
+                (new RebuildIndexJob([
+                    'indexHandle' => self::ALL_GOOD_INDEX,
+                ]))->execute(Craft::$app->queue);
+            }),
+        );
+
+        self::assertStringContainsString('Synthetic shared-validator failure', $error->getMessage());
+        self::assertSame([], $backend->clearCallsFor(self::ALL_GOOD_INDEX));
+        self::assertSame(
+            [['elementId' => 904, 'title' => 'Stored before validation']],
+            $backend->documentsFor(self::ALL_GOOD_INDEX),
+        );
+    }
+
     private function indexModel(string $handle, string $elementType, int $siteId): SearchIndex
     {
         return new SearchIndex([
@@ -267,6 +307,22 @@ final class RebuildIndexJobPreflightTest extends TestCase
                 ->execute();
         }
         SearchIndex::clearCache();
+    }
+}
+
+/**
+ * @since 5.54.0
+ */
+final class RebuildRejectingConfigIndexValidator extends ConfigIndexValidator
+{
+    public function __construct(private readonly ConfigIndexValidationResult $result, array $config = [])
+    {
+        parent::__construct($config);
+    }
+
+    public function validate(): ConfigIndexValidationResult
+    {
+        return $this->result;
     }
 }
 

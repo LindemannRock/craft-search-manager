@@ -171,6 +171,24 @@ class TransformerService extends Component
      */
     public function resolveTransformerClassForElementType(string $elementType, ?string $transformerClass = null): ?string
     {
+        return $this->resolveTransformerClassForElementTypeInternal($elementType, $transformerClass, true);
+    }
+
+    /**
+     * Resolve a transformer class without producing fallback diagnostics.
+     *
+     * @since 5.54.0
+     */
+    public function resolveTransformerClassForElementTypeSilently(string $elementType, ?string $transformerClass = null): ?string
+    {
+        return $this->resolveTransformerClassForElementTypeInternal($elementType, $transformerClass, false);
+    }
+
+    private function resolveTransformerClassForElementTypeInternal(
+        string $elementType,
+        ?string $transformerClass,
+        bool $logFallback,
+    ): ?string {
         if ($transformerClass && trim($transformerClass) !== '') {
             return trim($transformerClass);
         }
@@ -185,9 +203,11 @@ class TransformerService extends Component
             }
         }
 
-        $this->logDebug('Using AutoTransformer for element type', [
-            'elementType' => $elementType,
-        ]);
+        if ($logFallback) {
+            $this->logDebug('Using AutoTransformer for element type', [
+                'elementType' => $elementType,
+            ]);
+        }
 
         return AutoTransformer::class;
     }

@@ -11,7 +11,9 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\models\Settings;
+use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\ConfigIndexValidator;
 use lindemannrock\searchmanager\services\SetupService;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -31,6 +33,13 @@ final class SetupServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->swapPluginComponent(
+            'search-manager',
+            'configIndexValidator',
+            new SetupFindingConfigIndexValidator(
+                new ConfigIndexValidationResult(ConfigIndexValidationResult::STATUS_ABSENT),
+            ),
+        );
         $this->setup = SearchManager::$plugin->setup;
     }
 
@@ -89,5 +98,62 @@ final class SetupServiceTest extends TestCase
         self::assertFalse($status['complete']);
         self::assertFalse($status['ipSaltConfigured']);
         self::assertSame(['ipSalt'], $status['missing']);
+    }
+
+    public function testGetStatusSurfacesConfigIndexFindings(): void
+    {
+        $settings = new Settings();
+        $settings->ipHashSalt = str_repeat('a', 40);
+        $result = new ConfigIndexValidationResult(ConfigIndexValidationResult::STATUS_PRESENT);
+        $result->addFinding('broken-index', ConfigIndexValidationResult::SEVERITY_ERROR, 'backend', 'Missing backend');
+        $this->swapPluginComponent('search-manager', 'configIndexValidator', new SetupFindingConfigIndexValidator($result));
+
+        $status = $this->setup->getStatus($settings);
+
+        self::assertFalse($status['complete']);
+        self::assertFalse($status['configIndicesValid']);
+        self::assertFalse($status['configIndicesClean']);
+        self::assertSame(['configIndices'], $status['missing']);
+        self::assertSame('broken-index', $status['configIndexFindings'][0]['handle']);
+        self::assertSame('backend', $status['configIndexFindings'][0]['key']);
+    }
+
+    public function testGetStatusGroupsConfigIndexFindingsByHandleAndSeverity(): void
+    {
+        $settings = new Settings();
+        $settings->ipHashSalt = str_repeat('a', 40);
+        $result = new ConfigIndexValidationResult(ConfigIndexValidationResult::STATUS_PRESENT);
+        $result->addFinding('broken-index', ConfigIndexValidationResult::SEVERITY_WARNING, 'name', 'Empty name');
+        $result->addFinding('broken-index', ConfigIndexValidationResult::SEVERITY_ERROR, 'backend', 'Missing backend');
+        $result->addFinding('warning-index', ConfigIndexValidationResult::SEVERITY_WARNING, 'name', 'Empty name');
+        $result->addFinding(null, ConfigIndexValidationResult::SEVERITY_ERROR, 'indices', 'Invalid section');
+        $this->swapPluginComponent('search-manager', 'configIndexValidator', new SetupFindingConfigIndexValidator($result));
+
+        $groups = $this->setup->getStatus($settings)['configIndexFindingGroups'];
+
+        self::assertCount(3, $groups);
+        self::assertSame('broken-index', $groups[0]['handle']);
+        self::assertSame(ConfigIndexValidationResult::SEVERITY_ERROR, $groups[0]['severity']);
+        self::assertCount(2, $groups[0]['findings']);
+        self::assertSame('warning-index', $groups[1]['handle']);
+        self::assertSame(ConfigIndexValidationResult::SEVERITY_WARNING, $groups[1]['severity']);
+        self::assertNull($groups[2]['handle']);
+        self::assertSame(ConfigIndexValidationResult::SEVERITY_ERROR, $groups[2]['severity']);
+    }
+}
+
+/**
+ * @since 5.54.0
+ */
+final class SetupFindingConfigIndexValidator extends ConfigIndexValidator
+{
+    public function __construct(private readonly ConfigIndexValidationResult $result, array $config = [])
+    {
+        parent::__construct($config);
+    }
+
+    public function validate(): ConfigIndexValidationResult
+    {
+        return $this->result;
     }
 }

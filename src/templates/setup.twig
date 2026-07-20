@@ -1,8 +1,10 @@
 {% extends "_layouts/cp" %}
 
 {% set selectedSubnavItem = 'setup' %}
-{% set title = "Set up Search Manager"|t('search-manager') %}
-{% set allComplete = ipSaltConfigured %}
+{% set title = 'Set up {pluginName}'|t('search-manager', {
+    pluginName: searchHelper.fullName,
+}) %}
+{% set allComplete = ipSaltConfigured and configIndicesValid %}
 {% set searchFullNameHtml = searchHelper.fullName|e %}
 
 {% set ipSaltIncompleteBody %}
@@ -24,6 +26,68 @@
     </p>
 {% endset %}
 
+{% set configIndexTasks = [] %}
+
+{% if configIndexFindingGroups is empty %}
+    {% set configIndexTasks = [{
+        done: true,
+        heading: 'Configuration indices'|t('search-manager'),
+        description: 'No configuration index issues found.'|t('search-manager'),
+        complete: {
+            heading: 'Configuration indices are ready.'|t('search-manager'),
+            body: 'Index rebuilds can proceed with the current configuration.'|t('search-manager'),
+        },
+    }] %}
+{% else %}
+    {% for group in configIndexFindingGroups %}
+        {% set groupBody %}
+            <p>
+                {{ group.handle is null
+                    ? 'Review config/search-manager.php before rebuilding affected indices.'|t('search-manager')
+                    : 'Review this index in config/search-manager.php before rebuilding it.'|t('search-manager') }}
+            </p>
+            <ul class="lr-setup-task__list">
+                {% for finding in group.findings %}
+                    {% set findingMessage = finding.message|e %}
+                    {% if finding.emphasis %}
+                        {% set escapedEmphasis = finding.emphasis|e %}
+                        {% set findingMessage = findingMessage|replace({(escapedEmphasis): '<strong>' ~ escapedEmphasis ~ '</strong>'}) %}
+                    {% endif %}
+                    <li>
+                        <strong>{{ finding.severity == 'error' ? 'Error'|t('search-manager') : 'Warning'|t('search-manager') }}:</strong>
+                        {{ findingMessage|raw }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endset %}
+        {% set groupHeading = group.handle is null
+            ? 'Configuration index issues'|t('search-manager')
+            : ('Index'|t('search-manager') ~ ': ' ~ group.handle) %}
+        {% set configIndexTasks = configIndexTasks|merge([{
+            done: group.severity != 'error',
+            heading: loop.first ? 'Configuration indices'|t('search-manager') : null,
+            description: loop.first
+                ? (configIndicesValid
+                    ? 'Configuration indices are valid, with warnings to review.'|t('search-manager')
+                    : '{pluginName} found configuration index issues that can affect indexing.'|t('search-manager', {
+                        pluginName: searchHelper.fullName,
+                    }))
+                : null,
+            complete: {
+                heading: groupHeading,
+                bodyHtml: groupBody,
+                status: 'warning',
+                variant: 'colored',
+            },
+            incomplete: {
+                heading: groupHeading,
+                bodyHtml: groupBody,
+                status: 'error',
+            },
+        }]) %}
+    {% endfor %}
+{% endif %}
+
 {% set setupConfig = {
     plugin: {
         handle: 'search-manager',
@@ -38,36 +102,34 @@
         title: searchHelper.fullName,
         description: 'Complete this step before tracking search analytics.'|t('search-manager'),
     },
-    tasks: [
-        {
-            done: ipSaltConfigured,
-            heading: 'IP salt'|t('search-manager'),
-            description: ipSaltConfigured ? 'Analytics privacy salt is ready for search analytics.'|t('search-manager') : 'Analytics needs a privacy salt before search analytics is ready.'|t('search-manager'),
-            complete: {
-                heading: 'IP hash salt is configured.'|t('search-manager'),
-                body: 'Analytics privacy salt is ready for search analytics.'|t('search-manager'),
-            },
-            incomplete: {
-                heading: 'IP hash salt is missing.'|t('lindemannrock-base'),
-                bodyHtml: ipSaltIncompleteBody,
-                commands: [
-                    {
-                        legend: 'Standard:'|t('lindemannrock-base'),
-                        value: 'php craft search-manager/security/generate-salt',
-                        copyLabel: 'Copy'|t('lindemannrock-base'),
-                        copiedMessage: 'Copied!'|t('lindemannrock-base'),
-                    },
-                    {
-                        legend: 'DDEV:'|t('lindemannrock-base'),
-                        value: 'ddev craft search-manager/security/generate-salt',
-                        copyLabel: 'Copy'|t('lindemannrock-base'),
-                        copiedMessage: 'Copied!'|t('lindemannrock-base'),
-                    },
-                ],
-                footerHtml: ipSaltFooter,
-            },
+    tasks: [{
+        done: ipSaltConfigured,
+        heading: 'IP salt'|t('search-manager'),
+        description: ipSaltConfigured ? 'Analytics privacy salt is ready for search analytics.'|t('search-manager') : 'Analytics needs a privacy salt before search analytics is ready.'|t('search-manager'),
+        complete: {
+            heading: 'IP hash salt is configured.'|t('search-manager'),
+            body: 'Analytics privacy salt is ready for search analytics.'|t('search-manager'),
         },
-    ],
+        incomplete: {
+            heading: 'IP hash salt is missing.'|t('lindemannrock-base'),
+            bodyHtml: ipSaltIncompleteBody,
+            commands: [
+                {
+                    legend: 'Standard:'|t('lindemannrock-base'),
+                    value: 'php craft search-manager/security/generate-salt',
+                    copyLabel: 'Copy'|t('lindemannrock-base'),
+                    copiedMessage: 'Copied!'|t('lindemannrock-base'),
+                },
+                {
+                    legend: 'DDEV:'|t('lindemannrock-base'),
+                    value: 'ddev craft search-manager/security/generate-salt',
+                    copyLabel: 'Copy'|t('lindemannrock-base'),
+                    copiedMessage: 'Copied!'|t('lindemannrock-base'),
+                },
+            ],
+            footerHtml: ipSaltFooter,
+        },
+    }]|merge(configIndexTasks),
 } %}
 
 {% block content %}

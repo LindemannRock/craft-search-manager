@@ -40,17 +40,17 @@ An index is a collection of searchable documents derived from Craft elements. Ea
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `name` | `string` | (required) | Display name for the index |
-| `elementType` | `string` | (required) | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, Commerce `Product::class` / `Variant::class`, etc.) |
+| `name` | `string` | Outer handle in config; required in CP | Display name for the index. An empty config value is allowed but produces a Setup warning and a blank CP label |
+| `elementType` | `string` | `Entry::class` in config; required in CP | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, Commerce `Product::class` / `Variant::class`, etc.) |
 | `siteId` | `int\|array\|null` | `null` | Site(s) to index. `null` = all sites |
-| `criteria` | `callable` | `null` | Callback to filter elements (receives an ElementQuery) |
+| `criteria` | `array\|Closure` | `[]` | Selector list or callback used to filter elements |
 | `transformer` | `string` | `null` | Autoloadable zero-argument transformer class for custom document structure |
 | `enabled` | `bool` | `true` | Whether the index is active |
 | `backend` | `string` | `null` | Handle of a configured backend to use (overrides global default) |
 | `language` | `string` | `null` | Language code (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`). `null` = auto-detect from site locale |
 | `headingLevels` | `array` | `null` | Heading levels to extract for heading matching (e.g., `[2, 3, 4]`) — see [Heading levels](#heading-levels) below |
 | `splitSections` | `bool` | `false` | For SourceDoc/DocsManagerTransformer-family or AutoTransformer-family indices, index intro and heading sections as separate hits when headings are present |
-| `retrievableFields` | `array` | `['*']` | Which custom-field values public hits return. `['*']` = all, `[]` = none, or list handles — see [Retrievable Fields](#retrievable-fields) |
+| `retrievableFields` | `array\|string` | `['*']` | Which custom-field values public hits return. `['*']` = all, `[]` = none, a list of handles, or a comma/newline-delimited string — see [Retrievable Fields](#retrievable-fields) |
 | `disableStopWords` | `bool` | `false` | Disable stop word filtering for this index |
 | `skipEntriesWithoutUrl` | `bool` | `false` | Skip entries that don't have a URL |
 | `enableAnalytics` | `bool` | `true` | Whether to track analytics for searches on this index |
@@ -81,6 +81,16 @@ Define indices in `config/search-manager.php`:
     ],
 ],
 ```
+
+### Config validation and readiness
+
+Search Manager checks config-defined indices without executing them or changing stored data. Open **Search Manager > Setup** to see errors and warnings; the same summary appears on Search Manager CP pages until the issues are resolved. Errors block a targeted rebuild before its backend is cleared. Warnings identify suspicious but still functional configuration, such as an empty display name.
+
+The `indices` section must be an array keyed by valid index handles. Each index must also be an array and may contain only the options in [Index options](#index-options). Values are checked strictly: booleans must be PHP booleans, site IDs must be existing positive IDs, heading levels must be unique integers from 1 through 6, backend handles must identify enabled configured backends, and element and transformer classes must exist and satisfy their required interfaces. Array values that Search Manager persists must also be JSON-encodable. A legacy backend type such as `file` or `mysql` is not a backend handle unless you have configured a backend with that exact handle.
+
+A `criteria` Closure is intentionally not run while rendering Setup. Its query and return type are checked during rebuild preflight, before any existing backend index is cleared. Because Closure bodies cannot be compared reliably, changing only a Closure body does not automatically queue a rebuild; explicitly rebuild that index after deploying the change.
+
+Setting `enabled` to `false` removes an index from normal search, content synchronization, and rebuild-all operations. You can still target that index explicitly from the CP or console when you need to prepare its storage before enabling it.
 
 ### Docs Manager integration
 
@@ -197,7 +207,26 @@ When indexing multiple sites, each element is stored with its `siteId`. This all
 
 ## Filtering with criteria
 
-The `criteria` callback receives a Craft ElementQuery and should return it with filters applied:
+For predictable config diffs, use the array form when one of the built-in selectors is enough:
+
+```php
+'criteria' => [
+    'sections' => ['news', 'blog'],
+],
+```
+
+The supported selector depends on the exact element type:
+
+| Element type | Selector |
+|--------------|----------|
+| `craft\elements\Entry` | `sections` |
+| `craft\elements\Asset` | `volumes` |
+| `craft\elements\Category` | `groups` |
+| Docs Manager `SourceDoc` | `sourceHandles` |
+
+Selector values must be nonempty lists of existing handles. Unknown keys and unresolved handles appear as Setup errors. At runtime Craft retains its normal matches-nothing behavior if a referenced selector later becomes unavailable.
+
+For more advanced filtering, a `criteria` Closure receives a Craft ElementQuery and must return it with filters applied:
 
 ```php
 'criteria' => function($query) {
@@ -207,7 +236,7 @@ The `criteria` callback receives a Craft ElementQuery and should return it with 
 },
 ```
 
-This is equivalent to building an element query in Twig — any method available on the element query works here.
+This is equivalent to building an element query in Twig — any method available on the element query works here. Search Manager never invokes the Closure just to display Setup readiness; it validates the Closure at rebuild time before clearing the index.
 
 For SourceDoc elements, the `sourceHandle()` method is available to scope by source:
 
@@ -257,7 +286,7 @@ The concept is similar to Algolia's `attributesToRetrieve`, Meilisearch's displa
 - **Heading matching** — the headings shown under a search result, so visitors can jump straight to the matching part of a long page.
 - **Split Sections slicing** — when `splitSections` is enabled, it's also where Search Manager cuts a page into separate per-heading records (see [Docs Manager integration](#docs-manager-integration) above).
 
-The default is `[2, 3, 4]` — H2 through H4, the common range for content subheadings, skipping the page-level H1. Change it if your content structure uses different levels: add `5` if your pages nest sections that deep, or narrow to `[2, 3]` if your H4s are decorative rather than structural. Values outside 1–6 are ignored, and if none of the configured levels are valid, Search Manager falls back to the default.
+The default is `[2, 3, 4]` — H2 through H4, the common range for content subheadings, skipping the page-level H1. Change it if your content structure uses different levels: add `5` if your pages nest sections that deep, or narrow to `[2, 3]` if your H4s are decorative rather than structural. Config-defined values must be a nonempty list of unique integers from 1 through 6; invalid values appear in Setup and block rebuild preflight.
 
 ### Disable stop words
 
@@ -269,6 +298,8 @@ Some indices may contain technical content where stop words are meaningful:
     // ...
 ],
 ```
+
+A syntactically valid language code is allowed even when Search Manager does not bundle a matching stop-word file. This supports project-provided stop-word files; without one, Search Manager logs the missing file and continues without stop-word filtering for that language.
 
 ### Disable analytics
 

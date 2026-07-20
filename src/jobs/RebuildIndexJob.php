@@ -190,6 +190,13 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
      */
     private function preflightIndexRebuild(string $indexHandle, ?SearchIndex $preloadedIndex = null): array
     {
+        $configValidation = SearchManager::$plugin->configIndexValidator->validate();
+        if ($configValidation->hasErrors($indexHandle)) {
+            $findings = $configValidation->getFindingsForHandle($indexHandle);
+            $message = $findings[0]['message'] ?? 'config index validation failed';
+            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': {$message}");
+        }
+
         $index = $preloadedIndex ?? SearchIndex::findByHandle($indexHandle);
         if (!$index) {
             throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': index model could not be resolved.");

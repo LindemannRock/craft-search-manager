@@ -22,6 +22,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 
 - **Standard and Pro Editions** — Standard includes the complete search engine and developer toolkit; Pro adds analytics, merchandising, operations, and reusable widget styling
 - **7 Search Backends** — MySQL, PostgreSQL, Redis, File (built-in), plus Algolia, Meilisearch, Typesense
+- **Config Index Readiness** — Setup reports per-index configuration errors and warnings, and rebuild preflight blocks unsafe clears
 - **BM25 Ranking** — Industry-standard relevance scoring with configurable parameters
 - **Search Operators** — Phrase search, NOT, wildcards, field-specific, per-term boosting, boolean operators
 - **Fuzzy Matching** — Typo tolerance with n-gram similarity

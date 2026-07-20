@@ -230,32 +230,42 @@ class SearchIndex extends Model
             return; // Null/empty is allowed
         }
 
-        // Validate format: must look like a PHP fully-qualified class name
-        if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*(\\\\[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*)*$/', $transformerClass)) {
-            $this->addError($attribute, Craft::t('search-manager', 'Transformer class must be a valid PHP class name (e.g., modules\\search\\transformers\\MyTransformer).'));
-            return;
-        }
-
-        // Check if class exists
-        if (!class_exists($transformerClass)) {
-            $this->addError($attribute, Craft::t('search-manager', 'Transformer class does not exist: {class}', [
-                'class' => $transformerClass,
-            ]));
-            $this->logWarning('Invalid transformer class in config', [
-                'handle' => $this->handle,
-                'transformer' => $transformerClass,
-            ]);
-            return;
-        }
-
-        $contractError = self::transformerClassContractError($transformerClass);
-        if ($contractError !== null) {
-            $this->addError($attribute, $contractError);
+        $error = self::transformerClassValidationError($transformerClass);
+        if ($error !== null) {
+            $this->addError($attribute, $error);
             $this->logWarning('Invalid transformer class contract in config', [
                 'handle' => $this->handle,
                 'transformer' => $transformerClass,
             ]);
         }
+    }
+
+    /**
+     * Return the validation error for a configured transformer class.
+     *
+     * This is the side-effect-free transformer contract used by config-index
+     * readiness checks and model validation.
+     *
+     * @since 5.54.0
+     */
+    public static function transformerClassValidationError(?string $transformerClass): ?string
+    {
+        $transformerClass = trim((string)$transformerClass);
+        if ($transformerClass === '') {
+            return null;
+        }
+
+        if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*(\\\\[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*)*$/', $transformerClass)) {
+            return Craft::t('search-manager', 'Transformer class must be a valid PHP class name (e.g., modules\\search\\transformers\\MyTransformer).');
+        }
+
+        if (!class_exists($transformerClass)) {
+            return Craft::t('search-manager', 'Transformer class does not exist: {class}', [
+                'class' => $transformerClass,
+            ]);
+        }
+
+        return self::transformerClassContractError($transformerClass);
     }
 
     /**
@@ -2128,13 +2138,6 @@ class SearchIndex extends Model
         $configuredBackend = ConfiguredBackend::findByHandle($backendHandle);
         if ($configuredBackend) {
             return $configuredBackend->backendType;
-        }
-
-        // If not found as a configured backend, it might be a legacy backend type directly
-        // (for backwards compatibility during migration)
-        $validTypes = ['algolia', 'meilisearch', 'typesense', 'mysql', 'pgsql', 'redis', 'file'];
-        if (in_array($backendHandle, $validTypes, true)) {
-            return $backendHandle;
         }
 
         return null;

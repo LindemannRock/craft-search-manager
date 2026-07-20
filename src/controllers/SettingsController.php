@@ -76,6 +76,9 @@ class SettingsController extends Controller
             'pluginHeroStyle' => PluginThemeStyleHelper::heroCssVarsFromSvg($iconSvg),
             'logoPaths' => PluginHelper::lrLogoPaths(),
             'ipSaltConfigured' => $setupStatus['ipSaltConfigured'],
+            'configIndicesValid' => $setupStatus['configIndicesValid'],
+            'configIndicesClean' => $setupStatus['configIndicesClean'],
+            'configIndexFindingGroups' => $setupStatus['configIndexFindingGroups'],
         ]);
     }
 

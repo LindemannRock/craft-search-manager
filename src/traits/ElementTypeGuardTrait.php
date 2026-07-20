@@ -8,6 +8,7 @@
 
 namespace lindemannrock\searchmanager\traits;
 
+use craft\base\ElementInterface;
 use lindemannrock\base\helpers\PluginHelper;
 
 /**
@@ -21,7 +22,7 @@ trait ElementTypeGuardTrait
 {
     protected function isElementTypeAvailable(string $elementType, string $context): bool
     {
-        if (class_exists($elementType)) {
+        if ($this->hasValidElementTypeContract($elementType)) {
             return true;
         }
 
@@ -35,12 +36,19 @@ trait ElementTypeGuardTrait
             return false;
         }
 
-        $this->logWarning('Element type class not found; skipping', [
+        $this->logWarning(class_exists($elementType)
+            ? 'Element type does not implement ElementInterface; skipping'
+            : 'Element type class not found; skipping', [
             'elementType' => $elementType,
             'context' => $context,
         ]);
 
         return false;
+    }
+
+    protected function hasValidElementTypeContract(string $elementType): bool
+    {
+        return class_exists($elementType) && is_subclass_of($elementType, ElementInterface::class);
     }
 
     protected function getPluginHandleForElementType(string $elementType): ?string
