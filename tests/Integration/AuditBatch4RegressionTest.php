@@ -40,10 +40,12 @@ final class AuditBatch4RegressionTest extends TestCase
     {
         $source = $this->readPluginSource('src/jobs/RebuildIndexJob.php');
         $singleBody = $this->methodBody($source, 'rebuildSingleIndex');
+        $preflightBody = $this->methodBody($source, 'preflightIndexRebuild');
         $allBody = $this->methodBody($source, 'rebuildAllIndices');
 
         self::assertStringContainsString('?SearchIndex $preloadedIndex = null', $source);
-        self::assertStringContainsString('$index = $preloadedIndex ?? SearchIndex::findByHandle($indexHandle);', $singleBody);
+        self::assertStringContainsString('$this->preflightIndexRebuild($indexHandle, $preloadedIndex)', $singleBody);
+        self::assertStringContainsString('$index = $preloadedIndex ?? SearchIndex::findByHandle($indexHandle);', $preflightBody);
         self::assertStringContainsString('$this->rebuildSingleIndex(', $allBody);
         self::assertStringContainsString('$index->handle,', $allBody);
         self::assertStringContainsString('$index,', $allBody);

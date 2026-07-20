@@ -29,13 +29,14 @@ final class AuditItem278RegressionTest extends TestCase
         self::assertStringNotContainsString('$batchIndex / count($batches)', $body);
     }
 
-    public function testSingleIndexRebuildProgressHandlesNoSitesAndEmptyBatches(): void
+    public function testSingleIndexRebuildRejectsNoSitesAndHandlesEmptyBatches(): void
     {
         $source = $this->readPluginSource('src/jobs/RebuildIndexJob.php');
         $body = $this->methodBody($source, 'rebuildSingleIndex');
+        $preflightBody = $this->methodBody($source, 'preflightIndexRebuild');
 
-        self::assertStringContainsString('if (empty($sitesToIndex))', $body);
-        self::assertStringContainsString('$this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);', $body);
+        self::assertStringContainsString('if ($sitesToIndex === [])', $preflightBody);
+        self::assertStringContainsString('site resolution produced no valid sites', $preflightBody);
         self::assertStringContainsString('if ($batchCount === 0)', $body);
         self::assertStringContainsString('($siteIndex + 1) / count($sitesToIndex)', $body);
     }

@@ -17,6 +17,7 @@ use craft\elements\User;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
+use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
@@ -251,6 +252,11 @@ final class AuditItem362RecordingBackendService extends BackendService
      * @var list<array{method: string, indexName: string, items?: list<array<string, mixed>>}>
      */
     private array $calls = [];
+
+    public function getBackendForIndex(string $indexName): ?BackendInterface
+    {
+        return new \lindemannrock\searchmanager\backends\FileBackend();
+    }
 
     public function clearIndex(string $indexName): bool
     {

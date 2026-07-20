@@ -18,6 +18,7 @@ use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\jobs\CacheWarmJob;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
+use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\AutocompleteService;
@@ -225,6 +226,11 @@ final class EditionCacheWarmingBackendService extends BackendService
      * @var list<array{method: string, indexName: string, items?: list<array<string, mixed>>}>
      */
     private array $calls = [];
+
+    public function getBackendForIndex(string $indexName): ?BackendInterface
+    {
+        return new \lindemannrock\searchmanager\backends\FileBackend();
+    }
 
     public function clearIndex(string $indexName): bool
     {

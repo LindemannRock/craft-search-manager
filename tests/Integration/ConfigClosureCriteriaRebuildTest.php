@@ -16,6 +16,7 @@ use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
+use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -255,6 +256,11 @@ final class ConfigClosureCriteriaRecordingBackendService extends BackendService
 {
     /** @var list<array<string, mixed>> */
     private array $indexedItems = [];
+
+    public function getBackendForIndex(string $indexName): ?BackendInterface
+    {
+        return new \lindemannrock\searchmanager\backends\FileBackend();
+    }
 
     public function clearIndex(string $indexName): bool
     {

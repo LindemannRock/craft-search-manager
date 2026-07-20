@@ -9,12 +9,14 @@
 namespace lindemannrock\searchmanager\jobs;
 
 use Craft;
-use craft\db\Query;
+use craft\elements\db\ElementQuery;
 use craft\queue\BaseJob;
 use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
+use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
@@ -67,70 +69,24 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         float $progressStart = 0.0,
         float $progressEnd = 1.0,
     ): void {
-        $index = $preloadedIndex ?? SearchIndex::findByHandle($indexHandle);
-
-        if (!$index) {
-            $this->logError('Index not found', ['handle' => $indexHandle]);
-            $this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);
-            return;
-        }
-
-        // Sync config indices metadata before rebuilding
-        if ($index->source === 'config') {
-            $this->logInfo('Config index detected - syncing metadata', [
-                'handle' => $indexHandle,
-                'hasId' => $index->id ? 'YES' : 'NO',
-                'name' => $index->name,
-                'transformer' => $index->transformerClass,
-            ]);
-            $synced = $index->syncMetadataFromConfig();
-            $this->logInfo('Sync result: ' . ($synced ? 'SUCCESS' : 'FAILED'));
-        }
+        $preflight = $this->preflightIndexRebuild($indexHandle, $preloadedIndex);
+        $index = $preflight['index'];
+        $elementType = $preflight['elementType'];
+        $siteQueries = $preflight['siteQueries'];
+        $sitesToIndex = array_keys($siteQueries);
 
         $this->logInfo('Rebuilding index', ['handle' => $indexHandle]);
 
         // Clear existing index
-        SearchManager::$plugin->backend->clearIndex($indexHandle);
-
-        // Get element type
-        /** @var string $elementType */
-        $elementType = $index->elementType;
-        if (!$this->isElementTypeAvailable($elementType, 'rebuild-index')) {
-            $this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);
-            return;
-        }
-
-        // For "All Sites" indices, we need to index each site separately
-        $sitesToIndex = $index->getSiteIds();
-        if ($sitesToIndex === null) {
-            // Get all site IDs
-            $sitesToIndex = [];
-            foreach (Craft::$app->getSites()->getAllSites() as $site) {
-                $sitesToIndex[] = $site->id;
-            }
-        }
-
-        if (empty($sitesToIndex)) {
-            $this->logWarning('No sites to index for index', ['handle' => $index->handle]);
-            $this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);
-            return;
+        if (!SearchManager::$plugin->backend->clearIndex($indexHandle)) {
+            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': backend clear failed.");
         }
 
         $totalIndexed = 0;
         $batchSize = SearchManager::$plugin->getSettings()->batchSize;
 
-        foreach ($sitesToIndex as $siteIndex => $siteId) {
-            // Query elements for this specific site (exclude drafts and revisions)
-            $siteQuery = $elementType::find()
-                ->siteId($siteId)
-                ->drafts(false)
-                ->revisions(false);
-
-            // Apply criteria
-            if (!empty($index->criteria)) {
-                $siteQuery = SearchIndexCriteriaHelper::apply($siteQuery, $elementType, $index->criteria);
-            }
-
+        foreach (array_values($siteQueries) as $siteIndex => $siteQuery) {
+            $siteId = $sitesToIndex[$siteIndex];
             $elementIds = $siteQuery->ids();
 
             $this->logInfo('Found elements to index for site', [
@@ -227,6 +183,149 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         $this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);
     }
 
+    /**
+     * Resolve every dependency needed for a rebuild before storage is cleared.
+     *
+     * @return array{index: SearchIndex, elementType: string, siteQueries: array<int, ElementQuery>}
+     */
+    private function preflightIndexRebuild(string $indexHandle, ?SearchIndex $preloadedIndex = null): array
+    {
+        $index = $preloadedIndex ?? SearchIndex::findByHandle($indexHandle);
+        if (!$index) {
+            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': index model could not be resolved.");
+        }
+
+        if ($index->source === 'config') {
+            $this->logInfo('Config index detected - syncing metadata', [
+                'handle' => $indexHandle,
+                'hasId' => $index->id ? 'YES' : 'NO',
+                'name' => $index->name,
+                'transformer' => $index->transformerClass,
+            ]);
+
+            if (!$index->syncMetadataFromConfig()) {
+                throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': config metadata sync failed.");
+            }
+
+            $this->logInfo('Sync result: SUCCESS');
+        }
+
+        $elementType = $index->elementType;
+        if (!$this->isElementTypeAvailable($elementType, 'rebuild-index-preflight')) {
+            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': element type '{$elementType}' is not available.");
+        }
+
+        $sitesToIndex = $index->getSiteIds();
+        if ($sitesToIndex === null) {
+            $sitesToIndex = array_map(
+                static fn($site): int => (int)$site->id,
+                Craft::$app->getSites()->getAllSites(),
+            );
+        }
+
+        if ($sitesToIndex === []) {
+            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': site resolution produced no valid sites.");
+        }
+
+        $invalidSiteIds = [];
+        foreach ($sitesToIndex as $siteId) {
+            if (Craft::$app->getSites()->getSiteById($siteId) === null) {
+                $invalidSiteIds[] = $siteId;
+            }
+        }
+
+        if ($invalidSiteIds !== []) {
+            throw new \RuntimeException(
+                "Cannot rebuild index '{$indexHandle}': site resolution failed for ID(s) " . implode(', ', $invalidSiteIds) . '.',
+            );
+        }
+
+        $siteQueries = [];
+        foreach ($sitesToIndex as $siteId) {
+            try {
+                $siteQuery = $elementType::find()
+                    ->siteId($siteId)
+                    ->drafts(false)
+                    ->revisions(false);
+
+                if (!empty($index->criteria)) {
+                    $siteQuery = SearchIndexCriteriaHelper::apply($siteQuery, $elementType, $index->criteria);
+                }
+            } catch (\Throwable $e) {
+                throw new \RuntimeException(
+                    "Cannot rebuild index '{$indexHandle}': element query construction failed for site {$siteId}: {$e->getMessage()}",
+                    0,
+                    $e,
+                );
+            }
+
+            $siteQueries[$siteId] = $siteQuery;
+        }
+
+        try {
+            $transformerClass = SearchManager::$plugin->transformers->resolveTransformerClassForElementType(
+                $elementType,
+                $index->transformerClass,
+            );
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(
+                "Cannot rebuild index '{$indexHandle}': transformer resolution failed: {$e->getMessage()}",
+                0,
+                $e,
+            );
+        }
+        $this->assertTransformerResolvable($indexHandle, $transformerClass);
+
+        try {
+            $backend = SearchManager::$plugin->backend->getBackendForIndex($indexHandle);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(
+                "Cannot rebuild index '{$indexHandle}': backend resolution failed: {$e->getMessage()}",
+                0,
+                $e,
+            );
+        }
+        if (!$backend instanceof BackendInterface) {
+            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': backend could not be resolved.");
+        }
+
+        return [
+            'index' => $index,
+            'elementType' => $elementType,
+            'siteQueries' => $siteQueries,
+        ];
+    }
+
+    private function assertTransformerResolvable(string $indexHandle, ?string $transformerClass): void
+    {
+        if ($transformerClass === null || !class_exists($transformerClass)) {
+            $label = $transformerClass ?: '(none)';
+            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': transformer '{$label}' could not be resolved.");
+        }
+
+        try {
+            $reflection = new \ReflectionClass($transformerClass);
+            $constructor = $reflection->getConstructor();
+            if (
+                !$reflection->implementsInterface(TransformerInterface::class)
+                || !$reflection->isInstantiable()
+                || ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0)
+            ) {
+                throw new \RuntimeException('the class is not a constructible TransformerInterface implementation');
+            }
+
+            $transformer = $reflection->newInstance();
+            if (!$transformer instanceof TransformerInterface) {
+                throw new \RuntimeException('the constructed object does not implement TransformerInterface');
+            }
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(
+                "Cannot rebuild index '{$indexHandle}': transformer '{$transformerClass}' could not be resolved: {$e->getMessage()}",
+                0,
+                $e,
+            );
+        }
+    }
 
     private function rebuildAllIndices($queue): void
     {
@@ -241,17 +340,37 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
             return;
         }
 
+        $failures = [];
         foreach ($indices as $i => $index) {
-            $this->rebuildSingleIndex(
-                $queue,
-                $index->handle,
-                $index,
-                $i / $indexCount,
-                ($i + 1) / $indexCount,
-            );
+            try {
+                $this->rebuildSingleIndex(
+                    $queue,
+                    $index->handle,
+                    $index,
+                    $i / $indexCount,
+                    ($i + 1) / $indexCount,
+                );
+            } catch (\Throwable $e) {
+                $failures[$index->handle] = $e->getMessage();
+                $this->logError('Index rebuild failed; continuing with remaining indices', [
+                    'handle' => $index->handle,
+                    'error' => $e->getMessage(),
+                ]);
+                $this->setRebuildProgress($queue, 1.0, $i / $indexCount, ($i + 1) / $indexCount);
+            }
         }
 
         $this->setProgress($queue, 1.0);
+
+        if ($failures !== []) {
+            $failureSummary = implode('; ', array_map(
+                static fn(string $handle, string $message): string => "{$handle}: {$message}",
+                array_keys($failures),
+                array_values($failures),
+            ));
+
+            throw new \RuntimeException('Rebuild all indices completed with failures: ' . $failureSummary);
+        }
     }
 
     private function setRebuildProgress($queue, float $progress, float $start = 0.0, float $end = 1.0): void
