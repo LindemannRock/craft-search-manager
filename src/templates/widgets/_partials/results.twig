@@ -100,8 +100,11 @@
 		}) }}
 	</div>
 {% else %}
-	{% include 'search-manager/_partials/upgrade-prompt' with {
+	{% include 'lindemannrock-base/_partials/edition-upgrade-prompt' with {
+		plugin: craft.searchManager.plugin,
+		edition: constant('lindemannrock\\searchmanager\\SearchManager::EDITION_PRO'),
 		featureName: 'Promotion Display',
+		pitch: 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.'|t('search-manager'),
 		compact: true,
 	} only %}
 {% endif %}

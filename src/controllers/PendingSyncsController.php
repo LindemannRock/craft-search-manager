@@ -39,7 +39,7 @@ class PendingSyncsController extends Controller
     /** @inheritdoc */
     public function beforeAction($action): bool
     {
-        if (SearchManager::$plugin->requireProOrPrompt('Pending Syncs') !== null) {
+        if (SearchManager::$plugin->requireEditionOrPrompt(SearchManager::EDITION_PRO, 'Pending Syncs') !== null) {
             return false;
         }
 

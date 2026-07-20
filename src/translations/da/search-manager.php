@@ -18,10 +18,7 @@ return [
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'Konfigurer backends, tilpas indeksering og administrer søgeadfærd fra ét arbejdsområde i kontrolpanelet.',
     'Complete setup' => 'Fuldfør opsætning',
     'Quick Actions' => 'Hurtige handlinger',
-    'This feature' => 'Denne funktion',
-    '{feature} requires Search Manager Pro' => '{feature} kræver Search Manager Pro',
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro tilføjer analyser, forespørgselsregler, kampagner, handlinger for afventende synkroniseringer og genanvendelige widgetstilforudindstillinger.',
-    'View Search Manager Pro in the Plugin Store' => 'Vis Search Manager Pro i Pluginbutik',
 
     // Edition comparison
     'Local and external backends' => 'Lokale og eksterne backends',

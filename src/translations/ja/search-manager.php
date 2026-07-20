@@ -18,10 +18,7 @@ return [
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'バックエンドの設定、インデックスの調整、検索動作の管理をコントロールパネルの 1 つのワークスペースから行います。',
     'Complete setup' => 'セットアップを完了する',
     'Quick Actions' => 'クイックアクション',
-    'This feature' => 'この機能',
-    '{feature} requires Search Manager Pro' => '{feature} には Search Manager Pro が必要です',
     'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.' => 'Search Manager Pro では、アナリティクス、クエリルール、プロモーション、保留中の同期操作、再利用可能なウィジェットスタイルプリセットを利用できます。',
-    'View Search Manager Pro in the Plugin Store' => 'プラグインストアで Search Manager Pro を表示する',
 
     // Edition comparison
     'Local and external backends' => 'ローカルおよび外部バックエンド',

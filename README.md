@@ -48,6 +48,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 
 - Craft CMS 5.10+
 - PHP 8.2+
+- [LindemannRock Plugin Base](https://github.com/LindemannRock/craft-plugin-base) 5.36+ (required by Composer)
 - [Logging Library](https://github.com/LindemannRock/craft-logging-library) 5.16+ (required by Composer; install in CP for log viewing)
 
 ## Installation

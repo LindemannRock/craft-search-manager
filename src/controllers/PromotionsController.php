@@ -41,7 +41,7 @@ class PromotionsController extends Controller
     /** @inheritdoc */
     public function beforeAction($action): bool
     {
-        if (SearchManager::$plugin->requireProOrPrompt('Promotions') !== null) {
+        if (SearchManager::$plugin->requireEditionOrPrompt(SearchManager::EDITION_PRO, 'Promotions') !== null) {
             return false;
         }
 

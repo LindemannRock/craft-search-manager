@@ -29,10 +29,6 @@ use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\services\Utilities;
 use craft\utilities\ClearCaches;
-use craft\web\Application as WebApplication;
-use craft\web\Controller as WebController;
-use craft\web\Request as WebRequest;
-use craft\web\Response;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
 use craft\web\View;
@@ -191,48 +187,6 @@ class SearchManager extends Plugin
             Craft::t('search-manager', 'Eight-tab analytics workspace and exports') => $includesProFeatures,
             Craft::t('search-manager', 'Analytics dashboard widgets') => $includesProFeatures,
         ];
-    }
-
-    /**
-     * Require Pro access, rendering an upgrade prompt for CP page requests.
-     *
-     * Action, JSON, site, API, and console requests retain the exception-based
-     * contract provided by {@see EditionTrait::requireEdition()}.
-     *
-     * @param string|null $featureName
-     * @return Response|null
-     * @since 5.54.0
-     */
-    public function requireProOrPrompt(?string $featureName = null): ?Response
-    {
-        if ($this->isPro()) {
-            return null;
-        }
-
-        $request = Craft::$app->getRequest();
-        $application = Craft::$app;
-
-        if (
-            $application instanceof WebApplication &&
-            $request instanceof WebRequest &&
-            $request->getIsCpRequest() &&
-            !$request->getIsActionRequest() &&
-            !$request->getAcceptsJson()
-        ) {
-            $controller = $application->controller;
-
-            if ($controller instanceof WebController) {
-                return $controller->asCpScreen()
-                    ->title($this->getSettings()->getFullName())
-                    ->contentTemplate('search-manager/_partials/upgrade-prompt', [
-                        'featureName' => $featureName,
-                    ]);
-            }
-        }
-
-        $this->requireEdition(self::EDITION_PRO, $featureName);
-
-        return null;
     }
 
     // =========================================================================

@@ -98,22 +98,27 @@ final class EditionFoundationTest extends TestCase
     {
         $this->withEdition(SearchManager::EDITION_STANDARD, function(): void {
             $this->expectException(ForbiddenHttpException::class);
-            SearchManager::$plugin->requireProOrPrompt('Analytics');
+            SearchManager::$plugin->requireEditionOrPrompt(SearchManager::EDITION_PRO, 'Analytics');
         });
     }
 
     public function testProGatePassesWithoutResponse(): void
     {
         $this->withEdition(SearchManager::EDITION_PRO, function(): void {
-            self::assertNull(SearchManager::$plugin->requireProOrPrompt('Analytics'));
+            self::assertNull(SearchManager::$plugin->requireEditionOrPrompt(SearchManager::EDITION_PRO, 'Analytics'));
         });
     }
 
     public function testUpgradePromptRendersFeatureAndPluginStoreLink(): void
     {
         $html = Craft::$app->getView()->renderTemplate(
-            'search-manager/_partials/upgrade-prompt',
-            ['featureName' => 'Analytics'],
+            'lindemannrock-base/_partials/edition-upgrade-prompt',
+            [
+                'plugin' => SearchManager::$plugin,
+                'edition' => SearchManager::EDITION_PRO,
+                'featureName' => 'Analytics',
+                'pitch' => Craft::t('search-manager', 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.'),
+            ],
             View::TEMPLATE_MODE_CP,
         );
 

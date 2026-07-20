@@ -78,7 +78,7 @@ final class SettingsControllerSectionScopeTest extends TestCase
         self::assertStringContainsString('{% set isPro = craft.searchManager.plugin.isPro() %}', $cache);
         self::assertStringContainsString('{% if isPro %}', $cache);
         self::assertStringContainsString("featureName: 'Cache Warming'", $cache);
-        self::assertStringContainsString("'search-manager/_partials/upgrade-prompt'", $cache);
+        self::assertStringContainsString("'lindemannrock-base/_partials/edition-upgrade-prompt'", $cache);
     }
 
     public function testSnippetTemplateHelperSettingsLiveOnSnippetsSectionOnly(): void

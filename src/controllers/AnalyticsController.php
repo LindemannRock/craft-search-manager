@@ -44,7 +44,7 @@ class AnalyticsController extends Controller
      */
     private function requireProAnalytics(): ?Response
     {
-        return SearchManager::$plugin->requireProOrPrompt('Analytics');
+        return SearchManager::$plugin->requireEditionOrPrompt(SearchManager::EDITION_PRO, 'Analytics');
     }
 
     /**

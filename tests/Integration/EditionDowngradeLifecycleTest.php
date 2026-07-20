@@ -203,8 +203,13 @@ final class EditionDowngradeLifecycleTest extends TestCase
         Craft::$app->getView()->setTemplateMode(View::TEMPLATE_MODE_CP);
         foreach (['Analytics', 'Query Rules', 'Promotions', 'Pending Syncs', 'Widget Styles'] as $feature) {
             $prompt = Craft::$app->getView()->renderTemplate(
-                'search-manager/_partials/upgrade-prompt',
-                ['featureName' => $feature],
+                'lindemannrock-base/_partials/edition-upgrade-prompt',
+                [
+                    'plugin' => SearchManager::$plugin,
+                    'edition' => SearchManager::EDITION_PRO,
+                    'featureName' => $feature,
+                    'pitch' => Craft::t('search-manager', 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.'),
+                ],
                 View::TEMPLATE_MODE_CP,
             );
             self::assertStringContainsString("{$feature} requires Search Manager Pro", $prompt);
@@ -239,7 +244,7 @@ final class EditionDowngradeLifecycleTest extends TestCase
         self::assertSame($storedCounts, $this->configurationCounts());
 
         foreach (['Analytics', 'Query Rules', 'Promotions', 'Pending Syncs', 'Widget Styles'] as $feature) {
-            self::assertNull(SearchManager::$plugin->requireProOrPrompt($feature));
+            self::assertNull(SearchManager::$plugin->requireEditionOrPrompt(SearchManager::EDITION_PRO, $feature));
         }
 
         $searchCallsBeforeProWarm = count($this->searchService->callsFor('search'));

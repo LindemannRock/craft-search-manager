@@ -115,8 +115,11 @@ class TrendingSearchesWidget extends Widget
     public function getBodyHtml(): ?string
     {
         if (!SearchManager::$plugin->isPro()) {
-            return Craft::$app->getView()->renderTemplate('search-manager/_partials/upgrade-prompt', [
+            return Craft::$app->getView()->renderTemplate('lindemannrock-base/_partials/edition-upgrade-prompt', [
+                'plugin' => SearchManager::$plugin,
+                'edition' => SearchManager::EDITION_PRO,
                 'featureName' => 'Analytics',
+                'pitch' => Craft::t('search-manager', 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.'),
                 'compact' => true,
             ]);
         }

@@ -57,7 +57,7 @@ final class EditionPendingSyncsConsoleGateTest extends TestCase
 
         foreach (self::ACTION_IDS as $actionId) {
             self::assertNull(
-                SearchManager::$plugin->requireProOrPrompt('Pending Syncs'),
+                SearchManager::$plugin->requireEditionOrPrompt(SearchManager::EDITION_PRO, 'Pending Syncs'),
                 "{$actionId} should pass the shared Pro edition gate.",
             );
         }
@@ -75,8 +75,13 @@ final class EditionPendingSyncsConsoleGateTest extends TestCase
     public function testPendingSyncDirectUrlPromptUsesTheSharedUpgradeSurface(): void
     {
         $html = Craft::$app->getView()->renderTemplate(
-            'search-manager/_partials/upgrade-prompt',
-            ['featureName' => 'Pending Syncs'],
+            'lindemannrock-base/_partials/edition-upgrade-prompt',
+            [
+                'plugin' => SearchManager::$plugin,
+                'edition' => SearchManager::EDITION_PRO,
+                'featureName' => 'Pending Syncs',
+                'pitch' => Craft::t('search-manager', 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.'),
+            ],
             View::TEMPLATE_MODE_CP,
         );
 

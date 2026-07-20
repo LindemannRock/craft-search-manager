@@ -41,7 +41,7 @@ class QueryRulesController extends Controller
     /** @inheritdoc */
     public function beforeAction($action): bool
     {
-        if (SearchManager::$plugin->requireProOrPrompt('Query Rules') !== null) {
+        if (SearchManager::$plugin->requireEditionOrPrompt(SearchManager::EDITION_PRO, 'Query Rules') !== null) {
             return false;
         }
 

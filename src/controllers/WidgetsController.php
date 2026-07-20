@@ -47,7 +47,7 @@ class WidgetsController extends Controller
 
     private function requireProWidgetStyles(): ?Response
     {
-        return SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        return SearchManager::$plugin->requireEditionOrPrompt(SearchManager::EDITION_PRO, 'Widget Styles');
     }
 
     /**
