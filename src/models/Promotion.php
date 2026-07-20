@@ -15,6 +15,7 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
+use lindemannrock\searchmanager\SearchManager;
 
 /**
  * Promotion Model
@@ -215,6 +216,10 @@ class Promotion extends Model
      */
     public static function findMatching(string $searchQuery, string $indexHandle, ?int $siteId = null): array
     {
+        if (!SearchManager::$plugin->isPro()) {
+            return [];
+        }
+
         $searchQuery = mb_strtolower(trim($searchQuery));
         $promotions = self::findByIndex($indexHandle, $siteId);
 

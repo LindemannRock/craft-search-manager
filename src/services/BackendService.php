@@ -1213,6 +1213,7 @@ class BackendService extends Component
         $keyData = [
             'index' => $indexName,
             'query' => $normalizedQuery,
+            'edition' => SearchManager::$plugin->getEditionHandle(),
             'options' => $cacheOptions, // Future-proof: any new options automatically included
         ];
 

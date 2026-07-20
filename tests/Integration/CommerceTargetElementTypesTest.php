@@ -168,6 +168,8 @@ final class CommerceTargetElementTypesTest extends TestCase
 
     public function testVariantPromotionMatchesWhenVariantEnabledAndProductLive(): void
     {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+
         if (!CommerceElementTypeHelper::variantElementTypeAvailable()) {
             self::assertTrue(true);
             return;
@@ -236,6 +238,8 @@ final class CommerceTargetElementTypesTest extends TestCase
 
     public function testActiveUserPromotionMatchesSiteIndependently(): void
     {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+
         $user = User::find()->status(User::STATUS_ACTIVE)->one();
         if (!$user instanceof User) {
             self::markTestSkipped('No active user available for user promotion coverage.');

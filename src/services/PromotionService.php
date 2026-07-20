@@ -89,6 +89,8 @@ class PromotionService extends Component
      */
     public function save(Promotion $promotion): bool
     {
+        SearchManager::$plugin->requireEdition(SearchManager::EDITION_PRO, 'Promotions');
+
         $saved = $promotion->save();
         if ($saved) {
             SearchManager::$plugin->backend->clearAllSearchCache();
@@ -103,6 +105,8 @@ class PromotionService extends Component
      */
     public function delete(Promotion $promotion): bool
     {
+        SearchManager::$plugin->requireEdition(SearchManager::EDITION_PRO, 'Promotions');
+
         $deleted = $promotion->delete();
         if ($deleted) {
             SearchManager::$plugin->backend->clearAllSearchCache();
@@ -117,6 +121,8 @@ class PromotionService extends Component
      */
     public function deleteById(int $id): bool
     {
+        SearchManager::$plugin->requireEdition(SearchManager::EDITION_PRO, 'Promotions');
+
         $promotion = $this->getById($id);
         if (!$promotion) {
             return false;

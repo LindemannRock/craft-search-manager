@@ -1000,6 +1000,7 @@ class SettingsController extends Controller
      */
     public function actionTestPromotions(): Response
     {
+        SearchManager::$plugin->requireProOrPrompt('Promotions');
         $this->requirePermission('searchManager:manageSettings');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
@@ -1085,6 +1086,7 @@ class SettingsController extends Controller
      */
     public function actionTestQueryRules(): Response
     {
+        SearchManager::$plugin->requireProOrPrompt('Query Rules');
         $this->requirePermission('searchManager:manageSettings');
         $this->requirePostRequest();
         $this->requireAcceptsJson();

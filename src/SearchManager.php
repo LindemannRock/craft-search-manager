@@ -1114,7 +1114,7 @@ class SearchManager extends Plugin
             'label' => Craft::t('search-manager', 'Promotions'),
             'url' => 'search-manager/promotions',
             'permissionsAll' => ['searchManager:managePromotions'],
-            'when' => $hasBackends,
+            'when' => $this->isPro() && $hasBackends,
         ];
 
         $sections[] = [
@@ -1122,7 +1122,7 @@ class SearchManager extends Plugin
             'label' => Craft::t('search-manager', 'Query Rules'),
             'url' => 'search-manager/query-rules',
             'permissionsAll' => ['searchManager:manageQueryRules'],
-            'when' => $hasBackends,
+            'when' => $this->isPro() && $hasBackends,
         ];
 
         // API Keys is visible without `$hasBackends` so operators can provision

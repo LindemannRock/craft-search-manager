@@ -16,6 +16,7 @@ use craft\helpers\StringHelper;
 use lindemannrock\base\helpers\UrlSafetyHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
+use lindemannrock\searchmanager\SearchManager;
 
 /**
  * Query Rule Model
@@ -319,6 +320,10 @@ class QueryRule extends Model
      */
     public static function findMatching(string $searchQuery, ?string $indexHandle = null, ?int $siteId = null): array
     {
+        if (!SearchManager::$plugin->isPro()) {
+            return [];
+        }
+
         $searchQuery = mb_strtolower(trim($searchQuery));
         $rules = self::findByIndex($indexHandle, $siteId);
         $matches = [];

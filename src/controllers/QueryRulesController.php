@@ -38,6 +38,16 @@ class QueryRulesController extends Controller
         $this->setLoggingHandle('search-manager');
     }
 
+    /** @inheritdoc */
+    public function beforeAction($action): bool
+    {
+        if (SearchManager::$plugin->requireProOrPrompt('Query Rules') !== null) {
+            return false;
+        }
+
+        return parent::beforeAction($action);
+    }
+
     /**
      * List all query rules.
      *

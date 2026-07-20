@@ -90,6 +90,8 @@ class QueryRuleService extends Component
      */
     public function save(QueryRule $rule): bool
     {
+        SearchManager::$plugin->requireEdition(SearchManager::EDITION_PRO, 'Query Rules');
+
         $saved = $rule->save();
         if ($saved) {
             SearchManager::$plugin->backend->clearAllSearchCache();
@@ -104,6 +106,8 @@ class QueryRuleService extends Component
      */
     public function delete(QueryRule $rule): bool
     {
+        SearchManager::$plugin->requireEdition(SearchManager::EDITION_PRO, 'Query Rules');
+
         $deleted = $rule->delete();
         if ($deleted) {
             SearchManager::$plugin->backend->clearAllSearchCache();
@@ -118,6 +122,8 @@ class QueryRuleService extends Component
      */
     public function deleteById(int $id): bool
     {
+        SearchManager::$plugin->requireEdition(SearchManager::EDITION_PRO, 'Query Rules');
+
         $rule = $this->getById($id);
         if (!$rule) {
             return false;

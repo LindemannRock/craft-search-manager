@@ -65,6 +65,8 @@ final class DuplicateCpObjectsTest extends TestCase
 
     public function testPromotionDuplicateCreatesDisabledCopyAndJsonMessage(): void
     {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+
         $pair = $this->findWorkingIndexAndElement();
         if ($pair === null) {
             self::markTestSkipped('No live entry/index pair available for promotion duplicate coverage.');
@@ -103,6 +105,8 @@ final class DuplicateCpObjectsTest extends TestCase
 
     public function testQueryRuleDuplicateCreatesDisabledCopyAndJsonMessage(): void
     {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+
         $this->installStubBackend();
         $this->actWithPermission('searchManager:createQueryRules');
 

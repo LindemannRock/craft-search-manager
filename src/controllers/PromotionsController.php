@@ -38,6 +38,16 @@ class PromotionsController extends Controller
         $this->setLoggingHandle('search-manager');
     }
 
+    /** @inheritdoc */
+    public function beforeAction($action): bool
+    {
+        if (SearchManager::$plugin->requireProOrPrompt('Promotions') !== null) {
+            return false;
+        }
+
+        return parent::beforeAction($action);
+    }
+
     /**
      * List all promotions.
      *
