@@ -1458,6 +1458,7 @@ class SearchIndex extends Model
     {
         $siteId = isset($configData['siteId']) ? self::normalizeSiteIdValue($configData['siteId']) : null;
         $siteIds = is_array($siteId) ? $siteId : ($siteId ? [(int)$siteId] : null);
+        $criteria = $configData['criteria'] ?? [];
         $headingLevels = $configData['headingLevels'] ?? null;
         $retrievableFields = self::normalizeRetrievableFields($configData['retrievableFields'] ?? null);
 
@@ -1467,7 +1468,7 @@ class SearchIndex extends Model
             'elementType' => $configData['elementType'] ?? Entry::class,
             'siteId' => is_array($siteId) ? null : $siteId,
             'siteIds' => $siteIds,
-            'criteria' => json_encode($configData['criteria'] ?? []),
+            'criteria' => self::encodeConfigCriteriaForPersistence($criteria),
             'transformerClass' => ($configData['transformer'] ?? null) ?: '',
             'headingLevels' => $headingLevels ? json_encode($headingLevels) : null,
             'language' => $configData['language'] ?? null,
@@ -1494,7 +1495,9 @@ class SearchIndex extends Model
         $this->siteId = is_array($siteIds)
             ? (count($siteIds) === 1 ? (int)$siteIds[0] : $siteIds)
             : null;
-        $this->criteria = self::decodeJsonComparable($attributes['criteria'] ?? null, []);
+        // Keep the authoritative config value already loaded on the model.
+        // Closure criteria cannot survive the persisted JSON snapshot and are
+        // deliberately excluded from config-sync change detection.
         $this->transformerClass = self::normalizeOptionalString($attributes['transformerClass'] ?? null);
         $this->headingLevels = self::decodeJsonComparable($attributes['headingLevels'] ?? null, null);
         $this->language = self::normalizeOptionalString($attributes['language'] ?? null);
@@ -1552,6 +1555,18 @@ class SearchIndex extends Model
         }
 
         return self::normalizeComparableValue($decoded ?? $emptyValue);
+    }
+
+    private static function encodeConfigCriteriaForPersistence(mixed $criteria): ?string
+    {
+        // Array criteria remain comparable for config-change rebuilds. A
+        // Closure has no stable serializable representation, so persist NULL
+        // and exclude Closure-only changes from automatic shape comparison.
+        if ($criteria instanceof \Closure) {
+            return null;
+        }
+
+        return json_encode(is_array($criteria) ? $criteria : [], JSON_THROW_ON_ERROR);
     }
 
     private static function normalizeComparableValue(mixed $value): mixed
@@ -1690,7 +1705,11 @@ class SearchIndex extends Model
             }
 
             $previousRow = $this->id ? $this->existingPersistenceRow() : null;
+            $criteriaPersistenceChanged = $previousRow !== null
+                && $attributes['criteria'] === null
+                && $previousRow['criteria'] !== null;
             $metadataChanged = $previousRow === null
+                || $criteriaPersistenceChanged
                 || $this->metadataComparableFromPreviousRow($previousRow) !== $this->metadataComparableFromConfigAttributes($attributes);
             $queueRebuild = $this->shouldQueueRebuildAfterConfigSync($previousRow, $attributes);
 
@@ -1772,6 +1791,7 @@ class SearchIndex extends Model
             $freshEnabled = $configData['enabled'] ?? true;
             $freshDisableStopWords = $configData['disableStopWords'] ?? false;
             $freshRetrievableFields = self::normalizeRetrievableFields($configData['retrievableFields'] ?? null);
+            $criteriaJson = self::encodeConfigCriteriaForPersistence($configData['criteria'] ?? []);
 
             // Validate transformer class before updating stats
             if (!$this->validateConfigTransformerClass($freshTransformer)) {
@@ -1792,7 +1812,7 @@ class SearchIndex extends Model
                         'handle' => $this->handle,
                         'elementType' => $this->elementType,
                         'siteId' => is_array($this->siteId) ? null : $this->siteId,
-                        'criteria' => '{}', // Empty - actual criteria is in config
+                        'criteria' => $criteriaJson,
                         'transformerClass' => $freshTransformer ?: '',
                         'headingLevels' => $headingLevelsJson,
                         'language' => $freshLanguage,
@@ -1808,6 +1828,7 @@ class SearchIndex extends Model
                     ],
                     [
                         'name' => $freshName,
+                        'criteria' => $criteriaJson,
                         'transformerClass' => $freshTransformer ?: '',
                         'headingLevels' => $headingLevelsJson,
                         'language' => $freshLanguage,
@@ -2263,7 +2284,8 @@ class SearchIndex extends Model
     /**
      * Get expected element count based on index criteria
      * Runs the element query with count() to determine how many elements should be indexed
-     * Matches the logic in RebuildIndexJob for accurate comparison
+     * The result must stay aligned with the site scope, criteria, availability,
+     * and URL filtering applied by RebuildIndexJob.
      *
      * @return int Expected number of elements matching the index criteria
      */
