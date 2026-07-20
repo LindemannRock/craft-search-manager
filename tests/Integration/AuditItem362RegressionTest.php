@@ -130,7 +130,7 @@ final class AuditItem362RegressionTest extends TestCase
         self::assertSame($activeCount, $index->getExpectedCount());
     }
 
-    public function testEntryExpectedCountStillUsesLiveStatus(): void
+    public function testEntryExpectedCountUsesLiveStandaloneEntries(): void
     {
         $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
         $index = new SearchIndex([
@@ -144,6 +144,7 @@ final class AuditItem362RegressionTest extends TestCase
             ->status(Entry::STATUS_LIVE)
             ->drafts(false)
             ->revisions(false)
+            ->andWhere(['entries.primaryOwnerId' => null])
             ->count();
 
         self::assertSame($liveCount, $index->getExpectedCount());

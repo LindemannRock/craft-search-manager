@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
@@ -47,6 +48,7 @@ use craft\fields\Users;
 use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
 use lindemannrock\searchmanager\helpers\NativeFieldKeywordHelper;
+use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -273,6 +275,105 @@ final class AutoTransformerNativeFieldTest extends TestCase
         self::assertStringNotContainsString('Matrix nested hidden needle', $data['content']);
     }
 
+    public function testMatrixContainerFlattensNestedEntryFieldsIntoOwnerDocument(): void
+    {
+        $nestedEntry = $this->nestedElement(
+            'Matrix nested entry',
+            'Matrix owner-searchable flattening needle',
+        );
+
+        $data = $this->transformWithField(
+            new Matrix(['handle' => 'matrixContainer', 'searchable' => true]),
+            new ElementCollection([$nestedEntry]),
+        );
+
+        self::assertStringContainsString('Matrix owner-searchable flattening needle', $data['content']);
+        self::assertStringContainsString(
+            'Matrix owner-searchable flattening needle',
+            SearchRecordProjectionHelper::localMatchingText($data),
+        );
+        self::assertStringContainsString(
+            'Matrix owner-searchable flattening needle',
+            $data['_fields']['matrixContainer'] ?? '',
+        );
+    }
+
+    public function testContentBlockContainerFlattensSingleNestedElementIntoOwnerDocument(): void
+    {
+        $contentBlock = $this->nestedElement(
+            'Content Block nested element',
+            'Content Block owner-searchable flattening needle',
+        );
+
+        $data = $this->transformWithField(
+            new ContentBlock(['handle' => 'contentBlockContainer', 'searchable' => true]),
+            $contentBlock,
+        );
+
+        self::assertStringContainsString('Content Block owner-searchable flattening needle', $data['content']);
+        self::assertStringContainsString(
+            'Content Block owner-searchable flattening needle',
+            SearchRecordProjectionHelper::localMatchingText($data),
+        );
+        self::assertStringContainsString(
+            'Content Block owner-searchable flattening needle',
+            $data['_fields']['contentBlockContainer'] ?? '',
+        );
+    }
+
+    public function testCkeditorContainerKeepsMarkupAndFlattensEmbeddedEntryIntoOwnerDocument(): void
+    {
+        if (!class_exists('craft\\ckeditor\\Field') || !class_exists('craft\\ckeditor\\data\\FieldData')) {
+            self::markTestSkipped('CKEditor is not installed, so an embedded-entry field fixture cannot be created.');
+        }
+
+        $entryType = Craft::$app->getEntries()->getAllEntryTypes()[0] ?? null;
+        if ($entryType === null) {
+            self::markTestSkipped('CKEditor embedded-entry coverage requires one Craft entry type.');
+        }
+
+        /** @var \craft\ckeditor\Field $field */
+        $field = new \craft\ckeditor\Field([
+            'handle' => 'ckeditorContainer',
+            'searchable' => true,
+        ]);
+        $field->setEntryTypes([$entryType]);
+
+        $fieldValue = new \craft\ckeditor\data\FieldData(
+            '<p>CKEditor markup-searchable needle</p><craft-entry data-entry-id="987654321">&nbsp;</craft-entry>',
+            1,
+            $field,
+        );
+        $chunks = $fieldValue->getChunks(false);
+        $fieldValue->loadEntries();
+
+        $embeddedEntry = $this->nestedEntry(
+            'CKEditor embedded entry',
+            'CKEditor embedded owner-searchable flattening needle',
+        );
+        foreach ($chunks as $chunk) {
+            if (is_a($chunk, 'craft\\ckeditor\\data\\Entry') && method_exists($chunk, 'setEntry')) {
+                $chunk->setEntry($embeddedEntry);
+            }
+        }
+
+        $data = $this->transformWithField($field, $fieldValue);
+
+        self::assertStringContainsString('CKEditor markup-searchable needle', $data['_bodyClean'] ?? '');
+        self::assertStringContainsString(
+            'CKEditor embedded owner-searchable flattening needle',
+            $data['_bodyClean'] ?? '',
+        );
+        self::assertStringContainsString(
+            'CKEditor embedded owner-searchable flattening needle',
+            SearchRecordProjectionHelper::localMatchingText($data),
+        );
+        self::assertStringContainsString(
+            'CKEditor embedded owner-searchable flattening needle',
+            $data['_fields']['ckeditorContainer'] ?? '',
+        );
+    }
+
     public function testDateAndTimeFieldsRemainEmptyByCraftNativeKeywordBehavior(): void
     {
         $data = $this->transformWithFields([
@@ -395,6 +496,33 @@ final class AutoTransformerNativeFieldTest extends TestCase
 
         return $layout;
     }
+
+    private function nestedElement(string $title, string $needle): SearchManagerNativeFieldTestElement
+    {
+        $field = new PlainText(['handle' => 'nestedText', 'searchable' => true]);
+        $element = new SearchManagerNativeFieldTestElement();
+        $element->id = 789;
+        $element->siteId = 1;
+        $element->title = $title;
+        $element->setTestFieldValues(['nestedText' => $needle]);
+        $element->setTestFieldLayout($this->fieldLayout([$field]));
+
+        return $element;
+    }
+
+    private function nestedEntry(string $title, string $needle): SearchManagerNativeFieldTestEntry
+    {
+        $field = new PlainText(['handle' => 'nestedText', 'searchable' => true]);
+        $entry = new SearchManagerNativeFieldTestEntry();
+        $entry->id = 987654321;
+        $entry->siteId = 1;
+        $entry->title = $title;
+        $entry->enabled = true;
+        $entry->setTestFieldValues(['nestedText' => $needle]);
+        $entry->setTestFieldLayout($this->fieldLayout([$field]));
+
+        return $entry;
+    }
 }
 
 final class SearchManagerNativeFieldTestElement extends Element
@@ -410,6 +538,39 @@ final class SearchManagerNativeFieldTestElement extends Element
     {
         return 'Search Manager Native Field Test Element';
     }
+
+    public function getFieldLayout(): ?FieldLayout
+    {
+        return $this->testFieldLayout;
+    }
+
+    public function getFieldValue(string $fieldHandle): mixed
+    {
+        return $this->testFieldValues[$fieldHandle] ?? null;
+    }
+
+    public function setTestFieldLayout(FieldLayout $fieldLayout): void
+    {
+        $this->testFieldLayout = $fieldLayout;
+    }
+
+    /**
+     * @param array<string, mixed> $fieldValues
+     */
+    public function setTestFieldValues(array $fieldValues): void
+    {
+        $this->testFieldValues = $fieldValues;
+    }
+}
+
+final class SearchManagerNativeFieldTestEntry extends Entry
+{
+    private ?FieldLayout $testFieldLayout = null;
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $testFieldValues = [];
 
     public function getFieldLayout(): ?FieldLayout
     {

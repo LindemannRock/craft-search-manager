@@ -8,9 +8,12 @@
 
 namespace lindemannrock\searchmanager\helpers;
 
+use craft\base\ElementContainerFieldInterface;
 use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\elements\Asset;
+use craft\fields\ContentBlock;
+use craft\fields\Matrix;
 use craft\helpers\ElementHelper;
 
 /**
@@ -58,6 +61,8 @@ class SearchAutoContentHelper
 
         if ($element->getFieldLayout()) {
             foreach ($element->getFieldLayout()->getCustomFields() as $field) {
+                $content = null;
+
                 try {
                     if (!($field instanceof Field)) {
                         continue;
@@ -69,9 +74,9 @@ class SearchAutoContentHelper
 
                     $isRichTextField = $this->fieldTypeContentHelper->isRichTextField($field);
                     $isBodyFieldHandle = $this->isBodyFieldHandle($field->handle);
-                    $isMatrixField = is_a($field, 'craft\fields\Matrix');
+                    $isElementContainerField = $field instanceof ElementContainerFieldInterface;
 
-                    if ($isRichTextField || $isMatrixField) {
+                    if ($isRichTextField || $isElementContainerField) {
                         $fieldValue = $element->getFieldValue($field->handle);
 
                         if ($fieldValue === null || $fieldValue === '' || $fieldValue === []) {
@@ -93,15 +98,23 @@ class SearchAutoContentHelper
                             }
 
                             $content = $this->fieldTypeContentHelper->process($field, $fieldValue, $element);
-                        } else {
-                            $matrixContent = $this->matrixContent($field->handle, $fieldValue);
-                            $content = $matrixContent['content'];
-                            if ($matrixContent['richTextSources'] === [] && $this->nativeFieldKeywordHelper->supports($field)) {
+                        }
+
+                        if ($isElementContainerField) {
+                            $containerContent = $this->containerContent($field, $field->handle, $fieldValue);
+                            $content = array_merge(
+                                isset($content) ? (array)$content : [],
+                                $containerContent['content'],
+                            );
+                            if ($content === [] && $this->nativeFieldKeywordHelper->supports($field)) {
                                 $content = $this->nativeFieldKeywordHelper->getSearchKeywords($field, $element);
                             }
-                            $richTextContent = array_merge($richTextContent, $matrixContent['richText']);
-                            $richTextSources = array_merge($richTextSources, $matrixContent['richTextSources']);
-                            $bodyCleanParts = array_merge($bodyCleanParts, $matrixContent['bodyCleanParts']);
+                            $richTextContent = array_merge($richTextContent, $containerContent['richText']);
+                            $richTextSources = array_merge($richTextSources, $containerContent['richTextSources']);
+                            $bodyCleanParts = array_merge($bodyCleanParts, $containerContent['bodyCleanParts']);
+                            if ($isRichTextField && $containerContent['content'] !== []) {
+                                $bodyCleanParts[] = implode(' ', $containerContent['content']);
+                            }
                         }
                     } elseif ($this->nativeFieldKeywordHelper->supports($field)) {
                         $content = $this->nativeFieldKeywordHelper->getSearchKeywords($field, $element);
@@ -171,77 +184,206 @@ class SearchAutoContentHelper
     /**
      * @return array{content: list<string>, richText: list<string>, richTextSources: list<array{handle: string, html: string}>, bodyCleanParts: list<string>}
      */
-    private function matrixContent(string $fieldHandle, mixed $fieldValue): array
+    private function containerContent(
+        Field & ElementContainerFieldInterface $field,
+        string $fieldHandle,
+        mixed $fieldValue,
+    ): array {
+        if ($field instanceof Matrix) {
+            return $this->nestedElementsContent(
+                $fieldHandle,
+                $this->matrixEntries($fieldValue),
+            );
+        }
+
+        if ($field instanceof ContentBlock) {
+            return $this->nestedElementsContent(
+                $fieldHandle,
+                $fieldValue instanceof ElementInterface ? [$fieldValue] : [],
+            );
+        }
+
+        if (is_a($field, 'craft\ckeditor\Field')) {
+            return $this->nestedElementsContent(
+                $fieldHandle,
+                $this->ckeditorEntries($field, $fieldValue),
+            );
+        }
+
+        return $this->emptyNestedContent();
+    }
+
+    /**
+     * @return list<ElementInterface>
+     */
+    private function matrixEntries(mixed $fieldValue): array
     {
-        $content = [];
-        $richText = [];
-        $richTextSources = [];
-        $bodyCleanParts = [];
-
-        if (!is_object($fieldValue) && !is_array($fieldValue)) {
-            return [
-                'content' => $content,
-                'richText' => $richText,
-                'richTextSources' => $richTextSources,
-                'bodyCleanParts' => $bodyCleanParts,
-            ];
-        }
-
         if (is_object($fieldValue) && method_exists($fieldValue, 'all')) {
-            $blocks = $fieldValue->all();
-        } elseif (is_array($fieldValue)) {
-            $blocks = $fieldValue;
-        } else {
-            $blocks = [];
+            $fieldValue = $fieldValue->all();
         }
 
-        foreach ($blocks as $block) {
-            if (!is_object($block) || !method_exists($block, 'getFieldLayout') || !method_exists($block, 'getFieldValue')) {
+        if (!is_array($fieldValue)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $fieldValue,
+            static fn(mixed $entry): bool => $entry instanceof ElementInterface,
+        ));
+    }
+
+    /**
+     * @return list<ElementInterface>
+     */
+    private function ckeditorEntries(Field $field, mixed $fieldValue): array
+    {
+        if (
+            !method_exists($field, 'getEntryTypes')
+            || $field->getEntryTypes() === []
+            || !is_object($fieldValue)
+            || !method_exists($fieldValue, 'getChunks')
+        ) {
+            return [];
+        }
+
+        $entries = [];
+        foreach ($fieldValue->getChunks(false) as $chunk) {
+            if (
+                !is_a($chunk, 'craft\ckeditor\data\Entry')
+                || !method_exists($chunk, 'getEntry')
+            ) {
                 continue;
             }
 
-            $fieldLayout = $block->getFieldLayout();
+            $entry = $chunk->getEntry();
+            if ($entry instanceof ElementInterface) {
+                $entries[] = $entry;
+            }
+        }
+
+        return $entries;
+    }
+
+    /**
+     * @param list<ElementInterface> $nestedElements
+     * @return array{content: list<string>, richText: list<string>, richTextSources: list<array{handle: string, html: string}>, bodyCleanParts: list<string>}
+     */
+    private function nestedElementsContent(string $fieldHandle, array $nestedElements): array
+    {
+        $result = $this->emptyNestedContent();
+
+        foreach ($nestedElements as $nestedElement) {
+            if ($nestedElement->title) {
+                $result['content'][] = (string)$nestedElement->title;
+            }
+
+            $fieldLayout = $nestedElement->getFieldLayout();
             if (!$fieldLayout) {
                 continue;
             }
 
-            foreach ($fieldLayout->getCustomFields() as $blockField) {
+            foreach ($fieldLayout->getCustomFields() as $nestedField) {
+                if (
+                    !$nestedField instanceof Field
+                    || !$nestedField->searchable
+                    || $nestedField->handle === null
+                    || $nestedField->handle === ''
+                ) {
+                    continue;
+                }
+
                 try {
-                    $blockValue = $block->getFieldValue($blockField->handle);
+                    $nestedValue = $nestedElement->getFieldValue($nestedField->handle);
                 } catch (\Throwable) {
                     continue;
                 }
 
-                if (!is_string($blockValue) || $blockValue === '') {
+                if ($nestedValue === null || $nestedValue === '' || $nestedValue === []) {
                     continue;
                 }
 
-                if ($this->fieldTypeContentHelper->isRichTextField($blockField)) {
-                    $richText[] = $blockValue;
-                    $richTextSources[] = [
-                        'handle' => $fieldHandle . '.' . $blockField->handle,
-                        'html' => $blockValue,
-                    ];
-                    $cleanBody = $this->fieldTypeContentHelper->cleanBody($blockValue);
-                    if ($cleanBody !== '') {
-                        $bodyCleanParts[] = $cleanBody;
+                $nestedHandle = $fieldHandle . '.' . $nestedField->handle;
+                if ($this->fieldTypeContentHelper->isRichTextField($nestedField)) {
+                    $rawHtml = (string)$nestedValue;
+                    if ($rawHtml !== '') {
+                        $result['richText'][] = $rawHtml;
+                        $result['richTextSources'][] = [
+                            'handle' => $nestedHandle,
+                            'html' => $rawHtml,
+                        ];
+                        $cleanBody = $this->fieldTypeContentHelper->cleanBody($rawHtml);
+                        if ($cleanBody !== '') {
+                            $result['bodyCleanParts'][] = $cleanBody;
+                        }
+
+                        $cleanContent = $this->fieldTypeContentHelper->process(
+                            $nestedField,
+                            $nestedValue,
+                            $nestedElement,
+                        );
+                        if (is_string($cleanContent) && $cleanContent !== '') {
+                            $result['content'][] = $cleanContent;
+                        }
                     }
+                }
+
+                if ($nestedField instanceof ElementContainerFieldInterface) {
+                    $child = $this->containerContent($nestedField, $nestedHandle, $nestedValue);
+                    $result = $this->mergeNestedContent($result, $child);
 
                     continue;
                 }
 
-                $clean = $this->fieldTypeContentHelper->cleanBody($blockValue);
-                if ($clean !== '') {
-                    $content[] = $clean;
+                if ($this->fieldTypeContentHelper->isRichTextField($nestedField)) {
+                    continue;
+                }
+
+                try {
+                    $keywords = trim((string)preg_replace(
+                        '/\s+/',
+                        ' ',
+                        $nestedField->getSearchKeywords($nestedValue, $nestedElement),
+                    ));
+                } catch (\Throwable) {
+                    continue;
+                }
+
+                if ($keywords !== '') {
+                    $result['content'][] = $this->fieldTypeContentHelper->cleanBody($keywords);
                 }
             }
         }
 
+        $result['content'] = array_values(array_filter($result['content']));
+
+        return $result;
+    }
+
+    /**
+     * @param array{content: list<string>, richText: list<string>, richTextSources: list<array{handle: string, html: string}>, bodyCleanParts: list<string>} $left
+     * @param array{content: list<string>, richText: list<string>, richTextSources: list<array{handle: string, html: string}>, bodyCleanParts: list<string>} $right
+     * @return array{content: list<string>, richText: list<string>, richTextSources: list<array{handle: string, html: string}>, bodyCleanParts: list<string>}
+     */
+    private function mergeNestedContent(array $left, array $right): array
+    {
         return [
-            'content' => $content,
-            'richText' => $richText,
-            'richTextSources' => $richTextSources,
-            'bodyCleanParts' => $bodyCleanParts,
+            'content' => array_merge($left['content'], $right['content']),
+            'richText' => array_merge($left['richText'], $right['richText']),
+            'richTextSources' => array_merge($left['richTextSources'], $right['richTextSources']),
+            'bodyCleanParts' => array_merge($left['bodyCleanParts'], $right['bodyCleanParts']),
+        ];
+    }
+
+    /**
+     * @return array{content: list<string>, richText: list<string>, richTextSources: list<array{handle: string, html: string}>, bodyCleanParts: list<string>}
+     */
+    private function emptyNestedContent(): array
+    {
+        return [
+            'content' => [],
+            'richText' => [],
+            'richTextSources' => [],
+            'bodyCleanParts' => [],
         ];
     }
 }

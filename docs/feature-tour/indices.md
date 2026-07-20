@@ -36,6 +36,8 @@ An index is a collection of searchable documents derived from Craft elements. Ea
 - **How to transform** elements into searchable documents
 - **Which backend** to store the index in (optional — uses default if not specified)
 
+Nested Matrix entries are indexed as part of their owner's document, never as standalone results. The automatic transformer applies the same owner-document flattening to Content Block fields and CKEditor embedded entries.
+
 ## Index options
 
 | Option | Type | Default | Description |

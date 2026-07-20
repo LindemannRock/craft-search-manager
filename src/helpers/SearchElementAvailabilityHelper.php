@@ -56,7 +56,9 @@ class SearchElementAvailabilityHelper
         }
 
         if ($elementClass === Entry::class || is_subclass_of($elementClass, Entry::class)) {
-            return $query->status(Entry::STATUS_LIVE);
+            return $query
+                ->status(Entry::STATUS_LIVE)
+                ->andWhere(['entries.primaryOwnerId' => null]);
         }
 
         if ($elementClass === CommerceElementTypeHelper::productElementType()) {
@@ -91,7 +93,8 @@ class SearchElementAvailabilityHelper
         $status = $element->getStatus();
 
         if ($element instanceof Entry) {
-            return $status === Entry::STATUS_LIVE;
+            return $element->getPrimaryOwnerId() === null
+                && $status === Entry::STATUS_LIVE;
         }
 
         if ($element instanceof User) {

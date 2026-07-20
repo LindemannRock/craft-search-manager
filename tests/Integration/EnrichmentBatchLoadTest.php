@@ -70,7 +70,12 @@ final class EnrichmentBatchLoadTest extends TestCase
             if ($siteId === 0) {
                 continue;
             }
-            $entries = Entry::find()->siteId($siteId)->status('live')->limit($limit)->all();
+            $entries = Entry::find()
+                ->siteId($siteId)
+                ->status('live')
+                ->andWhere(['entries.primaryOwnerId' => null])
+                ->limit($limit)
+                ->all();
             if (count($entries) >= $min) {
                 return [$index, $entries];
             }
