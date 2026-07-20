@@ -920,6 +920,7 @@ class BackendService extends Component
         // Match search(): if siteId is omitted, search all sites.
         $options['siteId'] = SearchSiteScopeHelper::normalize($options['siteId'] ?? null);
         $siteId = SearchSiteScopeHelper::scopedSiteId($options['siteId']);
+        $skipAnalytics = (bool)($options['skipAnalytics'] ?? false);
 
         // Check for redirects first across all indexes (including global rules)
         // Global rules (indexHandle = null) apply to all indexes
@@ -945,24 +946,26 @@ class BackendService extends Component
             ]);
 
             // Track analytics per index with shared session ID
-            foreach ($indexNames as $indexName) {
-                SearchManager::$plugin->analytics->trackSearch(
-                    $indexName,
-                    $query,
-                    0,
-                    0,
-                    $backend->getName(),
-                    $siteId,
-                    [
-                        'synonymsExpanded' => false,
-                        'rulesMatched' => 1,
-                        'promotionsShown' => 0,
-                        'wasRedirected' => true,
-                        'matchedRules' => [],
-                        'matchedPromotions' => [],
-                    ],
-                    $sessionId,
-                );
+            if (!$skipAnalytics) {
+                foreach ($indexNames as $indexName) {
+                    SearchManager::$plugin->analytics->trackSearch(
+                        $indexName,
+                        $query,
+                        0,
+                        0,
+                        $backend->getName(),
+                        $siteId,
+                        [
+                            'synonymsExpanded' => false,
+                            'rulesMatched' => 1,
+                            'promotionsShown' => 0,
+                            'wasRedirected' => true,
+                            'matchedRules' => [],
+                            'matchedPromotions' => [],
+                        ],
+                        $sessionId,
+                    );
+                }
             }
 
             return [

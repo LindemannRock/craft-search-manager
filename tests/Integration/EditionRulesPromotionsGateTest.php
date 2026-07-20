@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
+use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use craft\web\Response;
@@ -46,6 +47,7 @@ final class EditionRulesPromotionsGateTest extends TestCase
     private string $indexHandle;
     private bool $originalEnableCache;
     private bool $originalEnableAnalytics;
+    private bool $originalIndexAnalytics;
     private ?object $originalRequest = null;
 
     protected function setUp(): void
@@ -58,7 +60,9 @@ final class EditionRulesPromotionsGateTest extends TestCase
         }
 
         $this->indexHandle = $index->handle;
+        $this->originalIndexAnalytics = $index->enableAnalytics;
         $this->purgeFixtures();
+        $this->purgeAnalyticsRows();
         $this->originalRequest = Craft::$app->getRequest();
         Craft::$app->set('request', new \craft\web\Request([
             'enableCookieValidation' => false,
@@ -96,7 +100,14 @@ final class EditionRulesPromotionsGateTest extends TestCase
             SearchManager::$plugin->backend->clearAllSearchCache();
             SearchManager::$plugin->getSettings()->enableCache = $this->originalEnableCache;
             SearchManager::$plugin->getSettings()->enableAnalytics = $this->originalEnableAnalytics;
+            Craft::$app->getDb()->createCommand()->update(
+                '{{%searchmanager_indices}}',
+                ['enableAnalytics' => (int)$this->originalIndexAnalytics],
+                ['handle' => $this->indexHandle],
+            )->execute();
+            SearchIndex::clearCache();
             $this->purgeFixtures();
+            $this->purgeAnalyticsRows();
             if ($this->originalRequest !== null) {
                 Craft::$app->set('request', $this->originalRequest);
             }
@@ -272,6 +283,38 @@ final class EditionRulesPromotionsGateTest extends TestCase
         }
     }
 
+    public function testMultiIndexRedirectHonorsSkipAnalyticsInPro(): void
+    {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+        SearchManager::$plugin->getSettings()->enableAnalytics = true;
+        $this->purgeAnalyticsRows();
+
+        Craft::$app->getDb()->createCommand()->update(
+            '{{%searchmanager_indices}}',
+            ['enableAnalytics' => 1],
+            ['handle' => $this->indexHandle],
+        )->execute();
+        SearchIndex::clearCache();
+
+        $withOptOut = SearchManager::$plugin->backend->searchMultiple(
+            [$this->indexHandle],
+            self::REDIRECT_QUERY,
+            ['siteId' => self::SITE_ID, 'skipAnalytics' => true],
+        );
+
+        self::assertSame('/edition-pro-destination', $withOptOut['redirect']);
+        self::assertSame(0, $this->analyticsRowCount());
+
+        $withoutOptOut = SearchManager::$plugin->backend->searchMultiple(
+            [$this->indexHandle],
+            self::REDIRECT_QUERY,
+            ['siteId' => self::SITE_ID],
+        );
+
+        self::assertSame('/edition-pro-destination', $withoutOptOut['redirect']);
+        self::assertSame(1, $this->analyticsRowCount());
+    }
+
     public function testCrudReadsStayAvailableWhileWritesThrowInStandard(): void
     {
         $this->forcePluginEdition(SearchManager::EDITION_STANDARD);
@@ -325,6 +368,21 @@ final class EditionRulesPromotionsGateTest extends TestCase
         } finally {
             Craft::$app->set('response', $originalResponse);
         }
+    }
+
+    private function analyticsRowCount(): int
+    {
+        return (int)(new Query())
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['like', 'query', self::PREFIX . '%', false])
+            ->count();
+    }
+
+    private function purgeAnalyticsRows(): void
+    {
+        Craft::$app->getDb()->createCommand()
+            ->delete('{{%searchmanager_analytics}}', ['like', 'query', self::PREFIX . '%', false])
+            ->execute();
     }
 
     /**
