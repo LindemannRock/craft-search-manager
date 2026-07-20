@@ -17,6 +17,7 @@ controllers
 cp
 dashboard
 deps
+editions
 geo
 gql
 helpers
