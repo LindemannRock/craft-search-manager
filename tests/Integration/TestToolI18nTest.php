@@ -254,12 +254,15 @@ final class TestToolI18nTest extends TestCase
     {
         $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
 
-        self::assertStringContainsString('const shouldFetchQueryRules = showQueryRules.checked || (searchData && searchData.redirect);', $source);
-        self::assertStringContainsString("includeQueryRuleDebug: showQueryRules.checked,", $source);
+        self::assertStringContainsString('const shouldFetchQueryRules = Boolean(showQueryRules && (showQueryRules.checked || (searchData && searchData.redirect)));', $source);
+        self::assertStringContainsString("includeQueryRuleDebug: Boolean(showQueryRules && showQueryRules.checked),", $source);
+        self::assertStringContainsString('showPromotions && showPromotions.checked ? postJson(urls.testPromotions', $source);
+        self::assertStringContainsString('if (promotionsSection && showPromotions) {', $source);
+        self::assertStringContainsString('if (queryrulesSection && showQueryRules) {', $source);
         self::assertStringContainsString("if (status === 'bypassed') {", $source);
         self::assertStringContainsString('return T.bypassed;', $source);
         self::assertStringNotContainsString('data.cacheHit', $source);
-        self::assertStringContainsString('if (queryRulesData && showQueryRules.checked) {', $source);
+        self::assertStringContainsString('if (queryRulesData && showQueryRules && showQueryRules.checked) {', $source);
         self::assertStringContainsString('displayQueryRules(queryRulesData, query, searchData);', $source);
         self::assertStringContainsString('displaySearchResults(searchData, query, queryRulesData);', $source);
         self::assertStringContainsString('function renderRedirectNotice(searchData, queryRulesData, isCompact)', $source);

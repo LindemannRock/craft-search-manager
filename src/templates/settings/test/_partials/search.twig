@@ -1,5 +1,6 @@
 {# Search Testing Tab #}
 {% import "_includes/forms" as forms %}
+{% set isPro = craft.app.plugins.getPlugin('search-manager').isPro() %}
 {% do view.registerAssetBundle('lindemannrock\\searchmanager\\web\\assets\\testtool\\TestToolAsset') %}
 
 {# Get available indices and build siteId mapping #}
@@ -79,6 +80,7 @@
                 <input type="checkbox" id="showAutocomplete" name="showAutocomplete" {{ settings.enableAutocomplete ? 'checked' : '' }}>
                 <span>{{ "Test Autocomplete"|t('search-manager') }}</span>
             </label>
+            {% if isPro %}
             <label class="sm-test-toggle-card">
                 <input type="checkbox" id="showPromotions" name="showPromotions">
                 <span>{{ "Test Promotions"|t('search-manager') }}</span>
@@ -87,6 +89,7 @@
                 <input type="checkbox" id="showQueryRules" name="showQueryRules">
                 <span>{{ "Test Query Rules"|t('search-manager') }}</span>
             </label>
+            {% endif %}
             <label class="sm-test-toggle-card">
                 <input type="checkbox" id="showHighlighting" name="showHighlighting" checked>
                 <span>{{ "Show Highlighting"|t('search-manager') }}</span>
@@ -178,6 +181,7 @@
     </div>
 </div>
 
+{% if isPro %}
 {# Promotions Preview Section #}
 <div id="promotions-section" class="pane sm-test-pane-spaced" hidden>
     <h3 class="first">{{ "Matched Promotions"|t('search-manager') }}</h3>
@@ -194,6 +198,7 @@
         <p class="sm-test-query-rules-cache-note"><strong>{{ "Note:"|t('search-manager') }}</strong> {{ "Query rule testing bypasses the search cache so debug output reflects a live search."|t('search-manager') }}</p>
     </div>
 </div>
+{% endif %}
 
 {# Main Results Section #}
 <div id="testResults" hidden>

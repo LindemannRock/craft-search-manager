@@ -115,8 +115,12 @@
 
             function updateSectionVisibility() {
                 autocompleteSection.hidden = !showAutocomplete.checked;
-                promotionsSection.hidden = !showPromotions.checked;
-                queryrulesSection.hidden = !showQueryRules.checked;
+                if (promotionsSection && showPromotions) {
+                    promotionsSection.hidden = !showPromotions.checked;
+                }
+                if (queryrulesSection && showQueryRules) {
+                    queryrulesSection.hidden = !showQueryRules.checked;
+                }
             }
 
             function renderCacheStatus(data) {
@@ -135,8 +139,12 @@
             }
 
             showAutocomplete.addEventListener('change', updateSectionVisibility);
-            showPromotions.addEventListener('change', updateSectionVisibility);
-            showQueryRules.addEventListener('change', updateSectionVisibility);
+            if (showPromotions) {
+                showPromotions.addEventListener('change', updateSectionVisibility);
+            }
+            if (showQueryRules) {
+                showQueryRules.addEventListener('change', updateSectionVisibility);
+            }
 
             showHighlighting.addEventListener('change', function() {
                 if (lastSearchData && lastSearchQuery) {
@@ -844,7 +852,7 @@
                         indexHandle: indexHandle,
                         wildcard: enableWildcard,
                         liveComparison: enableLiveComparison.checked,
-                        includeQueryRuleDebug: showQueryRules.checked,
+                        includeQueryRuleDebug: Boolean(showQueryRules && showQueryRules.checked),
                         snippetMode: document.getElementById('snippetMode').value,
                         snippetMaxLength: snippetMaxLength,
                         snippetIncludeCodeBlocks: document.getElementById('snippetIncludeCodeBlocks').checked,
@@ -852,10 +860,10 @@
                         resultsRequireUrl: document.getElementById('resultsRequireUrl').checked,
                         includeDebugMeta: document.getElementById('includeDebugMeta').checked,
                     }).then(r => r.json()),
-                    showPromotions.checked ? postJson(urls.testPromotions, csrfToken, { query: query, indexHandle: indexHandle }).then(r => r.json()) : Promise.resolve(null),
+                    showPromotions && showPromotions.checked ? postJson(urls.testPromotions, csrfToken, { query: query, indexHandle: indexHandle }).then(r => r.json()) : Promise.resolve(null),
                 ])
                     .then(([searchData, promotionsData]) => {
-                        const shouldFetchQueryRules = showQueryRules.checked || (searchData && searchData.redirect);
+                        const shouldFetchQueryRules = Boolean(showQueryRules && (showQueryRules.checked || (searchData && searchData.redirect)));
 
                         return (shouldFetchQueryRules
                             ? postJson(urls.testQueryRules, csrfToken, { query: query, indexHandle: indexHandle }).then(r => r.json())
@@ -867,10 +875,10 @@
                         testButton.textContent = T.searchLabel;
                         lastQueryRulesData = queryRulesData;
 
-                        if (promotionsData && showPromotions.checked) {
+                        if (promotionsData && showPromotions && showPromotions.checked) {
                             displayPromotions(promotionsData, query, searchData);
                         }
-                        if (queryRulesData && showQueryRules.checked) {
+                        if (queryRulesData && showQueryRules && showQueryRules.checked) {
                             displayQueryRules(queryRulesData, query, searchData);
                         }
                         displaySearchResults(searchData, query, queryRulesData);

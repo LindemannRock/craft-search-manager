@@ -13,10 +13,13 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use Craft;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use craft\web\Response;
+use craft\web\View;
 use lindemannrock\searchmanager\controllers\PromotionsController;
 use lindemannrock\searchmanager\controllers\QueryRulesController;
 use lindemannrock\searchmanager\controllers\SettingsController;
 use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
+use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\Promotion;
@@ -57,7 +60,10 @@ final class EditionRulesPromotionsGateTest extends TestCase
         $this->indexHandle = $index->handle;
         $this->purgeFixtures();
         $this->originalRequest = Craft::$app->getRequest();
-        Craft::$app->set('request', new \craft\web\Request());
+        Craft::$app->set('request', new \craft\web\Request([
+            'enableCookieValidation' => false,
+            'enableCsrfValidation' => false,
+        ]));
 
         $settings = SearchManager::$plugin->getSettings();
         $this->originalEnableCache = $settings->enableCache;
@@ -242,6 +248,30 @@ final class EditionRulesPromotionsGateTest extends TestCase
         self::assertSame($hasBackends, $this->cpSection('promotions')['when']);
     }
 
+    public function testSearchTestPageHidesProSurfacesInStandardAndShowsThemInPro(): void
+    {
+        $proSurfaceIds = [
+            'id="showPromotions"',
+            'id="showQueryRules"',
+            'id="promotions-section"',
+            'id="queryrules-section"',
+        ];
+
+        $this->forcePluginEdition(SearchManager::EDITION_STANDARD);
+        $standardHtml = $this->renderSearchTestPartial();
+
+        foreach ($proSurfaceIds as $surfaceId) {
+            self::assertStringNotContainsString($surfaceId, $standardHtml);
+        }
+
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+        $proHtml = $this->renderSearchTestPartial();
+
+        foreach ($proSurfaceIds as $surfaceId) {
+            self::assertStringContainsString($surfaceId, $proHtml);
+        }
+    }
+
     public function testCrudReadsStayAvailableWhileWritesThrowInStandard(): void
     {
         $this->forcePluginEdition(SearchManager::EDITION_STANDARD);
@@ -274,6 +304,27 @@ final class EditionRulesPromotionsGateTest extends TestCase
         }
 
         return null;
+    }
+
+    private function renderSearchTestPartial(): string
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $originalResponse = Craft::$app->getResponse();
+        Craft::$app->set('response', new Response());
+
+        try {
+            return Craft::$app->getView()->renderTemplate(
+                'search-manager/settings/test/_partials/search',
+                [
+                    'settings' => $settings,
+                    'cacheEnabled' => $settings->enableCache,
+                    'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
+                ],
+                View::TEMPLATE_MODE_CP,
+            );
+        } finally {
+            Craft::$app->set('response', $originalResponse);
+        }
     }
 
     /**

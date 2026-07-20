@@ -116,7 +116,7 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringContainsString('boosts.some(boost => Number(boost.ruleId) === ruleId)', $source);
         self::assertStringContainsString('const appliedCount = isBoostRule ? countAppliedBoostRule(r, searchData) : null;', $source);
         self::assertStringContainsString("renderStatusLabel(appliedCount > 0 ? T.yesLabel : T.noLabel, appliedCount > 0 ? 'green' : 'red')", $source);
-        self::assertStringContainsString('includeQueryRuleDebug: showQueryRules.checked,', $source);
+        self::assertStringContainsString('includeQueryRuleDebug: Boolean(showQueryRules && showQueryRules.checked),', $source);
         self::assertStringNotContainsString('const boostedCount = boostedElementIds.size;', $source);
         self::assertStringNotContainsString('renderStatusLabel(String(appliedCount)', $source);
     }
