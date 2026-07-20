@@ -24,7 +24,6 @@ use lindemannrock\searchmanager\models\WidgetStyle;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\WidgetConfigService;
 use lindemannrock\searchmanager\tests\TestCase;
-use yii\web\ForbiddenHttpException;
 
 /**
  * @since 5.54.0
@@ -315,16 +314,6 @@ final class EditionWidgetGateTest extends TestCase
     private function fixtureCount(string $table, array $condition): int
     {
         return (int)(new Query())->from($table)->where($condition)->count();
-    }
-
-    private function assertForbidden(callable $callback): void
-    {
-        try {
-            $callback();
-            self::fail('Expected the Standard edition gate to reject the operation.');
-        } catch (ForbiddenHttpException) {
-            self::addToAssertionCount(1);
-        }
     }
 
     private function purgeFixtures(): void

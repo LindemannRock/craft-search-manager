@@ -15,7 +15,6 @@ use craft\db\Query;
 use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
-use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -102,20 +101,6 @@ final class AuditItem382RegressionTest extends TestCase
     }
 
     /**
-     * @param array<string, mixed> $indices
-     */
-    private function withConfigFileIndices(array $indices): void
-    {
-        $cache = $this->configCache();
-        if (!is_array($cache)) {
-            $cache = [];
-        }
-        $cache['search-manager'] = ['indices' => $indices];
-        $this->setConfigCache($cache);
-        SearchIndex::clearCache();
-    }
-
-    /**
      * @param array<string, mixed> $overrides
      * @return array<string, mixed>
      */
@@ -181,20 +166,4 @@ final class AuditItem382RegressionTest extends TestCase
         SearchIndex::clearCache();
     }
 
-    private function configCache(): mixed
-    {
-        $reflection = new \ReflectionClass(BaseConfigFileHelper::class);
-        $property = $reflection->getProperty('_configCache');
-        $property->setAccessible(true);
-
-        return $property->getValue();
-    }
-
-    private function setConfigCache(mixed $cache): void
-    {
-        $reflection = new \ReflectionClass(BaseConfigFileHelper::class);
-        $property = $reflection->getProperty('_configCache');
-        $property->setAccessible(true);
-        $property->setValue(null, $cache);
-    }
 }

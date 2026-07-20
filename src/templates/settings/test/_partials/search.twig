@@ -1,6 +1,6 @@
 {# Search Testing Tab #}
 {% import "_includes/forms" as forms %}
-{% set isPro = craft.app.plugins.getPlugin('search-manager').isPro() %}
+{% set isPro = craft.searchManager.plugin.isPro() %}
 {% do view.registerAssetBundle('lindemannrock\\searchmanager\\web\\assets\\testtool\\TestToolAsset') %}
 
 {# Get available indices and build siteId mapping #}

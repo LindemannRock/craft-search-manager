@@ -4,7 +4,7 @@
 {% set title = "Cache Settings"|t('search-manager') %}
 {% set fullPageForm = true %}
 {% set selectedSettingsItem = 'cache' %}
-{% set isPro = craft.app.plugins.getPlugin('search-manager').isPro() %}
+{% set isPro = craft.searchManager.plugin.isPro() %}
 
 
 {% set crumbs = [

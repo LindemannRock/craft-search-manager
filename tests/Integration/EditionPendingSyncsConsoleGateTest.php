@@ -66,10 +66,10 @@ final class EditionPendingSyncsConsoleGateTest extends TestCase
     public function testPendingSyncNavigationRequiresProAndConfiguredBackend(): void
     {
         $this->forcePluginEdition(SearchManager::EDITION_STANDARD);
-        self::assertFalse($this->pendingSyncSection()['when']);
+        self::assertFalse($this->cpSection('pending-syncs')['when']);
 
         $this->forcePluginEdition(SearchManager::EDITION_PRO);
-        self::assertSame(ConfiguredBackend::findAllEnabled() !== [], $this->pendingSyncSection()['when']);
+        self::assertSame(ConfiguredBackend::findAllEnabled() !== [], $this->cpSection('pending-syncs')['when']);
     }
 
     public function testPendingSyncDirectUrlPromptUsesTheSharedUpgradeSurface(): void
@@ -123,17 +123,4 @@ final class EditionPendingSyncsConsoleGateTest extends TestCase
         }
     }
 
-    /**
-     * @return array{key: string, when: bool}
-     */
-    private function pendingSyncSection(): array
-    {
-        foreach (SearchManager::$plugin->getCpSections(SearchManager::$plugin->getSettings()) as $section) {
-            if ($section['key'] === 'pending-syncs') {
-                return $section;
-            }
-        }
-
-        self::fail('Pending Syncs CP section was not registered.');
-    }
 }

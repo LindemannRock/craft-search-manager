@@ -591,20 +591,6 @@ final class EditionDowngradeLifecycleTest extends TestCase
     }
 
     /**
-     * @return array{key: string, when: bool}
-     */
-    private function cpSection(string $key): array
-    {
-        foreach (SearchManager::$plugin->getCpSections(SearchManager::$plugin->getSettings()) as $section) {
-            if ($section['key'] === $key) {
-                return $section;
-            }
-        }
-
-        self::fail("{$key} CP section was not registered.");
-    }
-
-    /**
      * @return array{rules: int, promotions: int, styles: int, widgets: int}
      */
     private function configurationCounts(): array

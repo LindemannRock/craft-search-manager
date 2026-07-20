@@ -4,7 +4,7 @@
 {% do view.registerAssetBundle('lindemannrock\\searchmanager\\web\\assets\\widgetconfig\\WidgetConfigAsset') %}
 
 {% set title = isNew ? "New Widget Config"|t('search-manager') : widgetConfig.name %}
-{% set isPro = craft.app.plugins.getPlugin('search-manager').isPro() %}
+{% set isPro = craft.searchManager.plugin.isPro() %}
 {% set fullPageForm = true %}
 {% set selectedSubnavItem = 'widgets' %}
 {% set saveShortcutRedirect = cpUrl('search-manager/widgets/edit/{id}') %}

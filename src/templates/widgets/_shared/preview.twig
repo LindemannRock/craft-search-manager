@@ -64,7 +64,7 @@
 {% set footerBrandDark = styles.footerTextColorDark is defined and styles.footerTextColorDark ? styles.footerTextColorDark : styles.resultDescColorDark %}
 
 {# Promotion marker: follows the widget's display mode; style page previews the badge #}
-{% set isPro = craft.app.plugins.getPlugin('search-manager').isPro() %}
+{% set isPro = craft.searchManager.plugin.isPro() %}
 {% set promoDisplay = widgetConfig is defined and widgetConfig is not null and isPro ? widgetConfig.getPromotionDisplay() : (widgetConfig is defined and widgetConfig is not null ? 'none' : 'badge') %}
 {% set promoPosition = widgetConfig is defined and widgetConfig is not null ? widgetConfig.getPromotionBadgePosition() : 'inline' %}
 {% set promoLabel = widgetConfig is defined and widgetConfig is not null ? widgetConfig.getPromotionBadgeText() : 'Promoted'|t('search-manager') %}

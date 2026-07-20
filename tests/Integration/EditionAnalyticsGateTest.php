@@ -228,7 +228,7 @@ final class EditionAnalyticsGateTest extends TestCase
         $settings->enableAnalytics = true;
 
         $this->forcePluginEdition(SearchManager::EDITION_STANDARD);
-        $standardAnalyticsSection = $this->analyticsSection();
+        $standardAnalyticsSection = $this->cpSection('analytics');
         self::assertFalse($standardAnalyticsSection['when']);
 
         $settingsMethod = new \ReflectionMethod(\lindemannrock\searchmanager\controllers\SettingsController::class, '_validationAttributesForSection');
@@ -239,7 +239,7 @@ final class EditionAnalyticsGateTest extends TestCase
         self::assertSame(['analyticsRetention'], $standardAttributes);
 
         $this->forcePluginEdition(SearchManager::EDITION_PRO);
-        $proAnalyticsSection = $this->analyticsSection();
+        $proAnalyticsSection = $this->cpSection('analytics');
         self::assertSame(!empty(ConfiguredBackend::findAllEnabled()), $proAnalyticsSection['when']);
 
         $proAttributes = $settingsMethod->invoke(
@@ -248,20 +248,6 @@ final class EditionAnalyticsGateTest extends TestCase
         );
         self::assertContains('enableAnalytics', $proAttributes);
         self::assertContains('analyticsRetention', $proAttributes);
-    }
-
-    /**
-     * @return array{key: string, label: string, url: string, permissionsAll: list<string>, when: bool}
-     */
-    private function analyticsSection(): array
-    {
-        foreach (SearchManager::$plugin->getCpSections(SearchManager::$plugin->getSettings()) as $section) {
-            if ($section['key'] === 'analytics') {
-                return $section;
-            }
-        }
-
-        self::fail('Analytics CP section was not registered.');
     }
 
     private function analyticsControllerWithoutRequestOrPermissionGates(): AnalyticsController

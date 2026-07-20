@@ -13,7 +13,6 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use Craft;
 use craft\db\Query;
 use craft\elements\User;
-use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\searchmanager\backends\FileBackend;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
@@ -21,7 +20,7 @@ use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
-use lindemannrock\searchmanager\services\ConfigIndexValidator;
+use lindemannrock\searchmanager\tests\Stubs\FixedConfigIndexValidator;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -269,7 +268,7 @@ final class RebuildIndexJobPreflightTest extends TestCase
         $this->swapPluginComponent(
             'search-manager',
             'configIndexValidator',
-            new RebuildRejectingConfigIndexValidator($result),
+            new FixedConfigIndexValidator($result),
         );
 
         $error = $this->withOnlySearchIndices(
@@ -312,37 +311,6 @@ final class RebuildIndexJobPreflightTest extends TestCase
         self::fail('Expected the rebuild job to throw a RuntimeException.');
     }
 
-    /**
-     * @param array<string, mixed> $indices
-     */
-    private function withConfigFileIndices(array $indices): void
-    {
-        $cache = $this->configCache();
-        if (!is_array($cache)) {
-            $cache = [];
-        }
-        $cache['search-manager'] = ['indices' => $indices];
-        $this->setConfigCache($cache);
-        SearchIndex::clearCache();
-    }
-
-    private function configCache(): mixed
-    {
-        $reflection = new \ReflectionClass(BaseConfigFileHelper::class);
-        $property = $reflection->getProperty('_configCache');
-        $property->setAccessible(true);
-
-        return $property->getValue();
-    }
-
-    private function setConfigCache(mixed $cache): void
-    {
-        $reflection = new \ReflectionClass(BaseConfigFileHelper::class);
-        $property = $reflection->getProperty('_configCache');
-        $property->setAccessible(true);
-        $property->setValue(null, $cache);
-    }
-
     private function purgeOwnedRows(): void
     {
         $handles = [
@@ -375,22 +343,6 @@ final class RebuildIndexJobPreflightTest extends TestCase
                 ->execute();
         }
         SearchIndex::clearCache();
-    }
-}
-
-/**
- * @since 5.54.0
- */
-final class RebuildRejectingConfigIndexValidator extends ConfigIndexValidator
-{
-    public function __construct(private readonly ConfigIndexValidationResult $result, array $config = [])
-    {
-        parent::__construct($config);
-    }
-
-    public function validate(): ConfigIndexValidationResult
-    {
-        return $this->result;
     }
 }
 

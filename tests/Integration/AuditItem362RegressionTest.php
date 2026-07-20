@@ -53,10 +53,19 @@ final class AuditItem362RegressionTest extends TestCase
             $this->readPluginSource('src/jobs/RebuildIndexJob.php'),
             'rebuildSingleIndex',
         );
+        $preflightBody = $this->methodBody(
+            $this->readPluginSource('src/jobs/RebuildIndexJob.php'),
+            'preflightIndexRebuild',
+        );
         $expectedCountBody = $this->methodBody(
             $this->readPluginSource('src/models/SearchIndex.php'),
             'getExpectedCount',
             'public',
+        );
+        $queryHelperBody = $this->methodBody(
+            $this->readPluginSource('src/helpers/SearchIndexQueryHelper.php'),
+            'buildSiteQueries',
+            'public static',
         );
         $indexingBody = $this->methodBody(
             $this->readPluginSource('src/services/IndexingService.php'),
@@ -65,7 +74,9 @@ final class AuditItem362RegressionTest extends TestCase
         );
 
         self::assertStringContainsString('SearchElementAvailabilityHelper::isSearchable($element)', $rebuildBody);
-        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($query, $elementType);', $expectedCountBody);
+        self::assertStringContainsString('SearchIndexQueryHelper::buildSiteQueries($index)', $preflightBody);
+        self::assertStringContainsString('SearchIndexQueryHelper::buildSiteQueries($this)', $expectedCountBody);
+        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($query, $elementType);', $queryHelperBody);
         self::assertStringContainsString('SearchElementAvailabilityHelper::isSearchable($element)', $indexingBody);
         self::assertStringNotContainsString('$element->enabled && $element->getEnabledForSite()', $rebuildBody);
         self::assertStringNotContainsString('$element instanceof \craft\elements\Entry', $rebuildBody);

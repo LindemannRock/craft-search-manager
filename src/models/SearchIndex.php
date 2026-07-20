@@ -20,8 +20,8 @@ use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
-use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
+use lindemannrock\searchmanager\helpers\SearchIndexQueryHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\SearchManager;
@@ -2304,43 +2304,15 @@ class SearchIndex extends Model
 
             $totalCount = 0;
 
-            // Handle multi-site indices (siteId = null means all sites)
-            $sitesToCount = $this->getSiteIds();
-            if ($sitesToCount === null) {
-                $sitesToCount = [];
-                foreach (Craft::$app->getSites()->getAllSites() as $site) {
-                    $sitesToCount[] = $site->id;
-                }
-            }
-
-            foreach ($sitesToCount as $siteId) {
-                // Create base query matching RebuildIndexJob logic
-                /** @var \craft\elements\db\ElementQuery $query */
-                $query = $elementType::find()
-                    ->siteId((int)$siteId)
-                    ->drafts(false)
-                    ->revisions(false);
-
+            foreach (SearchIndexQueryHelper::buildSiteQueries($this) as $siteId => $query) {
                 $this->logDebug('Building expected count query', [
                     'indexHandle' => $this->handle,
                     'indexSiteId' => $this->siteId,
                     'querySiteId' => $siteId,
                 ]);
 
-                // Apply criteria
-                $hasClosure = false;
-                if (!empty($this->criteria)) {
-                    $hasClosure = $this->criteria instanceof \Closure;
-                    $query = SearchIndexCriteriaHelper::apply($query, $elementType, $this->criteria);
-                }
-
-                SearchElementAvailabilityHelper::applyToQuery($query, $elementType);
-
-                // If skipEntriesWithoutUrl is enabled, filter Entry URI in SQL.
+                $hasClosure = $this->criteria instanceof \Closure;
                 if ($this->skipEntriesWithoutUrl && $elementType === Entry::class) {
-                    $query->andWhere(['not', ['elements_sites.uri' => null]])
-                        ->andWhere(['<>', 'elements_sites.uri', '']);
-
                     if ($hasClosure) {
                         $ids = $query->ids();
                         $siteCount = count($ids);

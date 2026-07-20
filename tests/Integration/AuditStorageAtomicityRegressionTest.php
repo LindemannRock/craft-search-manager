@@ -185,21 +185,6 @@ final class AuditStorageAtomicityRegressionTest extends TestCase
             ->execute();
     }
 
-    /**
-     * @param array<string, mixed> $indices
-     */
-    private function withConfigFileIndices(array $indices): void
-    {
-        $reflection = new \ReflectionClass(BaseConfigFileHelper::class);
-        $property = $reflection->getProperty('_configCache');
-        $property->setAccessible(true);
-        $cache = $property->getValue();
-        $cache['search-manager'] = ['indices' => $indices];
-        $property->setValue(null, $cache);
-
-        SearchIndex::clearCache();
-    }
-
     private function readPluginSource(string $relativePath): string
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/' . $relativePath);

@@ -75,7 +75,7 @@ final class SettingsControllerSectionScopeTest extends TestCase
         $cache = file_get_contents(dirname(__DIR__, 2) . '/src/templates/settings/cache.twig');
         self::assertIsString($cache);
 
-        self::assertStringContainsString("{% set isPro = craft.app.plugins.getPlugin('search-manager').isPro() %}", $cache);
+        self::assertStringContainsString('{% set isPro = craft.searchManager.plugin.isPro() %}', $cache);
         self::assertStringContainsString('{% if isPro %}', $cache);
         self::assertStringContainsString("featureName: 'Cache Warming'", $cache);
         self::assertStringContainsString("'search-manager/_partials/upgrade-prompt'", $cache);

@@ -31,7 +31,6 @@ use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
 use yii\base\Action;
-use yii\web\ForbiddenHttpException;
 
 /**
  * @since 5.54.0
@@ -383,30 +382,6 @@ final class EditionRulesPromotionsGateTest extends TestCase
         Craft::$app->getDb()->createCommand()
             ->delete('{{%searchmanager_analytics}}', ['like', 'query', self::PREFIX . '%', false])
             ->execute();
-    }
-
-    /**
-     * @return array{key: string, when: bool}
-     */
-    private function cpSection(string $key): array
-    {
-        foreach (SearchManager::$plugin->getCpSections(SearchManager::$plugin->getSettings()) as $section) {
-            if ($section['key'] === $key) {
-                return $section;
-            }
-        }
-
-        self::fail("{$key} CP section was not registered.");
-    }
-
-    private function assertForbidden(callable $callback): void
-    {
-        try {
-            $callback();
-            self::fail('Expected the Standard edition gate to reject the operation.');
-        } catch (ForbiddenHttpException) {
-            self::addToAssertionCount(1);
-        }
     }
 
     private function seedFixtures(): void

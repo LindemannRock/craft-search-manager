@@ -54,15 +54,15 @@ final class AuditItem287RegressionTest extends TestCase
     public function testSearchIndexExpectedCountOnlyAppliesUriFilterForEntries(): void
     {
         $body = $this->methodBody(
-            $this->readPluginSource('src/models/SearchIndex.php'),
-            'getExpectedCount',
-            'public',
+            $this->readPluginSource('src/helpers/SearchIndexQueryHelper.php'),
+            'buildSiteQueries',
+            'public static',
         );
 
-        self::assertStringContainsString('if ($this->skipEntriesWithoutUrl && $elementType === Entry::class)', $body);
+        self::assertStringContainsString('if ($index->skipEntriesWithoutUrl && $elementType === Entry::class)', $body);
         self::assertStringContainsString("->andWhere(['not', ['elements_sites.uri' => null]])", $body);
         self::assertStringContainsString("->andWhere(['<>', 'elements_sites.uri', ''])", $body);
-        self::assertStringNotContainsString('if ($this->skipEntriesWithoutUrl) {', $body);
+        self::assertStringNotContainsString('if ($index->skipEntriesWithoutUrl) {', $body);
     }
 
     public function testSkipHelperIsExplicitlyEntryOnly(): void

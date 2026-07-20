@@ -15,7 +15,6 @@ use craft\db\Query;
 use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
-use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\searchmanager\console\controllers\MaintenanceController;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -252,37 +251,6 @@ final class MaintenanceStorageClearTest extends TestCase
     private function fullHandle(string $handle): string
     {
         return SearchManager::$plugin->getSettings()->getFullIndexName($handle);
-    }
-
-    /**
-     * @param array<string, mixed> $indices
-     */
-    private function withConfigFileIndices(array $indices): void
-    {
-        $cache = $this->configCache();
-        if (!is_array($cache)) {
-            $cache = [];
-        }
-        $cache['search-manager'] = ['indices' => $indices];
-        $this->setConfigCache($cache);
-        SearchIndex::clearCache();
-    }
-
-    private function configCache(): mixed
-    {
-        $reflection = new \ReflectionClass(BaseConfigFileHelper::class);
-        $property = $reflection->getProperty('_configCache');
-        $property->setAccessible(true);
-
-        return $property->getValue();
-    }
-
-    private function setConfigCache(mixed $cache): void
-    {
-        $reflection = new \ReflectionClass(BaseConfigFileHelper::class);
-        $property = $reflection->getProperty('_configCache');
-        $property->setAccessible(true);
-        $property->setValue(null, $cache);
     }
 
     private function purgeAuditRows(): void

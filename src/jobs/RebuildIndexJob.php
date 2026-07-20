@@ -14,7 +14,7 @@ use craft\queue\BaseJob;
 use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
-use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
+use lindemannrock\searchmanager\helpers\SearchIndexQueryHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -258,26 +258,14 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
             );
         }
 
-        $siteQueries = [];
-        foreach ($sitesToIndex as $siteId) {
-            try {
-                $siteQuery = $elementType::find()
-                    ->siteId($siteId)
-                    ->drafts(false)
-                    ->revisions(false);
-
-                if (!empty($index->criteria)) {
-                    $siteQuery = SearchIndexCriteriaHelper::apply($siteQuery, $elementType, $index->criteria);
-                }
-            } catch (\Throwable $e) {
-                throw new \RuntimeException(
-                    "Cannot rebuild index '{$indexHandle}': element query construction failed for site {$siteId}: {$e->getMessage()}",
-                    0,
-                    $e,
-                );
-            }
-
-            $siteQueries[$siteId] = $siteQuery;
+        try {
+            $siteQueries = SearchIndexQueryHelper::buildSiteQueries($index);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(
+                "Cannot rebuild index '{$indexHandle}': element query construction failed {$e->getMessage()}",
+                0,
+                $e,
+            );
         }
 
         try {

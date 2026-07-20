@@ -13,8 +13,8 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\services\ConfigIndexValidator;
 use lindemannrock\searchmanager\services\SetupService;
+use lindemannrock\searchmanager\tests\Stubs\FixedConfigIndexValidator;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -36,7 +36,7 @@ final class SetupServiceTest extends TestCase
         $this->swapPluginComponent(
             'search-manager',
             'configIndexValidator',
-            new SetupFindingConfigIndexValidator(
+                new FixedConfigIndexValidator(
                 new ConfigIndexValidationResult(ConfigIndexValidationResult::STATUS_ABSENT),
             ),
         );
@@ -106,7 +106,7 @@ final class SetupServiceTest extends TestCase
         $settings->ipHashSalt = str_repeat('a', 40);
         $result = new ConfigIndexValidationResult(ConfigIndexValidationResult::STATUS_PRESENT);
         $result->addFinding('broken-index', ConfigIndexValidationResult::SEVERITY_ERROR, 'backend', 'Missing backend');
-        $this->swapPluginComponent('search-manager', 'configIndexValidator', new SetupFindingConfigIndexValidator($result));
+        $this->swapPluginComponent('search-manager', 'configIndexValidator', new FixedConfigIndexValidator($result));
 
         $status = $this->setup->getStatus($settings);
 
@@ -127,7 +127,7 @@ final class SetupServiceTest extends TestCase
         $result->addFinding('broken-index', ConfigIndexValidationResult::SEVERITY_ERROR, 'backend', 'Missing backend');
         $result->addFinding('warning-index', ConfigIndexValidationResult::SEVERITY_WARNING, 'name', 'Empty name');
         $result->addFinding(null, ConfigIndexValidationResult::SEVERITY_ERROR, 'indices', 'Invalid section');
-        $this->swapPluginComponent('search-manager', 'configIndexValidator', new SetupFindingConfigIndexValidator($result));
+        $this->swapPluginComponent('search-manager', 'configIndexValidator', new FixedConfigIndexValidator($result));
 
         $groups = $this->setup->getStatus($settings)['configIndexFindingGroups'];
 
@@ -139,21 +139,5 @@ final class SetupServiceTest extends TestCase
         self::assertSame(ConfigIndexValidationResult::SEVERITY_WARNING, $groups[1]['severity']);
         self::assertNull($groups[2]['handle']);
         self::assertSame(ConfigIndexValidationResult::SEVERITY_ERROR, $groups[2]['severity']);
-    }
-}
-
-/**
- * @since 5.54.0
- */
-final class SetupFindingConfigIndexValidator extends ConfigIndexValidator
-{
-    public function __construct(private readonly ConfigIndexValidationResult $result, array $config = [])
-    {
-        parent::__construct($config);
-    }
-
-    public function validate(): ConfigIndexValidationResult
-    {
-        return $this->result;
     }
 }

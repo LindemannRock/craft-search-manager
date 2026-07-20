@@ -45,6 +45,11 @@ class WidgetsController extends Controller
         $this->setLoggingHandle('search-manager');
     }
 
+    private function requireProWidgetStyles(): ?Response
+    {
+        return SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+    }
+
     /**
      * List all widget configurations.
      *
@@ -722,7 +727,7 @@ class WidgetsController extends Controller
      */
     public function actionStylesIndex(): Response
     {
-        $upgradeResponse = SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        $upgradeResponse = $this->requireProWidgetStyles();
         if ($upgradeResponse !== null) {
             return $upgradeResponse;
         }
@@ -878,7 +883,7 @@ class WidgetsController extends Controller
      */
     public function actionViewStyle(?string $handle = null): Response
     {
-        $upgradeResponse = SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        $upgradeResponse = $this->requireProWidgetStyles();
         if ($upgradeResponse !== null) {
             return $upgradeResponse;
         }
@@ -913,7 +918,7 @@ class WidgetsController extends Controller
      */
     public function actionEditStyle(?int $styleId = null, ?WidgetStyle $widgetStyle = null): Response
     {
-        $upgradeResponse = SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        $upgradeResponse = $this->requireProWidgetStyles();
         if ($upgradeResponse !== null) {
             return $upgradeResponse;
         }
@@ -949,7 +954,7 @@ class WidgetsController extends Controller
      */
     public function actionSaveStyle(): ?Response
     {
-        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        $this->requireProWidgetStyles();
         $this->requirePostRequest();
 
         $request = Craft::$app->getRequest();
@@ -1021,7 +1026,7 @@ class WidgetsController extends Controller
      */
     public function actionDeleteStyle(): Response
     {
-        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        $this->requireProWidgetStyles();
         $this->requirePostRequest();
         $this->requirePermission('searchManager:deleteWidgetStyles');
 
@@ -1065,7 +1070,7 @@ class WidgetsController extends Controller
      */
     public function actionBulkDeleteStyle(): Response
     {
-        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        $this->requireProWidgetStyles();
         $this->requirePostRequest();
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:deleteWidgetStyles');
@@ -1104,7 +1109,7 @@ class WidgetsController extends Controller
      */
     public function actionDuplicateStyle(): Response
     {
-        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        $this->requireProWidgetStyles();
         $this->requirePostRequest();
         $this->requirePermission('searchManager:createWidgetStyles');
 
@@ -1155,7 +1160,7 @@ class WidgetsController extends Controller
      */
     public function actionBulkEnableStyle(): Response
     {
-        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        $this->requireProWidgetStyles();
         $this->requirePostRequest();
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:editWidgetStyles');
@@ -1183,7 +1188,7 @@ class WidgetsController extends Controller
      */
     public function actionBulkDisableStyle(): Response
     {
-        SearchManager::$plugin->requireProOrPrompt('Widget Styles');
+        $this->requireProWidgetStyles();
         $this->requirePostRequest();
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:editWidgetStyles');

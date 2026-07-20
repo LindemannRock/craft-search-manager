@@ -53,14 +53,17 @@ final class AuditBatch4RegressionTest extends TestCase
 
     public function testExpectedCountSkipUrlPathDoesNotLoadAllElements(): void
     {
-        $source = $this->readPluginSource('src/models/SearchIndex.php');
-        $body = $this->methodBody($source, 'getExpectedCount', 'public');
+        $countSource = $this->readPluginSource('src/models/SearchIndex.php');
+        $body = $this->methodBody($countSource, 'getExpectedCount', 'public');
+        $helperSource = $this->readPluginSource('src/helpers/SearchIndexQueryHelper.php');
+        $helperBody = $this->methodBody($helperSource, 'buildSiteQueries', 'public static');
 
-        self::assertSame(1, substr_count($body, 'if ($this->skipEntriesWithoutUrl && $elementType === Entry::class)'));
+        self::assertStringContainsString('SearchIndexQueryHelper::buildSiteQueries($this)', $body);
+        self::assertSame(1, substr_count($helperBody, 'if ($index->skipEntriesWithoutUrl && $elementType === Entry::class)'));
         self::assertStringContainsString('Expected count result (skip URL)', $body);
         self::assertStringNotContainsString('Expected count result (skip URL non-entry)', $body);
-        self::assertStringContainsString("->andWhere(['not', ['elements_sites.uri' => null]])", $body);
-        self::assertStringContainsString("->andWhere(['<>', 'elements_sites.uri', ''])", $body);
+        self::assertStringContainsString("->andWhere(['not', ['elements_sites.uri' => null]])", $helperBody);
+        self::assertStringContainsString("->andWhere(['<>', 'elements_sites.uri', ''])", $helperBody);
         self::assertStringNotContainsString('foreach ($query->all() as $element)', $body);
     }
 

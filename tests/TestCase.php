@@ -13,6 +13,7 @@ namespace lindemannrock\searchmanager\tests;
 use Craft;
 use craft\base\ElementInterface;
 use craft\db\Query;
+use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\testing\IntegrationTestCase;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\Settings;
@@ -20,6 +21,7 @@ use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\Stubs\StubBackend;
+use yii\web\ForbiddenHttpException;
 
 /**
  * Base test case for search-manager integration tests.
@@ -167,6 +169,61 @@ abstract class TestCase extends IntegrationTestCase
             return $callback();
         } finally {
             $property->setValue(null, $original);
+        }
+    }
+
+    /**
+     * Replace Search Manager's cached config indices for a test.
+     *
+     * @param array<string, mixed> $indices
+     */
+    protected function withConfigFileIndices(array $indices): void
+    {
+        $cache = $this->configCache();
+        if (!is_array($cache)) {
+            $cache = [];
+        }
+        $cache['search-manager'] = ['indices' => $indices];
+        $this->setConfigCache($cache);
+        SearchIndex::clearCache();
+    }
+
+    protected function configCache(): mixed
+    {
+        $property = new \ReflectionProperty(BaseConfigFileHelper::class, '_configCache');
+        $property->setAccessible(true);
+
+        return $property->getValue();
+    }
+
+    protected function setConfigCache(mixed $cache): void
+    {
+        $property = new \ReflectionProperty(BaseConfigFileHelper::class, '_configCache');
+        $property->setAccessible(true);
+        $property->setValue(null, $cache);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function cpSection(string $key): array
+    {
+        foreach (SearchManager::$plugin->getCpSections(SearchManager::$plugin->getSettings()) as $section) {
+            if ($section['key'] === $key) {
+                return $section;
+            }
+        }
+
+        self::fail("{$key} CP section was not registered.");
+    }
+
+    protected function assertForbidden(callable $callback): void
+    {
+        try {
+            $callback();
+            self::fail('Expected the Standard edition gate to reject the operation.');
+        } catch (ForbiddenHttpException) {
+            self::addToAssertionCount(1);
         }
     }
 
