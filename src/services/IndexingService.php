@@ -646,15 +646,9 @@ class IndexingService extends Component
      */
     public function rebuildAll(): bool
     {
-        $indices = $this->getAllIndices();
+        Craft::$app->getQueue()->push(new RebuildIndexJob());
 
-        foreach ($indices as $index) {
-            if ($index->enabled) {
-                $this->rebuildIndex($index->handle);
-            }
-        }
-
-        $this->logInfo('Queued rebuild for all indices', ['count' => count($indices)]);
+        $this->logInfo('Queued rebuild for all indices');
 
         return true;
     }

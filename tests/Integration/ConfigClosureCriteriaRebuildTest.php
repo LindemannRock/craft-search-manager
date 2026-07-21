@@ -30,7 +30,7 @@ use lindemannrock\searchmanager\tests\TestCase;
  */
 final class ConfigClosureCriteriaRebuildTest extends TestCase
 {
-    private const INDEX_HANDLE = '__sm_config_closure_rebuild';
+    private const INDEX_HANDLE = 'sm-test-config-closure-rebuild';
     private const ENTRY_PREFIX = '__sm_config_closure_';
 
     /** @var list<int> */

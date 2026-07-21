@@ -680,6 +680,10 @@ class SearchIndex extends Model
                 return null;
             }
 
+            if ($row['source'] === 'config') {
+                return self::findByHandle((string)$row['handle']);
+            }
+
             return self::fromRow($row, self::loadSiteIdsForIndexId((int)$row['id']));
         } catch (\Throwable $e) {
             LoggingService::log('Failed to load index', 'error', 'search-manager', ['error' => $e->getMessage()]);
@@ -694,9 +698,11 @@ class SearchIndex extends Model
     public static function findByHandle(string $handle): ?self
     {
         // 1. Check config file FIRST (prevents loading stale database metadata)
-        $configData = self::loadConfigForHandle($handle);
+        $configData = self::isValidConfigIndexHandle($handle)
+            ? self::loadConfigForHandle($handle)
+            : null;
 
-        if ($configData) {
+        if ($configData !== null) {
             try {
                 $model = self::buildConfigIndexModel($handle, $configData);
             } catch (\Throwable $e) {
@@ -733,7 +739,7 @@ class SearchIndex extends Model
         try {
             $row = (new Query())
                 ->from('{{%searchmanager_indices}}')
-                ->where(['handle' => $handle])
+                ->where(['handle' => $handle, 'source' => 'database'])
                 ->one();
 
             if ($row) {
@@ -857,16 +863,29 @@ class SearchIndex extends Model
     {
         try {
             $configIndices = BaseConfigFileHelper::getConfigSection(self::PLUGIN_HANDLE, 'indices');
-            $indices = [];
-
             // Fetch ALL config metadata in one query (instead of N queries)
             $allMetadata = (new Query())
                 ->from('{{%searchmanager_indices}}')
                 ->where(['source' => 'config'])
                 ->indexBy('handle')
                 ->all();
+        } catch (\Throwable $e) {
+            LoggingService::log('Failed to load config indices', 'error', 'search-manager', ['error' => $e->getMessage()]);
+            return [];
+        }
 
-            foreach ($configIndices as $handle => $indexConfig) {
+        $indices = [];
+        foreach ($configIndices as $rawHandle => $indexConfig) {
+            $handle = (string)$rawHandle;
+            if (!is_string($rawHandle) || !self::isValidConfigIndexHandle($handle) || !is_array($indexConfig)) {
+                LoggingService::log('Skipping invalid config index item', 'warning', 'search-manager', [
+                    'handle' => self::configIndexHandleLabel($handle),
+                    'type' => get_debug_type($indexConfig),
+                ]);
+                continue;
+            }
+
+            try {
                 $model = self::buildConfigIndexModel($handle, $indexConfig);
 
                 // Check if database metadata exists for this config index (array lookup)
@@ -884,13 +903,15 @@ class SearchIndex extends Model
                 }
 
                 $indices[] = $model;
+            } catch (\Throwable $e) {
+                LoggingService::log('Failed to build config index model; skipping item', 'warning', 'search-manager', [
+                    'handle' => self::configIndexHandleLabel($handle),
+                    'error' => $e->getMessage(),
+                ]);
             }
-
-            return $indices;
-        } catch (\Throwable $e) {
-            LoggingService::log('Failed to load config indices', 'error', 'search-manager', ['error' => $e->getMessage()]);
-            return [];
         }
+
+        return $indices;
     }
 
     /**
@@ -923,6 +944,16 @@ class SearchIndex extends Model
     private static function loadConfigForHandle(string $handle): ?array
     {
         return BaseConfigFileHelper::getConfigByHandle(self::PLUGIN_HANDLE, 'indices', $handle);
+    }
+
+    private static function isValidConfigIndexHandle(string $handle): bool
+    {
+        return preg_match('/^[a-zA-Z][a-zA-Z0-9_-]*$/', $handle) === 1;
+    }
+
+    private static function configIndexHandleLabel(string $handle): string
+    {
+        return $handle === '' ? '(empty handle)' : $handle;
     }
 
     /**

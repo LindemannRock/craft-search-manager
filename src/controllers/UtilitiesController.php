@@ -923,12 +923,12 @@ class UtilitiesController extends Controller
      */
     private function getHandleCollisions(): array
     {
-        // Get handles from config file
-        $configHandles = [];
-        $configIndices = \lindemannrock\base\helpers\ConfigFileHelper::getConfigSection('search-manager', 'indices');
-        foreach ($configIndices as $handle => $config) {
-            $configHandles[] = $handle;
-        }
+        // Use the same operational config-index projection as findAll(), so
+        // malformed items cannot create phantom collision blockers.
+        $configHandles = array_map(
+            static fn(\lindemannrock\searchmanager\models\SearchIndex $index): string => $index->handle,
+            \lindemannrock\searchmanager\models\SearchIndex::loadFromConfig(),
+        );
 
         if (empty($configHandles)) {
             return [];

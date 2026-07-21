@@ -49,7 +49,7 @@ final class AuditItem278RegressionTest extends TestCase
         self::assertStringContainsString('array_filter(', $body);
         self::assertStringContainsString('static fn(SearchIndex $index): bool => $index->enabled', $body);
         self::assertStringContainsString('$indexCount = count($indices);', $body);
-        self::assertStringContainsString('if ($indexCount === 0)', $body);
+        self::assertStringContainsString('if ($indexCount === 0 && $failures === [])', $body);
         self::assertStringContainsString('$this->setProgress($queue, 1.0);', $body);
         self::assertStringContainsString('$i / $indexCount', $body);
         self::assertStringContainsString('($i + 1) / $indexCount', $body);

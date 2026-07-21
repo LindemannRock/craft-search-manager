@@ -13,6 +13,8 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use Craft;
 use craft\db\Query;
 use craft\elements\User;
+use craft\helpers\Db;
+use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\backends\FileBackend;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
@@ -20,6 +22,7 @@ use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
+use lindemannrock\searchmanager\services\ConfigIndexValidator;
 use lindemannrock\searchmanager\tests\Stubs\FixedConfigIndexValidator;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -30,13 +33,15 @@ use lindemannrock\searchmanager\tests\TestCase;
  */
 final class RebuildIndexJobPreflightTest extends TestCase
 {
-    private const INVALID_ELEMENT_INDEX = '__sm_rebuild_preflight_invalid_element';
-    private const FAILED_SYNC_INDEX = '__sm_rebuild_preflight_failed_sync';
+    private const INVALID_ELEMENT_INDEX = 'sm-test-rebuild-preflight-invalid-element';
+    private const FAILED_SYNC_INDEX = 'sm-test-rebuild-preflight-failed-sync';
     private const ALL_BAD_INDEX = '__sm_rebuild_all_bad';
     private const ALL_GOOD_INDEX = '__sm_rebuild_all_good';
     private const CLEAR_FAILURE_INDEX = '__sm_rebuild_clear_failure';
     private const THROWING_CLOSURE_INDEX = '__sm_rebuild_throwing_closure';
     private const WRONG_TYPE_CLOSURE_INDEX = '__sm_rebuild_wrong_type_closure';
+    private const MIXED_BROKEN_INDEX = 'sm-test-config-load-broken';
+    private const MIXED_VALID_INDEX = 'sm-test-config-load-valid';
 
     private mixed $originalConfigCache = null;
 
@@ -288,6 +293,85 @@ final class RebuildIndexJobPreflightTest extends TestCase
         );
     }
 
+    public function testMixedConfigLoadKeepsValidIndexAndDoesNotResurrectSkippedMetadata(): void
+    {
+        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        $user = User::find()
+            ->siteId($siteId)
+            ->status(User::STATUS_ACTIVE)
+            ->one();
+
+        if (!$user instanceof User) {
+            self::markTestSkipped('An active primary-site user is required for the mixed config-index regression.');
+        }
+
+        $this->withConfigFileIndices($this->mixedConfigIndices($siteId, (int)$user->id));
+        $ghostMetadataId = $this->insertConfigMetadata(self::MIXED_BROKEN_INDEX, 37);
+
+        $configIndices = SearchIndex::loadFromConfig();
+        self::assertSame([self::MIXED_VALID_INDEX], array_map(
+            static fn(SearchIndex $index): string => $index->handle,
+            $configIndices,
+        ));
+
+        $allHandles = array_map(
+            static fn(SearchIndex $index): string => $index->handle,
+            SearchIndex::findAll(),
+        );
+        self::assertContains(self::MIXED_VALID_INDEX, $allHandles);
+        self::assertNotContains(self::MIXED_BROKEN_INDEX, $allHandles);
+        self::assertNotContains('', $allHandles);
+        self::assertNull(SearchIndex::findByHandle(self::MIXED_BROKEN_INDEX));
+        self::assertNull(SearchIndex::findById($ghostMetadataId));
+
+        $validIndex = SearchIndex::findByHandle(self::MIXED_VALID_INDEX);
+        self::assertNotNull($validIndex);
+        self::assertSame(1, $validIndex->getExpectedCount());
+    }
+
+    public function testRebuildAllReportsSkippedMixedConfigItemsAndRebuildsValidIndex(): void
+    {
+        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        $user = User::find()
+            ->siteId($siteId)
+            ->status(User::STATUS_ACTIVE)
+            ->one();
+
+        if (!$user instanceof User) {
+            self::markTestSkipped('An active primary-site user is required for the mixed config-index rebuild regression.');
+        }
+
+        $mixedIndices = $this->mixedConfigIndices($siteId, (int)$user->id);
+        $this->withConfigFileIndices($mixedIndices);
+        $validation = (new ConfigIndexValidator())->validateConfig(['indices' => $mixedIndices]);
+        $this->swapPluginComponent(
+            'search-manager',
+            'configIndexValidator',
+            new FixedConfigIndexValidator($validation),
+        );
+
+        $backend = new RebuildPreflightRecordingBackendService();
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+        $loadedIndices = SearchIndex::loadFromConfig();
+
+        $error = $this->withOnlySearchIndices(
+            $loadedIndices,
+            fn(): \RuntimeException => $this->captureRuntimeException(static function(): void {
+                (new RebuildIndexJob())->execute(Craft::$app->queue);
+            }),
+        );
+
+        self::assertStringContainsString(self::MIXED_BROKEN_INDEX, $error->getMessage());
+        self::assertStringContainsString('(empty handle)', $error->getMessage());
+        self::assertCount(1, $backend->clearCallsFor(self::MIXED_VALID_INDEX));
+        self::assertNotSame([], $backend->batchCallsFor(self::MIXED_VALID_INDEX));
+        self::assertNotSame([], $backend->documentsFor(self::MIXED_VALID_INDEX));
+
+        $rebuiltIndex = SearchIndex::findByHandle(self::MIXED_VALID_INDEX);
+        self::assertNotNull($rebuiltIndex);
+        self::assertSame(1, $rebuiltIndex->documentCount);
+    }
+
     private function indexModel(string $handle, string $elementType, int $siteId): SearchIndex
     {
         return new SearchIndex([
@@ -321,6 +405,8 @@ final class RebuildIndexJobPreflightTest extends TestCase
             self::CLEAR_FAILURE_INDEX,
             self::THROWING_CLOSURE_INDEX,
             self::WRONG_TYPE_CLOSURE_INDEX,
+            self::MIXED_BROKEN_INDEX,
+            self::MIXED_VALID_INDEX,
         ];
         $indexIds = (new Query())
             ->select('id')
@@ -343,6 +429,59 @@ final class RebuildIndexJobPreflightTest extends TestCase
                 ->execute();
         }
         SearchIndex::clearCache();
+    }
+
+    /** @return array<string, mixed> */
+    private function mixedConfigIndices(int $siteId, int $userId): array
+    {
+        return [
+            self::MIXED_BROKEN_INDEX => 'not-an-array',
+            '' => [
+                'name' => 'Empty Handle Fixture',
+                'elementType' => User::class,
+                'siteId' => $siteId,
+                'enabled' => true,
+            ],
+            self::MIXED_VALID_INDEX => [
+                'name' => 'Valid Mixed Config Fixture',
+                'elementType' => User::class,
+                'siteId' => $siteId,
+                'criteria' => static fn($query) => $query->id($userId),
+                'enabled' => true,
+            ],
+        ];
+    }
+
+    private function insertConfigMetadata(string $handle, int $documentCount): int
+    {
+        $now = Db::prepareDateForDb(new \DateTimeImmutable());
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_indices}}', [
+            'name' => 'Skipped Config Metadata Fixture',
+            'handle' => $handle,
+            'elementType' => User::class,
+            'siteId' => null,
+            'criteria' => '{}',
+            'transformerClass' => '',
+            'headingLevels' => null,
+            'language' => null,
+            'backend' => null,
+            'enabled' => 1,
+            'enableAnalytics' => 1,
+            'disableStopWords' => 0,
+            'skipEntriesWithoutUrl' => 0,
+            'splitSections' => 0,
+            'retrievableFields' => json_encode(['*'], JSON_THROW_ON_ERROR),
+            'source' => 'config',
+            'lastIndexed' => $now,
+            'documentCount' => $documentCount,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+        $id = (int)Craft::$app->getDb()->getLastInsertID();
+        SearchIndex::clearCache();
+
+        return $id;
     }
 }
 

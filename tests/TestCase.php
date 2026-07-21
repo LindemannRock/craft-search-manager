@@ -319,6 +319,7 @@ abstract class TestCase extends IntegrationTestCase
                 ->status(null)
                 ->drafts(false)
                 ->revisions(false)
+                ->andWhere(['entries.primaryOwnerId' => null])
                 ->limit(20)
                 ->all();
 

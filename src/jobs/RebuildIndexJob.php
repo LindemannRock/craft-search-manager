@@ -17,6 +17,7 @@ use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexQueryHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
+use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
@@ -335,18 +336,23 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 
     private function rebuildAllIndices($queue): void
     {
+        $resolvedIndices = SearchIndex::findAll();
+        $resolvedHandles = array_fill_keys(array_map(
+            static fn(SearchIndex $index): string => $index->handle,
+            $resolvedIndices,
+        ), true);
         $indices = array_values(array_filter(
-            SearchIndex::findAll(),
+            $resolvedIndices,
             static fn(SearchIndex $index): bool => $index->enabled,
         ));
         $indexCount = count($indices);
+        $failures = $this->unresolvedConfigValidationFailures($resolvedHandles);
 
-        if ($indexCount === 0) {
+        if ($indexCount === 0 && $failures === []) {
             $this->setProgress($queue, 1.0);
             return;
         }
 
-        $failures = [];
         foreach ($indices as $i => $index) {
             try {
                 $this->rebuildSingleIndex(
@@ -377,6 +383,46 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 
             throw new \RuntimeException('Rebuild all indices completed with failures: ' . $failureSummary);
         }
+    }
+
+    /**
+     * Report validator errors for malformed config items that could not produce
+     * an operational SearchIndex model and therefore are absent from findAll().
+     *
+     * @param array<string, true> $resolvedHandles
+     * @return array<string, string>
+     */
+    private function unresolvedConfigValidationFailures(array $resolvedHandles): array
+    {
+        $failures = [];
+        $validation = SearchManager::$plugin->configIndexValidator->validate();
+
+        foreach ($validation->getFindingGroups() as $group) {
+            if ($group['severity'] !== ConfigIndexValidationResult::SEVERITY_ERROR) {
+                continue;
+            }
+
+            $handle = $group['handle'];
+            if ($handle !== null && isset($resolvedHandles[$handle])) {
+                continue;
+            }
+
+            $label = match ($handle) {
+                null => 'config',
+                '' => '(empty handle)',
+                default => $handle,
+            };
+            $failures[$label] = implode(' | ', array_map(
+                static fn(array $finding): string => $finding['message'],
+                $group['findings'],
+            ));
+            $this->logError('Config index skipped during rebuild-all', [
+                'handle' => $label,
+                'error' => $failures[$label],
+            ]);
+        }
+
+        return $failures;
     }
 
     private function setRebuildProgress($queue, float $progress, float $start = 0.0, float $end = 1.0): void

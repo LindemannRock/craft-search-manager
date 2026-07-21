@@ -20,10 +20,12 @@ use lindemannrock\searchmanager\backends\FileBackend;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
+use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\TransformerService;
+use lindemannrock\searchmanager\tests\Stubs\FixedConfigIndexValidator;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -50,6 +52,13 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
         RebuildAccountingTransformer::$failingElementIds = [];
         RebuildCreationFailingTransformer::$constructionCount = 0;
         SearchManager::$plugin->getSettings()->enableCacheWarming = false;
+        $this->swapPluginComponent(
+            'search-manager',
+            'configIndexValidator',
+            new FixedConfigIndexValidator(new ConfigIndexValidationResult(
+                ConfigIndexValidationResult::STATUS_ABSENT,
+            )),
+        );
     }
 
     protected function tearDown(): void
