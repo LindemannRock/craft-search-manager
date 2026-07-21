@@ -719,8 +719,10 @@ class WidgetConfig extends Model
         $this->validateEnumField($s, 'behavior', 'hierarchyStyle', Craft::t('search-manager', 'Hierarchy Style'), ['tree', 'flat', 'none']);
         $this->validateEnumField($s, 'behavior', 'hierarchyDisplay', Craft::t('search-manager', 'Hierarchy Display'), ['individual', 'unified']);
         $this->validateEnumField($s, 'behavior', 'snippetMode', Craft::t('search-manager', 'Snippet Mode'), SnippetOptionsHelper::MODES);
-        $this->validateEnumField($s, 'behavior', 'promotionDisplay', Craft::t('search-manager', 'Promotion Display'), ['badge', 'tint', 'none']);
-        $this->validateEnumField($s, 'behavior', 'promotionBadgePosition', Craft::t('search-manager', 'Badge Position'), ['inline', 'above', 'below']);
+        if (SearchManager::$plugin->isPro()) {
+            $this->validateEnumField($s, 'behavior', 'promotionDisplay', Craft::t('search-manager', 'Promotion Display'), ['badge', 'tint', 'none']);
+            $this->validateEnumField($s, 'behavior', 'promotionBadgePosition', Craft::t('search-manager', 'Badge Position'), ['inline', 'above', 'below']);
+        }
 
         // Behavior settings — booleans
         $this->validateBooleanField($s, 'behavior', 'modalPreventBodyScroll', Craft::t('search-manager', 'Prevent Body Scroll'));
@@ -745,10 +747,13 @@ class WidgetConfig extends Model
         $this->validateStringField($s, 'trigger', 'triggerLabel', Craft::t('search-manager', 'Trigger Label'), 255);
         $this->validateBooleanField($s, 'trigger', 'triggerEnabled', Craft::t('search-manager', 'Trigger Enabled'));
 
-        // Analytics settings
-        $this->validateIntField($s, 'analytics', 'analyticsIdleTimeoutMs', Craft::t('search-manager', 'Analytics Idle Timeout'), 0, 10000);
-        $this->validateStringField($s, 'analytics', 'analyticsSource', Craft::t('search-manager', 'Analytics Source'), 64);
-        $this->validateSourceIdentifier($s);
+        // Hidden Pro settings are preserved during a downgrade, but cannot be
+        // corrected in Standard and therefore must not block unrelated saves.
+        if (SearchManager::$plugin->isPro()) {
+            $this->validateIntField($s, 'analytics', 'analyticsIdleTimeoutMs', Craft::t('search-manager', 'Analytics Idle Timeout'), 0, 10000);
+            $this->validateStringField($s, 'analytics', 'analyticsSource', Craft::t('search-manager', 'Analytics Source'), 64);
+            $this->validateSourceIdentifier($s);
+        }
     }
 
     /**

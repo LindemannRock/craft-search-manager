@@ -50,16 +50,20 @@
 		label: 'Destination Highlighting'|t('search-manager'),
 		url: '#destinationHighlighting',
 	},
-	analytics: {
-		label: 'Analytics'|t('search-manager'),
-        url: '#analytics',
-    },
 } %}
+{% if isPro %}
+	{% set tabs = tabs|merge({
+		analytics: {
+			label: 'Analytics'|t('search-manager'),
+			url: '#analytics',
+		},
+	}) %}
+{% endif %}
 
 {% set selectedTab = 'general' %}
 {% if widgetConfig.hasErrors() %}
 	{% set errorKeys = widgetConfig.getErrors()|keys %}
-	{% if errorKeys|filter(k => k starts with 'settings.analytics.')|length %}
+	{% if isPro and errorKeys|filter(k => k starts with 'settings.analytics.')|length %}
 		{% set selectedTab = 'analytics' %}
 	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.highlightDestination')|length %}
 		{% set selectedTab = 'destinationHighlighting' %}
@@ -183,13 +187,14 @@
 		} %}
 	</div>
 
-	{# Analytics Tab #}
-	<div id="analytics"{% if selectedTab != 'analytics' %} class="hidden"{% endif %}>
-		{% include "search-manager/widgets/_partials/analytics" with {
-			widgetConfig: widgetConfig,
-			isPro: isPro,
-		} %}
-	</div>
+	{% if isPro %}
+		{# Analytics Tab #}
+		<div id="analytics"{% if selectedTab != 'analytics' %} class="hidden"{% endif %}>
+			{% include "search-manager/widgets/_partials/analytics" with {
+				widgetConfig: widgetConfig,
+			} %}
+		</div>
+	{% endif %}
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
@@ -287,14 +292,6 @@
 				options: _styleOptions,
 				errors: widgetConfig.getErrors('styleHandle')
 			}) }}
-		{% else %}
-			{% include 'lindemannrock-base/_partials/edition-upgrade-prompt' with {
-				plugin: craft.searchManager.plugin,
-				edition: constant('lindemannrock\\searchmanager\\SearchManager::EDITION_PRO'),
-				featureName: 'Widget Styles',
-				pitch: 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.'|t('search-manager'),
-				compact: true,
-			} only %}
 		{% endif %}
 	</div>
 

@@ -1,6 +1,7 @@
 {% extends "_layouts/cp" %}
 {% do view.registerAssetBundle('lindemannrock\\base\\web\\assets\\components\\ComponentsAsset') %}
 {% set title = isNew ? "Create Index"|t('search-manager') : "Edit Index: {name}"|t('search-manager', { name: index.name }) %}
+{% set isPro = craft.searchManager.plugin.isPro() %}
 {% set selectedSubnavItem = 'indices' %}
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
@@ -579,14 +580,14 @@ document.addEventListener('DOMContentLoaded', function() {
 			on: index.enabled ?? true
 		}) }}
 
-		{% if globalSettings.enableAnalytics %}
+		{% if isPro and globalSettings.enableAnalytics %}
 			{{ forms.lightswitchField({
 				label: 'Track Analytics'|t('search-manager'),
 				id: 'enableAnalytics',
 				name: 'enableAnalytics',
 				on: index.enableAnalytics ?? true
 			}) }}
-		{% else %}
+		{% elseif isPro %}
 			{# Hidden field to preserve value when global analytics is disabled #}
 			<input type="hidden" name="enableAnalytics" value="{{ index.enableAnalytics ?? true ? '1' : '0' }}">
 		{% endif %}

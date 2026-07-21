@@ -73,7 +73,7 @@ See [Widget Configuration](configuration.md) for all parameters.
 
 ## Manage widgets in the CP
 
-In Pro, each widget config links to a **Widget Style** preset from the sidebar — that's where colors, spacing, and other appearance settings live (see [Widget Styles](styles.md)), not a dedicated tab. Standard shows an upgrade prompt in that position and uses the built-in default style; Twig inline `styles:` overrides still apply. The sidebar preview remains available in both editions.
+In Pro, each widget config links to a **Widget Style** preset from the sidebar — that's where colors, spacing, and other appearance settings live (see [Widget Styles](styles.md)), not a dedicated tab. Standard omits the style selector and uses the built-in default style; Twig inline `styles:` overrides still apply. The sidebar preview remains available in both editions because it previews the Standard widget configuration rather than a Pro feature.
 
 The config's own tabs cover behavior:
 
@@ -84,7 +84,7 @@ The config's own tabs cover behavior:
 - **Results** — result limit, URL requirement, and layout (default or hierarchical, with grouping field/style/heading-limit when hierarchical); Pro also exposes promotion display controls
 - **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
 - **Destination Highlighting** — destination-page highlight toggle, persisted query, query param, content selector
-- **Analytics** — Pro source identifier and idle timeout controls; Standard keeps the tab visible with an upgrade prompt
+- **Analytics (Pro)** — source identifier and idle timeout controls; the tab is absent in Standard
 
 Manage configs at Search Manager > Widgets.
 

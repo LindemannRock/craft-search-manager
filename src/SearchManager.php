@@ -212,6 +212,11 @@ class SearchManager extends Plugin
             ['searchManager:downloadSystemLogs'],
             [
                 'colorSets' => [
+                    'indexStatus' => [
+                        'enabled' => ColorHelper::getPaletteColor('teal'),
+                        'disabled' => ColorHelper::getPaletteColor('gray'),
+                        'error' => ColorHelper::getPaletteColor('red'),
+                    ],
                     'backendType' => [
                         'mysql' => ColorHelper::getPaletteColor('lime'),
                         'pgsql' => ColorHelper::getPaletteColor('sky'),

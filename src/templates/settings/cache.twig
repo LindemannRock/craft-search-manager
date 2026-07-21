@@ -200,11 +200,11 @@
 • Both search cache and autocomplete cache are cleared together per index'|t('search-manager')
 		} %}
 
-		<hr>
-
-		<h2>{{ "Cache Warming"|t('search-manager') }}</h2>
-
 		{% if isPro %}
+			<hr>
+
+			<h2>{{ "Cache Warming"|t('search-manager') }}</h2>
+
 			{{ forms.lightswitchField({
                 label: 'Enable Cache Warming'|t('search-manager'),
                 instructions: 'Automatically warm the cache with popular queries after an index rebuild. This ensures first visitors get fast, cached results.'|t('search-manager'),
@@ -247,14 +247,6 @@
 • Requires analytics to be enabled for query data'|t('search-manager')
 				} %}
 			</div>
-		{% else %}
-			{% include 'lindemannrock-base/_partials/edition-upgrade-prompt' with {
-				plugin: craft.searchManager.plugin,
-				edition: constant('lindemannrock\\searchmanager\\SearchManager::EDITION_PRO'),
-				featureName: 'Cache Warming',
-				pitch: 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.'|t('search-manager'),
-				compact: true,
-			} only %}
 		{% endif %}
 
 		{% set syncRunning = craft.app.plugins.getPlugin('search-manager').isStatusSyncRunning() %}
@@ -272,7 +264,7 @@
 			{% endif %}
 		{% endif %}
 
-        {% if settings.enableAnalytics ?? true %}
+        {% if isPro and (settings.enableAnalytics ?? true) %}
             <hr>
 
             <h2>{{ "Device Detection Caching"|t('search-manager') }}</h2>
@@ -313,7 +305,7 @@
 • Recommended to keep enabled for production sites'|t('search-manager')
                 } %}
             </div>
-        {% else %}
+        {% elseif isPro %}
             <hr>
 
             <h2>{{ "Device Detection Caching"|t('search-manager') }}</h2>

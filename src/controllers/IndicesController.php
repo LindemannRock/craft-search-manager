@@ -18,6 +18,7 @@ use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchHeadingHelper;
+use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
@@ -62,6 +63,18 @@ class IndicesController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         $indices = SearchIndex::findAll();
+        $configValidation = SearchManager::$plugin->configIndexValidator->validate();
+        $configIndexErrors = [];
+        foreach ($configValidation->getFindings() as $finding) {
+            $handle = $finding['handle'];
+            if ($finding['severity'] !== ConfigIndexValidationResult::SEVERITY_ERROR
+                || $handle === null
+                || isset($configIndexErrors[$handle])) {
+                continue;
+            }
+
+            $configIndexErrors[$handle] = $finding['message'];
+        }
         $configHandles = BaseConfigFileHelper::getHandles(self::PLUGIN_HANDLE, 'indices');
         $databaseHandles = (new Query())
             ->select(['handle'])
@@ -140,6 +153,7 @@ class IndicesController extends Controller
 
         return $this->renderTemplate('search-manager/indices/index', [
             'indices' => $indices,
+            'configIndexErrors' => $configIndexErrors,
             'collisionHandles' => $collisionHandles,
             'statusFilter' => $statusFilter,
             'sourceFilter' => $sourceFilter,
@@ -398,7 +412,9 @@ class IndicesController extends Controller
         $index->language = $request->getBodyParam('language') ?: null;
         $index->backend = $request->getBodyParam('backend') ?: null;
         $index->enabled = (bool)$request->getBodyParam('enabled');
-        $index->enableAnalytics = (bool)$request->getBodyParam('enableAnalytics', true);
+        if (SearchManager::$plugin->isPro()) {
+            $index->enableAnalytics = (bool)$request->getBodyParam('enableAnalytics', true);
+        }
         $index->disableStopWords = (bool)$request->getBodyParam('disableStopWords', false);
         $index->skipEntriesWithoutUrl = (bool)$request->getBodyParam('skipEntriesWithoutUrl', false);
         $index->splitSections = (bool)$request->getBodyParam('splitSections', false);

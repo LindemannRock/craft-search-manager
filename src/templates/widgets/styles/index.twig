@@ -4,6 +4,15 @@
     selectedSubnavItem: 'widgets',
 })|trim %}
 {% set errorSummary = setupIncompleteSummary %}
+{% set isPro = craft.searchManager.plugin.isPro() %}
+{% set sidebarItems = {
+	configurations: { label: 'Configurations'|t('search-manager'), url: url('search-manager/widgets') },
+} %}
+{% if isPro %}
+	{% set sidebarItems = sidebarItems|merge({
+		styles: { label: 'Styles'|t('search-manager'), url: url('search-manager/widgets/styles') },
+	}) %}
+{% endif %}
 
 {# Follows the canonical CP table index-page pattern (in-memory variant) —
    see plugins/base/docs/template-guides/cp-table-index-pattern.md.
@@ -27,10 +36,7 @@
 	},
 	sidebarMenu: {
 		label: 'Widgets'|t('search-manager'),
-		items: {
-			configurations: { label: 'Configurations'|t('search-manager'), url: url('search-manager/widgets') },
-			styles: { label: 'Styles'|t('search-manager'), url: url('search-manager/widgets/styles') },
-		},
+		items: sidebarItems,
 		selected: 'styles',
 	},
 	filters: [

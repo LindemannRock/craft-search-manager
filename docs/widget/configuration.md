@@ -16,13 +16,13 @@ A widget referenced without a `configHandle` falls back to the **default widget*
 
 The modal widget's complete functional core is available in Standard: search and results, grouping and hierarchy, snippets, recently viewed history, destination highlighting, autocomplete APIs, Twig inline `styles:` overrides, and public JavaScript events.
 
-Pro adds three configuration areas: promotion display controls, the Analytics tab's source and idle-timeout fields, and reusable Widget Style presets. Standard keeps the eight-tab editor intact and shows upgrade prompts where those Pro fields would appear.
+Pro adds three configuration areas: promotion display controls, the Analytics tab's source and idle-timeout fields, and reusable Widget Style presets. Standard presents a clean seven-tab editor and omits those Pro-only controls entirely. Visiting a gated Pro page directly still shows the edition prompt.
 
-On a downgraded site, stored Pro values are preserved but omitted from rendered widget HTML. A referenced style preset falls back to the built-in default style, promotion attributes are omitted, and analytics attributes are omitted. Hand-added client-side attributes cannot bypass the server-side edition gates.
+On a downgraded site, stored Pro values are preserved but omitted from rendered widget HTML. Because those values cannot be edited in Standard, their validation does not block saving changes to visible Standard fields. A referenced style preset falls back to the built-in default style, promotion attributes are omitted, and analytics attributes are omitted. Hand-added client-side attributes cannot bypass the server-side edition gates.
 
 ## Manage widgets in the CP
 
-Create and edit widget configs at Search Manager > Widgets. In Pro, each config links to a **Widget Style** preset from the sidebar — that's where colors, spacing, and other appearance settings live (see [Widget Styles](styles.md)), not a dedicated tab. Standard shows an upgrade prompt there and renders with the built-in defaults plus any Twig inline styles. The sidebar also shows a live preview of the widget in light and dark mode.
+Create and edit widget configs at Search Manager > Widgets. In Pro, each config links to a **Widget Style** preset from the sidebar — that's where colors, spacing, and other appearance settings live (see [Widget Styles](styles.md)), not a dedicated tab. Standard omits the style selector and renders with the built-in defaults plus any Twig inline styles. The sidebar still shows a live preview of the Standard widget in light and dark mode.
 
 The config's own tabs cover behavior:
 
@@ -30,10 +30,10 @@ The config's own tabs cover behavior:
 - **Search Input** — placeholder, debounce, minimum characters
 - **Modal & Trigger** — hotkey, prevent body scroll, loading indicator, trigger button and label
 - **Recently Viewed** — the "Recently viewed" section (results the visitor opened) and its stored-entry limit
-- **Results** — result limit, URL requirement, and layout (default or hierarchical, with grouping field/style/heading-limit when hierarchical); promotion display controls require Pro
+- **Results** — result limit, URL requirement, and layout (default or hierarchical, with grouping field/style/heading-limit when hierarchical); Pro also adds promotion display controls
 - **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
 - **Destination Highlighting** — destination-page highlight toggle, persisted query, query param, content selector
-- **Analytics** — Pro source identifier and idle timeout controls; Standard shows an upgrade prompt
+- **Analytics (Pro)** — source identifier and idle timeout controls; the tab is absent in Standard
 
 Config-defined widgets (below) show a "Config" badge here and can't be edited in this UI; database-defined widgets show a "Database" badge and are fully editable.
 

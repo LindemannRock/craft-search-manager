@@ -3,13 +3,14 @@
 {% import "_includes/forms" as forms %}
 
 {# Permission checks #}
+{% set isPro = craft.searchManager.plugin.isPro() %}
 {% set canManageIndices = currentUser.can('searchManager:manageIndices') %}
 {% set canManageBackends = currentUser.can('searchManager:manageBackends') %}
 {% set canRebuildIndices = currentUser.can('searchManager:rebuildIndices') %}
 {% set canClearCache = currentUser.can('searchManager:clearCache') %}
 {% set canClearAnalytics = currentUser.can('searchManager:clearAnalytics') %}
 {% set canExportAnalytics = currentUser.can('searchManager:exportAnalytics') %}
-{% set canViewAnalytics = currentUser.can('searchManager:viewAnalytics') %}
+{% set canViewAnalytics = isPro and currentUser.can('searchManager:viewAnalytics') %}
 {% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
 
 {% set hasNavigation = canManageBackends or canManageIndices or (settings.enableAnalytics and canViewAnalytics) or canManageSettings %}

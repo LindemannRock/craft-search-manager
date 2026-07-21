@@ -32,6 +32,8 @@ Choose Standard when you need a production-ready search engine and a fully worki
 
 The widget remains customizable from Twig with inline `styles:` overrides. Public JavaScript `CustomEvent`s also continue to fire, so a Standard site can connect its own analytics platform without enabling Search Manager's built-in analytics.
 
+The Standard Control Panel stays focused on Standard functionality: Pro-only navigation, links, tabs, form sections, and upgrade CTAs are omitted. An edition prompt appears only when someone opens a gated Pro page directly, such as from an old bookmark. Already-placed Pro dashboard widgets keep an explanatory notice after a downgrade so the dashboard does not break.
+
 ## Pro
 
 Pro includes everything in Standard, plus:

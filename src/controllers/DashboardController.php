@@ -36,6 +36,7 @@ class DashboardController extends Controller
     {
         $user = Craft::$app->getUser();
         $settings = SearchManager::$plugin->getSettings();
+        $isPro = SearchManager::$plugin->isPro();
 
         // If user doesn't have manageIndices permission, redirect to first accessible section
         if (!$user->checkPermission('searchManager:manageIndices')) {
@@ -60,20 +61,23 @@ class DashboardController extends Controller
             }
         }
 
-        // Get promotions count
-        $promotionsCount = SearchManager::$plugin->promotions->getPromotionCount();
-        $enabledPromotions = SearchManager::$plugin->promotions->getPromotionCount(true);
-
-        // Get query rules count
-        $queryRulesCount = SearchManager::$plugin->queryRules->getQueryRuleCount();
-        $enabledQueryRules = SearchManager::$plugin->queryRules->getQueryRuleCount(true);
+        $promotionsCount = 0;
+        $enabledPromotions = 0;
+        $queryRulesCount = 0;
+        $enabledQueryRules = 0;
+        if ($isPro) {
+            $promotionsCount = SearchManager::$plugin->promotions->getPromotionCount();
+            $enabledPromotions = SearchManager::$plugin->promotions->getPromotionCount(true);
+            $queryRulesCount = SearchManager::$plugin->queryRules->getQueryRuleCount();
+            $enabledQueryRules = SearchManager::$plugin->queryRules->getQueryRuleCount(true);
+        }
 
         // Get analytics stats if enabled
         $searchesToday = 0;
         $searchesYesterday = 0;
         $topSearches = [];
         $recentZeroResults = [];
-        if ($settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics')) {
+        if ($isPro && $settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics')) {
             $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
             $searchesToday = SearchManager::$plugin->analytics->getAnalyticsCount($editableSiteIds, null, 'today');
             $searchesYesterday = SearchManager::$plugin->analytics->getAnalyticsCount($editableSiteIds, null, 'yesterday');

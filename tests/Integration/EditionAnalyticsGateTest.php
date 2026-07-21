@@ -238,6 +238,14 @@ final class EditionAnalyticsGateTest extends TestCase
         );
         self::assertSame(['analyticsRetention'], $standardAttributes);
 
+        $indicesControllerSource = (string)file_get_contents(dirname(__DIR__, 2) . '/src/controllers/IndicesController.php');
+        self::assertStringContainsString(
+            "if (SearchManager::\$plugin->isPro()) {\n            \$index->enableAnalytics = (bool)\$request->getBodyParam('enableAnalytics', true);",
+            $indicesControllerSource,
+        );
+        $indexEditSource = (string)file_get_contents(dirname(__DIR__, 2) . '/src/templates/indices/edit.twig');
+        self::assertStringContainsString('{% elseif isPro %}', $indexEditSource);
+
         $this->forcePluginEdition(SearchManager::EDITION_PRO);
         $proAnalyticsSection = $this->cpSection('analytics');
         self::assertSame(!empty(ConfiguredBackend::findAllEnabled()), $proAnalyticsSection['when']);

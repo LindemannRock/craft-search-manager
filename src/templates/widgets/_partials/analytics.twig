@@ -1,6 +1,5 @@
 {% import "_includes/forms" as forms %}
 
-{% if isPro %}
 	{{ forms.textField({
 		label: 'Analytics Source'|t('search-manager'),
 		instructions: 'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.'|t('search-manager'),
@@ -24,11 +23,3 @@
 		max: 10000,
 		errors: widgetConfig.getErrors('settings.analytics.analyticsIdleTimeoutMs')
 	}) }}
-{% else %}
-	{% include 'lindemannrock-base/_partials/edition-upgrade-prompt' with {
-		plugin: craft.searchManager.plugin,
-		edition: constant('lindemannrock\\searchmanager\\SearchManager::EDITION_PRO'),
-		featureName: 'Analytics',
-		pitch: 'Search Manager Pro adds analytics, query rules, promotions, pending-sync operations, and reusable widget style presets.'|t('search-manager'),
-	} only %}
-{% endif %}

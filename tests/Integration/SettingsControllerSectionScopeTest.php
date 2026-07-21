@@ -70,15 +70,15 @@ final class SettingsControllerSectionScopeTest extends TestCase
         self::assertNotContains('cacheWarmingQueryCount', $attributes);
     }
 
-    public function testCacheWarmingFieldsUseTheProUpgradeTreatment(): void
+    public function testCacheWarmingFieldsAreHiddenWithoutAnInlineUpgradePrompt(): void
     {
         $cache = file_get_contents(dirname(__DIR__, 2) . '/src/templates/settings/cache.twig');
         self::assertIsString($cache);
 
         self::assertStringContainsString('{% set isPro = craft.searchManager.plugin.isPro() %}', $cache);
         self::assertStringContainsString('{% if isPro %}', $cache);
-        self::assertStringContainsString("featureName: 'Cache Warming'", $cache);
-        self::assertStringContainsString("'lindemannrock-base/_partials/edition-upgrade-prompt'", $cache);
+        self::assertStringNotContainsString("featureName: 'Cache Warming'", $cache);
+        self::assertStringNotContainsString("'lindemannrock-base/_partials/edition-upgrade-prompt'", $cache);
     }
 
     public function testSnippetTemplateHelperSettingsLiveOnSnippetsSectionOnly(): void

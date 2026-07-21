@@ -5,6 +5,7 @@
     selectedSubnavItem: selectedSubnavItem,
 })|trim %}
 {% set errorSummary = setupIncompleteSummary %}
+{% set isPro = craft.searchManager.plugin.isPro() %}
 
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
@@ -12,12 +13,12 @@
 
 {# Permission checks #}
 {% set canManageIndices = currentUser.can('searchManager:manageIndices') %}
-{% set canManagePromotions = currentUser.can('searchManager:managePromotions') %}
-{% set canManageQueryRules = currentUser.can('searchManager:manageQueryRules') %}
-{% set canViewAnalytics = currentUser.can('searchManager:viewAnalytics') %}
+{% set canManagePromotions = isPro and currentUser.can('searchManager:managePromotions') %}
+{% set canManageQueryRules = isPro and currentUser.can('searchManager:manageQueryRules') %}
+{% set canViewAnalytics = isPro and currentUser.can('searchManager:viewAnalytics') %}
 {% set canCreateIndices = currentUser.can('searchManager:createIndices') %}
-{% set canCreatePromotions = currentUser.can('searchManager:createPromotions') %}
-{% set canCreateQueryRules = currentUser.can('searchManager:createQueryRules') %}
+{% set canCreatePromotions = isPro and currentUser.can('searchManager:createPromotions') %}
+{% set canCreateQueryRules = isPro and currentUser.can('searchManager:createQueryRules') %}
 {% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
 {% set canManageWidgetConfigs = currentUser.can('searchManager:manageWidgetConfigs') %}
 

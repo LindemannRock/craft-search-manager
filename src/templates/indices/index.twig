@@ -7,6 +7,7 @@
    presentational and just renders what's handed in. #}
 
 {% set globalSettings = craft.searchManager.getSettings() %}
+{% set isPro = craft.searchManager.plugin.isPro() %}
 {% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
     selectedSubnavItem: 'indices',
 })|trim %}
@@ -26,7 +27,7 @@
     {key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
 ] %}
 
-{% if globalSettings.enableAnalytics %}
+{% if isPro and globalSettings.enableAnalytics %}
     {% set columns = columns|merge([{key: 'analytics', label: 'Analytics'|t('search-manager'), hideable: true}]) %}
 {% endif %}
 
@@ -231,15 +232,14 @@
 
     {# Status #}
     <td data-column="enabled">
-        {% include 'lindemannrock-base/_components/badge' with {
-            label: item.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager'),
-            value: item.enabled ? 'enabled' : 'disabled',
-            colorSet: 'status',
+        {% include 'search-manager/indices/_status-badge' with {
+            item: item,
+            configIndexErrors: configIndexErrors,
         } only %}
     </td>
 
     {# Analytics (conditional) #}
-    {% if globalSettings.enableAnalytics %}
+    {% if isPro and globalSettings.enableAnalytics %}
         <td data-column="analytics">
             {% include 'lindemannrock-base/_components/badge' with {
                 label: item.enableAnalytics ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager'),

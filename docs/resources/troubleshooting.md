@@ -132,6 +132,12 @@ Numeric settings such as cache duration, autocomplete cache duration, batch size
 
 If a settings save fails, keep the submitted form open and check the inline field errors. Search Manager validates posted values before saving and does not partially save invalid settings.
 
+## Widget save reports an error for a hidden Pro setting
+
+After downgrading to Standard, Pro-only promotion, analytics, and style-preset controls are hidden. Their stored values are retained for a future re-upgrade, but they do not participate in Standard editor validation and cannot block saving a visible widget setting.
+
+If a Standard widget save still reports an error such as `Badge Position must be one of: inline, above, below.`, update Search Manager to a version containing this fix and retry the save. To inspect or correct the preserved value itself, switch back to Pro and use the restored controls.
+
 ## Last indexed does not update after every save
 
 Automatic save/delete syncs debounce `lastIndexed` updates for 60 seconds by default. This is expected: the element is still indexed, but the metadata timestamp is only touched once per debounce window to avoid extra database writes during imports or rapid editing.

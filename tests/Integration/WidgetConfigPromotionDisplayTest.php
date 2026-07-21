@@ -8,8 +8,9 @@
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use lindemannrock\base\testing\IntegrationTestCase;
 use lindemannrock\searchmanager\models\WidgetConfig;
+use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\tests\TestCase;
 
 /**
  * Promotion display config: getters normalize values and validation
@@ -17,7 +18,7 @@ use lindemannrock\searchmanager\models\WidgetConfig;
  *
  * @since 5.53.0
  */
-class WidgetConfigPromotionDisplayTest extends IntegrationTestCase
+class WidgetConfigPromotionDisplayTest extends TestCase
 {
     public function testPromotionDisplayDefaultsToNone(): void
     {
@@ -62,6 +63,8 @@ class WidgetConfigPromotionDisplayTest extends IntegrationTestCase
 
     public function testValidationRejectsUnknownModeAndPosition(): void
     {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+
         $config = new WidgetConfig();
         $config->settings = [
             'behavior' => [
