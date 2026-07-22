@@ -203,14 +203,16 @@
 				<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
 				<dd class="value">
 					{% set expected = index.expectedCount %}
-					{% if index.documentCount == expected %}
+					{% set comparison = index.comparisonCount %}
+					{% if comparison is null %}
+					{% elseif comparison == expected %}
 						{% include 'lindemannrock-base/_components/status-dot' with { value: 'ok', colorSet: 'healthStatus' } only %}
-					{% elseif index.documentCount < expected %}
+					{% elseif comparison < expected %}
 						{% include 'lindemannrock-base/_components/status-dot' with { value: 'low', colorSet: 'healthStatus' } only %}
 					{% else %}
 						{% include 'lindemannrock-base/_components/status-dot' with { value: 'high', colorSet: 'healthStatus' } only %}
 					{% endif %}
-					{{ index.documentCount }}&nbsp;/&nbsp;{{ expected }}
+					{{ index.documentCount|number_format }}{% if not index.splitSections %}&nbsp;/&nbsp;{{ expected|number_format }}{% endif %}
 				</dd>
 			</div>
 			<div class="data">

@@ -14,6 +14,7 @@ use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
+use lindemannrock\searchmanager\interfaces\IndexCountBackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use Meilisearch\Client;
 use Meilisearch\Contracts\DocumentsQuery;
@@ -27,7 +28,7 @@ use Meilisearch\Contracts\SearchQuery;
  *
  * @since 5.0.0
  */
-class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInterface
+class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInterface, IndexCountBackendInterface
 {
     private ?Client $_adminClient = null;
     private ?Client $_searchClient = null;
@@ -465,6 +466,37 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             ]);
             return ['hits' => [], 'total' => 0, '_failed' => true];
         }
+    }
+
+    /** @inheritdoc */
+    public function getDocumentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        try {
+            $fullIndexName = $this->getFullIndexName($indexName);
+            $this->ensureFilterableAttributes($fullIndexName);
+            $index = $this->getAdminClient()->index($fullIndexName);
+
+            if ($siteId === null) {
+                $stats = $index->stats();
+
+                return isset($stats['numberOfDocuments']) ? (int)$stats['numberOfDocuments'] : null;
+            }
+
+            return $this->countSearchResults($indexName, $siteId, false);
+        } catch (\Throwable $e) {
+            $this->logWarning('Failed to count Meilisearch documents', [
+                'index' => $indexName,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /** @inheritdoc */
+    public function getDistinctParentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        return $this->countSearchResults($indexName, $siteId, true);
     }
 
     /**
@@ -950,6 +982,55 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             ]);
 
             throw $e;
+        }
+    }
+
+    private function countSearchResults(string $indexName, ?int $siteId, bool $distinctParents): ?int
+    {
+        try {
+            $fullIndexName = $this->getFullIndexName($indexName);
+            $this->ensureFilterableAttributes($fullIndexName);
+            $adminIndex = $this->getAdminClient()->index($fullIndexName);
+            $searchParams = [
+                'page' => 1,
+                'hitsPerPage' => 0,
+            ];
+            $siteFilter = self::siteIdFilter($siteId);
+            if ($siteFilter !== null) {
+                $searchParams['filter'] = $siteFilter;
+            }
+            if ($distinctParents) {
+                $searchParams['distinct'] = 'elementId';
+            }
+
+            $result = $this->getSearchClient()->index($fullIndexName)->search('', $searchParams);
+            $count = $result->getTotalHits();
+            if ($count === null) {
+                return null;
+            }
+
+            $pagination = $adminIndex->getPagination();
+            $stats = $adminIndex->stats();
+            $maxTotalHits = (int)$pagination['maxTotalHits'];
+            $documentCount = (int)($stats['numberOfDocuments'] ?? 0);
+            if ($documentCount > $maxTotalHits && $count >= $maxTotalHits) {
+                $this->logWarning('Meilisearch count reached maxTotalHits and is not authoritative', [
+                    'index' => $indexName,
+                    'maxTotalHits' => $maxTotalHits,
+                    'documentCount' => $documentCount,
+                ]);
+
+                return null;
+            }
+
+            return $count;
+        } catch (\Throwable $e) {
+            $this->logWarning('Failed to count distinct Meilisearch parent elements', [
+                'index' => $indexName,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
         }
     }
 

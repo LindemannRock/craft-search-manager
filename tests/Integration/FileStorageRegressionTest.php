@@ -482,6 +482,7 @@ final class FileStorageRegressionTest extends TestCase
         ]);
 
         self::assertTrue($storage->supportsDocumentKeys());
+        self::assertSame(1, $storage->getDistinctParentCount(1));
         self::assertSame(['301_1_intro', '301_1_install', '301_1_configure'], $storage->getDocumentKeysByParent(1, 301));
         self::assertSame(['301_1_install'], array_keys($engine->search('composer', 1, 0, ['returnDocumentKeys' => true])));
         self::assertSame(['1:301_1_install'], array_keys($storage->getTermDocuments('composer', 1)));

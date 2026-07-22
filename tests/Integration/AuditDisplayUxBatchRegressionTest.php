@@ -15,9 +15,9 @@ use craft\base\ElementInterface;
 use craft\elements\Asset;
 use craft\elements\Category;
 use craft\elements\Entry;
+use lindemannrock\searchmanager\helpers\SearchIndexQueryHelper;
 use craft\elements\User;
 use lindemannrock\searchmanager\controllers\PromotionsController;
-use lindemannrock\searchmanager\helpers\SplitSectionDocumentHelper;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\Highlighter;
@@ -33,7 +33,7 @@ use lindemannrock\searchmanager\transformers\AutoTransformer;
  */
 final class AuditDisplayUxBatchRegressionTest extends TestCase
 {
-    public function testExpectedAndStoredCountsUseDocumentUnitsInBothIndexModes(): void
+    public function testExpectedCountsUseEligibleElementUnitsWithoutTransformingSplitContent(): void
     {
         $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
         $splitIndex = new SearchIndex([
@@ -45,29 +45,9 @@ final class AuditDisplayUxBatchRegressionTest extends TestCase
             'splitSections' => true,
         ]);
 
-        $candidate = null;
-        $candidateDocuments = [];
-        foreach (Entry::find()->siteId($siteId)->status(Entry::STATUS_LIVE)->limit(100)->all() as $entry) {
-            $data = SearchManager::$plugin->transformers->transform(
-                $entry,
-                $splitIndex->handle,
-                $splitIndex->transformerClass,
-                $splitIndex->headingLevels,
-            );
-            if ($data === null) {
-                continue;
-            }
-
-            $documents = SplitSectionDocumentHelper::documentsForIndex($splitIndex, $entry, $data);
-            if (count($documents) > 1) {
-                $candidate = $entry;
-                $candidateDocuments = $documents;
-                break;
-            }
-        }
-
+        $candidate = SearchIndexQueryHelper::buildSiteQueries($splitIndex)[$siteId]->one();
         if (!$candidate instanceof Entry) {
-            self::markTestSkipped('A live entry with split-section headings is required for count-unit coverage.');
+            self::markTestSkipped('A live entry is required for count-unit coverage.');
         }
 
         $criteria = static fn($query) => $query->id((int)$candidate->id);
@@ -84,7 +64,16 @@ final class AuditDisplayUxBatchRegressionTest extends TestCase
         ]);
 
         self::assertSame(1, $pageIndex->getExpectedCount());
-        self::assertSame(count($candidateDocuments), $splitIndex->getExpectedCount());
+        self::assertSame(1, $splitIndex->getExpectedCount());
+
+        $expectedCountBody = $this->methodBody(
+            $this->readPluginSource('src/models/SearchIndex.php'),
+            'getExpectedCount',
+            'public',
+        );
+        self::assertStringNotContainsString('->each(', $expectedCountBody);
+        self::assertStringNotContainsString('->transform(', $expectedCountBody);
+        self::assertStringNotContainsString('SplitSectionDocumentHelper', $expectedCountBody);
 
         $rebuildSource = $this->readPluginSource('src/jobs/RebuildIndexJob.php');
         self::assertStringContainsString(
@@ -92,6 +81,72 @@ final class AuditDisplayUxBatchRegressionTest extends TestCase
             $rebuildSource,
         );
         self::assertStringContainsString('$index->updateStats($totalIndexedDocuments)', $rebuildSource);
+    }
+
+    public function testSplitHealthDetectsMissingParentsButIgnoresSectionShapeDrift(): void
+    {
+        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        $splitIndex = new SearchIndex([
+            'handle' => '__sm_audit_425_split',
+            'elementType' => Entry::class,
+            'siteId' => [$siteId],
+            'transformerClass' => AutoTransformer::class,
+            'splitSections' => true,
+            'documentCount' => 5,
+        ]);
+        $backend = $this->installStubBackend();
+
+        $expected = $splitIndex->getExpectedCount();
+        if ($expected === 0) {
+            self::markTestSkipped('At least one eligible entry is required for split-health coverage.');
+        }
+
+        $backend->distinctParentCounts[$splitIndex->handle . ':' . $siteId] = $expected - 1;
+        self::assertSame($expected - 1, $splitIndex->getComparisonCount(), 'A missing parent must make split coverage stale.');
+
+        $backend->distinctParentCounts[$splitIndex->handle . ':' . $siteId] = $expected;
+        self::assertSame(
+            $splitIndex->getExpectedCount(),
+            $splitIndex->getComparisonCount(),
+            'Changed section counts must not make an otherwise-present parent stale.',
+        );
+        self::assertSame(5, $splitIndex->documentCount, 'Split documentCount must remain the true backend-document total.');
+
+        $pageIndex = new SearchIndex([
+            'handle' => '__sm_audit_425_page',
+            'elementType' => Entry::class,
+            'siteId' => [$siteId],
+            'splitSections' => false,
+            'documentCount' => 7,
+        ]);
+        self::assertSame(7, $pageIndex->getComparisonCount(), 'Page-mode comparison must remain document-based.');
+    }
+
+    public function testEveryShippedBackendUsesItsBoundedDistinctParentPrimitive(): void
+    {
+        $mysql = $this->readPluginSource('src/search/storage/MySqlStorage.php');
+        $pgsql = $this->readPluginSource('src/search/storage/PostgreSqlStorage.php');
+        $redis = $this->readPluginSource('src/search/storage/RedisStorage.php');
+        $file = $this->readPluginSource('src/search/storage/FileStorage.php');
+        $algolia = $this->readPluginSource('src/backends/AlgoliaBackend.php');
+        $meilisearch = $this->readPluginSource('src/backends/MeilisearchBackend.php');
+        $typesense = $this->readPluginSource('src/backends/TypesenseBackend.php');
+
+        self::assertStringContainsString('COUNT(DISTINCT [[elementId]])', $mysql);
+        self::assertStringContainsString('COUNT(DISTINCT [[elementId]])', $pgsql);
+        self::assertStringContainsString("zCard(\$this->keyPrefix . 'elemindex:' . \$siteId)", $redis);
+        self::assertStringContainsString("glob(\$this->basePath . '/elements/' . \$siteId . '_*.dat')", $file);
+
+        self::assertStringContainsString("\$settingsUpdate['attributeForDistinct'] = 'elementId'", $algolia);
+        self::assertStringContainsString("\$params['distinct'] = 1", $algolia);
+        self::assertStringContainsString("'exhaustiveNbHits' => true", $algolia);
+
+        self::assertStringContainsString("\$searchParams['distinct'] = 'elementId'", $meilisearch);
+        self::assertStringContainsString("'hitsPerPage' => 0", $meilisearch);
+        self::assertStringContainsString('$documentCount > $maxTotalHits', $meilisearch);
+
+        self::assertStringContainsString("'group_by' => 'elementId'", $typesense);
+        self::assertStringContainsString("'group_max_candidates' => \$documentCount", $typesense);
     }
 
     public function testPromotionListingPreloadsTargetsUsingTheirStoredElementTypes(): void
@@ -214,10 +269,10 @@ final class AuditDisplayUxBatchRegressionTest extends TestCase
         return $source;
     }
 
-    private function methodBody(string $source, string $method): string
+    private function methodBody(string $source, string $method, string $visibility = 'private'): string
     {
         preg_match(
-            '/private function ' . preg_quote($method, '/') . '\(.*?^    \}/ms',
+            '/' . preg_quote($visibility, '/') . ' function ' . preg_quote($method, '/') . '\(.*?^    \}/ms',
             $source,
             $matches,
         );

@@ -33,6 +33,12 @@ final class StubBackend extends BackendService
     public bool $failIndex = false;
     public bool $failDelete = false;
 
+    /** @var array<string, int|null> */
+    public array $documentCounts = [];
+
+    /** @var array<string, int|null> */
+    public array $distinctParentCounts = [];
+
     /** @var array<string, bool> */
     public array $existingDocuments = [];
 
@@ -59,7 +65,41 @@ final class StubBackend extends BackendService
     {
         $this->calls[] = ['method' => 'batchIndex', 'indexName' => $indexName, 'items' => $items];
 
+        if (!$this->failBatchIndex) {
+            $this->documentCounts[$indexName] = count($items);
+            $parents = [];
+            foreach ($items as $item) {
+                $elementId = \lindemannrock\searchmanager\helpers\SearchHitIdentityHelper::elementId($item);
+                $siteId = isset($item['siteId']) ? (int)$item['siteId'] : null;
+                if ($elementId !== null) {
+                    $parents[$elementId . ':' . ($siteId ?? 'null')] = true;
+                }
+            }
+            $parentCountsBySite = [];
+            foreach (array_keys($parents) as $parentKey) {
+                [, $siteId] = explode(':', $parentKey, 2);
+                $parentCountsBySite[$siteId] = ($parentCountsBySite[$siteId] ?? 0) + 1;
+            }
+            foreach ($parentCountsBySite as $siteId => $parentCount) {
+                $this->distinctParentCounts[$indexName . ':' . $siteId] = $parentCount;
+            }
+        }
+
         return !$this->failBatchIndex;
+    }
+
+    public function getDocumentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        $this->calls[] = ['method' => 'getDocumentCount', 'indexName' => $indexName];
+
+        return $this->documentCounts[$indexName] ?? 0;
+    }
+
+    public function getDistinctParentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        $this->calls[] = ['method' => 'getDistinctParentCount', 'indexName' => $indexName];
+
+        return $this->distinctParentCounts[$indexName . ':' . ($siteId ?? 'null')] ?? 0;
     }
 
     /**

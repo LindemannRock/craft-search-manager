@@ -115,6 +115,19 @@ final class RecordingStorage implements StorageInterface, ElementSuggestionStora
         return false;
     }
 
+    public function getDistinctParentCount(int $siteId): int
+    {
+        $parents = [];
+        foreach (array_keys($this->docLengths) as $documentId) {
+            [$documentSiteId, $elementId] = array_map('intval', explode(':', $documentId, 2));
+            if ($documentSiteId === $siteId) {
+                $parents[$elementId] = true;
+            }
+        }
+
+        return count($parents);
+    }
+
     public function getTermDocuments(string $term, int $siteId): array
     {
         $this->getTermDocumentsCalls++;

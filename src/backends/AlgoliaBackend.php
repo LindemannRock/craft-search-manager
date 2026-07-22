@@ -16,6 +16,7 @@ use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
+use lindemannrock\searchmanager\interfaces\IndexCountBackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 
 /**
@@ -26,7 +27,7 @@ use lindemannrock\searchmanager\models\SearchIndex;
  *
  * @since 5.0.0
  */
-class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
+class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface, IndexCountBackendInterface
 {
     /**
      * Search Manager options that must not be forwarded to Algolia.
@@ -437,6 +438,18 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             $this->logError('Algolia search failed', ['error' => $e->getMessage()]);
             return ['hits' => [], 'total' => 0, '_failed' => true];
         }
+    }
+
+    /** @inheritdoc */
+    public function getDocumentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        return $this->countRecords($indexName, $siteId, false);
+    }
+
+    /** @inheritdoc */
+    public function getDistinctParentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        return $this->countRecords($indexName, $siteId, true);
     }
 
     /**
@@ -850,6 +863,14 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
                 ]);
             }
 
+            if (($currentSettings['attributeForDistinct'] ?? null) !== 'elementId') {
+                $settingsUpdate['attributeForDistinct'] = 'elementId';
+                $this->logInfo('Configured Algolia distinct parent attribute', [
+                    'index' => $indexName,
+                    'attribute' => 'elementId',
+                ]);
+            }
+
             if ($settingsUpdate !== []) {
                 $client->setSettings($indexName, $settingsUpdate);
             }
@@ -862,6 +883,44 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             ]);
 
             throw $e;
+        }
+    }
+
+    private function countRecords(string $indexName, ?int $siteId, bool $distinctParents): ?int
+    {
+        try {
+            $fullIndexName = $this->getFullIndexName($indexName);
+            $this->ensureFilterableAttributes($fullIndexName);
+
+            $params = [
+                'query' => '',
+                'hitsPerPage' => 0,
+                'analytics' => false,
+                'clickAnalytics' => false,
+                'exhaustiveNbHits' => true,
+            ];
+            $siteFilter = self::siteIdFilter($siteId);
+            if ($siteFilter !== null) {
+                $params['filters'] = $siteFilter;
+            }
+            if ($distinctParents) {
+                $params['distinct'] = 1;
+            }
+
+            $result = $this->getSearchClient()->searchSingleIndex($fullIndexName, $params);
+            if (($result['exhaustiveNbHits'] ?? true) !== true) {
+                return null;
+            }
+
+            return isset($result['nbHits']) ? (int)$result['nbHits'] : null;
+        } catch (\Throwable $e) {
+            $this->logWarning('Failed to count Algolia index records', [
+                'index' => $indexName,
+                'distinctParents' => $distinctParents,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
         }
     }
 

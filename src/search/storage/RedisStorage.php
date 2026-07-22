@@ -134,6 +134,12 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         return true;
     }
 
+    /** @inheritdoc */
+    public function getDistinctParentCount(int $siteId): int
+    {
+        return (int)$this->redis->zCard($this->keyPrefix . 'elemindex:' . $siteId);
+    }
+
     /**
      * @inheritdoc
      */

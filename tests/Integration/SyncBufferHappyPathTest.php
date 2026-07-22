@@ -94,20 +94,20 @@ final class SyncBufferHappyPathTest extends TestCase
 
         [$index, $element] = $pair;
         $originalCount = $index->documentCount;
-        $expectedCount = $index->getExpectedCount();
-
         try {
             $index->updateStats(0);
             $this->repository->queueForElement($element, PendingSyncRepository::OP_UPSERT);
 
             (new BatchSyncJob())->execute(Craft::$app->queue);
 
+            $backendCount = SearchManager::$plugin->backend->getDocumentCount($index->handle);
             $refreshed = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($index->handle);
+            $this->assertNotNull($backendCount);
             $this->assertNotNull($refreshed);
             $this->assertSame(
-                $expectedCount,
+                $backendCount,
                 $refreshed->documentCount,
-                'Completed BatchSyncJob drains must refresh documentCount metadata.',
+                'Completed BatchSyncJob drains must refresh documentCount from authoritative backend state.',
             );
         } finally {
             $index->updateStats($originalCount);

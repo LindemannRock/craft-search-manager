@@ -197,18 +197,21 @@
 
     {# Craft (expected count) #}
     <td data-column="craft">
-        {{ item.expectedCount }}
+        {{ item.expectedCount|number_format }}
     </td>
 
     {# Indexed (document count) #}
     <td data-column="indexed">
         {% set expected = item.expectedCount %}
-        {% if item.documentCount == expected %}
-            <span class="lr-text-green">{{ item.documentCount }}</span>
-        {% elseif item.documentCount < expected %}
-            <span class="lr-text-amber" title="{{ expected - item.documentCount }} {{ 'missing'|t('search-manager') }}">{{ item.documentCount }}</span>
+        {% set comparison = item.comparisonCount %}
+        {% if comparison is null %}
+            <span>{{ item.documentCount|number_format }}</span>
+        {% elseif comparison == expected %}
+            <span class="lr-text-green">{{ item.documentCount|number_format }}</span>
+        {% elseif comparison < expected %}
+            <span class="lr-text-amber" title="{{ (expected - comparison)|number_format }} {{ 'missing'|t('search-manager') }}">{{ item.documentCount|number_format }}</span>
         {% else %}
-            <span class="lr-text-red" title="{{ item.documentCount - expected }} {{ 'stale'|t('search-manager') }}">{{ item.documentCount }}</span>
+            <span class="lr-text-red" title="{{ (comparison - expected)|number_format }} {{ 'stale'|t('search-manager') }}">{{ item.documentCount|number_format }}</span>
         {% endif %}
     </td>
 

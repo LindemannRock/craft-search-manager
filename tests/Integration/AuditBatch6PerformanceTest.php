@@ -39,7 +39,8 @@ final class AuditBatch6PerformanceTest extends TestCase
         self::assertStringContainsString('if ($usesSplitSections) {', $body);
         self::assertStringContainsString('->batchIndex($indexHandle, $documents)', $body);
         self::assertStringContainsString('->deleteOrphanDocuments(', $body);
-        self::assertStringContainsString('$index->updateStats($index->getExpectedCount());', $body);
+        self::assertStringContainsString('$index->refreshDocumentCount();', $body);
+        self::assertStringNotContainsString('getExpectedCount()', $body);
         self::assertLessThan(
             strpos($body, '->deleteOrphanDocuments('),
             strpos($body, '->batchIndex($indexHandle, $documents)'),

@@ -25,6 +25,13 @@ interface StorageInterface
      */
     public function supportsDocumentKeys(): bool;
 
+    /**
+     * Return the number of distinct parent elements represented in storage.
+     *
+     * @since 5.54.0
+     */
+    public function getDistinctParentCount(int $siteId): int;
+
     // =========================================================================
     // DOCUMENT OPERATIONS
     // =========================================================================

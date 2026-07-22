@@ -89,6 +89,8 @@ final class PostgreSqlStorageTest extends TestCase
             $storage->storeElement(1, 1001, 'Protein Powder', 'entry');
             $storage->updateMetadata(1, 3, true);
 
+            self::assertSame(1, $storage->getDistinctParentCount(1));
+
             // Re-store same rows to prove PostgreSQL upserts/conflict handling.
             $storage->storeDocument(1, 1001, ['protein' => 3, 'powder' => 1], 4, 'en');
             $storage->storeTermDocument('protein', 1, 1001, 3, 'en');

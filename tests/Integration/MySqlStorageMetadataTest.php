@@ -113,6 +113,16 @@ final class MySqlStorageMetadataTest extends TestCase
         ]));
     }
 
+    public function testDistinctParentCountIgnoresMultipleSectionDocuments(): void
+    {
+        $storage = new MySqlStorage(self::INDEX_HANDLE);
+        $storage->storeElementByKey(1, 100001, '100001_1_intro', 'First', 'entry');
+        $storage->storeElementByKey(1, 100001, '100001_1_details', 'First', 'entry');
+        $storage->storeElementByKey(1, 100002, '100002_1_intro', 'Second', 'entry');
+
+        self::assertSame(2, $storage->getDistinctParentCount(1));
+    }
+
     public function testSearchReturnsNothingWhenDocCountIsZeroDespiteIndexedRows(): void
     {
         $storage = new MySqlStorage(self::INDEX_HANDLE);

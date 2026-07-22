@@ -13,6 +13,7 @@ use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
+use lindemannrock\searchmanager\interfaces\IndexCountBackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use Typesense\Client;
 
@@ -24,7 +25,7 @@ use Typesense\Client;
  *
  * @since 5.0.0
  */
-class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterface
+class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterface, IndexCountBackendInterface
 {
     /**
      * Search Manager options that must not be forwarded to Typesense.
@@ -416,6 +417,77 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
         } catch (\Throwable $e) {
             $this->logError('Typesense search failed', ['error' => $e->getMessage()]);
             return ['hits' => [], 'total' => 0, '_failed' => true];
+        }
+    }
+
+    /** @inheritdoc */
+    public function getDocumentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        try {
+            $fullIndexName = $this->getFullIndexName($indexName);
+            if ($siteId === null) {
+                $collection = $this->getClient()->collections[$fullIndexName]->retrieve();
+
+                return isset($collection['num_documents']) ? (int)$collection['num_documents'] : null;
+            }
+
+            $params = [
+                'q' => '*',
+                'query_by' => SearchRecordProjectionHelper::typesenseQueryBy(),
+                'per_page' => 1,
+                'filter_by' => self::siteIdFilter($siteId),
+            ];
+            $result = $this->getSearchClient()
+                ->collections[$fullIndexName]
+                ->documents
+                ->search($params);
+
+            return isset($result['found']) ? (int)$result['found'] : null;
+        } catch (\Throwable $e) {
+            $this->logWarning('Failed to count Typesense documents', [
+                'index' => $indexName,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /** @inheritdoc */
+    public function getDistinctParentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        $documentCount = $this->getDocumentCount($indexName, $siteId);
+        if ($documentCount === null || $documentCount === 0) {
+            return $documentCount;
+        }
+
+        try {
+            $params = [
+                'q' => '*',
+                'query_by' => SearchRecordProjectionHelper::typesenseQueryBy(),
+                'per_page' => 1,
+                'group_by' => 'elementId',
+                'group_limit' => 1,
+                'group_max_candidates' => $documentCount,
+            ];
+            $siteFilter = self::siteIdFilter($siteId);
+            if ($siteFilter !== null) {
+                $params['filter_by'] = $siteFilter;
+            }
+
+            $result = $this->getSearchClient()
+                ->collections[$this->getFullIndexName($indexName)]
+                ->documents
+                ->search($params);
+
+            return isset($result['found']) ? (int)$result['found'] : null;
+        } catch (\Throwable $e) {
+            $this->logWarning('Failed to count distinct Typesense parent elements', [
+                'index' => $indexName,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
         }
     }
 

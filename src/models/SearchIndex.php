@@ -22,7 +22,6 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexQueryHelper;
-use lindemannrock\searchmanager\helpers\SplitSectionDocumentHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\SearchManager;
@@ -2328,13 +2327,13 @@ class SearchIndex extends Model
     }
 
     /**
-     * Get the expected backend document count based on index criteria.
+     * Get the expected eligible-element count based on index criteria.
      *
-     * Page-mode indices produce one document per eligible element. Split-section
-     * indices count the intro/heading documents produced by the configured
-     * transformer so this value uses the same unit as documentCount.
+     * Both modes count eligible Craft elements. Page-mode health compares this
+     * value with backend documents; split-mode health compares it with distinct
+     * parent element IDs represented by backend section documents.
      *
-     * @return int Expected number of backend documents
+     * @return int Expected number of eligible elements
      */
     public function getExpectedCount(): int
     {
@@ -2354,45 +2353,6 @@ class SearchIndex extends Model
                     'indexSiteId' => $this->siteId,
                     'querySiteId' => $siteId,
                 ]);
-
-                if ($this->usesSplitSections()) {
-                    $siteCount = SearchManager::$plugin->transformers->withTransformerReuse(
-                        function() use ($query): int {
-                            $documentCount = 0;
-                            foreach ($query->each(100) as $element) {
-                                if (!$element instanceof ElementInterface) {
-                                    continue;
-                                }
-
-                                $data = SearchManager::$plugin->transformers->transform(
-                                    $element,
-                                    $this->handle,
-                                    $this->transformerClass,
-                                    $this->headingLevels,
-                                );
-                                if ($data === null) {
-                                    continue;
-                                }
-
-                                $documentCount += count(SplitSectionDocumentHelper::documentsForIndex(
-                                    $this,
-                                    $element,
-                                    $data,
-                                ));
-                            }
-
-                            return $documentCount;
-                        },
-                    );
-                    $totalCount += $siteCount;
-
-                    $this->logDebug('Expected split document count result', [
-                        'indexHandle' => $this->handle,
-                        'siteId' => $siteId,
-                        'count' => $siteCount,
-                    ]);
-                    continue;
-                }
 
                 $hasClosure = $this->criteria instanceof \Closure;
                 if ($this->skipEntriesWithoutUrl && $elementType === Entry::class) {
@@ -2443,6 +2403,54 @@ class SearchIndex extends Model
             ]);
             return 0;
         }
+    }
+
+    /**
+     * Return the backend count used for index-health comparison.
+     *
+     * Page mode preserves document-count comparison. Split mode compares
+     * eligible elements with distinct represented parent elements so heading
+     * changes remain content-sync work rather than stale-coverage drift.
+     *
+     * Null means the backend could not provide an authoritative split count.
+     *
+     * @since 5.54.0
+     */
+    public function getComparisonCount(): ?int
+    {
+        if (!$this->usesSplitSections()) {
+            return $this->documentCount;
+        }
+
+        $total = 0;
+        foreach (array_keys(SearchIndexQueryHelper::buildSiteQueries($this)) as $siteId) {
+            $siteCount = SearchManager::$plugin->backend->getDistinctParentCount($this->handle, (int)$siteId);
+            if ($siteCount === null) {
+                return null;
+            }
+            $total += $siteCount;
+        }
+
+        return $total;
+    }
+
+    /**
+     * Refresh stored stats from the backend's authoritative document count.
+     *
+     * @since 5.54.0
+     */
+    public function refreshDocumentCount(): bool
+    {
+        $documentCount = SearchManager::$plugin->backend->getDocumentCount($this->handle);
+        if ($documentCount === null) {
+            $this->logWarning('Backend could not provide an authoritative document count', [
+                'indexHandle' => $this->handle,
+            ]);
+
+            return false;
+        }
+
+        return $this->updateStats($documentCount);
     }
 
     /**

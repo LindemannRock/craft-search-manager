@@ -400,23 +400,23 @@ A status sync job periodically checks for entries that became live (postDate pas
 
 Search Manager debounces automatic `lastIndexed` metadata updates with `lastIndexedDebounceSeconds` (default: 60 seconds). This keeps the "Last Indexed" column current enough for operators while avoiding an extra metadata-table write for every save during imports or busy editing sessions. Set the value to `0` if you want the timestamp updated after every successful auto-sync.
 
-When a batch sync drain completes, Search Manager refreshes the affected index counts from the matching Craft element query so the Control Panel count reflects the synced source content without requiring a manual rebuild.
+When a batch sync drain completes, Search Manager refreshes each affected index once from the backend's authoritative document count, so the Control Panel count reflects the completed writes without a per-element backend probe.
 
 Manual rebuilds, clears, and backend count refreshes still update index stats immediately.
 
-#### Document count is eventually consistent
+#### How document counts stay current
 
-The **Indexed** column on the Indices page (and the **Documents** count on an index's detail view) reflects what the index contained at the last point a count was authoritative — either a full rebuild or an explicit count refresh. Automatic save/delete syncs **do not** update this counter, by design: doing so would require a per-row backend probe for every save, defeating the API-amplification reduction that batch sync provides.
+The **Indexed** column on the Indices page (and the **Documents** count on an index's detail view) reflects the true backend-document total from the latest full rebuild, completed sync batch, or explicit count refresh. Automatic save/delete sync refreshes this counter once per affected index after the batch completes; it does not probe the backend once per queued element.
 
-The adjacent expected/actual comparison uses backend documents on both sides. A page-mode index expects one document per eligible Craft element; a Split Sections index expects every intro and heading document those elements currently produce. This keeps the missing/stale indicator meaningful in both modes. It does not change analytics totals: `resultsCount` remains backend-native, so a split-index search counts matching section documents.
+The adjacent expected/actual comparison uses document counts in page mode, while Split Sections compares eligible Craft elements with distinct parent element IDs represented in the backend; the displayed Indexed/Documents value remains the true backend-document count in both modes. Per-element heading changes are handled by normal content sync rather than treated as stale coverage. This does not change analytics totals: `resultsCount` remains backend-native, so a split-index search counts matching section documents.
 
-Expect the count to drift slightly during high-volume activity (large Feed Me runs, bulk imports). It does not affect what users see in search results — the underlying index is updated correctly, only the displayed count is delayed.
+During high-volume activity such as a large Feed Me run or bulk import, the displayed count can lag while queued work is still draining. The completed batch refresh brings it back in line with the backend.
 
 To force the count to refresh:
 
 - Run a rebuild: `php craft search-manager/index/rebuild --handle=entries-en`
 - Use the refresh action on the index detail page (where exposed)
 
-This is a deliberate trade-off against the API amplification that real-time counting would require; if your workflow depends on real-time document counts, prefer a periodic rebuild over relying on the live counter.
+This keeps counts authoritative at batch boundaries without reintroducing a backend read for every saved element.
 
 See [Console Commands](../developers/console-commands.md) for all CLI options.

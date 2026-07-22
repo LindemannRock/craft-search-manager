@@ -12,6 +12,7 @@ use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\interfaces\IndexCountBackendInterface;
 use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
@@ -31,7 +32,7 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * @since 5.0.0
  */
-abstract class AbstractSearchEngineBackend extends BaseBackend implements StorageBackedBackendInterface
+abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexCountBackendInterface, StorageBackedBackendInterface
 {
     /**
      * @var array<string, SearchEngine> Search engine instances per index
@@ -107,6 +108,46 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
         }
 
         return $this->storages[$fullIndexName];
+    }
+
+    /** @inheritdoc */
+    public function getDocumentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        if ($siteId !== null) {
+            return $this->getStorage($indexName)->getTotalDocCount($siteId);
+        }
+
+        $index = SearchIndex::findByHandle($indexName);
+        if ($index === null) {
+            return null;
+        }
+
+        $total = 0;
+        foreach (array_keys(\lindemannrock\searchmanager\helpers\SearchIndexQueryHelper::buildSiteQueries($index)) as $resolvedSiteId) {
+            $total += $this->getStorage($indexName)->getTotalDocCount((int)$resolvedSiteId);
+        }
+
+        return $total;
+    }
+
+    /** @inheritdoc */
+    public function getDistinctParentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        if ($siteId !== null) {
+            return $this->getStorage($indexName)->getDistinctParentCount($siteId);
+        }
+
+        $index = SearchIndex::findByHandle($indexName);
+        if ($index === null) {
+            return null;
+        }
+
+        $total = 0;
+        foreach (array_keys(\lindemannrock\searchmanager\helpers\SearchIndexQueryHelper::buildSiteQueries($index)) as $resolvedSiteId) {
+            $total += $this->getStorage($indexName)->getDistinctParentCount((int)$resolvedSiteId);
+        }
+
+        return $total;
     }
 
     /**

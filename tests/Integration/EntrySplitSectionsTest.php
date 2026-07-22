@@ -292,10 +292,9 @@ final class EntrySplitSectionsTest extends TestCase
         $this->saveTestIndex(['*']);
         $testIndex = SearchIndex::findByHandle(self::INDEX_HANDLE);
         self::assertNotNull($testIndex);
-        $expectedCount = $testIndex->getExpectedCount();
         $testIndex->updateStats(0);
 
-        $this->withOnlySearchIndices([$testIndex], function () use ($entry, $expectedCount, $originalRichText, $stub): void {
+        $this->withOnlySearchIndices([$testIndex], function () use ($entry, $originalRichText, $stub): void {
             SearchManager::$plugin->indexing->indexElementNow($entry);
             $firstKeepSet = $this->lastKeepSet($stub->calls);
             self::assertNotEmpty($firstKeepSet);
@@ -303,9 +302,9 @@ final class EntrySplitSectionsTest extends TestCase
             $refreshedIndex = SearchIndex::findByHandle(self::INDEX_HANDLE);
             self::assertNotNull($refreshedIndex);
             self::assertSame(
-                $expectedCount,
+                count($firstKeepSet),
                 $refreshedIndex->documentCount,
-                'Direct split-section indexing must refresh documentCount from the expected element count.',
+                'Direct split-section indexing must refresh the true backend-document count.',
             );
 
             $secondKeepSet = [];

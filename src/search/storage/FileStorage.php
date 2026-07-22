@@ -121,6 +121,14 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         return true;
     }
 
+    /** @inheritdoc */
+    public function getDistinctParentCount(int $siteId): int
+    {
+        $paths = glob($this->basePath . '/elements/' . $siteId . '_*.dat');
+
+        return is_array($paths) ? count($paths) : 0;
+    }
+
     /**
      * @inheritdoc
      */

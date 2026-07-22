@@ -161,7 +161,7 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
             }
 
             $index = $indicesByHandle[$indexHandle];
-            $index->updateStats($index->getExpectedCount());
+            $index->refreshDocumentCount();
         }
     }
 }

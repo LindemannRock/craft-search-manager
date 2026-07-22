@@ -24,6 +24,7 @@ use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\interfaces\IndexCountBackendInterface;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
@@ -450,6 +451,36 @@ class BackendService extends Component
         }
 
         return $backend->getDocumentsByElementIds($indexName, $elementIds, $siteId);
+    }
+
+    /**
+     * Return the authoritative backend document count when supported.
+     *
+     * @since 5.54.0
+     */
+    public function getDocumentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        $backend = $this->getBackendForIndex($indexName);
+        if (!$backend instanceof IndexCountBackendInterface) {
+            return null;
+        }
+
+        return $backend->getDocumentCount($indexName, $siteId);
+    }
+
+    /**
+     * Return the authoritative distinct parent-element count when supported.
+     *
+     * @since 5.54.0
+     */
+    public function getDistinctParentCount(string $indexName, ?int $siteId = null): ?int
+    {
+        $backend = $this->getBackendForIndex($indexName);
+        if (!$backend instanceof IndexCountBackendInterface) {
+            return null;
+        }
+
+        return $backend->getDistinctParentCount($indexName, $siteId);
     }
 
     /**

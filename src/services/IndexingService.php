@@ -220,7 +220,7 @@ class IndexingService extends Component
                     }
 
                     if ($usesSplitSections) {
-                        $index->updateStats($index->getExpectedCount());
+                        $index->refreshDocumentCount();
                     } elseif ($isNewDocument) {
                         SearchIndex::incrementDocumentCount($indexHandle);
                     }

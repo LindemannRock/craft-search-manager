@@ -64,6 +64,19 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface, ElementSuggestio
         return true;
     }
 
+    /** @inheritdoc */
+    public function getDistinctParentCount(int $siteId): int
+    {
+        return (int)(new Query())
+            ->select(new Expression('COUNT(DISTINCT [[elementId]])'))
+            ->from('{{%searchmanager_search_elements}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+            ])
+            ->scalar();
+    }
+
     // =========================================================================
     // DOCUMENT OPERATIONS
     // =========================================================================
