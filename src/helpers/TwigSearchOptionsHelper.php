@@ -8,6 +8,8 @@
 
 namespace lindemannrock\searchmanager\helpers;
 
+use lindemannrock\searchmanager\models\SearchIndex;
+
 /**
  * Normalizes Twig-facing search options shared by template variables.
  *
@@ -28,6 +30,26 @@ class TwigSearchOptionsHelper
     public static function normalizeSearchLimitOptions(array $options): array
     {
         return self::normalizeLimitOptions($options, self::SEARCH_DEFAULT_LIMIT, self::SEARCH_MAX_LIMIT);
+    }
+
+    /**
+     * @param array<int, string> $indexNames
+     * @param array<string, mixed> $options
+     * @return array{snippetMode: string, snippetMaxLength: int, snippetIncludeCodeBlocks: bool, snippetCleanMarkdown: bool, resultsRequireUrl: bool, retrievableFieldsByIndex: array<string, list<string>>}
+     * @since 5.54.0
+     */
+    public static function presentHitOptions(array $indexNames, array $options): array
+    {
+        $requestedRetrievableFields = SearchIndex::requestedRetrievableFields($options['retrievableFields'] ?? null);
+
+        return [
+            'snippetMode' => (string)($options['snippetMode'] ?? SnippetOptionsHelper::DEFAULT_MODE),
+            'snippetMaxLength' => (int)($options['snippetMaxLength'] ?? SnippetOptionsHelper::DEFAULT_LENGTH),
+            'snippetIncludeCodeBlocks' => (bool)($options['snippetIncludeCodeBlocks'] ?? SnippetOptionsHelper::DEFAULT_SHOW_CODE),
+            'snippetCleanMarkdown' => (bool)($options['snippetCleanMarkdown'] ?? SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN),
+            'resultsRequireUrl' => (bool)($options['resultsRequireUrl'] ?? false),
+            'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex($indexNames, $requestedRetrievableFields),
+        ];
     }
 
     /**

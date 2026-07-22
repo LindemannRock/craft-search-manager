@@ -11,9 +11,7 @@ namespace lindemannrock\searchmanager\variables;
 use Craft;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
-use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\helpers\TwigSearchOptionsHelper;
-use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\web\assets\highlighter\SearchHighlighterAsset;
 
@@ -98,7 +96,7 @@ class SearchManagerVariable
         }
 
         $options = TwigSearchOptionsHelper::normalizeSearchLimitOptions($options);
-        $presentOptions = $this->presentHitOptions([$indexName], $options);
+        $presentOptions = TwigSearchOptionsHelper::presentHitOptions([$indexName], $options);
         $raw = ($options['raw'] ?? false) === true;
         unset($options['raw']);
         $options['retrievableFieldsByIndex'] = $presentOptions['retrievableFieldsByIndex'];
@@ -133,7 +131,7 @@ class SearchManagerVariable
         }
 
         $options = TwigSearchOptionsHelper::normalizeSearchLimitOptions($options);
-        $presentOptions = $this->presentHitOptions($indexNames, $options);
+        $presentOptions = TwigSearchOptionsHelper::presentHitOptions($indexNames, $options);
         $raw = ($options['raw'] ?? false) === true;
         unset($options['raw']);
         $options['retrievableFieldsByIndex'] = $presentOptions['retrievableFieldsByIndex'];
@@ -145,25 +143,6 @@ class SearchManagerVariable
         }
 
         return $results;
-    }
-
-    /**
-     * @param array<int, string> $indexNames
-     * @param array<string, mixed> $options
-     * @return array{snippetMode: string, snippetMaxLength: int, snippetIncludeCodeBlocks: bool, snippetCleanMarkdown: bool, resultsRequireUrl: bool, retrievableFieldsByIndex: array<string, list<string>>}
-     */
-    private function presentHitOptions(array $indexNames, array $options): array
-    {
-        $requestedRetrievableFields = SearchIndex::requestedRetrievableFields($options['retrievableFields'] ?? null);
-
-        return [
-            'snippetMode' => (string)($options['snippetMode'] ?? SnippetOptionsHelper::DEFAULT_MODE),
-            'snippetMaxLength' => (int)($options['snippetMaxLength'] ?? SnippetOptionsHelper::DEFAULT_LENGTH),
-            'snippetIncludeCodeBlocks' => (bool)($options['snippetIncludeCodeBlocks'] ?? SnippetOptionsHelper::DEFAULT_SHOW_CODE),
-            'snippetCleanMarkdown' => (bool)($options['snippetCleanMarkdown'] ?? SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN),
-            'resultsRequireUrl' => (bool)($options['resultsRequireUrl'] ?? false),
-            'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex($indexNames, $requestedRetrievableFields),
-        ];
     }
 
     /**
