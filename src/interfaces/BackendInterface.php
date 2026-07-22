@@ -106,7 +106,7 @@ interface BackendInterface
      * @param array<int, int> $elementIds Element IDs to fetch
      * @param int|null $siteId Optional site scope
      * @return array<int, array<string, mixed>> Map of elementId => normalized indexed document
-     * @since 5.56.0
+     * @since 5.54.0
      */
     public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array;
 

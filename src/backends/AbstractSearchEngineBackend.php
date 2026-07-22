@@ -342,7 +342,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
 
     /**
      * @inheritdoc
-     * @since 5.56.0
+     * @since 5.54.0
      */
     public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
     {

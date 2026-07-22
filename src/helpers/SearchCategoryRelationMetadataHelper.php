@@ -14,7 +14,7 @@ use craft\fields\Categories;
 /**
  * Extracts compact category-relation metadata for indexed search documents.
  *
- * @since 5.56.0
+ * @since 5.54.0
  */
 class SearchCategoryRelationMetadataHelper
 {
