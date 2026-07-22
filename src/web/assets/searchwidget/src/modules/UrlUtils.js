@@ -58,5 +58,5 @@ function isUnsafeNavigationUrl(url) {
         .replace(/[\t\n\r]/g, '')
         .replace(/^[\u0000-\u0020]+/, '');
 
-    return /^(javascript|data|vbscript):/i.test(normalized);
+    return /^(javascript|data|vbscript|file):/i.test(normalized);
 }

@@ -61,7 +61,7 @@
     {% if canManageIndices %}
         {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Search Indices'|t('search-manager'),
-            color: '#059669',
+            color: lrPaletteColor('emerald').color,
             value: enabledIndices,
             secondary: indices|length > enabledIndices ? indices|length : null,
             description: (totalDocuments|number_format) ~ ' ' ~ 'documents indexed'|t('search-manager'),
@@ -73,7 +73,7 @@
     {% if canManagePromotions %}
         {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Promotions'|t('search-manager'),
-            color: '#f59e0b',
+            color: lrPaletteColor('amber').color,
             value: enabledPromotions,
             secondary: promotionsCount > enabledPromotions ? promotionsCount : null,
             description: 'pinned results active'|t('search-manager'),
@@ -85,7 +85,7 @@
     {% if canManageQueryRules %}
         {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Query Rules'|t('search-manager'),
-            color: '#8b5cf6',
+            color: lrPaletteColor('violet').color,
             value: enabledQueryRules,
             secondary: queryRulesCount > enabledQueryRules ? queryRulesCount : null,
             description: 'synonyms, boosts, redirects'|t('search-manager'),
@@ -97,7 +97,7 @@
     {% if settings.enableAnalytics and canViewAnalytics %}
         {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Searches Today'|t('search-manager'),
-            color: '#0ea5e9',
+            color: lrPaletteColor('sky').color,
             value: searchesToday,
             description: (searchesYesterday|number_format) ~ ' ' ~ 'yesterday'|t('search-manager'),
             url: url('search-manager/analytics'),

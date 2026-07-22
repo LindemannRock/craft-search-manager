@@ -8,7 +8,6 @@
 
 namespace lindemannrock\searchmanager\services;
 
-use Craft;
 use craft\db\Query;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
@@ -510,70 +509,5 @@ class QueryRuleService extends Component
         }
 
         return array_keys($ids);
-    }
-
-    // =========================================================================
-    // HELPERS
-    // =========================================================================
-
-    /**
-     * Get available indices for dropdown
-     *
-     */
-    public function getIndexOptions(): array
-    {
-        $indices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
-        $options = [
-            ['label' => 'All Indices', 'value' => ''],
-        ];
-
-        foreach ($indices as $index) {
-            if ($index->enabled) {
-                $options[] = [
-                    'label' => $index->name,
-                    'value' => $index->handle,
-                ];
-            }
-        }
-
-        return $options;
-    }
-
-    /**
-     * Get section options for dropdown
-     *
-     */
-    public function getSectionOptions(): array
-    {
-        $sections = Craft::$app->getEntries()->getAllSections();
-        $options = [];
-
-        foreach ($sections as $section) {
-            $options[] = [
-                'label' => $section->name,
-                'value' => $section->handle,
-            ];
-        }
-
-        return $options;
-    }
-
-    /**
-     * Get category group options for dropdown
-     *
-     */
-    public function getCategoryGroupOptions(): array
-    {
-        $groups = Craft::$app->getCategories()->getAllGroups();
-        $options = [];
-
-        foreach ($groups as $group) {
-            $options[] = [
-                'label' => $group->name,
-                'value' => $group->handle,
-            ];
-        }
-
-        return $options;
     }
 }

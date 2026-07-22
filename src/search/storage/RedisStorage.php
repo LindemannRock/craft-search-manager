@@ -757,6 +757,12 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
 
         // Normalize searchText for prefix matching (lowercase)
         $searchText = TermNormalizer::normalizeSearchText($title);
+        $previousSearchText = $this->redis->hGet($key, 'searchText');
+        $indexKey = $this->keyPrefix . 'elemindex:' . $siteId;
+
+        if (is_string($previousSearchText) && $previousSearchText !== $searchText) {
+            $this->redis->zRem($indexKey, $previousSearchText . ':' . $elementId);
+        }
 
         $data = [
             'title' => $title,
@@ -771,7 +777,6 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         $this->redis->hMSet($key, $data);
 
         // Also add to a sorted set for prefix searching
-        $indexKey = $this->keyPrefix . 'elemindex:' . $siteId;
         $this->redis->zAdd($indexKey, 0, $searchText . ':' . $elementId);
 
         $this->logDebug('Stored element for suggestions', [

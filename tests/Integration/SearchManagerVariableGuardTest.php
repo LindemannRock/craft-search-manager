@@ -154,6 +154,86 @@ final class SearchManagerVariableGuardTest extends TestCase
         ], $callback);
     }
 
+    public function testProxySearchReturnsPresentedHitsAndNarrowsRetrievableFieldsByDefault(): void
+    {
+        /** @param list<SearchIndex> $indices */
+        $callback = function (array $indices): void {
+            $index = $indices[0];
+            $stub = new SearchManagerVariableRecordingBackend();
+            $stub->searchResponse = [
+                'hits' => [$this->rawTwigHit($index->handle)],
+                'total' => 1,
+            ];
+            $proxy = new BackendVariableProxy($stub, 'stub');
+
+            $results = $proxy->search($index->handle, 'needle phrase', [
+                'snippetMode' => 'early',
+                'snippetMaxLength' => 80,
+                'snippetCleanMarkdown' => true,
+                'retrievableFields' => 'intro,secret',
+            ]);
+
+            self::assertCount(1, $results['hits']);
+            $hit = $results['hits'][0];
+            self::assertSame(101, $hit['elementId'] ?? null);
+            self::assertSame('101_1', $hit['backendId'] ?? null);
+            self::assertSame($index->handle, $hit['index'] ?? null);
+            self::assertSame(['intro' => '**Needle phrase** appears in the private snippet source.'], $hit['fields'] ?? null);
+            self::assertIsString($hit['snippet'] ?? null);
+            self::assertArrayNotHasKey('id', $hit);
+            self::assertArrayNotHasKey('objectID', $hit);
+            self::assertArrayNotHasKey('_index', $hit);
+            self::assertArrayNotHasKey('_internal', $hit);
+            self::assertArrayNotHasKey('_snippetFields', $hit);
+
+            $searchCalls = $stub->callsFor('search');
+            self::assertCount(1, $searchCalls);
+            self::assertSame([
+                $index->handle => ['intro'],
+            ], $searchCalls[0]['items'][0]['options']['retrievableFieldsByIndex']);
+            self::assertArrayNotHasKey('raw', $searchCalls[0]['items'][0]['options']);
+        };
+
+        $this->withTemporaryTwigIndices([
+            'proxy_presented_single' => ['intro', 'category'],
+        ], $callback);
+    }
+
+    public function testProxySearchRawOptionReturnsBackendHitsUnshaped(): void
+    {
+        /** @param list<SearchIndex> $indices */
+        $callback = function (array $indices): void {
+            $index = $indices[0];
+            $stub = new SearchManagerVariableRecordingBackend();
+            $stub->searchResponse = [
+                'hits' => [$this->rawTwigHit($index->handle)],
+                'total' => 1,
+            ];
+            $proxy = new BackendVariableProxy($stub, 'stub');
+
+            $results = $proxy->search($index->handle, 'needle phrase', [
+                'raw' => true,
+                'retrievableFields' => 'intro',
+            ]);
+
+            self::assertSame($stub->searchResponse, $results);
+            self::assertArrayHasKey('id', $results['hits'][0]);
+            self::assertArrayHasKey('_snippetFields', $results['hits'][0]);
+            self::assertArrayNotHasKey('snippet', $results['hits'][0]);
+
+            $searchCalls = $stub->callsFor('search');
+            self::assertCount(1, $searchCalls);
+            self::assertArrayNotHasKey('raw', $searchCalls[0]['items'][0]['options']);
+            self::assertSame([
+                $index->handle => ['intro'],
+            ], $searchCalls[0]['items'][0]['options']['retrievableFieldsByIndex']);
+        };
+
+        $this->withTemporaryTwigIndices([
+            'proxy_presented_raw' => ['intro', 'category'],
+        ], $callback);
+    }
+
     public function testTwigSearchMultipleReturnsPresentedHitsByDefault(): void
     {
         /** @param list<SearchIndex> $indices */
@@ -472,6 +552,12 @@ final class SearchManagerVariableRecordingBackend implements BackendInterface, A
     public array $calls = [];
     public bool $autocompleteSupported = true;
 
+    /** @var array<string, mixed> */
+    public array $searchResponse = [
+        'hits' => [],
+        'total' => 0,
+    ];
+
     public function index(string $indexName, array $data): bool
     {
         return true;
@@ -530,10 +616,7 @@ final class SearchManagerVariableRecordingBackend implements BackendInterface, A
             ],
         ];
 
-        return [
-            'hits' => [],
-            'total' => 0,
-        ];
+        return $this->searchResponse;
     }
 
     public function clearIndex(string $indexName): bool

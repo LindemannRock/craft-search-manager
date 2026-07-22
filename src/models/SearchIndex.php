@@ -1168,7 +1168,7 @@ class SearchIndex extends Model
                 'elementType' => $this->elementType,
                 'siteId' => is_array($this->siteId) ? null : $this->siteId,
                 'criteria' => json_encode($this->criteria),
-                'transformerClass' => $this->transformerClass,
+                'transformerClass' => $this->transformerClass ?: '',
                 'headingLevels' => $this->headingLevels ? json_encode($this->headingLevels) : null,
                 'language' => $this->language,
                 'backend' => $this->backend ?: null,

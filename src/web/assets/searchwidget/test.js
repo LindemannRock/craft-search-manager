@@ -94,6 +94,8 @@ if (fs.existsSync(urlUtilsFile)) {
     const source = fs.readFileSync(urlUtilsFile, 'utf8');
     test('Source URL guard strips tab/newline/carriage return', source.includes('replace(/[\\t\\n\\r]/g, \'\')'));
     test('Source URL guard strips leading C0 controls and space', source.includes('replace(/^[\\u0000-\\u0020]+/, \'\')'));
+    const { appendQueryParam } = loadUrlUtilsModule();
+    test('URL query persistence rejects file navigation', appendQueryParam('file:///etc/passwd', 'needle') === '#');
 }
 
 // Test 6: Renderer supports split section hits without changing page-mode identity
@@ -116,6 +118,20 @@ function loadHighlighterModule() {
     const outfile = path.join(tmpDir, 'Highlighter.cjs');
     esbuild.buildSync({
         entryPoints: [path.join(SRC_DIR, 'modules', 'Highlighter.js')],
+        bundle: true,
+        platform: 'node',
+        format: 'cjs',
+        outfile,
+        logLevel: 'silent',
+    });
+    return require(outfile);
+}
+
+function loadUrlUtilsModule() {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-widget-url-utils-'));
+    const outfile = path.join(tmpDir, 'UrlUtils.cjs');
+    esbuild.buildSync({
+        entryPoints: [path.join(SRC_DIR, 'modules', 'UrlUtils.js')],
         bundle: true,
         platform: 'node',
         format: 'cjs',

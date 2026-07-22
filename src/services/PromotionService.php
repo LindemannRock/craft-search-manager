@@ -291,27 +291,6 @@ class PromotionService extends Component
         return false;
     }
 
-    /**
-     * Get available indices for dropdown
-     *
-     */
-    public function getIndexOptions(): array
-    {
-        $indices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
-        $options = [];
-
-        foreach ($indices as $index) {
-            if ($index->enabled) {
-                $options[] = [
-                    'label' => $index->name,
-                    'value' => $index->handle,
-                ];
-            }
-        }
-
-        return $options;
-    }
-
     // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================

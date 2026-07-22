@@ -465,6 +465,23 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame(['Coffee: Dark Roast'], array_column($suggestions, 'title'));
     }
 
+    public function testRetitlingElementReplacesItsPrefixMemberWithoutInflatingParentCount(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+        $storage->storeElement(1, 101, 'Legacy Search Title', 'entry');
+
+        self::assertSame(1, $redis->zCard('sm:idx:test-index:elemindex:1'));
+        self::assertSame(1, $storage->getDistinctParentCount(1));
+        self::assertSame([101], array_column($storage->getElementSuggestions('legacy', 1, 10), 'elementId'));
+
+        $storage->storeElement(1, 101, 'Current Search Title', 'entry');
+
+        self::assertSame(1, $redis->zCard('sm:idx:test-index:elemindex:1'), 'Retitling must keep the sorted-set cardinality stable.');
+        self::assertSame(1, $storage->getDistinctParentCount(1), 'Retitling must keep one sorted-set member per element.');
+        self::assertSame([], $storage->getElementSuggestions('legacy', 1, 10), 'The stale title must stop matching prefix autocomplete.');
+        self::assertSame([101], array_column($storage->getElementSuggestions('current', 1, 10), 'elementId'));
+    }
+
     public function testNgramSimilarityPipelinesCandidateTermReads(): void
     {
         [$storage, $redis] = $this->makeStorage();

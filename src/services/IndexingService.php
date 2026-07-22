@@ -288,7 +288,9 @@ class IndexingService extends Component
                     ]
                     : SearchManager::$plugin->backend->deleteWithResult($index->handle, $element->id, $siteId);
                 if ($deleteResult['success']) {
-                    if ($deleteResult['existed'] === true) {
+                    if ($index->usesSplitSections()) {
+                        $index->refreshDocumentCount();
+                    } elseif ($deleteResult['existed'] === true) {
                         SearchIndex::decrementDocumentCount($index->handle);
                     }
                     SearchIndex::touchLastIndexedDebounced($index->handle);

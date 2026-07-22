@@ -195,14 +195,15 @@
         {% endif %}
     </td>
 
+    {% set expected = item.expectedCount %}
+
     {# Craft (expected count) #}
     <td data-column="craft">
-        {{ item.expectedCount|number_format }}
+        {{ expected|number_format }}
     </td>
 
     {# Indexed (document count) #}
     <td data-column="indexed">
-        {% set expected = item.expectedCount %}
         {% set comparison = item.comparisonCount %}
         {% if comparison is null %}
             <span>{{ item.documentCount|number_format }}</span>

@@ -250,6 +250,8 @@ Get a proxy for a specific configured backend. The proxy supports `search()`, `s
 - `getBackend()` — returns the underlying `BackendInterface` instance
 - `getStatus()` — returns backend status as an array
 
+The proxy's `search()` follows the same public-hit contract and accepts the same snippet, `resultsRequireUrl`, and `retrievableFields` options as the main `search()` method. Hits are presented by default; use `raw: true` only when you intentionally need the selected backend's unpresented response.
+
 ```twig
 {% set algolia = craft.searchManager.withBackend('production-algolia') %}
 {% set results = algolia.search('products', 'laptop') %}

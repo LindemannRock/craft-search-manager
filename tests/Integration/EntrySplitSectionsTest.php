@@ -15,6 +15,7 @@ use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\elements\ElementCollection;
 use craft\elements\Entry;
+use craft\elements\db\ElementQuery;
 use craft\elements\db\ElementQueryInterface;
 use craft\fieldlayoutelements\CustomField;
 use craft\helpers\Db;
@@ -325,6 +326,46 @@ final class EntrySplitSectionsTest extends TestCase
                 self::assertNotContains($oldKey, $secondKeepSet);
             }
         });
+    }
+
+    public function testCriteriaMismatchCleanupImmediatelyRefreshesSplitDocumentCount(): void
+    {
+        $entry = Entry::find()
+            ->id(1087)
+            ->siteId((int)Craft::$app->getSites()->getPrimarySite()->id)
+            ->status(null)
+            ->one();
+        if (!$entry instanceof Entry || !$entry->getFieldLayout()?->getFieldByHandle('richText')) {
+            self::markTestSkipped('Requires lorem-ipsum entry 1087 with a richText field.');
+        }
+        $stub = $this->installStubBackend();
+        $this->saveTestIndex(['*']);
+        $index = SearchIndex::findByHandle(self::INDEX_HANDLE);
+        self::assertNotNull($index);
+
+        $this->withOnlySearchIndices([$index], function () use ($entry): void {
+            self::assertTrue(SearchManager::$plugin->indexing->indexElementNow($entry));
+        });
+        $indexedCount = $stub->documentCounts[self::INDEX_HANDLE] ?? 0;
+        self::assertGreaterThan(0, $indexedCount);
+        self::assertSame($indexedCount, SearchIndex::findByHandle(self::INDEX_HANDLE)?->documentCount);
+
+        $index = SearchIndex::findByHandle(self::INDEX_HANDLE);
+        self::assertNotNull($index);
+        $index->criteria = static fn(ElementQuery $query): ElementQuery => $query->andWhere('1=0');
+        self::assertFalse($index->matchesCriteria($entry));
+
+        $this->withOnlySearchIndices([$index], function () use ($entry): void {
+            self::assertTrue(SearchManager::$plugin->indexing->indexElementNow($entry));
+        });
+        self::assertSame(0, SearchIndex::findByHandle(self::INDEX_HANDLE)?->documentCount);
+
+        $cleanupCalls = array_values(array_filter(
+            $stub->calls,
+            static fn(array $call): bool => $call['method'] === 'deleteOrphanDocuments'
+                && ($call['items'][0]['keepBackendIds'] ?? null) === [],
+        ));
+        self::assertCount(1, $cleanupCalls);
     }
 
     /**

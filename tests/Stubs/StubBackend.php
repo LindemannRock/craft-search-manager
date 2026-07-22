@@ -162,6 +162,11 @@ final class StubBackend extends BackendService
             ]],
         ];
 
+        if (!$this->failBatchDelete && $keepBackendIds === []) {
+            $this->documentCounts[$indexName] = 0;
+            $this->distinctParentCounts[$indexName . ':' . ($siteId ?? 'null')] = 0;
+        }
+
         return !$this->failBatchDelete;
     }
 
