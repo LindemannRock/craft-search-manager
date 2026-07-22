@@ -165,7 +165,7 @@ class Highlighter
         // Find positions of all term matches
         $matches = [];
         foreach ($terms as $term) {
-            if (strlen($term) < 2) {
+            if (mb_strlen($term) < 2) {
                 continue;
             }
 

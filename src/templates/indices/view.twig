@@ -261,7 +261,7 @@ function submitAction(action, indexId) {
 {% if canRebuild %}
 document.getElementById('rebuild-btn')?.addEventListener('click', function(e) {
 	e.preventDefault();
-	if (confirm('{{ "Rebuild index? This will re-index all elements."|t('search-manager')|e('js') }}')) {
+	if (confirm({{ "Rebuild index? This will re-index all elements."|t('search-manager')|json_encode|raw }})) {
 		submitAction('search-manager/indices/rebuild', '{{ index.handle }}');
 	}
 });
@@ -271,7 +271,7 @@ document.getElementById('rebuild-btn')?.addEventListener('click', function(e) {
 {% if canClear %}
 document.getElementById('clear-btn')?.addEventListener('click', function(e) {
 	e.preventDefault();
-	if (confirm('{{ "Clear all data from this index? This cannot be undone."|t('search-manager')|e('js') }}')) {
+	if (confirm({{ "Clear all data from this index? This cannot be undone."|t('search-manager')|json_encode|raw }})) {
 		submitAction('search-manager/indices/clear', '{{ index.handle }}');
 	}
 });

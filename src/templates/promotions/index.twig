@@ -126,11 +126,15 @@
 
     {# Promoted Element #}
     <td data-column="element">
-        {% set element = craft.entries.id(item.elementId).status(null).one() %}
+        {% set element = promotionElements[item.id] ?? null %}
         {% if element and element.id %}
-            <a href="{{ element.cpEditUrl }}" target="_blank">
-                {{ element.title ?? element.id }}
-            </a>
+            {% if element.cpEditUrl %}
+                <a href="{{ element.cpEditUrl }}" target="_blank">
+                    {{ element.uiLabel }}
+                </a>
+            {% else %}
+                {{ element.uiLabel }}
+            {% endif %}
             <span class="light">(#{{ element.id }})</span>
         {% else %}
             <span class="light">{{ 'ID'|t('search-manager') }}: {{ item.elementId }}</span>

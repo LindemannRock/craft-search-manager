@@ -146,7 +146,7 @@
 
 {% js %}
     $('#cleanup-analytics-now').on('click', function() {
-        if (!confirm('{{ "Are you sure you want to clean up old analytics data now?"|t('search-manager')|e('js') }}')) {
+        if (!confirm({{ "Are you sure you want to clean up old analytics data now?"|t('search-manager')|json_encode|raw }})) {
             return;
         }
 
@@ -162,13 +162,13 @@
             },
             success: function(response) {
                 if (response.success) {
-                    Craft.cp.displayNotice(response.message || '{{ "Analytics cleanup job queued"|t('search-manager')|e('js') }}');
+                    Craft.cp.displayNotice(response.message || {{ "Analytics cleanup job queued"|t('search-manager')|json_encode|raw }});
                 } else {
-                    Craft.cp.displayError(response.error || '{{ "Failed to queue cleanup job"|t('search-manager')|e('js') }}');
+                    Craft.cp.displayError(response.error || {{ "Failed to queue cleanup job"|t('search-manager')|json_encode|raw }});
                 }
             },
             error: function() {
-                Craft.cp.displayError('{{ "Failed to queue cleanup job"|t('search-manager')|e('js') }}');
+                Craft.cp.displayError({{ "Failed to queue cleanup job"|t('search-manager')|json_encode|raw }});
             },
             complete: function() {
                 $btn.removeClass('loading').prop('disabled', false);

@@ -360,7 +360,7 @@ $('#clear-storage-by-type').on('click', function() {
     var selectedType = $('#storage-type-select').val();
     var typeName = $('#storage-type-select option:selected').text();
 
-    if (!confirm('{{ "Are you sure you want to clear ALL data from"|t('search-manager')|e('js') }} ' + typeName + '{{ "? This cannot be undone!"|t('search-manager')|e('js') }}')) {
+    if (!confirm({{ "Are you sure you want to clear ALL data from"|t('search-manager')|json_encode|raw }} + ' ' + typeName + {{ "? This cannot be undone!"|t('search-manager')|json_encode|raw }})) {
         return;
     }
 
@@ -389,11 +389,11 @@ $('#clear-storage-by-type').on('click', function() {
                 Craft.cp.displayNotice(response.message);
                 loadStorageStats();
             } else {
-                Craft.cp.displayError(response.error || '{{ "Failed to clear storage"|t('search-manager')|e('js') }}');
+                Craft.cp.displayError(response.error || {{ "Failed to clear storage"|t('search-manager')|json_encode|raw }});
             }
         },
         error: function() {
-            Craft.cp.displayError('{{ "Failed to clear storage"|t('search-manager')|e('js') }}');
+            Craft.cp.displayError({{ "Failed to clear storage"|t('search-manager')|json_encode|raw }});
         },
         complete: function() {
             $btn.removeClass('loading').prop('disabled', false);

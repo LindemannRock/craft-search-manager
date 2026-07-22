@@ -127,9 +127,11 @@ class PromotionsController extends Controller
         $limit = max(1, (int) $settings->itemsPerPage);
         $offset = ($page - 1) * $limit;
         $promotions = array_slice($promotions, $offset, $limit);
+        $promotionElements = $this->preloadPromotionElements($promotions);
 
         return $this->renderTemplate('search-manager/promotions/index', [
             'promotions' => $promotions,
+            'promotionElements' => $promotionElements,
             'indexLookup' => $indexLookup,
             'statusFilter' => $statusFilter,
             'matchTypeFilter' => $matchTypeFilter,
@@ -173,6 +175,57 @@ class PromotionsController extends Controller
         });
 
         return $promotions;
+    }
+
+    /**
+     * Resolve listing targets using the element type stored with each promotion.
+     *
+     * @param Promotion[] $promotions
+     * @return array<int, ElementInterface>
+     */
+    private function preloadPromotionElements(array $promotions): array
+    {
+        $groups = [];
+        foreach ($promotions as $promotion) {
+            if ($promotion->id === null || $promotion->elementId === null) {
+                continue;
+            }
+
+            $elementType = TargetElementTypeHelper::isSupportedElementType($promotion->elementType)
+                ? $promotion->elementType
+                : null;
+            if ($elementType === null) {
+                continue;
+            }
+
+            $siteKey = $promotion->siteId === null ? 'all' : (string)$promotion->siteId;
+            $groups[$elementType][$siteKey]['siteId'] = $promotion->siteId;
+            $groups[$elementType][$siteKey]['promotionIds'][$promotion->elementId][] = $promotion->id;
+        }
+
+        $elements = [];
+        foreach ($groups as $elementType => $siteGroups) {
+            foreach ($siteGroups as $group) {
+                $query = $elementType::find()
+                    ->id(array_keys($group['promotionIds']))
+                    ->status(null);
+                if ($group['siteId'] !== null) {
+                    $query->siteId($group['siteId']);
+                }
+
+                foreach ($query->all() as $element) {
+                    if (!$element instanceof ElementInterface || $element->id === null) {
+                        continue;
+                    }
+
+                    foreach ($group['promotionIds'][$element->id] ?? [] as $promotionId) {
+                        $elements[$promotionId] = $element;
+                    }
+                }
+            }
+        }
+
+        return $elements;
     }
 
     /**

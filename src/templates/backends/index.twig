@@ -408,7 +408,7 @@
         const collisionHandles = {{ collisionHandles|default([])|json_encode|raw }};
         if (collisionHandles.length > 0) {
             document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(function(row) {
-                const handleCell = row.querySelector('td:nth-child(3) code');
+                const handleCell = row.querySelector('td[data-column="handle"] code');
                 if (handleCell && collisionHandles.includes(handleCell.textContent.trim())) {
                     row.classList.add('lr-row--warning');
                 }

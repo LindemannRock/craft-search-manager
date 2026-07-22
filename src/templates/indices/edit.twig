@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     const siteNames = {
         {% for site in craft.app.sites.getAllSites() %}
-        '{{ site.id }}': '{{ site.name|e('js') }}',
+        {{ site.id|json_encode|raw }}: {{ site.name|json_encode|raw }},
         {% endfor %}
     };
 
@@ -792,7 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
 	if (clearCacheBtn) {
 		clearCacheBtn.addEventListener('click', function(e) {
 			e.preventDefault();
-			if (!confirm('{{ "Clear cached search results and autocomplete suggestions for this index?"|t('search-manager')|e('js') }}')) {
+			if (!confirm({{ "Clear cached search results and autocomplete suggestions for this index?"|t('search-manager')|json_encode|raw }})) {
 				return;
 			}
 
@@ -800,12 +800,12 @@ document.addEventListener('DOMContentLoaded', function() {
 				data: { indexId }
 			}).then(function(response) {
 				if (response.data.success) {
-					Craft.cp.displayNotice(response.data.message || '{{ "Cache cleared successfully"|t('search-manager')|e('js') }}');
+					Craft.cp.displayNotice(response.data.message || {{ "Cache cleared successfully"|t('search-manager')|json_encode|raw }});
 				} else {
-					Craft.cp.displayError(response.data.error || '{{ "Failed to clear cache"|t('search-manager')|e('js') }}');
+					Craft.cp.displayError(response.data.error || {{ "Failed to clear cache"|t('search-manager')|json_encode|raw }});
 				}
 			}).catch(function(error) {
-				Craft.cp.displayError('{{ "Failed to clear cache"|t('search-manager')|e('js') }}');
+				Craft.cp.displayError({{ "Failed to clear cache"|t('search-manager')|json_encode|raw }});
 			});
 		});
 	}
@@ -819,13 +819,13 @@ document.addEventListener('DOMContentLoaded', function() {
 				data: { indexId: '{{ index.id ?: index.handle }}' }
 			}).then(function(response) {
 				if (response.data.success) {
-					Craft.cp.displayNotice(response.data.message || '{{ "Count synced successfully"|t('search-manager')|e('js') }}');
+					Craft.cp.displayNotice(response.data.message || {{ "Count synced successfully"|t('search-manager')|json_encode|raw }});
 					setTimeout(() => window.location.reload(), 1000);
 				} else {
-					Craft.cp.displayError(response.data.error || '{{ "Failed to sync count"|t('search-manager')|e('js') }}');
+					Craft.cp.displayError(response.data.error || {{ "Failed to sync count"|t('search-manager')|json_encode|raw }});
 				}
 			}).catch(function(error) {
-				Craft.cp.displayError('{{ "Failed to sync count"|t('search-manager')|e('js') }}');
+				Craft.cp.displayError({{ "Failed to sync count"|t('search-manager')|json_encode|raw }});
 			});
 		});
 	}

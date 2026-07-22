@@ -66,7 +66,7 @@
 
         <div class="field">
             <p class="light">
-                {{ 'Stop words are common words (the, a, is, etc.) filtered out during indexing to improve search relevance. Search Manager includes stop words for: English, Arabic, German, French, Spanish.'|t('search-manager') }}
+                {{ 'Stop words are common words (the, a, is, etc.) filtered out during indexing to improve search relevance.'|t('search-manager') }}
             </p>
         </div>
 
@@ -104,10 +104,17 @@
                         <tbody>
                             {% set stopWordFiles = [
                                 {code: 'en', name: 'English'|t('search-manager'), file: 'en.php', count: 297},
-                                {code: 'ar', name: 'Arabic (MSA)'|t('search-manager'), file: 'ar.php', count: 122},
-                                {code: 'de', name: 'German'|t('search-manager'), file: 'de.php', count: 130},
-                                {code: 'fr', name: 'French'|t('search-manager'), file: 'fr.php', count: 140},
-                                {code: 'es', name: 'Spanish'|t('search-manager'), file: 'es.php', count: 135},
+                                {code: 'pt', name: 'Portuguese'|t('search-manager'), file: 'pt.php', count: 266},
+                                {code: 'it', name: 'Italian'|t('search-manager'), file: 'it.php', count: 264},
+                                {code: 'es', name: 'Spanish'|t('search-manager'), file: 'es.php', count: 260},
+                                {code: 'fr', name: 'French'|t('search-manager'), file: 'fr.php', count: 206},
+                                {code: 'no', name: 'Norwegian'|t('search-manager'), file: 'no.php', count: 194},
+                                {code: 'nl', name: 'Dutch'|t('search-manager'), file: 'nl.php', count: 179},
+                                {code: 'sv', name: 'Swedish'|t('search-manager'), file: 'sv.php', count: 176},
+                                {code: 'de', name: 'German'|t('search-manager'), file: 'de.php', count: 171},
+                                {code: 'da', name: 'Danish'|t('search-manager'), file: 'da.php', count: 162},
+                                {code: 'ja', name: 'Japanese'|t('search-manager'), file: 'ja.php', count: 115},
+                                {code: 'ar', name: 'Arabic (MSA)'|t('search-manager'), file: 'ar.php', count: 112},
                             ] %}
                             {% for lang in stopWordFiles %}
                                 <tr>

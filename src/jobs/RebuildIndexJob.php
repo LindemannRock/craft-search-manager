@@ -83,7 +83,8 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
             throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': backend clear failed.");
         }
 
-        $totalIndexed = 0;
+        $totalIndexedElements = 0;
+        $totalIndexedDocuments = 0;
         $indexingFailures = [];
         $batchSize = SearchManager::$plugin->getSettings()->batchSize;
 
@@ -124,7 +125,8 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
                 if (!empty($elements)) {
                     $batchSucceeded = SearchManager::$plugin->indexing->batchIndex($elements, $indexHandle);
                     $batchResult = SearchManager::$plugin->indexing->getLastBatchResult();
-                    $totalIndexed += $batchResult['acceptedElementCount'];
+                    $totalIndexedElements += $batchResult['acceptedElementCount'];
+                    $totalIndexedDocuments += $batchResult['acceptedDocumentCount'];
                     if (!$batchSucceeded) {
                         $indexingFailures[] = SearchManager::$plugin->indexing->lastBatchIndexingFailureMessage($indexHandle);
                     }
@@ -157,7 +159,7 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         }
 
         // Update index stats
-        if (!$index->updateStats($totalIndexed)) {
+        if (!$index->updateStats($totalIndexedDocuments)) {
             throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': document count metadata update failed.");
         }
 
@@ -173,7 +175,8 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 
         $this->logInfo('Index rebuild completed', [
             'handle' => $indexHandle,
-            'count' => $totalIndexed,
+            'elementCount' => $totalIndexedElements,
+            'documentCount' => $totalIndexedDocuments,
         ]);
 
         // Queue cache warming job if enabled

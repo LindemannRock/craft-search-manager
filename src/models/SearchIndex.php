@@ -22,6 +22,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexQueryHelper;
+use lindemannrock\searchmanager\helpers\SplitSectionDocumentHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\SearchManager;
@@ -2327,12 +2328,13 @@ class SearchIndex extends Model
     }
 
     /**
-     * Get expected element count based on index criteria
-     * Runs the element query with count() to determine how many elements should be indexed
-     * The result must stay aligned with the site scope, criteria, availability,
-     * and URL filtering applied by RebuildIndexJob.
+     * Get the expected backend document count based on index criteria.
      *
-     * @return int Expected number of elements matching the index criteria
+     * Page-mode indices produce one document per eligible element. Split-section
+     * indices count the intro/heading documents produced by the configured
+     * transformer so this value uses the same unit as documentCount.
+     *
+     * @return int Expected number of backend documents
      */
     public function getExpectedCount(): int
     {
@@ -2352,6 +2354,45 @@ class SearchIndex extends Model
                     'indexSiteId' => $this->siteId,
                     'querySiteId' => $siteId,
                 ]);
+
+                if ($this->usesSplitSections()) {
+                    $siteCount = SearchManager::$plugin->transformers->withTransformerReuse(
+                        function() use ($query): int {
+                            $documentCount = 0;
+                            foreach ($query->each(100) as $element) {
+                                if (!$element instanceof ElementInterface) {
+                                    continue;
+                                }
+
+                                $data = SearchManager::$plugin->transformers->transform(
+                                    $element,
+                                    $this->handle,
+                                    $this->transformerClass,
+                                    $this->headingLevels,
+                                );
+                                if ($data === null) {
+                                    continue;
+                                }
+
+                                $documentCount += count(SplitSectionDocumentHelper::documentsForIndex(
+                                    $this,
+                                    $element,
+                                    $data,
+                                ));
+                            }
+
+                            return $documentCount;
+                        },
+                    );
+                    $totalCount += $siteCount;
+
+                    $this->logDebug('Expected split document count result', [
+                        'indexHandle' => $this->handle,
+                        'siteId' => $siteId,
+                        'count' => $siteCount,
+                    ]);
+                    continue;
+                }
 
                 $hasClosure = $this->criteria instanceof \Closure;
                 if ($this->skipEntriesWithoutUrl && $elementType === Entry::class) {
