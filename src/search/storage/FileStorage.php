@@ -353,6 +353,26 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         return (int)($data['_length'] ?? 0);
     }
 
+    /**
+     * @inheritdoc
+     * @since 5.54.0
+     */
+    public function getDocumentLengthsBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        $byDocument = [];
+
+        // File storage keeps each document in its own locked JSON file, so a
+        // batch still needs one file read per requested key. Centralizing the
+        // pass here avoids the search engine's per-document accessor calls
+        // without adding a second metadata index that could drift.
+        foreach (array_values(array_unique(array_map('strval', $documentKeys))) as $documentKey) {
+            $data = $this->readFile($this->getDocPathByKey($siteId, $documentKey));
+            $byDocument[$documentKey] = (int)($data['_length'] ?? 0);
+        }
+
+        return $byDocument;
+    }
+
     public function getDocumentLanguagesBatchByKeys(int $siteId, array $documentKeys): array
     {
         $byDocument = [];

@@ -64,6 +64,30 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame([101 => ['alpha' => 2]], $storage->getDocumentTermsBatch(1, [101]));
     }
 
+    public function testDocumentLengthsByKeysUseOnePipelineAndPreserveSingleReadOutcomes(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+        $storage->storeDocumentByKey(1, 301, '301_1_intro', ['alpha' => 2], 5, 'en');
+        $storage->storeDocumentByKey(1, 301, '301_1_details', ['beta' => 1], 3, 'en');
+
+        $multiCallsBefore = $redis->multiCalls;
+        $redis->hGetPipelineCalls = 0;
+        $redis->hGetSequentialCalls = 0;
+
+        self::assertSame([
+            '301_1_intro' => 5,
+            '301_1_details' => 3,
+            'missing' => 0,
+        ], $storage->getDocumentLengthsBatchByKeys(1, [
+            '301_1_intro',
+            '301_1_details',
+            'missing',
+        ]));
+        self::assertSame($multiCallsBefore + 1, $redis->multiCalls);
+        self::assertSame(3, $redis->hGetPipelineCalls);
+        self::assertSame(0, $redis->hGetSequentialCalls);
+    }
+
     public function testSplitSectionDocumentsAreSearchableAndHydratedByDocumentKey(): void
     {
         [$storage] = $this->makeStorage();
@@ -670,6 +694,8 @@ final class RedisStorageFakeRedis
     public int $sMembersPipelineCalls = 0;
     public int $hGetAllPipelineCalls = 0;
     public int $hGetAllSequentialCalls = 0;
+    public int $hGetPipelineCalls = 0;
+    public int $hGetSequentialCalls = 0;
 
     /** @var list<string> */
     public array $scanPatterns = [];
@@ -730,9 +756,12 @@ final class RedisStorageFakeRedis
     public function hGet(string $key, string $field): mixed
     {
         if ($this->pipeline !== null) {
+            $this->hGetPipelineCalls++;
             $this->pipeline[] = fn (): mixed => $this->hashes[$key][$field] ?? false;
             return $this;
         }
+
+        $this->hGetSequentialCalls++;
 
         return $this->hashes[$key][$field] ?? false;
     }

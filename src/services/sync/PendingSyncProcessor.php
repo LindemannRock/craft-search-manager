@@ -137,6 +137,7 @@ class PendingSyncProcessor extends Component
         $indexing = SearchManager::$plugin->indexing;
         $elementTypeAvailable = $this->isElementTypeAvailable($index->elementType, 'batch-sync');
         $elementsByKey = $elementTypeAvailable ? $this->preloadElements($index, $rows) : [];
+        $criteriaMatchesByKey = $index->matchesCriteriaBatch(array_values($elementsByKey));
 
         foreach ($rows as $row) {
             $rowId = (int)$row['id'];
@@ -161,7 +162,7 @@ class PendingSyncProcessor extends Component
                 continue;
             }
 
-            if (!$index->matchesElement($element)) {
+            if (!($criteriaMatchesByKey[$this->elementCacheKey($siteId, $elementId)] ?? false)) {
                 $this->queueDelete($elementId, $siteId, $row, $deleteItems, $deleteRows);
                 continue;
             }

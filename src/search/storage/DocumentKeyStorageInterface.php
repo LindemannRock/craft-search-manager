@@ -37,6 +37,13 @@ interface DocumentKeyStorageInterface extends StorageInterface
 
     /**
      * @param array<int, string|int> $documentKeys
+     * @return array<int|string, int>
+     * @since 5.54.0
+     */
+    public function getDocumentLengthsBatchByKeys(int $siteId, array $documentKeys): array;
+
+    /**
+     * @param array<int, string|int> $documentKeys
      * @return array<int|string, string>
      */
     public function getDocumentLanguagesBatchByKeys(int $siteId, array $documentKeys): array;

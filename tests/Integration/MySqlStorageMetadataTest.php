@@ -96,6 +96,23 @@ final class MySqlStorageMetadataTest extends TestCase
         self::assertSame([100001 => ['alpha' => 2]], $storage->getDocumentTermsBatch(1, [100001]));
     }
 
+    public function testDocumentLengthsBatchByKeysPreservesSingleReadOutcomes(): void
+    {
+        $storage = new MySqlStorage(self::INDEX_HANDLE);
+        $storage->storeDocumentByKey(1, 100001, '100001_1_intro', ['alpha' => 2], 5, 'en');
+        $storage->storeDocumentByKey(1, 100001, '100001_1_details', ['beta' => 1], 3, 'en');
+
+        self::assertSame([
+            '100001_1_intro' => 5,
+            '100001_1_details' => 3,
+            'missing' => 0,
+        ], $storage->getDocumentLengthsBatchByKeys(1, [
+            '100001_1_intro',
+            '100001_1_details',
+            'missing',
+        ]));
+    }
+
     public function testSearchReturnsNothingWhenDocCountIsZeroDespiteIndexedRows(): void
     {
         $storage = new MySqlStorage(self::INDEX_HANDLE);

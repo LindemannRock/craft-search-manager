@@ -95,6 +95,10 @@ final class PostgreSqlStorageTest extends TestCase
             $storage->storeTitleTerms(1, 1001, ['protein']);
 
             self::assertSame(4, $storage->getDocumentLength(1, 1001));
+            self::assertSame([
+                '1001_1' => 4,
+                'missing' => 0,
+            ], $storage->getDocumentLengthsBatchByKeys(1, ['1001_1', 'missing']));
             self::assertSame(['protein' => 3, 'powder' => 1], $storage->getDocumentTerms(1, 1001));
             self::assertSame(['1:1001_1' => 3], $storage->getTermDocuments('protein', 1));
             self::assertSame(['protein'], $storage->getTitleTerms(1, 1001));

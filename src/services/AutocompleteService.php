@@ -126,7 +126,15 @@ class AutocompleteService extends Component
         ]);
 
         if ($settings->enableAutocompleteCache) {
-            $cacheKey = $this->generateCacheKey('suggest', $fullIndexHandle, $cacheQuery, $siteIdProvided ? $siteId : null, $language);
+            $cacheKey = $this->generateCacheKey(
+                'suggest',
+                $fullIndexHandle,
+                $cacheQuery,
+                $siteIdProvided ? $siteId : null,
+                $language,
+                (int)$limit,
+                (bool)$fuzzy,
+            );
             $cached = $this->getFromCache($cacheKey, $fullIndexHandle);
             if ($cached !== null) {
                 $this->logDebug('Autocomplete cache hit', [
@@ -718,14 +726,23 @@ class AutocompleteService extends Component
     /**
      * Generate cache key for autocomplete
      */
-    private function generateCacheKey(string $type, string $indexHandle, string $query, ?int $siteId, ?string $language): string
-    {
+    private function generateCacheKey(
+        string $type,
+        string $indexHandle,
+        string $query,
+        ?int $siteId,
+        ?string $language,
+        int $limit,
+        bool $fuzzy,
+    ): string {
         $keyData = [
             'type' => $type,
             'index' => $indexHandle,
             'query' => $query,
             'siteId' => $siteId,
             'language' => $language,
+            'limit' => $limit,
+            'fuzzy' => $fuzzy,
         ];
 
         return md5(json_encode($keyData));

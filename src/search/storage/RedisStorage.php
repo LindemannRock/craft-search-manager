@@ -402,6 +402,32 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         return $length ? (int)$length : 0;
     }
 
+    /**
+     * @inheritdoc
+     * @since 5.54.0
+     */
+    public function getDocumentLengthsBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        if (empty($documentKeys)) {
+            return [];
+        }
+
+        $documentKeys = array_values(array_unique(array_map('strval', $documentKeys)));
+        $this->redis->multi(\Redis::PIPELINE);
+        foreach ($documentKeys as $documentKey) {
+            $this->redis->hGet($this->getDocKeyByDocumentKey($siteId, $documentKey), '_length');
+        }
+        $results = $this->redis->exec();
+
+        $byDocument = [];
+        foreach ($documentKeys as $index => $documentKey) {
+            $length = $results[$index] ?? false;
+            $byDocument[$documentKey] = $length === false ? 0 : (int)$length;
+        }
+
+        return $byDocument;
+    }
+
     public function getDocumentLanguagesBatchByKeys(int $siteId, array $documentKeys): array
     {
         if (empty($documentKeys)) {

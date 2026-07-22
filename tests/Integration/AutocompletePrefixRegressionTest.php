@@ -40,6 +40,21 @@ final class AutocompletePrefixRegressionTest extends TestCase
         parent::tearDown();
     }
 
+    public function testCacheKeySeparatesEveryResultShapingSuggestionOption(): void
+    {
+        $service = SearchManager::$plugin->autocomplete;
+        $method = new \ReflectionMethod($service, 'generateCacheKey');
+        $method->setAccessible(true);
+
+        $base = $method->invoke($service, 'suggest', 'dev_content', 'pro', 1, 'en', 10, true);
+        $differentLimit = $method->invoke($service, 'suggest', 'dev_content', 'pro', 1, 'en', 5, true);
+        $differentFuzzy = $method->invoke($service, 'suggest', 'dev_content', 'pro', 1, 'en', 10, false);
+
+        self::assertNotSame($base, $differentLimit);
+        self::assertNotSame($base, $differentFuzzy);
+        self::assertNotSame($differentLimit, $differentFuzzy);
+    }
+
     public function testPrefixAutocompleteQueriesStorageByPrefixInsteadOfGlobalTopThousandPool(): void
     {
         $autocompleteTerms = [];

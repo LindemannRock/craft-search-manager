@@ -1717,14 +1717,10 @@ class SearchEngine
         }
 
         $lengths = [];
-        foreach ($docIds as $docId) {
-            $docId = (string)$docId;
-            $parts = explode(':', $docId, 2);
-            if (!isset($parts[0], $parts[1])) {
-                continue;
+        foreach ($this->groupDocIdsBySite($docIds) as $siteId => $documentKeys) {
+            foreach ($documentStorage->getDocumentLengthsBatchByKeys((int)$siteId, $documentKeys) as $documentKey => $length) {
+                $lengths[$siteId . ':' . $documentKey] = $length;
             }
-
-            $lengths[$docId] = $documentStorage->getDocumentLengthByKey((int)$parts[0], $parts[1]);
         }
 
         return $lengths;

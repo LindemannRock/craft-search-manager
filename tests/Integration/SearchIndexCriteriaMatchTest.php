@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use craft\elements\Entry;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -28,6 +29,49 @@ use lindemannrock\searchmanager\tests\TestCase;
  */
 final class SearchIndexCriteriaMatchTest extends TestCase
 {
+    public function testCriteriaMembershipOutcomesAcrossBatchCandidates(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        $this->assertNotNull($pair);
+        [$index, $firstElement] = $pair;
+
+        $elements = Entry::find()
+            ->siteId((int)$firstElement->siteId)
+            ->status(null)
+            ->drafts(false)
+            ->revisions(false)
+            ->andWhere(['entries.primaryOwnerId' => null])
+            ->limit(2)
+            ->all();
+
+        if (count($elements) < 2) {
+            self::markTestSkipped('Requires two entries on the same site to pin mixed criteria outcomes.');
+        }
+
+        $includedId = (int)$elements[0]->id;
+        $index->criteria = static function ($query) use ($includedId) {
+            $query->andWhere(['elements.id' => $includedId]);
+            return $query;
+        };
+
+        $outcomes = [];
+        foreach ($elements as $element) {
+            $outcomes[(int)$element->id] = $index->matchesCriteria($element);
+        }
+
+        $expected = [
+            (int)$elements[0]->id => true,
+            (int)$elements[1]->id => false,
+        ];
+        self::assertSame($expected, $outcomes);
+
+        $batchOutcomes = $index->matchesCriteriaBatch($elements);
+        self::assertSame([
+            (int)$elements[0]->siteId . ':' . (int)$elements[0]->id => true,
+            (int)$elements[1]->siteId . ':' . (int)$elements[1]->id => false,
+        ], $batchOutcomes);
+    }
+
     public function testEmptyCriteriaMatchesAnyElementOfRightType(): void
     {
         $pair = $this->findWorkingIndexAndElement();

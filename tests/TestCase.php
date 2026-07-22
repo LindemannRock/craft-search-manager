@@ -163,12 +163,19 @@ abstract class TestCase extends IntegrationTestCase
         $property = new \ReflectionProperty(SearchIndex::class, 'allCache');
         $property->setAccessible(true);
         $original = $property->getValue();
+
+        $expiresAtProperty = new \ReflectionProperty(SearchIndex::class, 'allCacheExpiresAt');
+        $expiresAtProperty->setAccessible(true);
+        $originalExpiresAt = $expiresAtProperty->getValue();
+
         $property->setValue(null, $indices);
+        $expiresAtProperty->setValue(null, microtime(true) + 3600.0);
 
         try {
             return $callback();
         } finally {
             $property->setValue(null, $original);
+            $expiresAtProperty->setValue(null, $originalExpiresAt);
         }
     }
 

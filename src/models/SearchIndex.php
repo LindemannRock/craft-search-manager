@@ -42,12 +42,15 @@ class SearchIndex extends Model
     use ConfigSourceTrait;
 
     private const PLUGIN_HANDLE = 'search-manager';
+    private const ALL_CACHE_TTL_SECONDS = 5;
     public const MAX_REQUESTED_INDICES = 5;
 
     /**
-     * @var self[]|null Request-scoped index cache.
+     * @var self[]|null Short-lived index cache shared within the process.
      */
     private static ?array $allCache = null;
+
+    private static ?float $allCacheExpiresAt = null;
 
     // =========================================================================
     // PROPERTIES
@@ -817,7 +820,11 @@ class SearchIndex extends Model
      */
     public static function findAll(): array
     {
-        if (self::$allCache !== null) {
+        if (
+            self::$allCache !== null
+            && self::$allCacheExpiresAt !== null
+            && microtime(true) < self::$allCacheExpiresAt
+        ) {
             return self::$allCache;
         }
 
@@ -852,6 +859,7 @@ class SearchIndex extends Model
         }
 
         self::$allCache = array_values($indices);
+        self::$allCacheExpiresAt = microtime(true) + self::ALL_CACHE_TTL_SECONDS;
 
         return self::$allCache;
     }
@@ -925,13 +933,14 @@ class SearchIndex extends Model
     }
 
     /**
-     * Clear request-scoped index model caches.
+     * Clear process-local index model caches.
      *
      * @since 5.45.0
      */
     public static function clearCache(): void
     {
         self::$allCache = null;
+        self::$allCacheExpiresAt = null;
     }
 
     /**
@@ -2609,6 +2618,70 @@ class SearchIndex extends Model
             );
             return false;
         }
+    }
+
+    /**
+     * Evaluate this index's criteria for a batch of same-type elements.
+     *
+     * The returned map is keyed by `siteId:elementId` and contains an outcome
+     * for every supplied element. Criteria-bearing batches execute one Craft
+     * element query instead of one `exists()` query per element.
+     *
+     * @param array<int, ElementInterface> $elements
+     * @return array<string, bool>
+     * @since 5.54.0
+     */
+    public function matchesCriteriaBatch(array $elements): array
+    {
+        $outcomes = [];
+        $elementIds = [];
+        $siteIds = [];
+
+        foreach ($elements as $element) {
+            $key = (int)$element->siteId . ':' . (int)$element->id;
+            $outcomes[$key] = empty($this->criteria);
+            $elementIds[(int)$element->id] = true;
+            $siteIds[(int)$element->siteId] = true;
+        }
+
+        if ($outcomes === [] || empty($this->criteria)) {
+            return $outcomes;
+        }
+
+        $elementType = $this->elementType;
+        if (!is_subclass_of($elementType, ElementInterface::class)) {
+            return $outcomes;
+        }
+
+        try {
+            /** @var \craft\elements\db\ElementQuery $query */
+            $query = $elementType::find()
+                ->id(array_keys($elementIds))
+                ->siteId(array_keys($siteIds))
+                ->status(null);
+
+            $query->drafts(false);
+            $query->revisions(false);
+            $query = SearchIndexCriteriaHelper::apply($query, $elementType, $this->criteria);
+
+            foreach ($query->select(['elements.id', 'elements_sites.siteId'])->asArray()->all() as $row) {
+                $key = (int)$row['siteId'] . ':' . (int)$row['id'];
+                if (array_key_exists($key, $outcomes)) {
+                    $outcomes[$key] = true;
+                }
+            }
+        } catch (\Throwable $e) {
+            \Craft::warning(
+                sprintf(
+                    'SearchIndex::matchesCriteriaBatch failed for index %s: %s',
+                    $this->handle,
+                    $e->getMessage(),
+                ),
+                'search-manager',
+            );
+        }
+
+        return $outcomes;
     }
 
     /**

@@ -381,6 +381,38 @@ class MySqlStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
 
     /**
      * @inheritdoc
+     * @since 5.54.0
+     */
+    public function getDocumentLengthsBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        if (empty($documentKeys)) {
+            return [];
+        }
+
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
+        $documentKeys = array_values(array_unique(array_map('strval', $documentKeys)));
+        $byDocument = array_fill_keys($documentKeys, 0);
+
+        $rows = (new Query())
+            ->select(['documentKey', 'frequency'])
+            ->from('{{%searchmanager_search_documents}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'documentKey' => $documentKeys,
+                'term' => '_length',
+            ])
+            ->all();
+
+        foreach ($rows as $row) {
+            $byDocument[(string)$row['documentKey']] = (int)$row['frequency'];
+        }
+
+        return $byDocument;
+    }
+
+    /**
+     * @inheritdoc
      */
     public function getDocumentLengthsBatch(array $docIds): array
     {

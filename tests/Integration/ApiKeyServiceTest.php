@@ -185,6 +185,50 @@ final class ApiKeyServiceTest extends TestCase
         $this->assertNotNull($key->lastUsedAt, 'In-memory key is updated too');
     }
 
+    public function testRecordUsageSkipsRecentTimestampWrite(): void
+    {
+        $service = SearchManager::$plugin->apiKeys;
+        [$key] = $this->seedKey(ApiKey::TYPE_PUBLIC);
+        $recent = (new \DateTime('now', new \DateTimeZone('UTC')))->modify('-10 seconds');
+
+        Craft::$app->getDb()->createCommand()
+            ->update(
+                '{{%searchmanager_api_keys}}',
+                ['lastUsedAt' => \craft\helpers\Db::prepareDateForDb($recent)],
+                ['id' => $key->id],
+            )
+            ->execute();
+        $key->lastUsedAt = $recent;
+
+        $service->recordUsage($key);
+
+        $reloaded = ApiKey::findById($key->id);
+        self::assertNotNull($reloaded);
+        self::assertSame($recent->getTimestamp(), $reloaded->lastUsedAt?->getTimestamp());
+    }
+
+    public function testRecordUsageUpdatesStaleTimestamp(): void
+    {
+        $service = SearchManager::$plugin->apiKeys;
+        [$key] = $this->seedKey(ApiKey::TYPE_PUBLIC);
+        $stale = (new \DateTime('now', new \DateTimeZone('UTC')))->modify('-5 minutes');
+
+        Craft::$app->getDb()->createCommand()
+            ->update(
+                '{{%searchmanager_api_keys}}',
+                ['lastUsedAt' => \craft\helpers\Db::prepareDateForDb($stale)],
+                ['id' => $key->id],
+            )
+            ->execute();
+        $key->lastUsedAt = $stale;
+
+        $service->recordUsage($key);
+
+        $reloaded = ApiKey::findById($key->id);
+        self::assertNotNull($reloaded);
+        self::assertGreaterThan($stale->getTimestamp(), $reloaded->lastUsedAt?->getTimestamp());
+    }
+
     // =========================================================================
     // ApiKey model contract
     // =========================================================================

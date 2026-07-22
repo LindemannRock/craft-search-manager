@@ -59,6 +59,9 @@ class ApiKeyService extends Component
     /** @var int Rate-limit window length in seconds (fixed one-minute window). */
     private const RATE_LIMIT_WINDOW = 60;
 
+    /** @var int Minimum interval between persisted usage timestamps. */
+    private const USAGE_WRITE_DEBOUNCE_SECONDS = 60;
+
     private const TYPE_PREFIXES = [
         ApiKey::TYPE_PUBLIC => 'sm_pub_',
         ApiKey::TYPE_SERVER => 'sm_srv_',
@@ -583,6 +586,13 @@ class ApiKeyService extends Component
     {
         try {
             $now = new \DateTime('now', new \DateTimeZone('UTC'));
+            if (
+                $key->lastUsedAt !== null
+                && $key->lastUsedAt->getTimestamp() >= $now->getTimestamp() - self::USAGE_WRITE_DEBOUNCE_SECONDS
+            ) {
+                return;
+            }
+
             Craft::$app->getDb()->createCommand()
                 ->update(
                     '{{%searchmanager_api_keys}}',

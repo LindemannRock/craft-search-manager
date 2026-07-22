@@ -553,6 +553,23 @@ final class FileStorageRegressionTest extends TestCase
         self::assertSame('Legacy Page', $storage->getElementsByDocumentKeys(1, ['401_1'])['401_1']['title'] ?? null);
     }
 
+    public function testDocumentLengthsBatchByKeysPreservesSingleReadOutcomes(): void
+    {
+        $storage = $this->makeStorage();
+        $storage->storeDocumentByKey(1, 301, '301_1_intro', ['alpha' => 2], 5, 'en');
+        $storage->storeDocumentByKey(1, 301, '301_1_details', ['beta' => 1], 3, 'en');
+
+        self::assertSame([
+            '301_1_intro' => 5,
+            '301_1_details' => 3,
+            'missing' => 0,
+        ], $storage->getDocumentLengthsBatchByKeys(1, [
+            '301_1_intro',
+            '301_1_details',
+            'missing',
+        ]));
+    }
+
     public function testNonDocumentKeyStorageFailsLoudlyForSplitDocumentKey(): void
     {
         $storage = new RecordingStorage([], [], [], 0, 1.0);

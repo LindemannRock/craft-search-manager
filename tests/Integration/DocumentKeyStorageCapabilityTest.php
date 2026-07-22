@@ -57,4 +57,25 @@ final class DocumentKeyStorageCapabilityTest extends TestCase
             self::assertStringNotContainsString('method_exists', $source, $file);
         }
     }
+
+    public function testSearchEngineUsesDocumentKeyLengthBatchAccessor(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/search/SearchEngine.php');
+        self::assertIsString($source);
+
+        preg_match('/private function documentLengthsForDocIds\(.*?^    }$/ms', $source, $matches);
+        self::assertNotEmpty($matches);
+        self::assertStringContainsString('getDocumentLengthsBatchByKeys(', $matches[0]);
+        self::assertStringNotContainsString('getDocumentLengthByKey(', $matches[0]);
+
+        $interface = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/DocumentKeyStorageInterface.php');
+        self::assertIsString($interface);
+        self::assertStringContainsString('getDocumentLengthsBatchByKeys', $interface);
+
+        foreach (['MySqlStorage', 'PostgreSqlStorage', 'RedisStorage', 'FileStorage'] as $storage) {
+            $implementation = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/' . $storage . '.php');
+            self::assertIsString($implementation);
+            self::assertStringContainsString('function getDocumentLengthsBatchByKeys', $implementation, $storage);
+        }
+    }
 }

@@ -27,9 +27,18 @@ final class PendingSyncProcessorBatchingTest extends TestCase
 
         $processBody = $this->methodBody($source, 'processIndexRows');
         self::assertStringContainsString('$elementsByKey = $elementTypeAvailable ? $this->preloadElements($index, $rows) : [];', $processBody);
+        self::assertStringContainsString('$criteriaMatchesByKey = $index->matchesCriteriaBatch(array_values($elementsByKey));', $processBody);
         self::assertStringContainsString('$elementsByKey[$this->elementCacheKey($siteId, $elementId)] ?? null', $processBody);
+        self::assertStringNotContainsString('matchesElement(', $processBody);
         self::assertStringNotContainsString('loadElement(', $processBody);
         self::assertStringNotContainsString('->one()', $processBody);
+
+        $criteriaBody = $this->publicMethodBody(
+            $this->readPluginFile('src/models/SearchIndex.php'),
+            'matchesCriteriaBatch',
+        );
+        self::assertSame(1, substr_count($criteriaBody, '->all()'));
+        self::assertStringNotContainsString('->exists()', $criteriaBody);
 
         $preloadBody = $this->methodBody($source, 'preloadElements');
         self::assertStringContainsString('->id(array_keys($idSet))', $preloadBody);
@@ -89,5 +98,27 @@ final class PendingSyncProcessorBatchingTest extends TestCase
         self::assertNotSame('', $body, $method . ' source should be captured.');
 
         return $body;
+    }
+
+    private function publicMethodBody(string $source, string $method): string
+    {
+        preg_match(
+            '/public function ' . preg_quote($method, '/') . '\(.*?^    \}/ms',
+            $source,
+            $matches,
+        );
+
+        $body = $matches[0] ?? '';
+        self::assertNotSame('', $body, $method . ' source should be captured.');
+
+        return $body;
+    }
+
+    private function readPluginFile(string $path): string
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);
+        self::assertIsString($source);
+
+        return $source;
     }
 }
