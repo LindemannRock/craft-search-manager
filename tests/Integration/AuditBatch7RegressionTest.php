@@ -73,6 +73,39 @@ final class AuditBatch7RegressionTest extends TestCase
         );
     }
 
+    public function testRawConfigDisplayEscapesQuotedStringValuesThroughSharedFormatter(): void
+    {
+        $originalConfigCache = $this->configCache();
+
+        try {
+            $name = "Editor's \\ Picks";
+            $transformer = "Vendor\\Editor'sTransformer";
+            $language = "en'custom";
+            $this->withConfigFileIndices([
+                'quoted-config-index' => [
+                    'name' => $name,
+                    'elementType' => \craft\elements\Entry::class,
+                    'transformer' => $transformer,
+                    'language' => $language,
+                    'enabled' => true,
+                ],
+            ]);
+
+            $index = new SearchIndex();
+            $index->handle = 'quoted-config-index';
+            $index->source = 'config';
+            $display = $index->getRawConfigDisplay();
+
+            self::assertNotNull($display);
+            self::assertStringContainsString("'name' => " . var_export($name, true), $display);
+            self::assertStringContainsString("'transformer' => " . var_export($transformer, true), $display);
+            self::assertStringContainsString("'language' => " . var_export($language, true), $display);
+        } finally {
+            $this->setConfigCache($originalConfigCache);
+            SearchIndex::clearCache();
+        }
+    }
+
     public function testSimilarityThresholdInstallAndTemplateDefaultsUseCanonicalRuntimeValue(): void
     {
         $install = $this->readPluginFile('src/migrations/Install.php');

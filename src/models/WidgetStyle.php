@@ -179,7 +179,15 @@ class WidgetStyle extends Model
             return;
         }
 
-        $value = (int) $styles[$key];
+        $rawValue = $styles[$key];
+        if (!is_numeric($rawValue) || preg_match('/^-?\d+$/', (string)$rawValue) !== 1) {
+            $this->addError("styles.{$key}", Craft::t('search-manager', '{label} must be a whole number.', [
+                'label' => $label,
+            ]));
+            return;
+        }
+
+        $value = (int) $rawValue;
         if ($value < $min || $value > $max) {
             $this->addError("styles.{$key}", Craft::t('search-manager', '{label} must be between {min} and {max}.', [
                 'label' => $label,

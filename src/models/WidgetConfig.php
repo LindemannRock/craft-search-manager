@@ -721,6 +721,7 @@ class WidgetConfig extends Model
         $this->validateEnumField($s, 'behavior', 'snippetMode', Craft::t('search-manager', 'Snippet Mode'), SnippetOptionsHelper::MODES);
         if (SearchManager::$plugin->isPro()) {
             $this->validateEnumField($s, 'behavior', 'promotionDisplay', Craft::t('search-manager', 'Promotion Display'), ['badge', 'tint', 'none']);
+            $this->validateStringField($s, 'behavior', 'promotionBadgeText', Craft::t('search-manager', 'Badge Text'), 255);
             $this->validateEnumField($s, 'behavior', 'promotionBadgePosition', Craft::t('search-manager', 'Badge Position'), ['inline', 'above', 'below']);
         }
 

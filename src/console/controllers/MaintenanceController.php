@@ -35,7 +35,7 @@ class MaintenanceController extends Controller
     use LoggingTrait;
 
     /**
-     * @var string Backend storage type to clear (mysql, redis, file)
+     * @var string Backend storage type to clear (database, redis, file)
      */
     public string $type = '';
     /**
@@ -89,7 +89,7 @@ class MaintenanceController extends Controller
      * Clear ALL data from a specific backend storage type
      *
      * This is a destructive operation that clears ALL indexed data from the
-     * specified backend type (mysql, redis, or file) regardless of which
+     * specified backend type (database, redis, or file) regardless of which
      * indices currently use that backend.
      *
      * Use this when:

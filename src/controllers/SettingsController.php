@@ -1479,7 +1479,7 @@ class SettingsController extends Controller
      */
     private function _validSettingsSection(string $section): string
     {
-        $allowed = ['general', 'indexing', 'analytics', 'search', 'language', 'highlighting', 'snippets', 'cache', 'interface', 'test'];
+        $allowed = ['general', 'indexing', 'analytics', 'search', 'autocomplete', 'language', 'highlighting', 'snippets', 'cache', 'interface', 'test'];
 
         return in_array($section, $allowed, true) ? $section : 'general';
     }

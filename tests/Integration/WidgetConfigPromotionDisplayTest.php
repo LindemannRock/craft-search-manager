@@ -77,4 +77,22 @@ class WidgetConfigPromotionDisplayTest extends TestCase
         self::assertNotEmpty($config->getErrors('settings.behavior.promotionDisplay'));
         self::assertNotEmpty($config->getErrors('settings.behavior.promotionBadgePosition'));
     }
+
+    public function testValidationRejectsPromotionBadgeTextOver255Characters(): void
+    {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+
+        $config = new WidgetConfig();
+        $config->settings = [
+            'behavior' => [
+                'promotionBadgeText' => str_repeat('x', 256),
+            ],
+        ];
+        $config->validateSettings();
+
+        self::assertSame(
+            ['Badge Text must be 255 characters or fewer.'],
+            $config->getErrors('settings.behavior.promotionBadgeText'),
+        );
+    }
 }

@@ -76,6 +76,15 @@ final class MaintenanceStorageClearTest extends TestCase
         self::assertSame($postgresTables, $utilitiesTables);
     }
 
+    public function testTypeOptionDocblockMatchesAcceptedStorageTypes(): void
+    {
+        $docblock = (new \ReflectionProperty(MaintenanceController::class, 'type'))->getDocComment();
+
+        self::assertIsString($docblock);
+        self::assertStringContainsString('(database, redis, file)', $docblock);
+        self::assertStringNotContainsString('(mysql, redis, file)', $docblock);
+    }
+
     public function testDatabaseStatsSurfacesCountCompounds(): void
     {
         $maintenanceSource = file_get_contents(dirname(__DIR__, 2) . '/src/console/controllers/MaintenanceController.php');

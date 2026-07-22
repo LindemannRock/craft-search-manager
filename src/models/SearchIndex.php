@@ -2224,78 +2224,88 @@ class SearchIndex extends Model
             return null;
         }
 
-        $lines = ["'{$this->handle}' => ["];
+        $config = [];
+        $formattedElementType = null;
+        $closurePlaceholder = null;
 
         // Name
         if (isset($configData['name'])) {
-            $lines[] = "    'name' => '{$configData['name']}',";
+            $config['name'] = $configData['name'];
         }
 
         // Element type
         if (isset($configData['elementType'])) {
-            $lines[] = "    'elementType' => " . self::formatClassConfigValue((string)$configData['elementType']) . ',';
+            $config['elementType'] = $configData['elementType'];
+            $formattedElementType = self::formatClassConfigValue((string)$configData['elementType']);
         }
 
         // Site ID
         if (isset($configData['siteId'])) {
-            if (is_array($configData['siteId'])) {
-                $siteIds = array_map('intval', $configData['siteId']);
-                $lines[] = "    'siteId' => [" . implode(', ', $siteIds) . "],";
-            } else {
-                $lines[] = "    'siteId' => {$configData['siteId']},";
-            }
+            $config['siteId'] = is_array($configData['siteId'])
+                ? array_map('intval', $configData['siteId'])
+                : (int)$configData['siteId'];
         }
 
         // Transformer
         if (!empty($configData['transformer'])) {
-            $transformer = $configData['transformer'];
-            $lines[] = "    'transformer' => '{$transformer}',";
+            $config['transformer'] = $configData['transformer'];
         }
 
         // Heading levels
         if (!empty($configData['headingLevels'])) {
-            $levels = array_map('intval', $configData['headingLevels']);
-            $lines[] = "    'headingLevels' => [" . implode(', ', $levels) . "],";
+            $config['headingLevels'] = array_map('intval', $configData['headingLevels']);
         }
 
         // Language
         if (!empty($configData['language'])) {
-            $lines[] = "    'language' => '{$configData['language']}',";
+            $config['language'] = $configData['language'];
         }
 
         // Disable stop words
         if (!empty($configData['disableStopWords'])) {
-            $lines[] = "    'disableStopWords' => true,";
+            $config['disableStopWords'] = true;
         }
 
         if (!empty($configData['splitSections'])) {
-            $lines[] = "    'splitSections' => true,";
+            $config['splitSections'] = true;
         }
 
         if (isset($configData['retrievableFields'])) {
-            $lines[] = "    'retrievableFields' => " . self::formatStringListConfigValue(
-                self::normalizeRetrievableFields($configData['retrievableFields'])
-            ) . ',';
+            $config['retrievableFields'] = self::normalizeRetrievableFields($configData['retrievableFields']);
         }
 
         // Criteria - show as closure placeholder if it's a closure
         if (isset($configData['criteria'])) {
             if ($configData['criteria'] instanceof \Closure) {
-                $lines[] = "    'criteria' => function(\$query) { ... },";
+                $closurePlaceholder = '__search_manager_config_closure__';
+                $config['criteria'] = $closurePlaceholder;
             } elseif (is_array($configData['criteria']) && !empty($configData['criteria'])) {
-                $criteriaCode = json_encode($configData['criteria'], JSON_PRETTY_PRINT);
-                $criteriaCode = str_replace("\n", "\n        ", $criteriaCode);
-                $lines[] = "    'criteria' => {$criteriaCode},";
+                $config['criteria'] = $configData['criteria'];
             }
         }
 
         // Enabled
-        $enabled = ($configData['enabled'] ?? true) ? 'true' : 'false';
-        $lines[] = "    'enabled' => {$enabled},";
+        $config['enabled'] = (bool)($configData['enabled'] ?? true);
 
-        $lines[] = "],";
+        $display = $this->formatConfigDisplay($config, $this->handle);
 
-        return implode("\n", $lines);
+        if ($formattedElementType !== null) {
+            $display = str_replace(
+                "    'elementType' => " . var_export($config['elementType'], true) . ',',
+                "    'elementType' => {$formattedElementType},",
+                $display,
+            );
+        }
+
+        if ($closurePlaceholder !== null) {
+            $display = str_replace(
+                "    'criteria' => " . var_export($closurePlaceholder, true) . ',',
+                "    'criteria' => function(\$query) { ... },",
+                $display,
+            );
+        }
+
+        return $display;
     }
 
     private static function formatClassConfigValue(string $className): string
@@ -2305,14 +2315,6 @@ class SearchIndex extends Model
         }
 
         return var_export($className, true);
-    }
-
-    /**
-     * @param list<string> $values
-     */
-    private static function formatStringListConfigValue(array $values): string
-    {
-        return '[' . implode(', ', array_map(static fn(string $value): string => var_export($value, true), $values)) . ']';
     }
 
     /**

@@ -10,6 +10,10 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
+use craft\errors\MissingComponentException;
+use craft\web\Request;
+use craft\web\Response;
 use lindemannrock\searchmanager\controllers\SettingsController;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
@@ -22,6 +26,25 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(SettingsController::class)]
 final class SettingsControllerSectionScopeTest extends TestCase
 {
+    private ?object $originalRequest = null;
+    private ?object $originalResponse = null;
+    private ?string $originalRequestMethod = null;
+
+    protected function tearDown(): void
+    {
+        if ($this->originalRequest !== null) {
+            Craft::$app->set('request', $this->originalRequest);
+        }
+        if ($this->originalResponse !== null) {
+            Craft::$app->set('response', $this->originalResponse);
+        }
+        if ($this->originalRequestMethod !== null) {
+            $_SERVER['REQUEST_METHOD'] = $this->originalRequestMethod;
+        }
+
+        parent::tearDown();
+    }
+
     public function testSettingsSectionsMatchRenderedFormScopes(): void
     {
         $this->forcePluginEdition(SearchManager::EDITION_PRO);
@@ -53,6 +76,34 @@ final class SettingsControllerSectionScopeTest extends TestCase
 
         self::assertContains('replaceNativeSearch', $method->invoke($controller, 'search'));
         self::assertNotContains('replaceNativeSearch', $method->invoke($controller, 'indexing'));
+    }
+
+    public function testAutocompleteSectionPostPersistsAllAutocompleteSettings(): void
+    {
+        $user = $this->createTestUser('__sm_autocomplete_settings_user_', ['admin' => true]);
+        $this->grantPermissions($user, ['accessCp', 'searchManager:manageSettings']);
+        $this->actingAs($user);
+        $this->withPost([
+            'section' => 'autocomplete',
+            'settings' => [
+                'enableAutocomplete' => false,
+                'autocompleteMinLength' => 4,
+                'autocompleteLimit' => 37,
+            ],
+        ]);
+
+        try {
+            (new SettingsController('settings', SearchManager::$plugin))->actionSave();
+        } catch (MissingComponentException $e) {
+            // The integration harness boots Craft as a console app, so the
+            // success notice cannot access a web session after persistence.
+            self::assertSame('Session does not exist in a console request.', $e->getMessage());
+        }
+
+        $settings = Settings::loadFromDatabase();
+        self::assertFalse($settings->enableAutocomplete);
+        self::assertSame(4, $settings->autocompleteMinLength);
+        self::assertSame(37, $settings->autocompleteLimit);
     }
 
     public function testCacheWarmingSettingsAreExcludedFromStandardSaves(): void
@@ -200,5 +251,23 @@ final class SettingsControllerSectionScopeTest extends TestCase
         self::assertStringContainsString("'{pluginName} is ready to track search analytics.'|t('search-manager', {", $source);
         self::assertStringContainsString('pluginName: searchFullNameHtml', $source);
         self::assertStringNotContainsString("'Search Manager is ready to track search analytics.'|t('search-manager')", $source);
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    private function withPost(array $params): void
+    {
+        $this->originalRequest = Craft::$app->getRequest();
+        $this->originalResponse = Craft::$app->getResponse();
+        $this->originalRequestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+        Craft::$app->set('request', new Request([
+            'enableCookieValidation' => false,
+            'enableCsrfValidation' => false,
+        ]));
+        Craft::$app->set('response', new Response());
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        Craft::$app->getRequest()->setBodyParams($params);
     }
 }
