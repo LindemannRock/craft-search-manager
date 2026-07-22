@@ -46,6 +46,9 @@ $plugin->queryRules;       // Query rules management
 $plugin->deviceDetection;  // Device detection for analytics
 $plugin->transformers;     // Document transformer management
 $plugin->indexedSnippets;  // Snippets and headings from indexed hit data
+$plugin->apiKeys;          // Programmatic API key management
 ```
+
+Any service not listed here is internal plumbing, not part of the supported public API. See [API reference](api-reference.md) for method-level docs.
 
 See [API reference](api-reference.md) for full method documentation.

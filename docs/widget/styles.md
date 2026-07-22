@@ -29,7 +29,7 @@ Each style has a `type` that determines which widget surface it supports. For th
 
 ### Via Control Panel
 
-Go to Search Manager > Widgets > Styles and click "New Style". The editor is organized into five tabs:
+Go to Search Manager > Widgets > Styles and click "New Widget Style". The editor is organized into five tabs:
 
 - **General** — name and handle
 - **Modal** — modal colors, dimensions, and padding; the search header container (background, border, padding); the footer (background, text, padding); and the backdrop (opacity, blur toggle)

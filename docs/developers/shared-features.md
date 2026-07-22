@@ -16,7 +16,7 @@ Search Manager builds on shared LindemannRock packages instead of duplicating co
 
 ### Details
 
-- `PluginHelper::bootstrap()` registers the `searchHelper` Twig global (see [Twig globals](twig-globals.md)), configures dedicated-file logging for the `searchManager:viewSystemLogs` / `searchManager:downloadSystemLogs` permissions, and registers the badge/filter color sets used throughout the Control Panel (backend type, match type, action type, widget type, pending sync status/operation, native search coverage, API key type).
+- `PluginHelper::bootstrap()` registers the `searchHelper` Twig global (see [Twig globals](twig-globals.md)), configures dedicated-file logging for the `searchManager:viewSystemLogs` / `searchManager:downloadSystemLogs` permissions, and registers the badge/filter color sets used throughout the Control Panel (index status, backend type, match type, action type, widget type, pending sync status/operation, native search coverage, API key type).
 - `PluginHelper::applyPluginNameFromConfig()` lets `config/search-manager.php` override the Control Panel display name — the value `searchHelper` reads back.
 - `SettingsConfigTrait` detects config-file overrides so disabled Control Panel fields show the correct warning.
 - `SettingsDisplayNameTrait` provides display-name helpers such as `getDisplayName()`, `getFullName()`, and `getPluralDisplayName()` — the methods `searchHelper` proxies for Twig.

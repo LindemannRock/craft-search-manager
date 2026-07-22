@@ -90,11 +90,13 @@ Permissions for Pro-only features — view analytics, and the manage groups for 
 
 ### Analytics
 
+These are three independent permissions (not a parent/child group). `viewAnalytics` is registered only in the Pro edition; `exportAnalytics` and `clearAnalytics` are registered in every edition.
+
 | Permission | Description |
 |------------|-------------|
-| **`searchManager:viewAnalytics`** | Parent — view the analytics dashboard |
-| └─ `searchManager:exportAnalytics` | Export analytics data |
-| └─ `searchManager:clearAnalytics` | Clear analytics data |
+| `searchManager:viewAnalytics` | View the analytics dashboard (Pro only) |
+| `searchManager:exportAnalytics` | Export analytics data |
+| `searchManager:clearAnalytics` | Clear analytics data |
 
 ### Cache
 

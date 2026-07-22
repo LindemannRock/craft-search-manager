@@ -446,6 +446,9 @@ This ensures:
 
 ## Analytics tracking endpoints
 
+> [!NOTE]
+> Both tracking endpoints require the **Pro** edition. On Standard they return `204 No Content` and record nothing. The bundled widget calls them on every edition, so on Standard those calls simply no-op — there's no error, but no analytics are recorded either.
+
 If you're using the bundled [Frontend Widget](../widget/overview.md), it already calls these endpoints for you — a result click fires Track Click, and search intent (pressing Enter, clicking a result, or an idle pause) fires Track Search. You don't need to wire anything up.
 
 Call them yourself only when you're building a custom search UI instead of the widget — a bespoke JavaScript autocomplete, a mobile app, or any other headless frontend that renders its own results and needs to report activity back to Search Manager's analytics.

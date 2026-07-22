@@ -80,12 +80,12 @@ Plus a free-text search box that matches against element IDs (numeric) and last-
 
 ### Bulk
 
-Select rows with the checkboxes. Two buttons at the bottom of the table show their respective eligibility counts:
+Select rows with the checkboxes, then use the **Actions** menu that appears with the selected-row count. It offers:
 
-- **Retry (N)** — N = selected rows at `failed` or `abandoned`.
-- **Delete (N)** — N = selected rows excluding fresh-processing.
+- **Retry** — re-queues the selected rows, applying the same per-row rule as **Retry now** (only `failed` and `abandoned` rows are re-queued).
+- **Delete** — removes the selected rows from the buffer.
 
-So if you select all 4 statuses and one is fresh-processing, you'll see something like `Retry (2)` and `Delete (3)`.
+The **Retry** and **Delete** items appear based on your permissions (`searchManager:retryPendingSyncs` and `searchManager:purgePendingSyncs`).
 
 ### Toolbar
 
@@ -114,7 +114,7 @@ Typical assignment:
 1. Open Pending Syncs.
 2. If rows show at `failed` or `abandoned`, hover the **Last error** column — that's usually the cause (auth, network, schema, backend offline).
 3. If the page is empty, the buffer is healthy. The issue is elsewhere — see [Troubleshooting → Pending Syncs Are Not Draining](../resources/troubleshooting.md#pending-syncs-are-not-draining).
-4. If you're tracking down a count discrepancy, the per-index `Documents` badge is **eventually consistent** — see [Document Count Looks Wrong After a Bulk Import](../resources/troubleshooting.md#document-count-looks-wrong-after-a-bulk-import).
+4. If you're tracking down a count discrepancy, the per-index **Indexed** count on the Indices page is **eventually consistent** — see [Document Count Looks Wrong After a Bulk Import](../resources/troubleshooting.md#document-count-looks-wrong-after-a-bulk-import).
 
 ### "Backend was down, want to retry everything that failed"
 

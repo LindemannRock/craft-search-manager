@@ -126,7 +126,19 @@ Beyond `total`, `page`, `resultsLimit`, `totalPages`, `hits`, and `indices`, the
 | `error` | Validation failure message, set instead of results when the query exceeds 256 characters, when more than 5 explicit `indexHandles` are passed, when `filters` is used with more than one index, or when no indices are configured. |
 | `redirect` | Redirect URL when a [query rule](../feature-tour/query-rules.md) redirect matched the query — send the user there instead of rendering hits. |
 | `query` | Echo of the executed query string. |
-| `meta` | Backend/cache metadata for diagnostics. |
+| `meta` | Backend/cache metadata for diagnostics (see below). |
+
+The `meta` object exposes:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `cached` | `Boolean` | Whether results came from cache. |
+| `took` | `Float` | Backend execution time in milliseconds. |
+| `cacheEnabled` | `Boolean` | Whether search caching is enabled. |
+| `cacheDriver` | `String` | The cache driver. |
+| `backend` | `String` | The backend name. |
+| `synonymsExpanded` | `Boolean` | Whether query synonyms were expanded. |
+| `expandedQueries` | `[String]` | Expanded query strings. |
 
 GraphQL exposes retrievable custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data. AutoTransformer adds Craft custom fields to the internal source map only when the field's **Use this field's values as search keywords** setting is enabled, including rich-text and body-source fields that also feed snippets, headings, and Split Sections; the index's `retrievableFields` setting decides which of those values are returned publicly. Exclusions use the same `-attr` convention as Algolia's `attributesToRetrieve`, so `["*", "-wysiwyg"]` returns all fields except `wysiwyg`.
 

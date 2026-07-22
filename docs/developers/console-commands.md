@@ -245,6 +245,7 @@ On success the command prints the key's metadata followed by the **plaintext val
 
   Key ID:           42
   Name:             Primary widget key
+  Handle:           primaryWidgetKey
   Type:             public
   Prefix:           sm_pub_a1b2c3d4
   Allowed indices:  docs-en, blog-en
@@ -258,7 +259,7 @@ On success the command prints the key's metadata followed by the **plaintext val
 
     sm_pub_a1b2c3d4e5f67890abcdef1234567890
 
-Search Manager stores authentication hashes for all keys. Public keys also store encrypted material for CP-managed widget selection.
+Search Manager stores only a hash. If you lose this value you will need to create a new key.
 ```
 
 > [!WARNING]

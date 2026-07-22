@@ -406,9 +406,9 @@ Manual rebuilds, clears, and backend count refreshes still update index stats im
 
 #### Document count is eventually consistent
 
-The "Documents" column on the Indices index page reflects what the index contained at the last point a count was authoritative — either a full rebuild or an explicit count refresh. Automatic save/delete syncs **do not** update this counter, by design: doing so would require a per-row backend probe for every save, defeating the API-amplification reduction that batch sync provides.
+The **Indexed** column on the Indices page (and the **Documents** count on an index's detail view) reflects what the index contained at the last point a count was authoritative — either a full rebuild or an explicit count refresh. Automatic save/delete syncs **do not** update this counter, by design: doing so would require a per-row backend probe for every save, defeating the API-amplification reduction that batch sync provides.
 
-Expect the count to drift slightly during high-volume activity (large Feed Me runs, bulk imports). It does not affect what users see in search results — the underlying index is updated correctly, only the metadata badge is delayed.
+Expect the count to drift slightly during high-volume activity (large Feed Me runs, bulk imports). It does not affect what users see in search results — the underlying index is updated correctly, only the displayed count is delayed.
 
 To force the count to refresh:
 

@@ -104,14 +104,10 @@ These settings control how content gets indexed.
 | `batchFlushInterval` | `int` | `5` | Seconds to wait before draining pending sync rows. Increase during bulk imports to coalesce more writes |
 | `pendingMaxAge` | `int` | `3600` | Seconds to retain abandoned pending sync rows before cleanup |
 | `batchMaxAttempts` | `int` | `5` | Failed processing attempts before a pending sync row is abandoned |
-| `replaceNativeSearch` | `bool` | `false` | Enhance front-end template `.search()` queries with Search Manager coverage |
 | `indexPrefix` | `?string` | `null` | Prefix for index names (useful for multi-environment setups). Use only letters, numbers, underscores, and hyphens |
 
 > [!NOTE]
 > Search Manager registers its save/delete listeners at plugin bootstrap, then checks the current `autoIndex` value each time an element event fires. Turning `autoIndex` off stops all automatic Search Manager element content-sync, including saves, deletes, status changes, and the native-search adapter path used when `replaceNativeSearch` is enabled. While it is off, element changes reach search only after a manual rebuild. Saving or editing an index config still queues its automatic rebuild.
-
-> [!NOTE]
-> When `replaceNativeSearch` is enabled, front-end template `.search()` queries can use Search Manager when a full-coverage index exists for the element type and site scope. Control Panel searches always stay on Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.
 
 > [!NOTE]
 > The `indexPrefix` setting is especially useful when sharing an Algolia or Meilisearch account across environments. See [Indices](../feature-tour/indices.md) for details.
@@ -132,6 +128,16 @@ These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The 
 | `ngramSizes` | `string` | `'2,3'` | N-gram sizes for fuzzy matching (comma-separated) |
 | `similarityThreshold` | `float` | `0.25` | Minimum similarity score for fuzzy matches (0.0–1.0) |
 | `maxFuzzyCandidates` | `int` | `100` | Maximum fuzzy candidates to evaluate per query |
+
+### Native search replacement
+**CP:** Settings → Search
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `replaceNativeSearch` | `bool` | `false` | Enhance front-end template `.search()` queries with Search Manager coverage |
+
+> [!NOTE]
+> When `replaceNativeSearch` is enabled, front-end template `.search()` queries can use Search Manager when a full-coverage index exists for the element type and site scope. Control Panel searches always stay on Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.
 
 ### Language
 **CP:** Settings → Language

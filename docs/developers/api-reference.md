@@ -23,7 +23,10 @@ $plugin->queryRules;       // QueryRuleService - query rules management
 $plugin->deviceDetection;  // DeviceDetectionService - user-agent parsing
 $plugin->indexedSnippets;  // IndexedSnippetService - snippets and headings from indexed hit data
 $plugin->transformers;     // TransformerService - index transformers
+$plugin->apiKeys;          // ApiKeyService - programmatic API key management
 ```
+
+Any service not listed here is internal plumbing and not part of the supported public API — don't call it from your own code.
 
 ## BackendService
 
@@ -381,6 +384,48 @@ SearchManager::$plugin->queryRules->delete($rule);
 ```php
 $total = SearchManager::$plugin->queryRules->getQueryRuleCount();
 $enabled = SearchManager::$plugin->queryRules->getQueryRuleCount(true);
+```
+
+## ApiKeyService @since(5.46.0)
+
+Programmatic API key management — the PHP equivalent of the [API key console commands](console-commands.md#api-keys). Reach for it from a deployment script, a setup migration, or a custom provisioning flow.
+
+### Creating a key
+
+An `ApiKey` is a model you populate and save. `generateKey()` returns the one-time plaintext plus the stored hash and prefix — the plaintext is shown only here and is never recoverable afterwards.
+
+```php
+use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\models\ApiKey;
+
+$apiKey = new ApiKey();
+$apiKey->name = 'Primary widget key';
+$apiKey->handle = 'primaryWidgetKey';
+$apiKey->type = ApiKey::TYPE_PUBLIC;   // or ApiKey::TYPE_SERVER
+$apiKey->enabled = true;
+$apiKey->allowedIndices = ['docs-en'];      // or ['*'] for all indices
+$apiKey->allowedReferrers = ['example.com']; // public keys only
+
+$generated = SearchManager::$plugin->apiKeys->generateKey($apiKey->type);
+$apiKey->keyHash = $generated['hash'];
+$apiKey->keyPrefix = $generated['prefix'];
+$apiKey->encryptedKey = $apiKey->type === ApiKey::TYPE_PUBLIC
+    ? SearchManager::$plugin->apiKeys->encryptPlaintextKey($generated['plaintext'])
+    : null;
+
+if ($apiKey->save()) {
+    // $generated['plaintext'] — surface it once, then discard it
+}
+```
+
+### Managing keys
+
+```php
+$service = SearchManager::$plugin->apiKeys;
+
+$hasKeys = $service->hasAnyKeys();              // bool
+$service->bulkSetEnabled([1, 2, 3], false);     // disable, returns affected count
+$service->bulkDelete([4, 5]);                    // permanently remove, returns count
 ```
 
 ## Events

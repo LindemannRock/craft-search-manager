@@ -141,7 +141,7 @@ Public keys selected by widget configs are dependency-protected. Search Manager 
 
 ### Revoked (deleted)
 
-The **Revoke** action on the index page or the **Delete** button on the edit page. Revoking **permanently deletes** the row:
+The **Revoke** action — a row action on the index page, or in the edit page's Actions menu. Revoking **permanently deletes** the row:
 
 - The hash, prefix, and all configuration are removed from the database.
 - There is no undo. Recovery requires creating a new key and updating every caller.
