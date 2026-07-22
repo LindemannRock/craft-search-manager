@@ -80,31 +80,31 @@ class Settings extends Model
 
     /**
      * @var int Minimum seconds between automatic lastIndexed metadata updates
-     * @since 5.45.0
+     * @since 5.46.0
      */
     public int $lastIndexedDebounceSeconds = 60;
 
     /**
      * @var int Max pending sync rows processed by each batch sync job
-     * @since 5.45.0
+     * @since 5.46.0
      */
     public int $syncBatchSize = 200;
 
     /**
      * @var int Delay in seconds before pending sync rows are drained
-     * @since 5.45.0
+     * @since 5.46.0
      */
     public int $batchFlushInterval = 5;
 
     /**
      * @var int Seconds to keep abandoned pending sync rows before purging
-     * @since 5.45.0
+     * @since 5.46.0
      */
     public int $pendingMaxAge = 3600;
 
     /**
      * @var int Attempts before a pending sync row is abandoned
-     * @since 5.45.0
+     * @since 5.46.0
      */
     public int $batchMaxAttempts = 5;
 

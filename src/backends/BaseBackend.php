@@ -77,7 +77,7 @@ abstract class BaseBackend extends Component implements BackendInterface
     /**
      * Set the backend handle this adapter is associated with
      *
-     * @since 5.28.0
+     * @since 5.29.0
      */
     public function setBackendHandle(string $handle): void
     {
@@ -185,7 +185,6 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     /**
      * @inheritdoc
-     * @since 5.53.0
      */
     public function indexWithResult(string $indexName, array $data): array
     {
@@ -231,7 +230,6 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     /**
      * @inheritdoc
-     * @since 5.45.0
      */
     public function batchDelete(string $indexName, array $items): bool
     {
@@ -262,7 +260,6 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     /**
      * @inheritdoc
-     * @since 5.55.0
      */
     public function deleteOrphanDocuments(string $indexName, int $elementId, ?int $siteId, array $keepBackendIds): bool
     {
@@ -308,7 +305,6 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     /**
      * @inheritdoc
-     * @since 5.53.0
      */
     public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
     {

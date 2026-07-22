@@ -20,7 +20,6 @@ interface IndexCountBackendInterface
      *
      * A null result means the backend cannot provide an authoritative count.
      *
-     * @since 5.54.0
      */
     public function getDocumentCount(string $indexName, ?int $siteId = null): ?int;
 
@@ -29,7 +28,6 @@ interface IndexCountBackendInterface
      *
      * A null result means the backend cannot provide an authoritative count.
      *
-     * @since 5.54.0
      */
     public function getDistinctParentCount(string $indexName, ?int $siteId = null): ?int;
 }

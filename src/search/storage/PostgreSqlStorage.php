@@ -22,7 +22,7 @@ use yii\db\Expression;
  * PostgreSQL-based storage implementation for the search engine.
  * Stores inverted index data in Craft's PostgreSQL database with optimized queries.
  *
- * @since 5.0.0
+ * @since 5.53.0
  */
 class PostgreSqlStorage implements DocumentKeyStorageInterface, ElementSuggestionStorageInterface
 {
@@ -381,7 +381,6 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface, ElementSuggestio
 
     /**
      * @inheritdoc
-     * @since 5.54.0
      */
     public function getDocumentLengthsBatchByKeys(int $siteId, array $documentKeys): array
     {

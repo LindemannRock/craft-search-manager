@@ -63,7 +63,6 @@ class DocsManagerDocumentHelper
     /**
      * Return SourceDoc body text while preserving code blocks for snippet display.
      *
-     * @since 5.53.0
      */
     public static function cleanBodyWithCode(SourceDoc $element, SearchContentCleaner $contentCleaner): string
     {
@@ -73,7 +72,6 @@ class DocsManagerDocumentHelper
     /**
      * Return SourceDoc HTML with docs-manager UI chrome removed before indexing.
      *
-     * @since 5.53.0
      */
     public static function htmlContent(SourceDoc $element): string
     {

@@ -31,49 +31,49 @@ class FuzzyMatcher
      * Exact and prefix matching use separate paths and are not subject to
      * this floor.
      *
-     * @since 5.54.0
+     * @since 5.53.2
      */
     public const MIN_CANDIDATE_LENGTH = 3;
 
     /**
      * Maximum query length for the zero-typo tier.
      *
-     * @since 5.54.0
+     * @since 5.53.2
      */
     public const SHORT_TERM_MAX_LENGTH = 3;
 
     /**
      * Maximum query length for the one-typo tier.
      *
-     * @since 5.54.0
+     * @since 5.53.2
      */
     public const MEDIUM_TERM_MAX_LENGTH = 7;
 
     /**
      * Typo budget for query terms up to {@see self::SHORT_TERM_MAX_LENGTH}.
      *
-     * @since 5.54.0
+     * @since 5.53.2
      */
     public const SHORT_TERM_TYPO_BUDGET = 0;
 
     /**
      * Typo budget for query terms up to {@see self::MEDIUM_TERM_MAX_LENGTH}.
      *
-     * @since 5.54.0
+     * @since 5.53.2
      */
     public const MEDIUM_TERM_TYPO_BUDGET = 1;
 
     /**
      * Typo budget for longer query terms.
      *
-     * @since 5.54.0
+     * @since 5.53.2
      */
     public const LONG_TERM_TYPO_BUDGET = 2;
 
     /**
      * Total typo cost assigned to a difference in the first character.
      *
-     * @since 5.54.0
+     * @since 5.53.2
      */
     public const FIRST_CHARACTER_TYPO_COST = 2;
 
@@ -213,7 +213,7 @@ class FuzzyMatcher
      * @param string $queryTerm Normalized query term
      * @param string $candidate Normalized candidate term
      * @return bool Whether the candidate may participate in fuzzy matching
-     * @since 5.54.0
+     * @since 5.53.2
      */
     public static function isCandidateWithinTypoBudget(string $queryTerm, string $candidate): bool
     {

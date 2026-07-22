@@ -999,7 +999,7 @@ class SettingsController extends Controller
     /**
      * Test which promotions match a query
      *
-     * @since 5.10.0
+     * @since 5.11.0
      */
     public function actionTestPromotions(): Response
     {
@@ -1085,7 +1085,7 @@ class SettingsController extends Controller
     /**
      * Test which query rules match a query
      *
-     * @since 5.10.0
+     * @since 5.11.0
      */
     public function actionTestQueryRules(): Response
     {

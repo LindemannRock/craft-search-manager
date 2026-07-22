@@ -96,7 +96,6 @@ class Highlighter
      * @param bool $stripTags Strip HTML tags before highlighting
      * @param array $queryTerms Eligible raw query terms used to identify prefix extensions
      * @return string Text with highlighted terms
-     * @since 5.54.0 Added word-start prefix painting and raw-query term derivation.
      */
     public function highlight(string $text, array $terms, bool $stripTags = true, array $queryTerms = []): string
     {
@@ -146,7 +145,6 @@ class Highlighter
      * @param bool $stripTags Strip HTML tags
      * @param array $queryTerms Eligible raw query terms used to identify prefix extensions
      * @return array Array of snippet strings
-     * @since 5.54.0 Added raw-query term derivation for prefix painting.
      */
     public function generateSnippets(string $text, array $terms, bool $stripTags = true, array $queryTerms = []): array
     {
@@ -469,7 +467,6 @@ class Highlighter
      * @param ParsedQuery $parsed Parsed query object
      * @param string|null $field Optional display-field scope (`title` or `content`)
      * @return array Array of terms to highlight
-     * @since 5.54.0 Added the optional display-field scope.
      */
     public function extractTermsFromParsedQuery(ParsedQuery $parsed, ?string $field = null): array
     {

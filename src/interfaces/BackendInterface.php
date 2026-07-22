@@ -52,7 +52,7 @@ interface BackendInterface
      * @param string $indexName The index name
      * @param array $items Rows with elementId and optional siteId values
      * @return bool Success status
-     * @since 5.45.0
+     * @since 5.46.0
      */
     public function batchDelete(string $indexName, array $items): bool;
 
@@ -64,7 +64,7 @@ interface BackendInterface
      * @param int|null $siteId Site ID
      * @param string[] $keepBackendIds Backend document IDs that must remain
      * @return bool Success status
-     * @since 5.55.0
+     * @since 5.53.0
      */
     public function deleteOrphanDocuments(string $indexName, int $elementId, ?int $siteId, array $keepBackendIds): bool;
 
@@ -106,7 +106,7 @@ interface BackendInterface
      * @param array<int, int> $elementIds Element IDs to fetch
      * @param int|null $siteId Optional site scope
      * @return array<int, array<string, mixed>> Map of elementId => normalized indexed document
-     * @since 5.54.0
+     * @since 5.53.0
      */
     public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array;
 
@@ -211,7 +211,7 @@ interface BackendInterface
      *
      * @param string $handle
      * @return void
-     * @since 5.28.0
+     * @since 5.29.0
      */
     public function setBackendHandle(string $handle): void;
 }

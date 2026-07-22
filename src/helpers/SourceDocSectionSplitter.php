@@ -13,7 +13,7 @@ use lindemannrock\docsmanager\elements\SourceDoc;
 /**
  * Builds one searchable document per SourceDoc intro/heading section.
  *
- * @since 5.55.0
+ * @since 5.53.0
  */
 class SourceDocSectionSplitter
 {

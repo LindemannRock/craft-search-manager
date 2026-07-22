@@ -30,7 +30,7 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * External backends (Algolia, Meilisearch, Typesense) should extend BaseBackend directly.
  *
- * @since 5.0.0
+ * @since 5.30.0
  */
 abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexCountBackendInterface, StorageBackedBackendInterface
 {
@@ -222,7 +222,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
 
     /**
      * @inheritdoc
-     * @since 5.53.0
      */
     public function indexWithResult(string $indexName, array $data): array
     {
@@ -342,7 +341,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
 
     /**
      * @inheritdoc
-     * @since 5.54.0
      */
     public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
     {
@@ -423,7 +421,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
 
     /**
      * @inheritdoc
-     * @since 5.53.0
      */
     public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
     {

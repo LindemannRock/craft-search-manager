@@ -935,7 +935,7 @@ class SearchIndex extends Model
     /**
      * Clear process-local index model caches.
      *
-     * @since 5.45.0
+     * @since 5.46.0
      */
     public static function clearCache(): void
     {
@@ -1958,7 +1958,7 @@ class SearchIndex extends Model
      * Touch lastIndexed for automatic sync paths, debounced to avoid metadata write amplification.
      * Updates the database row only; loaded SearchIndex instances are refreshed on the next load.
      *
-     * @since 5.45.0
+     * @since 5.46.0
      */
     public static function touchLastIndexedDebounced(string $handle): bool
     {
@@ -2590,7 +2590,7 @@ class SearchIndex extends Model
      * criteria. The buffer path (`PendingSyncProcessor`) uses this as the
      * single is-this-row-eligible gate.
      *
-     * @since 5.45.0
+     * @since 5.46.0
      */
     public function matchesElement(ElementInterface $element): bool
     {

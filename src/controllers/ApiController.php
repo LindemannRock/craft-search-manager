@@ -59,7 +59,6 @@ class ApiController extends Controller
      * compatible. `$allowAnonymous` stays true so the action is reachable; this
      * gate is the real access control (audit #16).
      *
-     * @since 5.47.0
      */
     public function beforeAction($action): bool
     {

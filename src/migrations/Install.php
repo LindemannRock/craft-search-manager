@@ -982,7 +982,6 @@ class Install extends Migration
      * keys may also store encrypted plaintext material so widgets can send
      * selected public keys without showing full keys in the control panel.
      *
-     * @since 5.46.0
      */
     private function createApiKeysTable(): void
     {

@@ -22,7 +22,6 @@ final class SearchIndexQueryHelper
 {
     /**
      * @return array<int, ElementQuery>
-     * @since 5.54.0
      */
     public static function buildSiteQueries(SearchIndex $index): array
     {

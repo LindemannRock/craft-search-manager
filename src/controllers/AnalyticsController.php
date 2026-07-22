@@ -947,7 +947,7 @@ class AnalyticsController extends Controller
     /**
      * Export analytics for a specific query rule
      *
-     * @since 5.10.0
+     * @since 5.25.0
      * @return Response
      */
     public function actionExportRuleAnalytics(): Response
@@ -1020,7 +1020,7 @@ class AnalyticsController extends Controller
     /**
      * Export analytics for a specific promotion
      *
-     * @since 5.10.0
+     * @since 5.25.0
      * @return Response
      */
     public function actionExportPromotionAnalytics(): Response

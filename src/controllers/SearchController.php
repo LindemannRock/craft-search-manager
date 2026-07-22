@@ -54,7 +54,6 @@ class SearchController extends Controller
      * is off / the request is anonymous. Set in {@see beforeAction()}; consumed by
      * {@see actionTrackSearch()} to attribute the analytics row (slice 5).
      *
-     * @since 5.47.0
      */
     private ?ApiKey $authenticatedKey = null;
 
@@ -79,7 +78,6 @@ class SearchController extends Controller
      * Browser requests from other origins must match `trackingAllowedOrigins`
      * exactly; same-origin requests remain allowed without config.
      *
-     * @since 5.30.0
      */
     public function beforeAction($action): bool
     {

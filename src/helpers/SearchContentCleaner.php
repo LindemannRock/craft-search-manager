@@ -21,7 +21,6 @@ class SearchContentCleaner
     /**
      * Add plain-text spacing around block boundaries before tag stripping.
      *
-     * @since 5.53.0
      */
     public static function addBlockBoundaries(string $html): string
     {
@@ -107,7 +106,6 @@ class SearchContentCleaner
     /**
      * Clean body text while preserving block-level code content.
      *
-     * @since 5.53.0
      */
     public function cleanBodyWithCode(?string $html): string
     {

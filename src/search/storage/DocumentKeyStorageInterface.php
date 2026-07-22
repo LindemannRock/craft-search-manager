@@ -11,7 +11,7 @@ namespace lindemannrock\searchmanager\search\storage;
 /**
  * Storage operations required for per-section document identity.
  *
- * @since 5.54.0
+ * @since 5.53.0
  */
 interface DocumentKeyStorageInterface extends StorageInterface
 {

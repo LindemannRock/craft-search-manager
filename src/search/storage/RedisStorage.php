@@ -410,7 +410,6 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
 
     /**
      * @inheritdoc
-     * @since 5.54.0
      */
     public function getDocumentLengthsBatchByKeys(int $siteId, array $documentKeys): array
     {

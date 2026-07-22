@@ -39,7 +39,6 @@ class SearchFieldValueHelper
      *
      * @param array<string, mixed> $hit
      * @return array<string, mixed>
-     * @since 5.53.0
      */
     public static function snippetFieldsFromHit(array $hit): array
     {

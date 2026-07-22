@@ -495,7 +495,6 @@ class SearchManager extends Plugin
      *
      * @param string $query
      * @return bool
-     * @since 5.53.0
      */
     private static function queryRunsSearch(string $query): bool
     {

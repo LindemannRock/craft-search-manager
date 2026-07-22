@@ -228,7 +228,7 @@ class WidgetConfig extends Model
     /**
      * Maximum heading children to display per page block
      *
-     * @since 5.39.0
+     * @since 5.53.0
      */
     public function getHierarchyMaxHeadings(): int
     {
@@ -297,7 +297,7 @@ class WidgetConfig extends Model
     /**
      * Result layout mode: default | hierarchical
      *
-     * @since 5.39.0
+     * @since 5.53.0
      */
     public function getResultsLayout(): string
     {
@@ -343,7 +343,7 @@ class WidgetConfig extends Model
     /**
      * Allow code snippets in descriptions
      *
-     * @since 5.39.0
+     * @since 5.53.0
      */
     public function isSnippetIncludeCodeBlocksEnabled(): bool
     {
@@ -363,7 +363,7 @@ class WidgetConfig extends Model
     /**
      * Snippet max length
      *
-     * @since 5.39.0
+     * @since 5.53.0
      */
     public function getSnippetMaxLength(): int
     {
@@ -373,7 +373,7 @@ class WidgetConfig extends Model
     /**
      * Clean Markdown markers from snippet display text.
      *
-     * @since 5.39.0
+     * @since 5.53.0
      */
     public function isSnippetCleanMarkdownEnabled(): bool
     {
@@ -397,7 +397,7 @@ class WidgetConfig extends Model
     /**
      * Enable destination page highlighting after navigating from a search result.
      *
-     * @since 5.39.0
+     * @since 5.53.0
      */
     public function isHighlightDestinationEnabled(): bool
     {
@@ -407,7 +407,7 @@ class WidgetConfig extends Model
     /**
      * Append search query to destination URLs for page highlighting.
      *
-     * @since 5.39.0
+     * @since 5.53.0
      */
     public function isHighlightDestinationPersistQueryEnabled(): bool
     {
@@ -417,7 +417,7 @@ class WidgetConfig extends Model
     /**
      * URL parameter name for the persisted search query.
      *
-     * @since 5.39.0
+     * @since 5.53.0
      */
     public function getHighlightDestinationQueryParam(): string
     {
@@ -427,7 +427,7 @@ class WidgetConfig extends Model
     /**
      * CSS selector for destination page content areas to highlight.
      *
-     * @since 5.39.0
+     * @since 5.53.0
      */
     public function getHighlightDestinationContentSelector(): string
     {

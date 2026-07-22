@@ -22,7 +22,7 @@ use yii\base\Component;
 /**
  * Builds public snippets and heading matches from indexed hit data only.
  *
- * @since 5.54.0
+ * @since 5.53.0
  */
 class IndexedSnippetService extends Component
 {

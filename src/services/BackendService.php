@@ -349,7 +349,7 @@ class BackendService extends Component
      * @param string $indexName
      * @param array $items
      * @return bool
-     * @since 5.45.0
+     * @since 5.46.0
      */
     public function batchDelete(string $indexName, array $items): bool
     {
@@ -367,7 +367,7 @@ class BackendService extends Component
      * section set has been indexed.
      *
      * @param string[] $keepBackendIds
-     * @since 5.55.0
+     * @since 5.53.0
      */
     public function deleteOrphanDocuments(string $indexName, int $elementId, ?int $siteId, array $keepBackendIds): bool
     {
@@ -440,7 +440,7 @@ class BackendService extends Component
      *
      * @param array<int, int> $elementIds
      * @return array<int, array<string, mixed>>
-     * @since 5.54.0
+     * @since 5.53.0
      */
     public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
     {

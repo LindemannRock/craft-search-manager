@@ -272,7 +272,7 @@ class AnalyticsService extends Component
     // =========================================================================
 
     /**
-     * @since 5.10.0
+     * @since 5.16.0
      */
     public function getTopTriggeredRules(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -280,7 +280,7 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.10.0
+     * @since 5.16.0
      */
     public function getRulesByActionType(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -288,7 +288,7 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.10.0
+     * @since 5.16.0
      */
     public function getQueriesTriggeringRules(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 15): array
     {
@@ -296,7 +296,7 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.10.0
+     * @since 5.25.0
      */
     public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
     {
@@ -304,7 +304,7 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.10.0
+     * @since 5.16.0
      */
     public function getTopPromotions(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -312,7 +312,7 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.10.0
+     * @since 5.16.0
      */
     public function getPromotionsByPosition(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -320,7 +320,7 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.10.0
+     * @since 5.16.0
      */
     public function getQueriesTriggeringPromotions(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 15): array
     {
@@ -328,7 +328,7 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.10.0
+     * @since 5.25.0
      */
     public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
     {

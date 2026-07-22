@@ -17,7 +17,6 @@ class SearchHeadingHelper
 {
     /**
      * @var array<int>
-     * @since 5.53.0
      */
     public const DEFAULT_LEVELS = [2, 3, 4];
 

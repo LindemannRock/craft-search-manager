@@ -66,7 +66,6 @@ class SearchEngine
 
     /**
      * @var TermResolver Shared Layer-2 term-resolution policy (exact + two-tier fuzzy expansion)
-     * @since 5.53.0
      */
     private TermResolver $termResolver;
 
@@ -191,7 +190,7 @@ class SearchEngine
 
     /**
      * @return array{success: bool, wasCreated: bool|null}
-     * @since 5.55.0
+     * @since 5.53.0
      */
     public function indexDocumentWithKeyResult(
         int $siteId,

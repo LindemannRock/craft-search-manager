@@ -53,7 +53,7 @@ class SearchManagerVariable
      * - `escapeRegex(string)` — escape regex special characters
      * - `create(options)` — create a reusable highlighter function
      *
-     * @since 5.40.0
+     * @since 5.39.0
      */
     public function registerHighlighter(): void
     {
@@ -181,7 +181,6 @@ class SearchManagerVariable
      * @param string|array $terms Search term(s) or query string
      * @param array $options Highlighting options
      * @return string Highlighted text
-     * @since 5.54.0 Added the optional `field` highlighting scope.
      */
     public function highlight(string $text, $terms, array $options = []): string
     {
@@ -286,7 +285,7 @@ class SearchManagerVariable
     /**
      * Get analytics for a specific query rule
      *
-     * @since 5.10.0
+     * @since 5.25.0
      * @param int $ruleId The query rule ID
      * @param string $dateRange Date range filter
      * @return array Analytics data
@@ -299,7 +298,7 @@ class SearchManagerVariable
     /**
      * Get analytics for a specific promotion
      *
-     * @since 5.10.0
+     * @since 5.25.0
      * @param int $promotionId The promotion ID
      * @param string $dateRange Date range filter
      * @return array Analytics data
@@ -448,7 +447,7 @@ class SearchManagerVariable
      *     {% set indices = algolia.listIndices() %}
      *     {% set results = algolia.search('my-index', 'query') %}
      *
-     * @since 5.28.0
+     * @since 5.29.0
      * @param string $backendHandle Handle of a configured backend
      * @return BackendVariableProxy|null Proxy object or null if backend not found
      */

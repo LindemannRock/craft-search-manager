@@ -24,7 +24,7 @@ use lindemannrock\searchmanager\models\SearchIndex;
  *
  * @author    LindemannRock
  * @package   SearchManager
- * @since     5.39.0
+ * @since     5.53.0
  */
 class LiveComparisonService extends Component
 {

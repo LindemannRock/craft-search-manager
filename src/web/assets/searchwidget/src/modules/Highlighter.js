@@ -159,7 +159,7 @@ export function parseQueryTerms(query, field = null) {
  * @param {'title'|'snippet'} area - Rendered result area
  * @param {string} query - Original query
  * @returns {string[]} Explicit terms; an empty array means highlight nothing
- * @since 5.54.0
+ * @since 5.53.2
  */
 export function getHitHighlightTerms(hit, area, query) {
     const field = area === 'snippet' ? 'content' : 'title';
