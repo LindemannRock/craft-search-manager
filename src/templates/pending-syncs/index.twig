@@ -177,11 +177,7 @@
     {% set claimedAtTs = item.claimedAt ? item.claimedAt|lrDatetime : null %}
     {% set isFreshlyProcessing = item.status == 'processing' and item.claimedAt and (now|date('U') - item.claimedAt|date('U')) < staleCutoffSeconds %}
 
-    {# Row-level metadata for the bulk-count JS. Retry-eligible = failed +
-       abandoned; delete-eligible = anything except fresh-processing. #}
-    <td data-column="index"
-        data-row-status="{{ item.status }}"
-        data-row-fresh-processing="{{ isFreshlyProcessing ? '1' : '0' }}">
+    <td data-column="index">
         <code>{{ item.indexHandle }}</code>
     </td>
 
