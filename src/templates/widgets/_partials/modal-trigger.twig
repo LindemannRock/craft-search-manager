@@ -40,7 +40,7 @@
 	errors: widgetConfig.getErrors('settings.trigger.triggerEnabled'),
 }) }}
 
-<div id="trigger-label-field"{% if not widgetConfig.isTriggerEnabled() %} class="hidden"{% endif %}>
+<div id="trigger-label-field"{% if not widgetConfig.isTriggerEnabled() and not widgetConfig.getErrors('settings.trigger.triggerLabel') %} class="hidden"{% endif %}>
 	{{ forms.textField({
 		label: 'Trigger Label'|t('search-manager'),
 		instructions: 'Text displayed on the trigger button'|t('search-manager'),

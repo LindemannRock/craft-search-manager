@@ -245,7 +245,6 @@
    ============================================================================ #}
 
 {% block rowActions %}
-    {% set isConfig = item.isFromConfig() %}
     {% set isDefault = defaultBackendHandle == item.handle %}
     {% set itemId = item.id ?: item.handle %}
 
@@ -311,8 +310,6 @@
    ============================================================================ #}
 
 {% block tableRow %}
-    {% set isConfig = item.isFromConfig() %}
-
     {# Name #}
     <td>
         {% if item.canEdit() %}

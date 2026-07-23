@@ -131,7 +131,7 @@
                 "This is being overridden by the <code>enableAutocompleteCache</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
           }) }}
 
-		<div id="autocomplete-cache-settings" class="{{ not (settings.enableAutocompleteCache ?? true) ? 'hidden' }}">
+		<div id="autocomplete-cache-settings" class="{{ not (settings.enableAutocompleteCache ?? true) and not settings.getErrors('autocompleteCacheDuration') ? 'hidden' }}">
 			{{ forms.textField({
 				label: 'Autocomplete Cache Duration'|t('search-manager'),
 				instructions: 'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>'|t('search-manager')|raw,
@@ -221,7 +221,7 @@
                     "This is being overridden by the <code>enableCacheWarming</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
               }) }}
 
-			<div id="cache-warming-settings" class="{{ not (settings.enableCacheWarming ?? true) ? 'hidden' }}">
+			<div id="cache-warming-settings" class="{{ not (settings.enableCacheWarming ?? true) and not settings.getErrors('cacheWarmingQueryCount') ? 'hidden' }}">
 				{{ forms.selectField({
 					label: 'Popular Queries to Warm'|t('search-manager'),
 					instructions: 'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.'|t('search-manager'),
@@ -286,7 +286,7 @@
                     "This is being overridden by the <code>cacheDeviceDetection</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
             }) }}
 
-            <div id="device-cache-settings" class="{{ not (settings.cacheDeviceDetection ?? true) ? 'hidden' }}">
+            <div id="device-cache-settings" class="{{ not (settings.cacheDeviceDetection ?? true) and not settings.getErrors('deviceDetectionCacheDuration') ? 'hidden' }}">
                 {{ forms.textField({
                     label: "Device Detection Cache Duration"|t('search-manager'),
                     instructions: 'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>'|t('search-manager')|raw,

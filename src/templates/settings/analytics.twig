@@ -50,7 +50,7 @@
                 "This is being overridden by the <code>enableAnalytics</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
 
-        <div id="analytics-settings" class="{{ not (settings.enableAnalytics ?? true) ? 'hidden' }}">
+        <div id="analytics-settings" class="{{ not (settings.enableAnalytics ?? true) and not settings.getErrors('enableGeoDetection') and not settings.getErrors('geoProvider') and not settings.getErrors('geoApiKey') and not settings.getErrors('anonymizeIpAddress') ? 'hidden' }}">
             <hr>
 
         <h2>{{ "Geographic Detection"|t('search-manager') }}</h2>
@@ -68,7 +68,7 @@
                 "This is being overridden by the <code>enableGeoDetection</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
 
-        <div id="geo-provider-settings" class="{{ not (settings.enableGeoDetection ?? false) ? 'hidden' }}" style="margin-top: 24px;">
+        <div id="geo-provider-settings" class="{{ not (settings.enableGeoDetection ?? false) and not settings.getErrors('geoProvider') and not settings.getErrors('geoApiKey') ? 'hidden' }}" style="margin-top: 24px;">
             {% include 'lindemannrock-base/_partials/cascade-geo-settings' with {
                 settings: settings,
                 pluginHandle: 'search-manager'

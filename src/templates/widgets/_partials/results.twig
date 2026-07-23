@@ -39,7 +39,7 @@
 	errors: widgetConfig.getErrors('settings.behavior.resultsLayout')
 }) }}
 
-<div id="result-layout-default"{% if widgetConfig.getResultsLayout() != 'default' %} class="hidden"{% endif %}>
+<div id="result-layout-default"{% if widgetConfig.getResultsLayout() != 'default' and not widgetConfig.getErrors('settings.behavior.resultsGroupingEnabled') %} class="hidden"{% endif %}>
 	{{ forms.lightswitchField({
 		label: 'Enable Result Grouping'|t('search-manager'),
 		instructions: 'Group flat results by source, Entry section, or type.'|t('search-manager'),
@@ -50,7 +50,7 @@
 	}) }}
 </div>
 
-<div id="result-layout-hierarchical"{% if widgetConfig.getResultsLayout() != 'hierarchical' %} class="hidden"{% endif %}>
+<div id="result-layout-hierarchical"{% if widgetConfig.getResultsLayout() != 'hierarchical' and not widgetConfig.getErrors('settings.behavior.hierarchyDisplay') and not widgetConfig.getErrors('settings.behavior.hierarchyStyle') and not widgetConfig.getErrors('settings.behavior.hierarchyMaxHeadings') and not widgetConfig.getErrors('settings.behavior.hierarchyGroupBy') %} class="hidden"{% endif %}>
 	{% include "search-manager/widgets/_partials/hierarchy" with {
 		widgetConfig: widgetConfig,
 	} %}
@@ -77,7 +77,7 @@
 		errors: widgetConfig.getErrors('settings.behavior.promotionDisplay')
 	}) }}
 
-	<div id="promotion-display-badge"{% if widgetConfig.getPromotionDisplay() != 'badge' %} class="hidden"{% endif %}>
+	<div id="promotion-display-badge"{% if widgetConfig.getPromotionDisplay() != 'badge' and not widgetConfig.getErrors('settings.behavior.promotionBadgeText') and not widgetConfig.getErrors('settings.behavior.promotionBadgePosition') %} class="hidden"{% endif %}>
 		{{ forms.textField({
 			label: 'Badge Text'|t('search-manager'),
 			instructions: 'Label shown on the badge; also read to screen readers in row tint mode.'|t('search-manager'),

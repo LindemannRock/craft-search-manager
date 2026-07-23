@@ -104,7 +104,7 @@
                 "This is being overridden by the <code>highlightResultsEnabled</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
 
-        <div id="highlighting-settings" class="{{ not (settings.highlightResultsEnabled ?? true) ? 'hidden' }}">
+        <div id="highlighting-settings" class="{{ not (settings.highlightResultsEnabled ?? true) and not settings.getErrors('highlightTag') and not settings.getErrors('highlightClass') ? 'hidden' }}">
 
             {{ forms.selectField({
                 label: 'HTML Tag'|t('search-manager'),

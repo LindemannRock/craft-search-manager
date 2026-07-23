@@ -55,7 +55,7 @@
                 "This is being overridden by the <code>enableAutocomplete</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
 
-        <div id="autocomplete-settings" class="{{ not (settings.enableAutocomplete ?? true) ? 'hidden' }}">
+        <div id="autocomplete-settings" class="{{ not (settings.enableAutocomplete ?? true) and not settings.getErrors('autocompleteMinLength') and not settings.getErrors('autocompleteLimit') ? 'hidden' }}">
 
             {{ forms.textField({
                 label: 'Minimum Length'|t('search-manager'),

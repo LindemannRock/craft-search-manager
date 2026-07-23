@@ -497,6 +497,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const docPageCriteria = document.getElementById('docpage-criteria');
     const splitSectionsField = document.getElementById('splitSections-field');
     const splitSectionsInput = splitSectionsField ? splitSectionsField.querySelector('input[name="splitSections"]') : null;
+    const splitSectionsHasErrors = {{ (index.getErrors('splitSections')|length > 0)|json_encode|raw }};
     const transformerInput = document.getElementById('transformerClass');
     const defaultTransformerPlaceholder = {{ defaultTransformerPlaceholder|json_encode|raw }};
     const transformerPlaceholders = {{ transformerPlaceholders|json_encode|raw }};
@@ -520,10 +521,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 docPageCriteria.style.display = isSourceDoc ? 'block' : 'none';
             }
             if (splitSectionsField) {
-                splitSectionsField.classList.toggle('hidden', !isSplitSectionsEligible);
+                splitSectionsField.classList.toggle('hidden', !isSplitSectionsEligible && !splitSectionsHasErrors);
             }
             if (splitSectionsInput) {
-                splitSectionsInput.disabled = !isSplitSectionsEligible;
+                splitSectionsInput.disabled = !isSplitSectionsEligible && !splitSectionsHasErrors;
             }
             // Update transformer placeholder based on element type
             if (transformerInput) {
@@ -605,7 +606,8 @@ document.addEventListener('DOMContentLoaded', function() {
 			id: 'splitSections',
 			name: 'splitSections',
 			on: index.splitSections ?? false,
-			fieldClass: index.supportsSplitSections() ? [] : ['hidden']
+			errors: index.getErrors('splitSections'),
+			fieldClass: index.supportsSplitSections() or index.getErrors('splitSections') ? [] : ['hidden']
 		}) }}
 
 		{{ forms.lightswitchField({

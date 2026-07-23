@@ -174,7 +174,6 @@
         'craft\\elements\\User': 'User'|t('search-manager'),
     } %}
     {% set elementTypeShort = elementTypeLabels[item.elementType] ?? (item.elementType|split('\\')|last) %}
-    {% set claimedAtTs = item.claimedAt ? item.claimedAt|lrDatetime : null %}
     {% set isFreshlyProcessing = item.status == 'processing' and item.claimedAt and (now|date('U') - item.claimedAt|date('U')) < staleCutoffSeconds %}
 
     <td data-column="index">

@@ -10,7 +10,7 @@
 	errors: widgetConfig.getErrors('settings.behavior.highlightDestinationEnabled'),
 }) }}
 
-<div id="destination-highlight-options"{% if not widgetConfig.isHighlightDestinationEnabled() %} class="hidden"{% endif %}>
+<div id="destination-highlight-options"{% if not widgetConfig.isHighlightDestinationEnabled() and not widgetConfig.getErrors('settings.behavior.highlightDestinationPersistQuery') and not widgetConfig.getErrors('settings.behavior.highlightDestinationQueryParam') and not widgetConfig.getErrors('settings.behavior.highlightDestinationContentSelector') %} class="hidden"{% endif %}>
 	{{ forms.lightswitchField({
 		label: 'Persist Query in URL'|t('search-manager'),
 		instructions: 'Append the search query to the destination URL so the page knows what to highlight.'|t('search-manager'),
