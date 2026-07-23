@@ -94,7 +94,8 @@ if (fs.existsSync(urlUtilsFile)) {
     const source = fs.readFileSync(urlUtilsFile, 'utf8');
     test('Source URL guard strips tab/newline/carriage return', source.includes('replace(/[\\t\\n\\r]/g, \'\')'));
     test('Source URL guard strips leading C0 controls and space', source.includes('replace(/^[\\u0000-\\u0020]+/, \'\')'));
-    const { appendQueryParam } = loadUrlUtilsModule();
+    const { appendQueryParam, isUnsafeNavigationUrl } = loadUrlUtilsModule();
+    test('Shared URL guard owns all executable scheme checks', ['javascript:', 'data:', 'vbscript:', 'file:'].every(isUnsafeNavigationUrl));
     test('URL query persistence rejects file navigation', appendQueryParam('file:///etc/passwd', 'needle') === '#');
 }
 

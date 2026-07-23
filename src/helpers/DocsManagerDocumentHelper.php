@@ -39,10 +39,9 @@ class DocsManagerDocumentHelper
     /**
      * @return array<int, string>
      */
-    public static function contentParts(SourceDoc $element, SearchContentCleaner $contentCleaner): array
+    public static function contentParts(SourceDoc $element): array
     {
         $searchableContent = [];
-        $htmlContent = self::htmlContent($element);
 
         if ($element->title) {
             $searchableContent[] = $element->title;

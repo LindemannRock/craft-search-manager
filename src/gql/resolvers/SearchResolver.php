@@ -13,6 +13,7 @@ use craft\gql\base\Resolver;
 use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\base\helpers\GqlHelper;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
+use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\SearchFilterExpressionHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -162,7 +163,9 @@ class SearchResolver extends Resolver
         $options['retrievableFieldsByIndex'] = SearchIndex::retrievableFieldsByIndex($indexHandles, $requestedRetrievableFields);
 
         $results = self::runSearch($indexHandles, $query, $options, $siteIds);
-        unset($results['meta']);
+        if (!(bool)($arguments['debugEnabled'] ?? false) || !SearchDebugAccessHelper::canExposeDebugMeta()) {
+            unset($results['meta']);
+        }
 
         if (!empty($results['hits']) && is_array($results['hits'])) {
             $results['hits'] = CanonicalHitPipeline::presentHits($results['hits'], $query, $indexHandles, [

@@ -106,6 +106,7 @@ Search arguments:
 | `platform` | `String` | Optional analytics platform label. |
 | `appVersion` | `String` | Optional analytics app version label. |
 | `skipAnalytics` | `Boolean` | Set to `true` to avoid recording a search analytics row. |
+| `debugEnabled` | `Boolean` | Request backend/cache metadata under `meta`. Metadata is returned only in `devMode` or when the current user has the **View debug information** permission. |
 | `snippetMode` | `String` | `early`, `balanced`, or `deep`. Defaults to `balanced`. |
 | `snippetMaxLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
 | `snippetIncludeCodeBlocks` | `Boolean` | Allow snippets to use block-level code from page or section bodies. Inline code text is always preserved. |
@@ -126,9 +127,9 @@ Beyond `total`, `page`, `resultsLimit`, `totalPages`, `hits`, and `indices`, the
 | `error` | Validation failure message, set instead of results when the query exceeds 256 characters, when more than 5 explicit `indexHandles` are passed, when `filters` is used with more than one index, or when no indices are configured. |
 | `redirect` | Redirect URL when a [query rule](../feature-tour/query-rules.md) redirect matched the query — send the user there instead of rendering hits. |
 | `query` | Echo of the executed query string. |
-| `meta` | Backend/cache metadata for diagnostics (see below). |
+| `meta` | Backend/cache metadata for diagnostics (see below). Omitted unless `debugEnabled: true` is requested and debug access is allowed. |
 
-The `meta` object exposes:
+The `meta` object exposes the following fields for a single-site search. A schema-wide search spanning multiple sites merges independent backend responses, so it does not return a single `meta` object.
 
 | Field | Type | Notes |
 |-------|------|-------|

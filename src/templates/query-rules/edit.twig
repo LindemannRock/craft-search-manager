@@ -542,19 +542,19 @@ function toggleActionFields() {
 	if (actionTypeInstructions) {
 		switch(actionType) {
 			case 'synonym':
-				actionTypeInstructions.textContent = '{{ 'Add synonym terms - search results will also include matches for these related terms.'|t('search-manager') }}';
+				actionTypeInstructions.textContent = {{ 'Add synonym terms - search results will also include matches for these related terms.'|t('search-manager')|json_encode|raw }};
 				break;
 			case 'boost_section':
-				actionTypeInstructions.textContent = '{{ 'Boost results from a specific section - multiply their scores.'|t('search-manager') }}';
+				actionTypeInstructions.textContent = {{ 'Boost results from a specific section - multiply their scores.'|t('search-manager')|json_encode|raw }};
 				break;
 			case 'boost_category':
-				actionTypeInstructions.textContent = '{{ 'Boost results in a specific category - multiply their scores.'|t('search-manager') }}';
+				actionTypeInstructions.textContent = {{ 'Boost results in a specific category - multiply their scores.'|t('search-manager')|json_encode|raw }};
 				break;
 			case 'boost_element':
-				actionTypeInstructions.textContent = '{{ 'Boost a specific element - multiply its score.'|t('search-manager') }}';
+				actionTypeInstructions.textContent = {{ 'Boost a specific element - multiply its score.'|t('search-manager')|json_encode|raw }};
 				break;
 			case 'redirect':
-				actionTypeInstructions.textContent = '{{ 'Redirect to a URL instead of showing search results.'|t('search-manager') }}';
+				actionTypeInstructions.textContent = {{ 'Redirect to a URL instead of showing search results.'|t('search-manager')|json_encode|raw }};
 				break;
 		}
 	}
@@ -568,33 +568,33 @@ function updateMatchTypeUI() {
 	const matchValueInput = document.getElementById('matchValue');
 	const matchTypeTipText = document.getElementById('matchTypeTipText');
 	const regexTip = document.getElementById('regexTip');
-	const commaHint = ' {{ 'Use commas for multiple patterns (e.g., sale, تخفيض, soldes, angebot).'|t('search-manager') }}';
+	const commaHint = ' ' + {{ 'Use commas for multiple patterns (e.g., sale, تخفيض, soldes, angebot).'|t('search-manager')|json_encode|raw }};
 
 	switch(matchType) {
 		case 'contains':
-			matchTypeInstructions.textContent = '{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}';
-			matchValueInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}' + commaHint;
+			matchTypeInstructions.textContent = {{ 'Match if the search query contains this pattern anywhere.'|t('search-manager')|json_encode|raw }};
+			matchValueInstructions.textContent = {{ 'Enter text that should appear anywhere in the search query.'|t('search-manager')|json_encode|raw }} + commaHint;
 				matchValueInput.placeholder = {{ 'sale'|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "sale" matches "big sale", "sale items", "flash sale"'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'none';
 			break;
 		case 'prefix':
-			matchTypeInstructions.textContent = '{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}';
-			matchValueInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}' + commaHint;
+			matchTypeInstructions.textContent = {{ 'Match if the search query starts with this pattern.'|t('search-manager')|json_encode|raw }};
+			matchValueInstructions.textContent = {{ 'Enter text that the search query should start with.'|t('search-manager')|json_encode|raw }} + commaHint;
 				matchValueInput.placeholder = {{ 'buy '|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'none';
 			break;
 		case 'regex':
-			matchTypeInstructions.textContent = '{{ 'Match using a regular expression pattern for complex matching.'|t('search-manager') }}';
-			matchValueInstructions.textContent = '{{ 'Enter a regular expression pattern (without delimiters).'|t('search-manager') }}';
+			matchTypeInstructions.textContent = {{ 'Match using a regular expression pattern for complex matching.'|t('search-manager')|json_encode|raw }};
+			matchValueInstructions.textContent = {{ 'Enter a regular expression pattern (without delimiters).'|t('search-manager')|json_encode|raw }};
 				matchValueInput.placeholder = {{ '^(sale|تخفيض|soldes|angebot)'|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'block';
 			break;
 		default: // exact
-			matchTypeInstructions.textContent = '{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}';
-			matchValueInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}' + commaHint;
+			matchTypeInstructions.textContent = {{ 'Match only if the search query exactly matches this pattern.'|t('search-manager')|json_encode|raw }};
+			matchValueInstructions.textContent = {{ 'Enter the exact search query to match.'|t('search-manager')|json_encode|raw }} + commaHint;
 				matchValueInput.placeholder = {{ 'sale'|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "sale" only matches exactly "sale", not "flash sale"'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'none';

@@ -507,11 +507,18 @@ document.querySelectorAll('[data-shadow-composer]').forEach(function(composer) {
 
 	// Craft's color picker doesn't always fire input events — poll it
 	var lastColor = color.value;
-	setInterval(function() {
+	if (composer.searchManagerColorPoll) {
+		clearInterval(composer.searchManagerColorPoll);
+	}
+	composer.searchManagerColorPoll = setInterval(function() {
 		if (!customMode && color.value !== lastColor) {
 			lastColor = color.value;
 			compose();
 		}
 	}, 250);
+	window.addEventListener('pagehide', function() {
+		clearInterval(composer.searchManagerColorPoll);
+		composer.searchManagerColorPoll = null;
+	}, { once: true });
 });
 {% endjs %}

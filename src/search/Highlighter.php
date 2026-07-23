@@ -28,6 +28,10 @@ class Highlighter
     use LoggingTrait;
 
     /**
+     * Server-managed highlight tags. The browser highlighter additionally
+     * accepts the safe `u` tag for developer-authored widget options; both
+     * runtimes fail closed to `mark`.
+     *
      * @since 5.53.0
      */
     public const ALLOWED_TAGS = ['mark', 'em', 'strong', 'b', 'i', 'span'];
@@ -73,7 +77,8 @@ class Highlighter
      *
      * Shared by the Settings and WidgetStyle validators so both highlight
      * class fields enforce the same format the widget's client-side
-     * normalizeClassTokens applies.
+     * normalizeClassTokens applies. Keep its token pattern aligned with the
+     * browser's CSS_CLASS_TOKEN_PATTERN cross-runtime mirror.
      *
      * @since 5.53.0
      */

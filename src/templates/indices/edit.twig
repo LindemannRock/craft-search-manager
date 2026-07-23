@@ -402,12 +402,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const detectedLanguageSpan = document.getElementById('detected-language');
     const stopwordsFileSpan = document.getElementById('stopwords-file');
     const multiSiteNote = document.getElementById('multi-site-note');
-    const isNew = {{ isNew ? 'true' : 'false' }};
+    const isNew = {{ isNew|json_encode|raw }};
 
     // Site ID to language mapping
     const siteLanguages = {
         {% for site in craft.app.sites.getAllSites() %}
-        '{{ site.id }}': '{{ site.language|lower }}',
+        [{{ site.id|json_encode|raw }}]: {{ site.language|lower|json_encode|raw }},
         {% endfor %}
     };
     const siteNames = {
@@ -552,7 +552,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Language preview updates (only if stop words enabled)
     if (siteInputs.length && languageSelect && languagePreview) {
-        const stopWordsEnabled = {{ settings.enableStopWords ? 'true' : 'false' }};
+        const stopWordsEnabled = {{ settings.enableStopWords|json_encode|raw }};
 
         if (stopWordsEnabled) {
             languageSelect.addEventListener('change', updateLanguagePreview);
@@ -818,7 +818,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			e.preventDefault();
 
 			Craft.sendActionRequest('POST', 'search-manager/indices/sync-count', {
-				data: { indexId: '{{ index.id ?: index.handle }}' }
+				data: { indexId: {{ (index.id ?: index.handle)|json_encode|raw }} }
 			}).then(function(response) {
 				if (response.data.success) {
 					Craft.cp.displayNotice(response.data.message || {{ "Count synced successfully"|t('search-manager')|json_encode|raw }});

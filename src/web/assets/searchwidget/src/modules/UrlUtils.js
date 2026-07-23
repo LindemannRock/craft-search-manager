@@ -53,7 +53,18 @@ export function appendQueryParam(url, query, paramName = 'smq') {
     return `${path}${queryString ? `?${queryString}` : ''}${hash}`;
 }
 
-function isUnsafeNavigationUrl(url) {
+/**
+ * Whether a navigation URL uses a dangerous executable scheme.
+ *
+ * This list mirrors UrlSafetyHelper::DANGEROUS_SCHEMES in the PHP runtime.
+ * Keep the cross-runtime mirror explicit because the browser bundle cannot
+ * import PHP constants.
+ *
+ * @param {string} url - Candidate navigation URL
+ * @returns {boolean} Whether the URL must be blocked
+ * @since 5.54.0
+ */
+export function isUnsafeNavigationUrl(url) {
     const normalized = String(url)
         .replace(/[\t\n\r]/g, '')
         .replace(/^[\u0000-\u0020]+/, '');

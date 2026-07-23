@@ -195,17 +195,17 @@
 		const isOn = $(this).hasClass('on');
 		if (isOn) {
 			Craft.sendActionRequest('POST', 'search-manager/widgets/set-default', {
-				data: { configId: '{{ widgetConfig.handle }}' }
+				data: { configId: {{ widgetConfig.handle|json_encode|raw }} }
 			}).then(function(response) {
 				if (response.data.success) {
-					Craft.cp.displayNotice(response.data.message || '{{ "Default widget updated"|t('search-manager') }}');
+					Craft.cp.displayNotice(response.data.message || {{ "Default widget updated"|t('search-manager')|json_encode|raw }});
 					setTimeout(() => window.location.reload(), 500);
 				} else {
 					Craft.cp.displayError(response.data.error);
 					$lightswitch.data('lightswitch').turnOff();
 				}
 			}).catch(function(error) {
-				Craft.cp.displayError('{{ "Failed to update default widget"|t('search-manager') }}');
+				Craft.cp.displayError({{ "Failed to update default widget"|t('search-manager')|json_encode|raw }});
 				$lightswitch.data('lightswitch').turnOff();
 			});
 		}

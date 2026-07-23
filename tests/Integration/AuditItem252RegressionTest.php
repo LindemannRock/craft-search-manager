@@ -118,7 +118,7 @@ final class AuditItem252RegressionTest extends TestCase
         self::assertStringContainsString("view.registerAssetBundle('lindemannrock\\\\searchmanager\\\\web\\\\assets\\\\testtool\\\\TestToolAsset')", $twig);
         self::assertStringContainsString('window.lrSearchManagerTestToolInit({', $twig);
         self::assertStringContainsString('csrfToken: {{ craft.app.request.csrfToken|json_encode|raw }}', $twig);
-        self::assertStringContainsString('autocompleteMinLength: {{ settings.autocompleteMinLength ?? 2 }}', $twig);
+        self::assertStringContainsString('autocompleteMinLength: {{ (settings.autocompleteMinLength ?? 2)|json_encode|raw }}', $twig);
         self::assertStringContainsString('indexSiteIds: {{ indexSiteIds|json_encode|raw }}', $twig);
         self::assertStringNotContainsString("document.addEventListener('DOMContentLoaded'", $twig);
         self::assertStringNotContainsString('function displaySearchResults', $twig);

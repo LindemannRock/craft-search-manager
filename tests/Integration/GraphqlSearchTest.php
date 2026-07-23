@@ -156,6 +156,41 @@ final class GraphqlSearchTest extends TestCase
         $this->assertStringNotContainsString('SearchManager::$plugin->enrichment', $source);
     }
 
+    public function testGraphqlSearchExposesDebugMetaOnlyWhenRequestedWithAccess(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        if ($pair === null) {
+            $this->markTestSkipped('No enabled entry index available.');
+        }
+
+        $queries = SearchQuery::getQueries(false);
+        $this->assertArrayHasKey('debugEnabled', $queries['searchManagerSearch']['args'] ?? []);
+
+        $index = $pair[0];
+        $stub = $this->installStubBackend();
+        $stub->searchResponse = [
+            'hits' => [],
+            'total' => 0,
+            'meta' => ['cached' => false, 'backend' => 'test'],
+        ];
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $originalDevMode = $generalConfig->devMode;
+        $generalConfig->devMode = true;
+
+        try {
+            $response = SearchResolver::resolveSearch(null, [
+                'query' => 'coffee',
+                'indexHandles' => [$index->handle],
+                'siteId' => (int)($index->getSiteIds()[0] ?? 1),
+                'debugEnabled' => true,
+            ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
+        } finally {
+            $generalConfig->devMode = $originalDevMode;
+        }
+
+        $this->assertSame(['cached' => false, 'backend' => 'test'], $response['meta'] ?? null);
+    }
+
     public function testGraphqlSearchExposesAndAppliesRetrievableFieldsArgument(): void
     {
         $pair = $this->findWorkingIndexAndElement();

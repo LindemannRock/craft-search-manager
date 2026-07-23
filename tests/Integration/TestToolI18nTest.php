@@ -200,8 +200,10 @@ final class TestToolI18nTest extends TestCase
         // Audit #177: backend.twig remaining raw strings (Yes/No/Unknown).
         $source = $this->readPluginFile('src/templates/settings/test/_partials/backend.twig');
 
-        self::assertStringContainsString("&#10003; {{ 'Yes'|t('search-manager') }}", $source);
-        self::assertStringContainsString("&#10007; {{ 'No'|t('search-manager') }}", $source);
+        self::assertStringContainsString("yes: {{ 'Yes'|t('search-manager')|json_encode|raw }},", $source);
+        self::assertStringContainsString("no: {{ 'No'|t('search-manager')|json_encode|raw }},", $source);
+        self::assertStringContainsString("Craft.escapeHtml(labels.yes) + '</span>'", $source);
+        self::assertStringContainsString("Craft.escapeHtml(labels.no) + '</span>'", $source);
         self::assertStringContainsString("idx.uid || {{ 'Unknown'|t('search-manager')|json_encode|raw }}", $source);
 
         self::assertStringNotContainsString('&#10003; Yes</span>', $source);

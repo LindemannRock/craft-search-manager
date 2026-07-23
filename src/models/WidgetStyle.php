@@ -26,8 +26,6 @@ class WidgetStyle extends Model
 {
     use ConfigSourceTrait;
 
-    private const ALLOWED_HIGHLIGHT_TAGS = ['mark', 'em', 'strong', 'b', 'i', 'span'];
-
     public const TYPE_MODAL = 'modal';
 
     public const TYPE_PAGE = 'page';
@@ -207,10 +205,10 @@ class WidgetStyle extends Model
             return;
         }
 
-        if (!in_array($value, self::ALLOWED_HIGHLIGHT_TAGS, true)) {
+        if (!in_array($value, Highlighter::ALLOWED_TAGS, true)) {
             $this->addError('styles.highlightTag', Craft::t('search-manager', '{label} must be one of: {values}.', [
                 'label' => Craft::t('search-manager', 'HTML Tag'),
-                'values' => implode(', ', self::ALLOWED_HIGHLIGHT_TAGS),
+                'values' => implode(', ', Highlighter::ALLOWED_TAGS),
             ]));
         }
     }

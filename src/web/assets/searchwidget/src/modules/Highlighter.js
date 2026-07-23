@@ -9,6 +9,8 @@
  * @since 5.32.0
  */
 
+import { isUnsafeNavigationUrl } from './UrlUtils.js';
+
 /**
  * @typedef {Object} HighlightOptions
  * @property {boolean} enabled - Whether highlighting is enabled
@@ -17,7 +19,10 @@
  * @property {string[]} [terms] - Explicit terms to highlight (preferred over query)
  */
 
+// The server-managed list intentionally excludes `u`; developer-authored
+// widget options may use it, and both runtimes still fail closed to `mark`.
 const ALLOWED_HIGHLIGHT_TAGS = new Set(['mark', 'em', 'strong', 'u', 'b', 'i', 'span']);
+// Mirrors Highlighter::isValidClassTokenList() in the PHP runtime.
 const CSS_CLASS_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 /**
@@ -63,13 +68,8 @@ export function sanitizeUrl(url, fallback = '#') {
     if (typeof url !== 'string' || url === '') {
         return url || '';
     }
-    const normalized = url.replace(/[\u0000-\u0020]+/g, '').toLowerCase();
-    for (const scheme of ['javascript', 'vbscript', 'data', 'file']) {
-        if (normalized.startsWith(scheme + ':')) {
-            return fallback;
-        }
-    }
-    return url;
+
+    return isUnsafeNavigationUrl(url) ? fallback : url;
 }
 
 export function escapeRegex(string) {

@@ -115,6 +115,31 @@ final class CraftSearchAdapterRegressionTest extends TestCase
         self::assertSame(0, $backend->searchCalls[0]['options']['limit'] ?? null);
     }
 
+    public function testRepeatedSplitHitsKeepTheHighestParentScoreRegardlessOfHitOrder(): void
+    {
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [
+            'hits' => [
+                ['elementId' => 49639, 'siteId' => 1, 'backendId' => '49639_1_best', 'score' => 12.5],
+                ['elementId' => 49639, 'siteId' => 1, 'backendId' => '49639_1_worst', 'score' => 1.5],
+            ],
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $scores = $this->withOnlySearchIndices([$this->index('products', 1)], function(): array {
+            $query = Entry::find();
+            $query->search = 'classic watches';
+            $query->siteId = 1;
+
+            return (new CraftSearchAdapter())->searchElements($query);
+        });
+
+        self::assertSame(
+            ['49639-1' => 12.5],
+            $scores,
+            'A later lower-scoring section must not overwrite its parent element score.',
+        );
+    }
+
     public function testSiteIdArraySearchPassesNormalizedScopeAndKeysReturnedSites(): void
     {
         $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [

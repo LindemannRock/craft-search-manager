@@ -328,7 +328,7 @@
     (function() {
         var nameInput = document.getElementById('name');
         var handleInput = document.getElementById('handle');
-        var isNew = {{ isNew ? 'true' : 'false' }};
+        var isNew = {{ isNew|json_encode|raw }};
         window.lrIdentifiers.bindSlugHandle(nameInput, handleInput, { isNew });
     })();
 

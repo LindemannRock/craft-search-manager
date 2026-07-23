@@ -126,7 +126,9 @@ class CraftSearchAdapter extends \craft\services\Search
                         $score = $hit['score'] ?? (count($results['hits']) - $i);
                         // Craft expects format: "elementId-siteId" (e.g., "794-1")
                         $key = $elementId . '-' . $hitSiteId;
-                        $elementScores[$key] = $score;
+                        if (!isset($elementScores[$key]) || $score > $elementScores[$key]) {
+                            $elementScores[$key] = $score;
+                        }
                     }
                 }
             }

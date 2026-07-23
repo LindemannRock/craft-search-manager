@@ -406,7 +406,7 @@ if (saveShortcut) {
 (function() {
 	const nameInput = document.getElementById('name');
 	const handleInput = document.getElementById('handle');
-	const isNew = {{ isNew ? 'true' : 'false' }};
+	const isNew = {{ isNew|json_encode|raw }};
 	window.lrIdentifiers.bindSlugHandle(nameInput, handleInput, { isNew });
 })();
 

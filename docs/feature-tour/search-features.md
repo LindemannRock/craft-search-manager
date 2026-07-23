@@ -255,7 +255,7 @@ Replace Native Search is intentionally a front-end enhancement, not a transparen
 - **Front-end `.search()` only:** it affects template/site element queries that go through Craft's search service. It does not change CP element indexes or CP global search.
 - **Coverage-based fallback:** if Search Manager cannot find a full-coverage local index for the query's element type and site scope, the query falls back to Craft native search.
 - **Public-content indexing:** Search Manager indexes searchable content only. Entries must be live; users must be active; products and variants must be live where the Commerce element type exposes that status; assets, categories, and other element types must be enabled. Drafts, revisions, disabled content, and disabled-for-site content are not kept in the Search Manager index.
-- **Score values differ:** Craft native search returns Craft keyword scores. Search Manager returns backend relevance scores, with the built-in backends using BM25. Both paths hand Craft a descending score map for normal `orderBy('score')` use, but the numeric values are not comparable.
+- **Score values differ:** Craft native search returns Craft keyword scores. Search Manager returns backend relevance scores, with the built-in backends using BM25. Both paths hand Craft a descending score map for normal `orderBy('score')` use, but the numeric values are not comparable. If a split-section index returns several section hits for the same element and site, the adapter keeps that element's highest section score.
 
 ### Query syntax differences
 

@@ -70,6 +70,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const backendMulti = document.getElementById('backend-multi');
     const backendIndexCount = document.getElementById('backend-index-count');
     const backendIndicesList = document.getElementById('backend-indices-list');
+    const labels = {
+        testing: {{ 'Testing...'|t('search-manager')|json_encode|raw }},
+        loading: {{ 'Loading...'|t('search-manager')|json_encode|raw }},
+        connected: {{ 'Connected'|t('search-manager')|json_encode|raw }},
+        connectionFailed: {{ 'Cannot load - connection failed'|t('search-manager')|json_encode|raw }},
+        yes: {{ 'Yes'|t('search-manager')|json_encode|raw }},
+        no: {{ 'No'|t('search-manager')|json_encode|raw }},
+        name: {{ 'Name'|t('search-manager')|json_encode|raw }},
+        entries: {{ 'Entries'|t('search-manager')|json_encode|raw }},
+        noIndices: {{ 'No indices found'|t('search-manager')|json_encode|raw }},
+        error: {{ 'Error'|t('search-manager')|json_encode|raw }},
+    };
 
     function formatEntries(entries) {
         if (entries === undefined || entries === null) {
@@ -88,13 +100,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!backendHandle) return;
 
         // Reset UI
-        backendConnection.innerHTML = '<span class="spinner small"></span> {{ 'Testing...'|t('search-manager') }}';
+        backendConnection.innerHTML = '<span class="spinner small"></span> ' + Craft.escapeHtml(labels.testing);
         backendConnection.style.color = '#d97706';
         backendResponseTime.textContent = '—';
         backendBrowse.textContent = '—';
         backendMulti.textContent = '—';
         backendIndexCount.textContent = '—';
-        backendIndicesList.innerHTML = '<p class="light">{{ 'Loading...'|t('search-manager') }}</p>';
+        backendIndicesList.innerHTML = '<p class="light">' + Craft.escapeHtml(labels.loading) + '</p>';
 
         const startTime = performance.now();
 
@@ -105,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const elapsed = Math.round(performance.now() - startTime);
 
             if (response.data.success) {
-                backendConnection.innerHTML = '&#10003; {{ 'Connected'|t('search-manager') }}';
+                backendConnection.innerHTML = '&#10003; ' + Craft.escapeHtml(labels.connected);
                 backendConnection.style.color = '#059669';
                 backendResponseTime.textContent = elapsed + 'ms';
 
@@ -116,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 backendConnection.innerHTML = '&#10007; ' + Craft.escapeHtml(response.data.error || {{ 'Failed'|t('search-manager')|json_encode|raw }});
                 backendConnection.style.color = '#dc2626';
-                backendIndicesList.innerHTML = '<p class="light" style="color: #dc2626;">{{ 'Cannot load - connection failed'|t('search-manager') }}</p>';
+                backendIndicesList.innerHTML = '<p class="light" style="color: #dc2626;">' + Craft.escapeHtml(labels.connectionFailed) + '</p>';
                 return null;
             }
         }).then(function(response) {
@@ -125,11 +137,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.data.success) {
                 // Update capabilities
                 backendBrowse.innerHTML = response.data.supportsBrowse
-                    ? '<span style="color: #059669;">&#10003; {{ 'Yes'|t('search-manager') }}</span>'
-                    : '<span style="color: #6b7280;">&#10007; {{ 'No'|t('search-manager') }}</span>';
+                    ? '<span style="color: #059669;">&#10003; ' + Craft.escapeHtml(labels.yes) + '</span>'
+                    : '<span style="color: #6b7280;">&#10007; ' + Craft.escapeHtml(labels.no) + '</span>';
                 backendMulti.innerHTML = response.data.supportsMultipleQueries
-                    ? '<span style="color: #059669;">&#10003; {{ 'Yes'|t('search-manager') }}</span>'
-                    : '<span style="color: #6b7280;">&#10007; {{ 'No'|t('search-manager') }}</span>';
+                    ? '<span style="color: #059669;">&#10003; ' + Craft.escapeHtml(labels.yes) + '</span>'
+                    : '<span style="color: #6b7280;">&#10007; ' + Craft.escapeHtml(labels.no) + '</span>';
 
                 // Update indices
                 const indices = response.data.indices || [];
@@ -137,7 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (indices.length > 0) {
                     let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
-                    html += '<thead><tr><th style="text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; text-transform: uppercase;">{{ 'Name'|t('search-manager') }}</th><th style="text-align: right; padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; text-transform: uppercase;">{{ 'Entries'|t('search-manager') }}</th></tr></thead><tbody>';
+                    html += '<thead><tr><th style="text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; text-transform: uppercase;">' + Craft.escapeHtml(labels.name) + '</th><th style="text-align: right; padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; text-transform: uppercase;">' + Craft.escapeHtml(labels.entries) + '</th></tr></thead><tbody>';
                     indices.forEach(function(idx) {
                         const name = idx.name || idx.uid || {{ 'Unknown'|t('search-manager')|json_encode|raw }};
                         const entries = formatEntries(idx.entries);
@@ -146,11 +158,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += '</tbody></table>';
                     backendIndicesList.innerHTML = html;
                 } else {
-                    backendIndicesList.innerHTML = '<p class="light">{{ 'No indices found'|t('search-manager') }}</p>';
+                    backendIndicesList.innerHTML = '<p class="light">' + Craft.escapeHtml(labels.noIndices) + '</p>';
                 }
             }
         }).catch(function(error) {
-            backendConnection.innerHTML = '&#10007; {{ 'Error'|t('search-manager') }}';
+            backendConnection.innerHTML = '&#10007; ' + Craft.escapeHtml(labels.error);
             backendConnection.style.color = '#dc2626';
         });
     }

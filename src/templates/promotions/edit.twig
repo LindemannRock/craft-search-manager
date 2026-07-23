@@ -322,24 +322,24 @@ const matchTypeTipText = document.getElementById('matchTypeTipText');
 
 function updateMatchTypeUI() {
 	const matchType = matchTypeSelect.value;
-	const commaHint = ' {{ 'Use commas for multiple patterns (e.g., sale, تخفيض, soldes, angebot).'|t('search-manager') }}';
+	const commaHint = ' ' + {{ 'Use commas for multiple patterns (e.g., sale, تخفيض, soldes, angebot).'|t('search-manager')|json_encode|raw }};
 
 	switch(matchType) {
 		case 'contains':
-			matchTypeInstructions.textContent = '{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}';
-			queryInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}' + commaHint;
+			matchTypeInstructions.textContent = {{ 'Match if the search query contains this pattern anywhere.'|t('search-manager')|json_encode|raw }};
+			queryInstructions.textContent = {{ 'Enter text that should appear anywhere in the search query.'|t('search-manager')|json_encode|raw }} + commaHint;
 				queryInput.placeholder = {{ 'sale'|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "sale" matches "holiday sale", "sale items", "big sale event"'|t('search-manager')|json_encode|raw }};
 			break;
 		case 'prefix':
-			matchTypeInstructions.textContent = '{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}';
-			queryInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}' + commaHint;
+			matchTypeInstructions.textContent = {{ 'Match if the search query starts with this pattern.'|t('search-manager')|json_encode|raw }};
+			queryInstructions.textContent = {{ 'Enter text that the search query should start with.'|t('search-manager')|json_encode|raw }} + commaHint;
 				queryInput.placeholder = {{ 'best '|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "best " matches "best deals", "best products", "best sellers"'|t('search-manager')|json_encode|raw }};
 			break;
 		default: // exact
-			matchTypeInstructions.textContent = '{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}';
-			queryInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}' + commaHint;
+			matchTypeInstructions.textContent = {{ 'Match only if the search query exactly matches this pattern.'|t('search-manager')|json_encode|raw }};
+			queryInstructions.textContent = {{ 'Enter the exact search query to match.'|t('search-manager')|json_encode|raw }} + commaHint;
 				queryInput.placeholder = {{ 'holiday sale'|t('search-manager')|json_encode|raw }};
 			matchTypeTipText.textContent = {{ 'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"'|t('search-manager')|json_encode|raw }};
 	}

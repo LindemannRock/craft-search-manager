@@ -705,10 +705,9 @@ class IndexingService extends Component
                 continue;
             }
 
-            // Check criteria match — delegated to the canonical implementation
-            // on SearchIndex so the direct-sync (this path) and the L3 buffer
-            // path (PendingSyncProcessor) can never disagree about whether an
-            // element belongs in an index.
+            // Check criteria through the singular SearchIndex gate. The L3
+            // buffer evaluates the same criteria in batches through
+            // SearchIndex::matchesCriteriaBatch().
             if (!$index->matchesCriteria($element)) {
                 $this->logDebug('Index skipped (criteria mismatch)', [
                     'indexHandle' => $index->handle,

@@ -51,7 +51,7 @@ class DocsManagerTransformer extends BaseTransformer
         $data['sourceId'] = $element->sourceId;
 
         $htmlContent = DocsManagerDocumentHelper::htmlContent($element);
-        $searchableContent = DocsManagerDocumentHelper::contentParts($element, $this->contentCleaner());
+        $searchableContent = DocsManagerDocumentHelper::contentParts($element);
         $cleanBody = DocsManagerDocumentHelper::cleanBody($element, $this->contentCleaner());
         if ($cleanBody !== '') {
             $data['_bodyClean'] = $cleanBody;

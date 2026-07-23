@@ -304,10 +304,10 @@ var storageStrings = {
 
 function loadStorageStats() {
     $.ajax({
-        url: '{{ actionUrl('search-manager/utilities/get-storage-stats')|raw }}',
+        url: {{ actionUrl('search-manager/utilities/get-storage-stats')|json_encode|raw }},
         type: 'POST',
         dataType: 'json',
-        data: { {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}' },
+        data: { [{{ craft.app.config.general.csrfTokenName|json_encode|raw }}]: {{ craft.app.request.csrfToken|json_encode|raw }} },
         success: function(response) {
             if (response.success && response.stats) {
                 var $select = $('#storage-type-select');
@@ -377,11 +377,11 @@ $('#clear-storage-by-type').on('click', function() {
     $status.text(statusText.replace('{type}', cleanTypeName)).removeClass('hidden');
 
     $.ajax({
-        url: '{{ actionUrl('search-manager/utilities/clear-storage-by-type')|raw }}',
+        url: {{ actionUrl('search-manager/utilities/clear-storage-by-type')|json_encode|raw }},
         type: 'POST',
         dataType: 'json',
         data: {
-            {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}',
+            [{{ craft.app.config.general.csrfTokenName|json_encode|raw }}]: {{ craft.app.request.csrfToken|json_encode|raw }},
             type: selectedType
         },
         success: function(response) {

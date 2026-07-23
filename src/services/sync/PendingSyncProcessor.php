@@ -103,9 +103,9 @@ class PendingSyncProcessor extends Component
         // backend write — re-introducing a read-before-write for each row would
         // restore the API amplification we set out to eliminate. As a result:
         //
-        //   - `documentCount` on indices is eventually consistent. It is not
-        //     incremented/decremented from this path. Accurate values come from
-        //     full rebuild or an explicit refresh action.
+        //   - `documentCount` is not incremented/decremented per row. After the
+        //     processor returns, BatchSyncJob refreshes the authoritative
+        //     backend total once for each affected index.
         //   - Deletes are sent unconditionally to the backend, which must treat
         //     a missing-document delete as success (idempotent). All shipped
         //     backends do; TypesenseBackend::delete() catches ObjectNotFound

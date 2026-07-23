@@ -245,8 +245,8 @@ function submitAction(action, indexId) {
 
 	const csrfInput = document.createElement('input');
 	csrfInput.type = 'hidden';
-	csrfInput.name = '{{ craft.app.config.general.csrfTokenName }}';
-	csrfInput.value = '{{ craft.app.request.csrfToken }}';
+	csrfInput.name = {{ craft.app.config.general.csrfTokenName|json_encode|raw }};
+	csrfInput.value = {{ craft.app.request.csrfToken|json_encode|raw }};
 	form.appendChild(csrfInput);
 
 	const indexIdInput = document.createElement('input');
@@ -264,7 +264,7 @@ function submitAction(action, indexId) {
 document.getElementById('rebuild-btn')?.addEventListener('click', function(e) {
 	e.preventDefault();
 	if (confirm({{ "Rebuild index? This will re-index all elements."|t('search-manager')|json_encode|raw }})) {
-		submitAction('search-manager/indices/rebuild', '{{ index.handle }}');
+		submitAction('search-manager/indices/rebuild', {{ index.handle|json_encode|raw }});
 	}
 });
 {% endif %}
@@ -274,7 +274,7 @@ document.getElementById('rebuild-btn')?.addEventListener('click', function(e) {
 document.getElementById('clear-btn')?.addEventListener('click', function(e) {
 	e.preventDefault();
 	if (confirm({{ "Clear all data from this index? This cannot be undone."|t('search-manager')|json_encode|raw }})) {
-		submitAction('search-manager/indices/clear', '{{ index.handle }}');
+		submitAction('search-manager/indices/clear', {{ index.handle|json_encode|raw }});
 	}
 });
 {% endif %}
@@ -284,15 +284,15 @@ document.getElementById('clear-btn')?.addEventListener('click', function(e) {
 document.getElementById('clear-cache-btn')?.addEventListener('click', function(e) {
 	e.preventDefault();
 	Craft.sendActionRequest('POST', 'search-manager/indices/clear-cache', {
-		data: { indexId: '{{ index.handle }}' }
+		data: { indexId: {{ index.handle|json_encode|raw }} }
 	}).then(function(response) {
 		if (response.data.success) {
-			Craft.cp.displayNotice(response.data.message || '{{ "Cache cleared"|t('search-manager') }}');
+			Craft.cp.displayNotice(response.data.message || {{ "Cache cleared"|t('search-manager')|json_encode|raw }});
 		} else {
-			Craft.cp.displayError(response.data.error || '{{ "Failed to clear cache"|t('search-manager') }}');
+			Craft.cp.displayError(response.data.error || {{ "Failed to clear cache"|t('search-manager')|json_encode|raw }});
 		}
 	}).catch(function(error) {
-		Craft.cp.displayError('{{ "Failed to clear cache"|t('search-manager') }}');
+		Craft.cp.displayError({{ "Failed to clear cache"|t('search-manager')|json_encode|raw }});
 	});
 });
 {% endif %}
@@ -302,16 +302,16 @@ document.getElementById('clear-cache-btn')?.addEventListener('click', function(e
 document.getElementById('sync-count-btn')?.addEventListener('click', function(e) {
 	e.preventDefault();
 	Craft.sendActionRequest('POST', 'search-manager/indices/sync-count', {
-		data: { indexId: '{{ index.handle }}' }
+		data: { indexId: {{ index.handle|json_encode|raw }} }
 	}).then(function(response) {
 		if (response.data.success) {
-			Craft.cp.displayNotice(response.data.message || '{{ "Count synced"|t('search-manager') }}');
+			Craft.cp.displayNotice(response.data.message || {{ "Count synced"|t('search-manager')|json_encode|raw }});
 			setTimeout(() => window.location.reload(), 1000);
 		} else {
-			Craft.cp.displayError(response.data.error || '{{ "Failed to sync count"|t('search-manager') }}');
+			Craft.cp.displayError(response.data.error || {{ "Failed to sync count"|t('search-manager')|json_encode|raw }});
 		}
 	}).catch(function(error) {
-		Craft.cp.displayError('{{ "Failed to sync count"|t('search-manager') }}');
+		Craft.cp.displayError({{ "Failed to sync count"|t('search-manager')|json_encode|raw }});
 	});
 });
 {% endif %}

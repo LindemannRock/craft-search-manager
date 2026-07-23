@@ -127,8 +127,8 @@ final class AuditPass35Test extends TestCase
 
         self::assertStringContainsString('const backendId = {{ (backend.id ?: backend.handle)|json_encode|raw }};', $source);
         self::assertStringNotContainsString("const backendId = '{{ backend.id ?: backend.handle }}';", $source);
-        self::assertStringContainsString("const unknownLabel = {{ 'Unknown'|t('search-manager')|json_encode|raw }};", $source);
-        self::assertStringContainsString('const name = index.name || index.uid || unknownLabel;', $source);
+        self::assertStringContainsString("unknown: {{ 'Unknown'|t('search-manager')|json_encode|raw }},", $source);
+        self::assertStringContainsString('const name = index.name || index.uid || labels.unknown;', $source);
         self::assertStringNotContainsString("index.name || index.uid || 'Unknown'", $source);
     }
 

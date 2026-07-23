@@ -130,14 +130,13 @@ class SearchIndex extends Model
     /**
      * @var int Number of documents in the index.
      *
-     * **Eventually consistent.** As of 5.45.0, automatic save/delete syncs
-     * (`PendingSyncProcessor`, batch path) deliberately do not increment or
-     * decrement this counter — doing so would require a per-row
-     * `documentExists` probe to the backend, which would re-introduce the
-     * API amplification L3 set out to eliminate.
+     * Automatic save/delete syncs do not increment or decrement this counter
+     * per row. After a batch writes to the backend, `BatchSyncJob` refreshes
+     * the authoritative total once for each affected index.
      *
      * Accurate values come from:
      *   - Full rebuild (`SearchIndex::updateStats()`)
+     *   - Completed automatic-sync batches (`SearchIndex::refreshDocumentCount()`)
      *   - Explicit recount actions exposed in the CP / console
      *
      * Treat this as advisory metadata for operators, not as a correctness
@@ -534,10 +533,6 @@ class SearchIndex extends Model
                 self::retrievableFieldAllowlist($indexFields),
                 self::retrievableFieldExclusionHandles($requested),
             ));
-        }
-
-        if ($indexFields === ['*']) {
-            return $requested;
         }
 
         return array_values(array_intersect(
@@ -2587,8 +2582,9 @@ class SearchIndex extends Model
      * Check whether an element matches this index's element type, site, AND criteria.
      *
      * Combines all three checks: structural (enabled / element type / site) and
-     * criteria. The buffer path (`PendingSyncProcessor`) uses this as the
-     * single is-this-row-eligible gate.
+     * criteria. This is the singular convenience gate used by direct callers
+     * and tests. The pending-sync batch path performs its structural checks
+     * while evaluating criteria through `matchesCriteriaBatch()`.
      *
      * @since 5.46.0
      */

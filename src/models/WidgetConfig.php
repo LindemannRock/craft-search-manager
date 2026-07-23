@@ -14,6 +14,7 @@ use craft\helpers\Json;
 use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
+use lindemannrock\searchmanager\search\Highlighter;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
@@ -29,7 +30,6 @@ class WidgetConfig extends Model
 {
     use ConfigSourceTrait;
 
-    private const SAFE_HIGHLIGHT_TAGS = ['mark', 'em', 'strong', 'b', 'i', 'span'];
     // =========================================================================
     // PROPERTIES
     // =========================================================================
@@ -542,14 +542,14 @@ class WidgetConfig extends Model
             return '';
         }
 
-        return in_array($tag, self::SAFE_HIGHLIGHT_TAGS, true) ? $tag : 'mark';
+        return in_array($tag, Highlighter::ALLOWED_TAGS, true) ? $tag : 'mark';
     }
 
     private function normalizeHighlightClass(string $class): string
     {
         $tokens = [];
         foreach (preg_split('/\s+/', trim($class)) ?: [] as $token) {
-            if ($token !== '' && preg_match('/^[A-Za-z0-9_-]+$/', $token) === 1) {
+            if ($token !== '' && Highlighter::isValidClassTokenList($token)) {
                 $tokens[] = $token;
             }
         }

@@ -143,7 +143,8 @@ final class Audit305WidgetConfigTest extends TestCase
 
         self::assertStringContainsString("document.getElementById('name')", $source);
         self::assertStringContainsString("document.getElementById('handle')", $source);
-        self::assertStringContainsString("var isNew = {{ isNew ? 'true' : 'false' }};", $source);
+        self::assertStringContainsString('var isNew = {{ isNew|json_encode|raw }};', $source);
+        self::assertStringNotContainsString("{{ isNew ? 'true' : 'false' }}", $source);
         self::assertStringContainsString('window.lrIdentifiers.bindSlugHandle(nameInput, handleInput, { isNew });', $source);
     }
 

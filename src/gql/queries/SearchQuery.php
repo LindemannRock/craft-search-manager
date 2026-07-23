@@ -110,6 +110,11 @@ class SearchQuery extends Query
                         'type' => Type::boolean(),
                         'description' => 'Whether to skip search analytics tracking.',
                     ],
+                    'debugEnabled' => [
+                        'name' => 'debugEnabled',
+                        'type' => Type::boolean(),
+                        'description' => 'Whether to include backend debug metadata when the caller has debug access.',
+                    ],
                     'snippetMode' => [
                         'name' => 'snippetMode',
                         'type' => Type::string(),

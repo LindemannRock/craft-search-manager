@@ -20,6 +20,7 @@ use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\models\WidgetStyle;
+use lindemannrock\searchmanager\search\Highlighter;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -1399,8 +1400,8 @@ class WidgetsController extends Controller
                 'number' => preg_match('/^\d+(\.\d+)?$/', $value) === 1,
                 'shadow' => $this->_isValidCssShadow($value),
                 'boolean' => BooleanHelper::isBooleanLike($value),
-                'tag' => in_array(strtolower($value), ['mark', 'em', 'strong', 'b', 'i', 'span'], true),
-                'class' => $this->_isValidCssClassTokenList($value),
+                'tag' => in_array(strtolower($value), Highlighter::ALLOWED_TAGS, true),
+                'class' => Highlighter::isValidClassTokenList($value),
                 default => false,
             };
 
@@ -1428,20 +1429,6 @@ class WidgetsController extends Controller
             'modalShadow', 'modalShadowDark' => 'shadow',
             default => $this->_inferStyleValueType($key),
         };
-    }
-
-    /**
-     * Validate one or more CSS class tokens for highlight markup.
-     */
-    private function _isValidCssClassTokenList(string $value): bool
-    {
-        foreach (preg_split('/\s+/', trim($value)) ?: [] as $token) {
-            if ($token === '' || preg_match('/^[A-Za-z0-9_-]+$/', $token) !== 1) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**

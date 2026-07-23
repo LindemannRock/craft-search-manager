@@ -211,7 +211,7 @@
 {% js %}
 window.lrSearchManagerTestToolInit({
     csrfToken: {{ craft.app.request.csrfToken|json_encode|raw }},
-    autocompleteMinLength: {{ settings.autocompleteMinLength ?? 2 }},
+    autocompleteMinLength: {{ (settings.autocompleteMinLength ?? 2)|json_encode|raw }},
     indexSiteIds: {{ indexSiteIds|json_encode|raw }},
     snippetOptions: {{ snippetOptions|json_encode|raw }},
     urls: {

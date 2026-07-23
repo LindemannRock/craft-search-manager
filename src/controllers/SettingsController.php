@@ -895,12 +895,12 @@ class SettingsController extends Controller
      */
     private function settingsTestHitDebugKey(array $hit): ?string
     {
-        $elementId = SearchHitIdentityHelper::elementId($hit);
-        if ($elementId === null) {
+        $documentId = SearchHitIdentityHelper::documentId($hit);
+        if ($documentId === null) {
             return null;
         }
 
-        return (string)($hit['siteId'] ?? 'site') . ':' . $elementId;
+        return (string)($hit['siteId'] ?? 'site') . ':' . $documentId;
     }
 
     /**

@@ -109,7 +109,7 @@
                             data: {
                                 labels: dailyData.map(d => d.date),
                                 datasets: [{
-                                    label: '{{ "Triggers"|t('search-manager') }}',
+                                    label: {{ "Triggers"|t('search-manager')|json_encode|raw }},
                                     data: dailyData.map(d => d.count),
                                     borderColor: '#0d78f2',
                                     backgroundColor: 'rgba(13, 120, 242, 0.1)',
