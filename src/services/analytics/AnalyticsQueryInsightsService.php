@@ -43,13 +43,14 @@ class AnalyticsQueryInsightsService
         // semantics carry through unchanged.
         $perAction = (new Query())
             ->select([
-                'query',
+                'MIN([[query]]) AS [[query]]',
+                'normalizedQuery',
                 'siteId',
                 'SUM([[resultsCount]]) AS [[actionResults]]',
                 'MAX([[dateCreated]]) AS [[actionLastSearched]]',
             ])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy(['query', 'siteId', new Expression($identityExpr)]);
+            ->groupBy(['normalizedQuery', 'siteId', new Expression($identityExpr)]);
 
         if ($dateRange !== null) {
             $this->applyDateRangeFilter($perAction, $dateRange);
@@ -65,14 +66,15 @@ class AnalyticsQueryInsightsService
         // still MAX(dateCreated) (action-max maxed across actions = row-max).
         $query = (new Query())
             ->select([
-                'query',
+                'MIN([[query]]) AS [[query]]',
+                'normalizedQuery',
                 'siteId',
                 'COUNT(*) AS count',
                 'SUM([[actionResults]]) AS [[totalResults]]',
                 'MAX([[actionLastSearched]]) AS [[lastSearched]]',
             ])
             ->from(['t' => $perAction])
-            ->groupBy(['query', 'siteId'])
+            ->groupBy(['normalizedQuery', 'siteId'])
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit);
 
@@ -263,9 +265,12 @@ class AnalyticsQueryInsightsService
         // query collapse so word weights reflect user search actions, not
         // backend invocations.
         $perAction = (new Query())
-            ->select(['query'])
+            ->select([
+                'MIN([[query]]) AS [[query]]',
+                'normalizedQuery',
+            ])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy(['query', new Expression($identityExpr)]);
+            ->groupBy(['normalizedQuery', new Expression($identityExpr)]);
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
@@ -276,9 +281,13 @@ class AnalyticsQueryInsightsService
         // Only fetch the top 500 most frequent queries — the long tail contributes
         // negligible weight and isn't worth loading into memory for tokenization.
         $query = (new Query())
-            ->select(['query', 'COUNT(*) as count'])
+            ->select([
+                'MIN([[query]]) AS [[query]]',
+                'normalizedQuery',
+                'COUNT(*) as count',
+            ])
             ->from(['t' => $perAction])
-            ->groupBy('query')
+            ->groupBy('normalizedQuery')
             ->orderBy(['count' => SORT_DESC])
             ->limit(500);
 
@@ -341,11 +350,12 @@ class AnalyticsQueryInsightsService
         // lifted via MAX over the action.
         $perAction = (new Query())
             ->select([
-                'query',
+                'MIN([[query]]) AS [[query]]',
+                'normalizedQuery',
                 'MAX([[dateCreated]]) AS [[actionLastSearched]]',
             ])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy(['query', new Expression($identityExpr)])
+            ->groupBy(['normalizedQuery', new Expression($identityExpr)])
             ->having($this->zeroOutcomeHaving());
 
         $this->applyDateRangeFilter($perAction, $dateRange);
@@ -356,9 +366,14 @@ class AnalyticsQueryInsightsService
 
         // 2. Cluster candidates: count zero-result actions per query.
         $query = (new Query())
-            ->select(['query', 'COUNT(*) as count', 'MAX([[actionLastSearched]]) as [[lastSearched]]'])
+            ->select([
+                'MIN([[query]]) AS [[query]]',
+                'normalizedQuery',
+                'COUNT(*) as count',
+                'MAX([[actionLastSearched]]) as [[lastSearched]]',
+            ])
             ->from(['t' => $perAction])
-            ->groupBy('query')
+            ->groupBy('normalizedQuery')
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit * 3); // Get more candidates for clustering
 
@@ -522,61 +537,61 @@ class AnalyticsQueryInsightsService
         // from single-index to multi-index between periods would show a false
         // trend at the row level; dedup makes the comparison honest.
         $currentInner = (new Query())
-            ->select(['query'])
+            ->select([
+                'MIN([[query]]) AS [[query]]',
+                'normalizedQuery',
+            ])
             ->from('{{%searchmanager_analytics}}')
             ->where(['>=', 'dateCreated', Db::prepareDateForDb($currentStart)])
             ->andWhere(['<=', 'dateCreated', Db::prepareDateForDb($now)])
-            ->groupBy(['query', new Expression($identityExpr)]);
+            ->groupBy(['normalizedQuery', new Expression($identityExpr)]);
 
         if ($siteId) {
             $currentInner->andWhere(['siteId' => $siteId]);
         }
 
-        $currentQuery = (new Query())
-            ->select(['query', 'COUNT(*) as count'])
-            ->from(['t' => $currentInner])
-            ->groupBy('query')
-            ->orderBy(['count' => SORT_DESC])
-            ->limit($limit * 2); // Get more to account for filtering
+        $currentResults = self::foldNormalizedQueryRows(array_map(
+            static fn(array $row): array => $row + ['count' => 1],
+            $currentInner->all(),
+        ));
+        usort($currentResults, static function(array $a, array $b): int {
+            return ((int)$b['count'] <=> (int)$a['count'])
+                ?: strcmp((string)$a['normalizedQuery'], (string)$b['normalizedQuery']);
+        });
+        $currentResults = array_slice($currentResults, 0, $limit * 2);
 
-        $currentResults = $currentQuery->all();
-
-        $currentQueryTexts = array_values(array_unique(array_filter(
-            array_map(static fn(array $row): string => (string)($row['query'] ?? ''), $currentResults),
-            static fn(string $query): bool => $query !== '',
-        )));
-        if (empty($currentQueryTexts)) {
+        $currentQueryKeys = array_column($currentResults, 'normalizedQuery');
+        if ($currentQueryKeys === []) {
             return [];
         }
 
         $previousInner = (new Query())
-            ->select(['query'])
+            ->select([
+                'MIN([[query]]) AS [[query]]',
+                'normalizedQuery',
+            ])
             ->from('{{%searchmanager_analytics}}')
             ->where(['>=', 'dateCreated', Db::prepareDateForDb($previousStart)])
             ->andWhere(['<=', 'dateCreated', Db::prepareDateForDb($previousEnd)])
-            ->andWhere(['query' => $currentQueryTexts])
-            ->groupBy(['query', new Expression($identityExpr)]);
+            ->andWhere(['normalizedQuery' => $currentQueryKeys])
+            ->groupBy(['normalizedQuery', new Expression($identityExpr)]);
 
         if ($siteId) {
             $previousInner->andWhere(['siteId' => $siteId]);
         }
 
-        $previousQuery = (new Query())
-            ->select(['query', 'COUNT(*) as count'])
-            ->from(['t' => $previousInner])
-            ->groupBy('query');
-
-        $previousResults = $previousQuery->all();
-
-        // Index previous results by query
-        $previousCounts = self::foldNormalizedQueryCounts($previousResults);
+        $previousResults = self::foldNormalizedQueryRows(array_map(
+            static fn(array $row): array => $row + ['count' => 1],
+            $previousInner->all(),
+        ));
+        $previousCounts = array_column($previousResults, 'count', 'normalizedQuery');
 
         // Calculate trends
         $trending = [];
         foreach ($currentResults as $row) {
             $queryText = $row['query'];
             $currentCount = (int)$row['count'];
-            $queryKey = strtolower($queryText);
+            $queryKey = $row['normalizedQuery'];
             $previousCount = $previousCounts[$queryKey] ?? 0;
 
             // Calculate percentage change
@@ -608,25 +623,44 @@ class AnalyticsQueryInsightsService
             // Prioritize significant trends with decent volume
             $aScore = $a['count'] * ($a['changePercent'] / 100 + 1);
             $bScore = $b['count'] * ($b['changePercent'] / 100 + 1);
-            return $bScore <=> $aScore;
+            return ($bScore <=> $aScore)
+                ?: strcmp((string)$a['query'], (string)$b['query']);
         });
 
         return array_slice($trending, 0, $limit);
     }
 
     /**
-     * @param array<int, array{query: string, count: int|string}> $rows
-     * @return array<string, int>
+     * @param array<int, array{query: string, normalizedQuery: string, count: int|string}> $rows
+     * @return array<int, array{query: string, normalizedQuery: string, count: int}>
      */
-    private static function foldNormalizedQueryCounts(array $rows): array
+    private static function foldNormalizedQueryRows(array $rows): array
     {
-        $counts = [];
+        $folded = [];
+        $representativeCounts = [];
+
         foreach ($rows as $row) {
-            $queryKey = strtolower($row['query']);
-            $counts[$queryKey] = ($counts[$queryKey] ?? 0) + (int)$row['count'];
+            $queryKey = $row['normalizedQuery'];
+            $queryText = $row['query'];
+            $count = (int)$row['count'];
+
+            if (
+                !isset($folded[$queryKey])
+                || $count > $representativeCounts[$queryKey]
+                || ($count === $representativeCounts[$queryKey] && strcmp($queryText, $folded[$queryKey]['query']) < 0)
+            ) {
+                $folded[$queryKey] = [
+                    'query' => $queryText,
+                    'normalizedQuery' => $queryKey,
+                    'count' => $folded[$queryKey]['count'] ?? 0,
+                ];
+                $representativeCounts[$queryKey] = $count;
+            }
+
+            $folded[$queryKey]['count'] += $count;
         }
 
-        return $counts;
+        return array_values($folded);
     }
 
     /**
@@ -639,7 +673,7 @@ class AnalyticsQueryInsightsService
     public function getUniqueQueriesCount(int|array|null $siteId, int $days = 30): int
     {
         $query = (new Query())
-            ->select(['COUNT(DISTINCT query) as count'])
+            ->select(['COUNT(DISTINCT [[normalizedQuery]]) as count'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
 

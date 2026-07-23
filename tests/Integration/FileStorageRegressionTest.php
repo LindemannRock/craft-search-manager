@@ -253,6 +253,41 @@ final class FileStorageRegressionTest extends TestCase
         self::assertArrayNotHasKey('foo_protein_2', $terms);
     }
 
+    public function testAutocompleteLanguageFilterUsesTermPostingLanguages(): void
+    {
+        $storage = $this->makeStorage();
+        $storage->storeTermDocument('protein', 1, 101, 3, 'en');
+        $storage->storeTermDocument('protein', 1, 104, 1, 'en');
+        $storage->storeTermDocumentByKey('product', 1, 102, '102_1_details', 2, 'ar');
+        $storage->storeTermDocument('profile', 1, 103, 1, 'en');
+
+        self::assertSame(
+            ['protein' => 4, 'profile' => 1],
+            $storage->getTermsForAutocomplete(1, 'en', 10, 'pro'),
+        );
+        self::assertSame(
+            ['protein' => 4, 'product' => 2, 'profile' => 1],
+            $storage->getTermsForAutocomplete(1, null, 10, 'pro'),
+        );
+
+        $storage->removeTermDocumentByKey('product', 1, '102_1_details');
+        self::assertSame([], $storage->getTermsForAutocomplete(1, 'ar', 10, 'pro'));
+    }
+
+    public function testClearSiteRemovesOnlyMatchingTermLanguageFiles(): void
+    {
+        $storage = $this->makeStorage();
+        $storage->storeTermDocument('protein', 1, 101, 1, 'en');
+        $storage->storeTermDocument('protein', 2, 201, 1, 'en');
+
+        $storage->clearSite(1);
+
+        self::assertSame([], $storage->getTermsForAutocomplete(1, 'en', 10, 'pro'));
+        self::assertSame(['protein' => 1], $storage->getTermsForAutocomplete(2, 'en', 10, 'pro'));
+        self::assertFileDoesNotExist($this->indexPath() . '/term-languages/protein_1.dat');
+        self::assertFileExists($this->indexPath() . '/term-languages/protein_2.dat');
+    }
+
     public function testUnicodeTermsUseDistinctSafeFilenamesAndSearchIndependently(): void
     {
         $storage = $this->makeStorage();

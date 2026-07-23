@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\services\analytics;
 
 use craft\db\Query;
 use lindemannrock\base\helpers\DateFormatHelper;
+use yii\db\Expression;
 
 /**
  * Analytics Rules Service
@@ -105,14 +106,15 @@ class AnalyticsRulesService
      */
     public function getQueriesTriggeringRules(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 15): array
     {
+        $normalizedQuery = new Expression('LOWER([[query]])');
         $query = (new Query())
             ->select([
-                'query',
+                'MIN([[query]]) AS [[query]]',
                 'COUNT(*) as count',
                 'COUNT(DISTINCT [[queryRuleId]]) as [[rulesTriggered]]',
             ])
             ->from('{{%searchmanager_rule_analytics}}')
-            ->groupBy('query')
+            ->groupBy($normalizedQuery)
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit);
 
@@ -152,13 +154,13 @@ class AnalyticsRulesService
 
         // Get summary stats
         $totalTriggers = (int)(clone $query)->count();
-        $uniqueQueries = (int)(clone $query)->select('COUNT(DISTINCT query)')->scalar();
+        $uniqueQueries = (int)(clone $query)->select('COUNT(DISTINCT LOWER([[query]]))')->scalar();
         $avgResultsAfter = (float)(clone $query)->select('AVG([[resultsCount]])')->scalar();
 
         // Get top queries
         $topQueries = (clone $query)
-            ->select(['query', 'COUNT(*) as count', 'AVG([[resultsCount]]) as [[avgResults]]', 'MAX([[dateCreated]]) as [[lastTriggered]]'])
-            ->groupBy('query')
+            ->select(['MIN([[query]]) AS [[query]]', 'COUNT(*) as count', 'AVG([[resultsCount]]) as [[avgResults]]', 'MAX([[dateCreated]]) as [[lastTriggered]]'])
+            ->groupBy(new Expression('LOWER([[query]])'))
             ->orderBy(['count' => SORT_DESC])
             ->limit(10)
             ->all();
@@ -214,7 +216,7 @@ class AnalyticsRulesService
                 'elementTitle',
                 'position',
                 'COUNT(*) as impressions',
-                'COUNT(DISTINCT query) as [[uniqueQueries]]',
+                'COUNT(DISTINCT LOWER([[query]])) as [[uniqueQueries]]',
             ])
             ->from('{{%searchmanager_promotion_analytics}}')
             ->groupBy(['promotionId', 'elementId', 'elementTitle', 'position'])
@@ -280,14 +282,15 @@ class AnalyticsRulesService
      */
     public function getQueriesTriggeringPromotions(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 15): array
     {
+        $normalizedQuery = new Expression('LOWER([[query]])');
         $query = (new Query())
             ->select([
-                'query',
+                'MIN([[query]]) AS [[query]]',
                 'COUNT(*) as count',
                 'COUNT(DISTINCT [[promotionId]]) as [[promotionsShown]]',
             ])
             ->from('{{%searchmanager_promotion_analytics}}')
-            ->groupBy('query')
+            ->groupBy($normalizedQuery)
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit);
 
@@ -327,13 +330,13 @@ class AnalyticsRulesService
 
         // Get summary stats
         $totalImpressions = (int)(clone $query)->count();
-        $uniqueQueries = (int)(clone $query)->select('COUNT(DISTINCT query)')->scalar();
+        $uniqueQueries = (int)(clone $query)->select('COUNT(DISTINCT LOWER([[query]]))')->scalar();
         $avgPosition = (float)(clone $query)->select('AVG(position)')->scalar();
 
         // Get top queries
         $topQueries = (clone $query)
-            ->select(['query', 'COUNT(*) as count', 'AVG([[position]]) as [[avgPosition]]', 'MAX([[dateCreated]]) as [[lastShown]]'])
-            ->groupBy('query')
+            ->select(['MIN([[query]]) AS [[query]]', 'COUNT(*) as count', 'AVG([[position]]) as [[avgPosition]]', 'MAX([[dateCreated]]) as [[lastShown]]'])
+            ->groupBy(new Expression('LOWER([[query]])'))
             ->orderBy(['count' => SORT_DESC])
             ->limit(10)
             ->all();

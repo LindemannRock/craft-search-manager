@@ -132,7 +132,8 @@ class AnalyticsPerformanceService
     {
         $query = (new Query())
             ->select([
-                'query',
+                'MIN([[query]]) AS [[query]]',
+                'normalizedQuery',
                 'siteId',
                 'AVG([[executionTime]]) as [[avgTime]]',
                 'MIN([[executionTime]]) as [[minTime]]',
@@ -143,7 +144,7 @@ class AnalyticsPerformanceService
             ->from('{{%searchmanager_analytics}}')
             ->andWhere(['>', 'executionTime', 0]) // Exclude cache hits
             ->andWhere(['>', 'resultsCount', 0]) // Only queries with results
-            ->groupBy(['query', 'siteId'])
+            ->groupBy(['normalizedQuery', 'siteId'])
             ->having(['>=', 'COUNT(*)', 3]) // At least 3 searches for reliable avg
             ->orderBy(['avgTime' => SORT_ASC])
             ->limit($limit);
@@ -187,7 +188,8 @@ class AnalyticsPerformanceService
     {
         $query = (new Query())
             ->select([
-                'query',
+                'MIN([[query]]) AS [[query]]',
+                'normalizedQuery',
                 'siteId',
                 'AVG([[executionTime]]) as [[avgTime]]',
                 'MIN([[executionTime]]) as [[minTime]]',
@@ -197,7 +199,7 @@ class AnalyticsPerformanceService
             ])
             ->from('{{%searchmanager_analytics}}')
             ->andWhere(['>', 'executionTime', 0]) // Exclude cache hits
-            ->groupBy(['query', 'siteId'])
+            ->groupBy(['normalizedQuery', 'siteId'])
             ->having(['>=', 'COUNT(*)', 3]) // At least 3 searches for reliable avg
             ->orderBy(['avgTime' => SORT_DESC])
             ->limit($limit);

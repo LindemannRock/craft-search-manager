@@ -59,17 +59,68 @@ final class AnalyticsTrendingBoundedPreviousTest extends TestCase
         self::assertSame('down', $trending[0]['trend']);
     }
 
-    public function testTrendingQueriesAccumulateCaseVariantPreviousRows(): void
+    public function testTrendingQueriesMergeCurrentAndPreviousCaseVariants(): void
     {
-        $method = new \ReflectionMethod(AnalyticsQueryInsightsService::class, 'foldNormalizedQueryCounts');
+        $now = new \DateTime();
+        $previous = (clone $now)->modify('-8 days');
+
+        foreach (['Test', 'Test', 'Test', 'test', 'test'] as $query) {
+            $this->seedRow($query, $now);
+        }
+        foreach (['TEST', 'test', 'test'] as $query) {
+            $this->seedRow($query, $previous);
+        }
+
+        $trending = SearchManager::$plugin->analytics->getTrendingQueries(self::TEST_SITE_ID, 'last7days', 10);
+
+        self::assertCount(1, $trending);
+        self::assertSame('Test', $trending[0]['query']);
+        self::assertSame(5, $trending[0]['count']);
+        self::assertSame(3, $trending[0]['previousCount']);
+        self::assertSame('up', $trending[0]['trend']);
+        self::assertSame(67.0, $trending[0]['changePercent']);
+    }
+
+    public function testTrendingFoldUsesDeterministicRepresentativeOnCountTie(): void
+    {
+        $method = new \ReflectionMethod(AnalyticsQueryInsightsService::class, 'foldNormalizedQueryRows');
         $method->setAccessible(true);
 
-        self::assertSame([
-            'case variant' => 5,
-        ], $method->invoke(null, [
-            ['query' => 'Case Variant', 'count' => 2],
-            ['query' => 'case variant', 'count' => 3],
+        self::assertSame([[
+            'query' => 'Case Variant',
+            'normalizedQuery' => 'case variant',
+            'count' => 4,
+        ]], $method->invoke(null, [
+            ['query' => 'case Variant', 'normalizedQuery' => 'case variant', 'count' => 2],
+            ['query' => 'Case Variant', 'normalizedQuery' => 'case variant', 'count' => 2],
         ]));
+    }
+
+    public function testGroupedQueryDisplaySurfacesDoNotGroupRawQueryText(): void
+    {
+        foreach ([
+            'AnalyticsQueryInsightsService.php',
+            'AnalyticsPerformanceService.php',
+            'AnalyticsRulesService.php',
+        ] as $filename) {
+            $source = file_get_contents(dirname(__DIR__, 2) . '/src/services/analytics/' . $filename);
+            self::assertIsString($source);
+            self::assertDoesNotMatchRegularExpression(
+                '/->groupBy\\(\\s*(?:[\'"]query[\'"]|\\[\\s*[\'"]query[\'"])/',
+                $source,
+                $filename,
+            );
+        }
+
+        $queryInsights = file_get_contents(dirname(__DIR__, 2) . '/src/services/analytics/AnalyticsQueryInsightsService.php');
+        $performance = file_get_contents(dirname(__DIR__, 2) . '/src/services/analytics/AnalyticsPerformanceService.php');
+        $rules = file_get_contents(dirname(__DIR__, 2) . '/src/services/analytics/AnalyticsRulesService.php');
+        self::assertIsString($queryInsights);
+        self::assertIsString($performance);
+        self::assertIsString($rules);
+        self::assertStringContainsString("->groupBy(['normalizedQuery', 'siteId'])", $queryInsights);
+        self::assertStringContainsString("->groupBy(['normalizedQuery', 'siteId'])", $performance);
+        self::assertStringContainsString("new Expression('LOWER([[query]])')", $rules);
     }
 
     private function seedRow(string $query, \DateTimeInterface $dateCreated): void

@@ -21,6 +21,7 @@ use lindemannrock\searchmanager\search\TermNormalizer;
  * Key patterns:
  * - sm:idx:{index}:doc:{siteId}:{elementId} → HASH {term: freq, _length: N}
  * - sm:idx:{index}:term:{term}:{siteId} → HASH {docId: frequency}
+ * - sm:idx:{index}:termlang:{term}:{siteId} → HASH {docId: language}
  * - sm:idx:{index}:termindex:{siteId} → ZSET {term: 0}
  * - sm:idx:{index}:termindex:sites → SET {siteId}
  * - sm:idx:{index}:title:{siteId}:{elementId} → SET {terms}
@@ -467,9 +468,9 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
     {
         $key = $this->getTermKey($term, $siteId);
         $docId = $siteId . ':' . $elementId;
-        // Note: Redis storage uses siteId for language context, language param not stored separately
 
         $this->redis->hSet($key, $docId, $frequency);
+        $this->redis->hSet($this->getTermLanguageKey($term, $siteId), $docId, $language);
         $this->addTermToIndex($term, $siteId);
     }
 
@@ -527,6 +528,7 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         $docId = $siteId . ':' . $elementId;
 
         $this->redis->hDel($key, $docId);
+        $this->redis->hDel($this->getTermLanguageKey($term, $siteId), $docId);
         $this->removeTermFromIndexIfUnused($term, $siteId);
     }
 
@@ -538,7 +540,9 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         }
 
         $key = $this->getTermKey($term, $siteId);
-        $this->redis->hSet($key, $siteId . ':' . $documentKey, $frequency);
+        $docId = $siteId . ':' . $documentKey;
+        $this->redis->hSet($key, $docId, $frequency);
+        $this->redis->hSet($this->getTermLanguageKey($term, $siteId), $docId, $language);
         $this->addTermToIndex($term, $siteId);
         $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
     }
@@ -551,7 +555,9 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
             return;
         }
 
-        $this->redis->hDel($this->getTermKey($term, $siteId), $siteId . ':' . $documentKey);
+        $docId = $siteId . ':' . $documentKey;
+        $this->redis->hDel($this->getTermKey($term, $siteId), $docId);
+        $this->redis->hDel($this->getTermLanguageKey($term, $siteId), $docId);
         $this->removeTermFromIndexIfUnused($term, $siteId);
     }
 
@@ -576,6 +582,7 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
 
         [$min, $max] = $this->termLexBounds($prefix);
         $termKeys = [];
+        $termLanguageKeys = [];
         $termsByKey = [];
         foreach ($siteIds as $sid) {
             $matchingTerms = $this->redis->zRangeByLex(
@@ -588,6 +595,9 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
             foreach ($matchingTerms as $term) {
                 $term = (string)$term;
                 $termKeys[] = $this->getTermKey($term, $sid);
+                if ($language !== null) {
+                    $termLanguageKeys[] = $this->getTermLanguageKey($term, $sid);
+                }
                 $termsByKey[] = $term;
             }
         }
@@ -601,6 +611,14 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
             $this->redis->hGetAll($key);
         }
         $termDocuments = $this->redis->exec();
+        $termLanguages = [];
+        if ($language !== null) {
+            $this->redis->multi(\Redis::PIPELINE);
+            foreach ($termLanguageKeys as $key) {
+                $this->redis->hGetAll($key);
+            }
+            $termLanguages = $this->redis->exec();
+        }
 
         $terms = [];
         foreach ($termDocuments as $index => $documents) {
@@ -609,6 +627,20 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
             }
 
             $term = $termsByKey[$index];
+            if ($language !== null) {
+                $postingLanguages = $termLanguages[$index] ?? [];
+                $documents = array_intersect_key(
+                    $documents,
+                    array_filter(
+                        is_array($postingLanguages) ? $postingLanguages : [],
+                        static fn(mixed $postingLanguage): bool => $postingLanguage === $language,
+                    ),
+                );
+            }
+            if ($documents === []) {
+                continue;
+            }
+
             $terms[$term] = ($terms[$term] ?? 0) + array_sum(array_map('intval', $documents));
         }
 
@@ -1401,6 +1433,7 @@ LUA;
         $patterns = [
             $this->keyPrefix . 'doc:' . $siteId . ':*',
             $this->keyPrefix . 'term:*:' . $siteId,
+            $this->keyPrefix . 'termlang:*:' . $siteId,
             $this->keyPrefix . 'title:' . $siteId . ':*',
             $this->keyPrefix . 'ngram:' . $siteId . ':*',
             $this->keyPrefix . 'ngramcount:' . $siteId . ':*',
@@ -1508,6 +1541,11 @@ LUA;
         return $this->keyPrefix . 'term:' . $term . ':' . $siteId;
     }
 
+    private function getTermLanguageKey(string $term, int $siteId): string
+    {
+        return $this->keyPrefix . 'termlang:' . $term . ':' . $siteId;
+    }
+
     private function getTermIndexKey(int $siteId): string
     {
         return $this->keyPrefix . 'termindex:' . $siteId;
@@ -1533,7 +1571,7 @@ LUA;
         }
 
         $termIndexKey = $this->getTermIndexKey($siteId);
-        $this->redis->del($termKey);
+        $this->redis->del([$termKey, $this->getTermLanguageKey($term, $siteId)]);
         $this->redis->zRem($termIndexKey, $term);
 
         if ($this->redis->zCard($termIndexKey) === 0) {

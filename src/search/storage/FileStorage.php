@@ -24,6 +24,7 @@ use lindemannrock\searchmanager\search\TermNormalizer;
  * Directory structure:
  * - docs/      - Document term frequencies and lengths
  * - terms/     - Inverted index (term -> documents)
+ * - term-languages/ - Term posting languages (term -> document languages)
  * - titles/    - Title terms per document
  * - ngrams/    - N-grams for fuzzy matching
  * - ngrams-index/ - N-gram inverted lookup buckets
@@ -93,6 +94,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             $this->basePath,
             $this->basePath . '/docs',
             $this->basePath . '/terms',
+            $this->basePath . '/term-languages',
             $this->basePath . '/titles',
             $this->basePath . '/ngrams',
             $this->basePath . '/ngrams-index',
@@ -403,15 +405,24 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     {
         $this->rememberFilenameKey($term);
         $termPath = $this->getTermPath($term, $siteId);
+        $termLanguagePath = $this->getTermLanguagePath($term, $siteId);
 
         $docId = $siteId . ':' . $elementId;
-        // Note: File storage uses siteId for language context, language param not stored separately
 
         $this->updateJsonFile(
             $termPath,
             static function(mixed $current) use ($docId, $frequency): array {
                 $data = is_array($current) ? $current : [];
                 $data[$docId] = $frequency;
+
+                return $data;
+            },
+        );
+        $this->updateJsonFile(
+            $termLanguagePath,
+            static function(mixed $current) use ($docId, $language): array {
+                $data = is_array($current) ? $current : [];
+                $data[$docId] = $language;
 
                 return $data;
             },
@@ -452,10 +463,20 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     public function removeTermDocument(string $term, int $siteId, int $elementId): void
     {
         $termPath = $this->getTermPath($term, $siteId);
+        $termLanguagePath = $this->getTermLanguagePath($term, $siteId);
         $docId = $siteId . ':' . $elementId;
 
         $this->updateJsonFile(
             $termPath,
+            static function(mixed $current) use ($docId): array {
+                $data = is_array($current) ? $current : [];
+                unset($data[$docId]);
+
+                return $data;
+            },
+        );
+        $this->updateJsonFile(
+            $termLanguagePath,
             static function(mixed $current) use ($docId): array {
                 $data = is_array($current) ? $current : [];
                 unset($data[$docId]);
@@ -476,6 +497,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
 
         $termPath = $this->getTermPath($term, $siteId);
+        $termLanguagePath = $this->getTermLanguagePath($term, $siteId);
         $docId = $siteId . ':' . $documentKey;
 
         $this->updateJsonFile(
@@ -483,6 +505,15 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             static function(mixed $current) use ($docId, $frequency): array {
                 $data = is_array($current) ? $current : [];
                 $data[$docId] = $frequency;
+
+                return $data;
+            },
+        );
+        $this->updateJsonFile(
+            $termLanguagePath,
+            static function(mixed $current) use ($docId, $language): array {
+                $data = is_array($current) ? $current : [];
+                $data[$docId] = $language;
 
                 return $data;
             },
@@ -498,10 +529,20 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         }
 
         $termPath = $this->getTermPath($term, $siteId);
+        $termLanguagePath = $this->getTermLanguagePath($term, $siteId);
         $docId = $siteId . ':' . $documentKey;
 
         $this->updateJsonFile(
             $termPath,
+            static function(mixed $current) use ($docId): array {
+                $data = is_array($current) ? $current : [];
+                unset($data[$docId]);
+
+                return $data;
+            },
+        );
+        $this->updateJsonFile(
+            $termLanguagePath,
             static function(mixed $current) use ($docId): array {
                 $data = is_array($current) ? $current : [];
                 unset($data[$docId]);
@@ -537,14 +578,29 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
             // Read serialized data
             $data = $this->readFile($file);
-            $count = is_array($data) ? count($data) : 0;
+            if ($language !== null && is_array($data)) {
+                $termSiteId = $siteId ?? $this->extractSiteIdFromTermFilename(basename($file));
+                if ($termSiteId === null) {
+                    continue;
+                }
 
-            if ($count > 0) {
+                $postingLanguages = $this->readFile($this->getTermLanguagePath($term, $termSiteId));
+                $data = array_intersect_key(
+                    $data,
+                    array_filter(
+                        is_array($postingLanguages) ? $postingLanguages : [],
+                        static fn(mixed $postingLanguage): bool => $postingLanguage === $language,
+                    ),
+                );
+            }
+            $frequency = is_array($data) ? array_sum(array_map('intval', $data)) : 0;
+
+            if ($frequency > 0) {
                 // Aggregate frequencies for all-sites
                 if (isset($terms[$term])) {
-                    $terms[$term] += $count;
+                    $terms[$term] += $frequency;
                 } else {
-                    $terms[$term] = $count;
+                    $terms[$term] = $frequency;
                 }
             }
         }
@@ -1219,6 +1275,10 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         foreach ($termFiles as $file) {
             @unlink($file);
         }
+        $termLanguageFiles = glob($this->basePath . '/term-languages/*_' . $siteId . '.dat');
+        foreach ($termLanguageFiles as $file) {
+            @unlink($file);
+        }
 
         $this->logInfo('Cleared site data', [
             'index' => $this->indexHandle,
@@ -1278,6 +1338,12 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     {
         $safeTerm = $this->sanitizeFilename($term);
         return $this->basePath . '/terms/' . $safeTerm . '_' . $siteId . '.dat';
+    }
+
+    private function getTermLanguagePath(string $term, int $siteId): string
+    {
+        $safeTerm = $this->sanitizeFilename($term);
+        return $this->basePath . '/term-languages/' . $safeTerm . '_' . $siteId . '.dat';
     }
 
     /**
@@ -1633,6 +1699,16 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         }
 
         return $term;
+    }
+
+    private function extractSiteIdFromTermFilename(string $filename): ?int
+    {
+        $stem = str_ends_with($filename, '.dat') ? substr($filename, 0, -4) : $filename;
+        if (preg_match('/_(\d+)$/', $stem, $matches) !== 1) {
+            return null;
+        }
+
+        return (int)$matches[1];
     }
 
     private function getTermsByIndexedNgramSimilarity(array $ngrams, int $siteId, float $threshold, int $limit): array
