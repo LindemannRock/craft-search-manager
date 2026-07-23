@@ -11,7 +11,10 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
+use craft\db\Query;
+use craft\elements\Entry;
 use lindemannrock\searchmanager\jobs\BatchSyncJob;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -112,5 +115,99 @@ final class SyncBufferHappyPathTest extends TestCase
         } finally {
             $index->updateStats($originalCount);
         }
+    }
+
+    public function testDeferredBatchSyncJobRefreshesDocumentCountAndSchedulesContinuation(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
+
+        [$index, $element] = $pair;
+        $stub = $this->installStubBackend();
+        $settings = SearchManager::$plugin->getSettings();
+        $originalBatchSize = $settings->syncBatchSize;
+        $queueIdsBefore = $this->batchSyncQueueIds();
+        $fakeElementId = (int) ((new Query())
+            ->from('{{%elements}}')
+            ->max('id')) + 1_000_000;
+
+        try {
+            $settings->syncBatchSize = 1;
+            $index->updateStats(987_654);
+            $this->repository->upsertRows([
+                [
+                    'indexHandle' => $index->handle,
+                    'elementType' => Entry::class,
+                    'elementId' => (int) $element->id,
+                    'siteId' => (int) $element->siteId,
+                    'op' => PendingSyncRepository::OP_UPSERT,
+                ],
+                [
+                    'indexHandle' => $index->handle,
+                    'elementType' => Entry::class,
+                    'elementId' => $fakeElementId,
+                    'siteId' => (int) $element->siteId,
+                    'op' => PendingSyncRepository::OP_UPSERT,
+                ],
+            ]);
+
+            $job = new class extends BatchSyncJob {
+                private int $budgetChecks = 0;
+
+                protected function hasExceededTimeBudget(float $started): bool
+                {
+                    return ++$this->budgetChecks > 1;
+                }
+            };
+            $job->execute(Craft::$app->queue);
+
+            $backendCount = $stub->documentCounts[$index->handle] ?? null;
+            $refreshed = SearchIndex::findByHandle($index->handle);
+            self::assertNotNull($backendCount);
+            self::assertNotNull($refreshed);
+            self::assertSame(
+                $backendCount,
+                $refreshed->documentCount,
+                'Deferred BatchSyncJob runs must reconcile successfully touched indices before exiting.',
+            );
+            self::assertNull(
+                $this->fetchPendingRow($index->handle, (int) $element->id, (int) $element->siteId),
+                'The first row should be successfully processed before the run defers.',
+            );
+            self::assertNotNull(
+                $this->fetchPendingRow($index->handle, $fakeElementId, (int) $element->siteId),
+                'A due row must remain so the run takes the continuation path.',
+            );
+            self::assertCount(
+                1,
+                array_diff($this->batchSyncQueueIds(), $queueIdsBefore),
+                'The deferred run must schedule exactly one continuation BatchSyncJob.',
+            );
+        } finally {
+            $settings->syncBatchSize = $originalBatchSize;
+            $newQueueIds = array_diff($this->batchSyncQueueIds(), $queueIdsBefore);
+            if ($newQueueIds !== []) {
+                Craft::$app->getDb()
+                    ->createCommand()
+                    ->delete('{{%queue}}', ['id' => $newQueueIds])
+                    ->execute();
+            }
+        }
+    }
+
+    /**
+     * @return int[]
+     */
+    private function batchSyncQueueIds(): array
+    {
+        return array_map(
+            'intval',
+            (new Query())
+                ->select(['id'])
+                ->from('{{%queue}}')
+                ->where(['like', 'job', 'searchmanager'])
+                ->andWhere(['like', 'job', 'BatchSyncJob'])
+                ->column(),
+        );
     }
 }

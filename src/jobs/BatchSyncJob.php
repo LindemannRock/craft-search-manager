@@ -72,16 +72,14 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
         $totalFailureGroups = 0;
         $passes = 0;
         $syncedIndexHandles = [];
-        $deferred = false;
 
         // Drain in `syncBatchSize` chunks within a single job until the buffer
         // is empty or our time budget runs out. The chunk size still bounds
         // the SQL UPDATE...WHERE id IN (...) cardinality, but we no longer
         // require N separate job invocations to drain N×chunk-size rows.
         while (true) {
-            if ((microtime(true) - $started) > self::TIME_BUDGET_SECONDS) {
+            if ($this->hasExceededTimeBudget($started)) {
                 if ($repository->hasDueRows()) {
-                    $deferred = true;
                     $repository->scheduleBatchJob(true);
                 }
                 break;
@@ -122,7 +120,7 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
         }
 
         if ($totalClaimed > 0) {
-            if (!$deferred && !empty($syncedIndexHandles)) {
+            if (!empty($syncedIndexHandles)) {
                 $this->refreshSyncedIndexCounts(array_keys($syncedIndexHandles));
             }
 
@@ -134,6 +132,14 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
                 'durationMs' => (int) round((microtime(true) - $started) * 1000),
             ]);
         }
+    }
+
+    /**
+     * Determine whether this run has exhausted its processing budget.
+     */
+    protected function hasExceededTimeBudget(float $started): bool
+    {
+        return (microtime(true) - $started) > self::TIME_BUDGET_SECONDS;
     }
 
     protected function defaultDescription(): ?string
