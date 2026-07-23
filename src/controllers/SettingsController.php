@@ -87,21 +87,10 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        // Load configured backends
-        $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
-        $enabledBackends = array_filter($backends, fn($b) => $b->enabled);
-
-        // Load configured widgets
-        $widgets = SearchManager::$plugin->widgetConfigs->getAll();
-        $enabledWidgets = array_filter($widgets, fn($w) => $w->enabled);
-
-        return $this->renderTemplate('search-manager/settings/general', [
-            'settings' => $settings,
-            'backends' => $backends,
-            'enabledBackends' => $enabledBackends,
-            'widgets' => $widgets,
-            'enabledWidgets' => $enabledWidgets,
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/general',
+            $this->_settingsTemplateVariables('general', $settings),
+        );
     }
 
     /**
@@ -117,9 +106,10 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        return $this->renderTemplate('search-manager/settings/indexing', [
-            'settings' => $settings,
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/indexing',
+            $this->_settingsTemplateVariables('indexing', $settings),
+        );
     }
 
     public function actionAnalytics(): Response
@@ -127,24 +117,21 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        return $this->renderTemplate('search-manager/settings/analytics', [
-            'settings' => $settings,
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/analytics',
+            $this->_settingsTemplateVariables('analytics', $settings),
+        );
     }
 
     public function actionSearch(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
-        $nativeSearchCoverage = SearchManager::$plugin->nativeSearchCoverage;
 
-        return $this->renderTemplate('search-manager/settings/search', [
-            'settings' => $settings,
-            'nativeSearchCoverageReport' => $nativeSearchCoverage->getReport(),
-            'nativeSearchHasLocalBackend' => $nativeSearchCoverage->hasLocalBackend(),
-            'nativeSearchDefaultBackendIsLocal' => $nativeSearchCoverage->defaultBackendIsLocal(),
-            'nativeSearchLocalBackendOptions' => $nativeSearchCoverage->getLocalBackendOptions(),
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/search',
+            $this->_settingsTemplateVariables('search', $settings),
+        );
     }
 
     public function actionLanguage(): Response
@@ -152,9 +139,10 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        return $this->renderTemplate('search-manager/settings/language', [
-            'settings' => $settings,
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/language',
+            $this->_settingsTemplateVariables('language', $settings),
+        );
     }
 
     public function actionHighlighting(): Response
@@ -162,9 +150,10 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        return $this->renderTemplate('search-manager/settings/highlighting', [
-            'settings' => $settings,
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/highlighting',
+            $this->_settingsTemplateVariables('highlighting', $settings),
+        );
     }
 
     /**
@@ -175,9 +164,10 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        return $this->renderTemplate('search-manager/settings/autocomplete', [
-            'settings' => $settings,
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/autocomplete',
+            $this->_settingsTemplateVariables('autocomplete', $settings),
+        );
     }
 
     /**
@@ -188,9 +178,10 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        return $this->renderTemplate('search-manager/settings/snippets', [
-            'settings' => $settings,
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/snippets',
+            $this->_settingsTemplateVariables('snippets', $settings),
+        );
     }
 
     public function actionCache(): Response
@@ -198,9 +189,10 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        return $this->renderTemplate('search-manager/settings/cache', [
-            'settings' => $settings,
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/cache',
+            $this->_settingsTemplateVariables('cache', $settings),
+        );
     }
 
     public function actionInterface(): Response
@@ -208,9 +200,10 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        return $this->renderTemplate('search-manager/settings/interface', [
-            'settings' => $settings,
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/interface',
+            $this->_settingsTemplateVariables('interface', $settings),
+        );
     }
 
     /**
@@ -229,15 +222,10 @@ class SettingsController extends Controller
 
         $settings = SearchManager::$plugin->getSettings();
 
-        // Get all configured backends for the backend selector
-        $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
-
-        return $this->renderTemplate('search-manager/settings/test', [
-            'settings' => $settings,
-            'cacheEnabled' => $settings->enableCache ?? true,
-            'backends' => $backends,
-            'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
-        ]);
+        return $this->renderTemplate(
+            'search-manager/settings/test',
+            $this->_settingsTemplateVariables('test', $settings),
+        );
     }
 
     public function actionDownloadPostmanCollection(): Response
@@ -1522,36 +1510,47 @@ class SettingsController extends Controller
      */
     private function _renderSettingsTemplate(string $section, Settings $settings): Response
     {
-        $template = "search-manager/settings/{$section}";
+        return $this->renderTemplate(
+            "search-manager/settings/{$section}",
+            $this->_settingsTemplateVariables($section, $settings),
+        );
+    }
 
-        if ($section === 'general') {
-            $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
-            $enabledBackends = array_filter($backends, fn($b) => $b->enabled);
-            $widgets = SearchManager::$plugin->widgetConfigs->getAll();
-            $enabledWidgets = array_filter($widgets, fn($w) => $w->enabled);
+    /**
+     * Assemble the complete template variable set for a settings section.
+     *
+     * @return array<string, mixed>
+     */
+    private function _settingsTemplateVariables(string $section, Settings $settings): array
+    {
+        $variables = ['settings' => $settings];
 
-            return $this->renderTemplate($template, [
-                'settings' => $settings,
-                'backends' => $backends,
-                'enabledBackends' => $enabledBackends,
-                'widgets' => $widgets,
-                'enabledWidgets' => $enabledWidgets,
-            ]);
-        }
+        return match ($section) {
+            'general' => (function() use ($variables): array {
+                $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+                $widgets = SearchManager::$plugin->widgetConfigs->getAll();
 
-        if ($section === 'test') {
-            $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
-
-            return $this->renderTemplate($template, [
-                'settings' => $settings,
+                return array_merge($variables, [
+                    'backends' => $backends,
+                    'enabledBackends' => array_filter($backends, fn($backend) => $backend->enabled),
+                    'widgets' => $widgets,
+                    'enabledWidgets' => array_filter($widgets, fn($widget) => $widget->enabled),
+                ]);
+            }
+            )(),
+            'search' => array_merge($variables, [
+                'nativeSearchCoverageReport' => SearchManager::$plugin->nativeSearchCoverage->getReport(),
+                'nativeSearchHasLocalBackend' => SearchManager::$plugin->nativeSearchCoverage->hasLocalBackend(),
+                'nativeSearchDefaultBackendIsLocal' => SearchManager::$plugin->nativeSearchCoverage->defaultBackendIsLocal(),
+                'nativeSearchLocalBackendOptions' => SearchManager::$plugin->nativeSearchCoverage->getLocalBackendOptions(),
+            ]),
+            'test' => array_merge($variables, [
                 'cacheEnabled' => $settings->enableCache ?? true,
-                'backends' => $backends,
-            ]);
-        }
-
-        return $this->renderTemplate($template, [
-            'settings' => $settings,
-        ]);
+                'backends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
+                'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
+            ]),
+            default => $variables,
+        };
     }
 
     public function actionCleanupAnalytics(): Response

@@ -407,6 +407,7 @@ class WidgetsController extends Controller
             'widgetApiKeyScopes' => $this->getWidgetApiKeyScopes($widgetApiKeys),
             'selectedApiKey' => $this->getSelectedWidgetApiKey($widgetConfig, $widgetApiKeys),
             'hasWidgetUsableApiKeys' => !empty($widgetApiKeys),
+            'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
             'widgetTypeOptions' => $this->getWidgetTypeOptions(),
             'defaultWidgetHandle' => $pluginSettings->defaultWidgetHandle,
             'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
@@ -992,26 +993,23 @@ class WidgetsController extends Controller
         $widgetStyle->styles = $styles;
 
         $defaultStyles = WidgetConfig::defaultStyleValues();
+        $errorRouteParams = [
+            'widgetStyle' => $widgetStyle,
+            'isNew' => !$styleId,
+            'defaultStyles' => $defaultStyles,
+            'usageCount' => $styleId ? $this->getStyleUsageCount($widgetStyle->handle) : null,
+            'widgetTypeOptions' => $this->getWidgetTypeOptions(),
+        ];
 
         if (!$widgetStyle->validate()) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget style'));
-            Craft::$app->getUrlManager()->setRouteParams([
-                'widgetStyle' => $widgetStyle,
-                'isNew' => !$styleId,
-                'defaultStyles' => $defaultStyles,
-                'widgetTypeOptions' => $this->getWidgetTypeOptions(),
-            ]);
+            Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
             return null;
         }
 
         if (!SearchManager::$plugin->widgetStyles->save($widgetStyle)) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget style'));
-            Craft::$app->getUrlManager()->setRouteParams([
-                'widgetStyle' => $widgetStyle,
-                'isNew' => !$styleId,
-                'defaultStyles' => $defaultStyles,
-                'widgetTypeOptions' => $this->getWidgetTypeOptions(),
-            ]);
+            Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
             return null;
         }
 
