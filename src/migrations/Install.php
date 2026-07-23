@@ -19,9 +19,9 @@ use craft\helpers\StringHelper;
  * - Settings table (single row, database-backed settings)
  * - Backends table (configured backend instances)
  * - Indices table (hybrid config - can be in config file OR database)
- * - Transformers table (element type to transformer mappings)
- * - Index queue table (for async indexing operations)
- * - Index stats table (for dashboard analytics)
+ * - Pending synchronization buffer
+ * - Search-engine storage tables
+ * - Analytics, merchandising, widget, and API-key tables
  *
  * @since 5.0.0
  */
@@ -34,10 +34,7 @@ class Install extends Migration
         $this->createBackendsTable();
         $this->createIndicesTable();
         $this->createIndexSitesTable();
-        $this->createTransformersTable();
-        $this->createIndexQueueTable();
         $this->createPendingSyncsTable();
-        $this->createIndexStatsTable();
         $this->createAnalyticsTable();
         $this->createSearchEngineTables();
         $this->createPromotionsTable();
@@ -76,10 +73,7 @@ class Install extends Migration
         $this->dropTableIfExists('{{%searchmanager_search_terms}}');
         $this->dropTableIfExists('{{%searchmanager_search_documents}}');
         $this->dropTableIfExists('{{%searchmanager_analytics}}');
-        $this->dropTableIfExists('{{%searchmanager_index_stats}}');
         $this->dropTableIfExists('{{%searchmanager_pending_syncs}}');
-        $this->dropTableIfExists('{{%searchmanager_index_queue}}');
-        $this->dropTableIfExists('{{%searchmanager_transformers}}');
         $this->dropTableIfExists('{{%searchmanager_index_sites}}');
         $this->dropTableIfExists('{{%searchmanager_indices}}');
         $this->dropTableIfExists('{{%searchmanager_backends}}');
@@ -286,70 +280,6 @@ class Install extends Migration
     }
 
     /**
-     * Create transformers table
-     * Maps element types to transformer classes
-     */
-    private function createTransformersTable(): void
-    {
-        if ($this->db->tableExists('{{%searchmanager_transformers}}')) {
-            return;
-        }
-
-        $this->createTable('{{%searchmanager_transformers}}', [
-            'id' => $this->primaryKey(),
-            'elementType' => $this->string(255)->notNull(),
-            'siteId' => $this->integer()->null(),
-            'section' => $this->string(255)->null(),
-            'transformerClass' => $this->string(255)->notNull(),
-            'enabled' => $this->boolean()->notNull()->defaultValue(true),
-            'priority' => $this->integer()->notNull()->defaultValue(0),
-            'config' => $this->text()->null(),
-            'dateCreated' => $this->dateTime()->notNull(),
-            'dateUpdated' => $this->dateTime()->notNull(),
-            'uid' => $this->uid(),
-        ]);
-
-        // Create indexes
-        $this->createIndex(null, '{{%searchmanager_transformers}}', ['elementType', 'siteId'], false);
-        $this->createIndex(null, '{{%searchmanager_transformers}}', ['enabled'], false);
-
-        // Create unique constraint for element type + site + section combination
-        $this->createIndex(null, '{{%searchmanager_transformers}}', ['elementType', 'siteId', 'section'], true);
-    }
-
-    /**
-     * Create index queue table
-     * Tracks pending indexing operations for async processing
-     */
-    private function createIndexQueueTable(): void
-    {
-        if ($this->db->tableExists('{{%searchmanager_index_queue}}')) {
-            return;
-        }
-
-        $this->createTable('{{%searchmanager_index_queue}}', [
-            'id' => $this->primaryKey(),
-            'elementId' => $this->integer()->notNull(),
-            'elementType' => $this->string(255)->notNull(),
-            'siteId' => $this->integer()->null(),
-            'action' => $this->enum('action', ['index', 'delete'])->notNull(),
-            'status' => $this->enum('status', ['pending', 'processing', 'completed', 'failed'])->notNull()->defaultValue('pending'),
-            'attempts' => $this->integer()->notNull()->defaultValue(0),
-            'lastAttempt' => $this->dateTime()->null(),
-            'error' => $this->text()->null(),
-            'dateCreated' => $this->dateTime()->notNull(),
-            'dateUpdated' => $this->dateTime()->notNull(),
-            'uid' => $this->uid(),
-        ]);
-
-        // Create indexes for queue processing
-        $this->createIndex(null, '{{%searchmanager_index_queue}}', ['elementId', 'elementType'], false);
-        $this->createIndex(null, '{{%searchmanager_index_queue}}', ['status'], false);
-        $this->createIndex(null, '{{%searchmanager_index_queue}}', ['action'], false);
-        $this->createIndex(null, '{{%searchmanager_index_queue}}', ['dateCreated'], false);
-    }
-
-    /**
      * Create pending syncs table
      * Collapses element save/delete events into per-index sync rows for batch processing
      */
@@ -385,34 +315,6 @@ class Install extends Migration
         $this->createIndex(null, '{{%searchmanager_pending_syncs}}', ['status', 'claimedAt'], false);
         $this->createIndex(null, '{{%searchmanager_pending_syncs}}', ['indexHandle', 'status'], false);
         $this->createIndex(null, '{{%searchmanager_pending_syncs}}', ['queuedAt'], false);
-    }
-
-    /**
-     * Create index stats table
-     * Stores daily statistics for dashboard/analytics
-     */
-    private function createIndexStatsTable(): void
-    {
-        if ($this->db->tableExists('{{%searchmanager_index_stats}}')) {
-            return;
-        }
-
-        $this->createTable('{{%searchmanager_index_stats}}', [
-            'id' => $this->primaryKey(),
-            'indexHandle' => $this->string(255)->notNull(),
-            'date' => $this->date()->notNull(),
-            'documentsIndexed' => $this->integer()->notNull()->defaultValue(0),
-            'documentsDeleted' => $this->integer()->notNull()->defaultValue(0),
-            'searchQueries' => $this->integer()->notNull()->defaultValue(0),
-            'avgSearchTime' => $this->float()->null(),
-            'errorCount' => $this->integer()->notNull()->defaultValue(0),
-            'dateCreated' => $this->dateTime()->notNull(),
-            'uid' => $this->uid(),
-        ]);
-
-        // Create indexes for analytics queries
-        $this->createIndex(null, '{{%searchmanager_index_stats}}', ['indexHandle', 'date'], true);
-        $this->createIndex(null, '{{%searchmanager_index_stats}}', ['date'], false);
     }
 
     /**

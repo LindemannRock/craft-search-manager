@@ -18,6 +18,7 @@ use lindemannrock\searchmanager\jobs\CleanupAnalyticsJob;
 use lindemannrock\searchmanager\jobs\SyncStatusJob;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
 
 /**
@@ -165,6 +166,53 @@ final class RecurringJobsRescheduleTest extends TestCase
         $this->invokePrivate(SearchManager::$plugin, 'scheduleStatusSync');
 
         $this->assertSame(1, $this->countQueueRows('SyncStatusJob'));
+    }
+
+    /**
+     * @param class-string<CleanupAnalyticsJob|SyncStatusJob> $jobClass
+     */
+    #[DataProvider('recurringJobStatusProvider')]
+    public function testRecurringJobStatusOnlyCountsPendingRows(string $jobClass, string $statusMethod): void
+    {
+        Craft::$app->getQueue()->delay(300)->push(new $jobClass([
+            'reschedule' => true,
+        ]));
+
+        self::assertTrue(SearchManager::$plugin->{$statusMethod}());
+
+        Craft::$app->getDb()->createCommand()
+            ->update('{{%queue}}', ['fail' => true], [
+                'and',
+                ['like', 'job', 'searchmanager'],
+                ['like', 'job', $jobClass],
+            ])
+            ->execute();
+
+        self::assertFalse(SearchManager::$plugin->{$statusMethod}());
+
+        Craft::$app->getDb()->createCommand()
+            ->update('{{%queue}}', [
+                'fail' => false,
+                'timeUpdated' => date('Y-m-d H:i:s'),
+            ], [
+                'and',
+                ['like', 'job', 'searchmanager'],
+                ['like', 'job', $jobClass],
+            ])
+            ->execute();
+
+        self::assertFalse(SearchManager::$plugin->{$statusMethod}());
+    }
+
+    /**
+     * @return array<string, array{class-string<CleanupAnalyticsJob|SyncStatusJob>, string}>
+     */
+    public static function recurringJobStatusProvider(): array
+    {
+        return [
+            'analytics cleanup' => [CleanupAnalyticsJob::class, 'isAnalyticsCleanupRunning'],
+            'status sync' => [SyncStatusJob::class, 'isStatusSyncRunning'],
+        ];
     }
 
     public function testBatchSyncContinuationSchedulesWhenExistingBatchRowExists(): void

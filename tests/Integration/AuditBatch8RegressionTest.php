@@ -133,6 +133,14 @@ final class AuditBatch8RegressionTest extends TestCase
         self::assertStringContainsString("'trackingAllowedOrigins' => App::env('SEARCH_MANAGER_TRACKING_ALLOWED_ORIGINS') ?: []", $config);
     }
 
+    public function testWidgetIndexLimitConfigContractIsFailClosed(): void
+    {
+        $config = $this->readPluginFileContents('src/config.php');
+
+        self::assertStringContainsString('Max 5 explicit indices per search (requests with >5 are rejected)', $config);
+        self::assertStringNotContainsString('search.indexHandles arrays with >5 items are truncated', $config);
+    }
+
     public function testCpSettingsTestToolDoesNotCallPublicTrackingEndpoints(): void
     {
         $publicTrackingEndpoints = [

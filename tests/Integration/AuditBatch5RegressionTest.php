@@ -76,10 +76,47 @@ final class AuditBatch5RegressionTest extends TestCase
         self::assertStringContainsString("'referer' => \$this->string(2048)->null(),", $source);
     }
 
-    public function testTransformerTableHasNoRuntimeWritePathYet(): void
+    public function testInstallContainsNoRuntimeDeadLegacyTables(): void
     {
-        foreach ($this->runtimePhpSources() as $file => $source) {
-            self::assertStringNotContainsString('searchmanager_transformers', $source, $file);
+        $source = $this->readPluginSource('src/migrations/Install.php');
+        $legacyTables = [
+            'searchmanager_transformers',
+            'searchmanager_index_queue',
+            'searchmanager_index_stats',
+        ];
+
+        foreach ([
+            ...$legacyTables,
+            'createTransformersTable',
+            'createIndexQueueTable',
+            'createIndexStatsTable',
+        ] as $legacySchemaToken) {
+            self::assertStringNotContainsString($legacySchemaToken, $source);
+        }
+
+        foreach ([
+            'searchmanager_pending_syncs',
+            'searchmanager_search_documents',
+            'searchmanager_analytics',
+        ] as $liveTable) {
+            self::assertStringContainsString($liveTable, $source);
+        }
+
+        foreach ($this->runtimePhpSources() as $file => $runtimeSource) {
+            foreach ($legacyTables as $legacyTable) {
+                self::assertStringNotContainsString($legacyTable, $runtimeSource, $file);
+            }
+        }
+    }
+
+    public function testBackendMetadataListsEverySupportedImplementation(): void
+    {
+        $composer = $this->readPluginSource('composer.json');
+        $plugin = $this->readPluginSource('src/SearchManager.php');
+
+        foreach (['Algolia', 'File', 'Meilisearch', 'MySQL', 'PostgreSQL', 'Redis', 'Typesense'] as $backend) {
+            self::assertStringContainsString($backend, $composer);
+            self::assertStringContainsString($backend, $plugin);
         }
     }
 

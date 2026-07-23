@@ -676,7 +676,7 @@ return [
          * SERVER-ENFORCED LIMITS (security):
          * - Query length: Max 256 characters (widget input enforces this client-side)
          * - Max results: Capped at 100 (behavior.resultsLimit values above 100 are silently capped)
-         * - Max indices: Max 5 indices per search (search.indexHandles arrays with >5 items are truncated)
+         * - Max indices: Max 5 explicit indices per search (requests with >5 are rejected)
          * - Analytics resultsCount: Capped at 1000
          * - Analytics source: Alphanumeric + dash/underscore only, max 64 chars
          *

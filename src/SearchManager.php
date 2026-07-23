@@ -85,7 +85,7 @@ use yii\base\Event;
  * Search Manager Plugin
  *
  * Advanced multi-backend search management for Craft CMS
- * Supports: Algolia, Meilisearch, MySQL, and Typesense
+ * Supports: Algolia, File, Meilisearch, MySQL, PostgreSQL, Redis, and Typesense
  *
  * @property-read BackendService $backend
  * @property-read ConfigIndexValidator $configIndexValidator
@@ -888,11 +888,7 @@ class SearchManager extends Plugin
      */
     public function isStatusSyncRunning(): bool
     {
-        return (new \craft\db\Query())
-            ->from('{{%queue}}')
-            ->where(['like', 'job', 'searchmanager'])
-            ->andWhere(['like', 'job', 'SyncStatusJob'])
-            ->exists();
+        return RecurringQueueHelper::hasPending('searchmanager', SyncStatusJob::class);
     }
 
     /**
@@ -940,11 +936,7 @@ class SearchManager extends Plugin
      */
     public function isAnalyticsCleanupRunning(): bool
     {
-        return (new \craft\db\Query())
-            ->from('{{%queue}}')
-            ->where(['like', 'job', 'searchmanager'])
-            ->andWhere(['like', 'job', 'CleanupAnalyticsJob'])
-            ->exists();
+        return RecurringQueueHelper::hasPending('searchmanager', CleanupAnalyticsJob::class);
     }
 
     /**

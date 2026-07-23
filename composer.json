@@ -1,6 +1,6 @@
 {
     "name": "lindemannrock/craft-search-manager",
-    "description": "Advanced multi-backend search management for Craft CMS - supports Algolia, File, Meilisearch, MySQL, Redis, and Typesense",
+    "description": "Advanced multi-backend search management for Craft CMS - supports Algolia, File, Meilisearch, MySQL, PostgreSQL, Redis, and Typesense",
     "type": "craft-plugin",
     "version": "5.53.2",
     "keywords": [
@@ -12,6 +12,7 @@
         "algolia",
         "meilisearch",
         "mysql",
+        "postgresql",
         "redis",
         "typesense",
         "full-text search",
