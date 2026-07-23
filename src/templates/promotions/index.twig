@@ -129,7 +129,7 @@
         {% set element = promotionElements[item.id] ?? null %}
         {% if element and element.id %}
             {% if element.cpEditUrl %}
-                <a href="{{ element.cpEditUrl }}" target="_blank">
+                <a href="{{ element.cpEditUrl }}" target="_blank" rel="noopener">
                     {{ element.uiLabel }}
                 </a>
             {% else %}

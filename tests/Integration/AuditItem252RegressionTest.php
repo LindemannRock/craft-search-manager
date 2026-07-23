@@ -32,7 +32,7 @@ final class AuditItem252RegressionTest extends TestCase
 
         self::assertStringContainsString('const rawUrl = hasSectionHit ? (hit.sectionUrl || hit.url) : hit.url;', $source);
         self::assertStringContainsString('const url = safeUrlAttribute(rawUrl);', $source);
-        self::assertStringContainsString('${url ? `<div class="sm-test-url"><a href="${url}" target="_blank">${urlText}</a></div>` : \'\'}', $source);
+        self::assertStringContainsString('${url ? `<div class="sm-test-url"><a href="${url}" target="_blank" rel="noopener">${urlText}</a></div>` : \'\'}', $source);
 
         self::assertStringNotContainsString('const url = hit.url || \'\';', $source);
         self::assertStringNotContainsString('hit.thumbnail', $source);
@@ -56,7 +56,7 @@ final class AuditItem252RegressionTest extends TestCase
             'const urlText = rawUrl ? escapeDisplay(rawUrl) : \'\';',
             'const rawType = hit.type || T.entry;',
             'const siteName = hit.siteName || hit.site || T.unknown;',
-            '<a href="${url}" target="_blank">${urlText}</a>',
+            '<a href="${url}" target="_blank" rel="noopener">${urlText}</a>',
             'renderMetaPill(T.typeLabel, rawType)',
             'renderMetaPill(T.siteLabel, siteName)',
             '<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(label)}</span> ${escapeDisplay(truncateDisplay(value, 96))}</span>',

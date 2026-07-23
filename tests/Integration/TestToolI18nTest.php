@@ -232,7 +232,7 @@ final class TestToolI18nTest extends TestCase
             '<span class="sm-test-site-list-items">',
             'function renderSafeLinkOrText(url, label)',
             'const safeUrl = safeUrlAttribute(url);',
-            'return safeUrl ? `<a href="${safeUrl}" target="_blank">${display}</a>` : display;',
+            'return safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener">${display}</a>` : display;',
             'data.synonyms.map(s => `<code>${Craft.escapeHtml(s)}</code>`).join(\', \')',
             'const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);',
             'function renderStatusLabel(label, colorClass)',
