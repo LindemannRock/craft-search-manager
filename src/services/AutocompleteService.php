@@ -196,6 +196,14 @@ class AutocompleteService extends Component
             return $suggestions;
         }
 
+        // Local postings and compound indices use bare language identifiers,
+        // while public callers and native backends may use regional variants.
+        // Normalize only after the external-backend fork so provider semantics
+        // keep the original normalized regional language.
+        if ($language !== null && str_contains($language, '-')) {
+            $language = substr($language, 0, 2);
+        }
+
         $suggestions = [];
 
         if ($isCompoundQuery) {

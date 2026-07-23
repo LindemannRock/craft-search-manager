@@ -217,6 +217,10 @@ final class RedisStorageRegressionTest extends TestCase
             ['protein' => 4, 'product' => 2, 'profile' => 1],
             $storage->getTermsForAutocomplete(1, null, 10, 'pro'),
         );
+        self::assertSame(
+            ['product' => 2],
+            $storage->getTermsForAutocomplete(1, 'ar', 10, 'pro'),
+        );
 
         $storage->removeTermDocumentByKey('product', 1, '102_1_details');
         self::assertSame([], $storage->getTermsForAutocomplete(1, 'ar', 10, 'pro'));

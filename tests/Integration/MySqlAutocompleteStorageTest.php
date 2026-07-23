@@ -75,6 +75,7 @@ final class MySqlAutocompleteStorageTest extends TestCase
         )->execute();
 
         $expectedLanguageTerms = ['protein' => 4, 'profile' => 1];
+        $expectedArabicTerms = ['product' => 2];
         $expectedAllTerms = ['protein' => 4, 'product' => 2, 'profile' => 1];
 
         self::assertSame(
@@ -84,6 +85,14 @@ final class MySqlAutocompleteStorageTest extends TestCase
         self::assertSame(
             $expectedLanguageTerms,
             (new PostgreSqlStorage(self::INDEX_HANDLE))->getTermsForAutocomplete(1, 'en', 10, 'pro'),
+        );
+        self::assertSame(
+            $expectedArabicTerms,
+            (new MySqlStorage(self::INDEX_HANDLE))->getTermsForAutocomplete(1, 'ar', 10, 'pro'),
+        );
+        self::assertSame(
+            $expectedArabicTerms,
+            (new PostgreSqlStorage(self::INDEX_HANDLE))->getTermsForAutocomplete(1, 'ar', 10, 'pro'),
         );
         self::assertSame(
             $expectedAllTerms,

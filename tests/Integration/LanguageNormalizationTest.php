@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
@@ -20,9 +21,11 @@ use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
 use lindemannrock\searchmanager\tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * Regression coverage for audit #121 language sanitization.
+ * Regression coverage for public language sanitization and local autocomplete
+ * language compatibility.
  */
 final class LanguageNormalizationTest extends TestCase
 {
@@ -139,13 +142,114 @@ final class LanguageNormalizationTest extends TestCase
         self::assertArrayNotHasKey('language', $backend->searchCalls[0]['options']);
     }
 
-    public function testAutocompleteServicePassesCanonicalLanguageToStorage(): void
-    {
-        $storage = $this->makeLanguageStorage([
-            '1:1' => 'en-us',
-            '1:2' => 'fr',
-        ]);
+    #[DataProvider('regionalAutocompleteLanguages')]
+    public function testAutocompleteServicePassesBareRegionalLanguageToLocalPrefixStorage(
+        string $publicLanguage,
+        string $storedLanguage,
+        string $query,
+        string $term,
+    ): void {
+        $storage = new RecordingStorage(
+            termDocs: [],
+            titleByElement: [],
+            docLengths: [],
+            totalDocs: 0,
+            avgDocLength: 0.0,
+            autocompleteTerms: [$term => 3],
+        );
         $backend = new LanguageRecordingBackend($storage);
+        $this->swapPluginComponent('search-manager', 'backend', new LanguageRecordingBackendService($backend));
+
+        $suggestions = SearchManager::$plugin->autocomplete->suggest($query, 'content', [
+            'language' => $publicLanguage,
+            'siteId' => 1,
+            'limit' => 5,
+            'minLength' => 1,
+            'fuzzy' => false,
+        ]);
+
+        self::assertSame([$term], $suggestions);
+        self::assertSame($storedLanguage, $storage->getTermsForAutocompleteCalls[0]['language'] ?? null);
+    }
+
+    #[DataProvider('regionalAutocompleteLanguages')]
+    public function testAutocompleteServicePassesBareRegionalLanguageToLocalCompoundStorage(
+        string $publicLanguage,
+        string $storedLanguage,
+        string $query,
+        string $term,
+    ): void {
+        $compound = $term . '.twig';
+        $storage = new RecordingStorage(
+            termDocs: [],
+            titleByElement: [],
+            docLengths: [],
+            totalDocs: 0,
+            avgDocLength: 0.0,
+            compoundSuggestions: [$compound => 3],
+        );
+        $backend = new LanguageRecordingBackend($storage);
+        $this->swapPluginComponent('search-manager', 'backend', new LanguageRecordingBackendService($backend));
+
+        $suggestions = SearchManager::$plugin->autocomplete->suggest($term . '.tw', 'content', [
+            'language' => $publicLanguage,
+            'siteId' => 1,
+            'limit' => 5,
+            'minLength' => 1,
+            'fuzzy' => false,
+        ]);
+
+        self::assertSame([$compound], $suggestions);
+        self::assertSame($storedLanguage, $storage->getCompoundSuggestionsForAutocompleteCalls[0]['language'] ?? null);
+    }
+
+    public function testAutocompleteServicePreservesBareAndNullLocalLanguageFilters(): void
+    {
+        $storage = new RecordingStorage(
+            termDocs: [],
+            titleByElement: [],
+            docLengths: [],
+            totalDocs: 0,
+            avgDocLength: 0.0,
+            autocompleteTerms: [
+                'product' => 3,
+                'protein' => 2,
+            ],
+        );
+        $backend = new LanguageRecordingBackend($storage);
+        $this->swapPluginComponent('search-manager', 'backend', new LanguageRecordingBackendService($backend));
+
+        $bareSuggestions = SearchManager::$plugin->autocomplete->suggest('pro', 'content', [
+            'language' => 'en',
+            'siteId' => 1,
+            'limit' => 5,
+            'minLength' => 1,
+            'fuzzy' => false,
+        ]);
+        $bareThreeLetterSuggestions = SearchManager::$plugin->autocomplete->suggest('pro', 'content', [
+            'language' => 'eng',
+            'siteId' => 1,
+            'limit' => 5,
+            'minLength' => 1,
+            'fuzzy' => false,
+        ]);
+        $unfilteredSuggestions = SearchManager::$plugin->autocomplete->suggest('pro', 'content', [
+            'limit' => 5,
+            'minLength' => 1,
+            'fuzzy' => false,
+        ]);
+
+        self::assertSame(['product', 'protein'], $bareSuggestions);
+        self::assertSame(['product', 'protein'], $bareThreeLetterSuggestions);
+        self::assertSame(['product', 'protein'], $unfilteredSuggestions);
+        self::assertSame('en', $storage->getTermsForAutocompleteCalls[0]['language'] ?? null);
+        self::assertSame('eng', $storage->getTermsForAutocompleteCalls[1]['language'] ?? null);
+        self::assertNull($storage->getTermsForAutocompleteCalls[2]['language'] ?? null);
+    }
+
+    public function testExternalNativeAutocompleteReceivesNormalizedRegionalLanguage(): void
+    {
+        $backend = new LanguageRecordingBackend();
         $this->swapPluginComponent('search-manager', 'backend', new LanguageRecordingBackendService($backend));
 
         $suggestions = SearchManager::$plugin->autocomplete->suggest('pro', 'content', [
@@ -155,8 +259,8 @@ final class LanguageNormalizationTest extends TestCase
             'minLength' => 1,
         ]);
 
-        self::assertSame(['protein'], $suggestions);
-        self::assertSame('en-us', $storage->getTermsForAutocompleteCalls[0]['language'] ?? null);
+        self::assertSame(['provider:pro'], $suggestions);
+        self::assertSame('en-us', $backend->autocompleteCalls[0]['options']['language'] ?? null);
     }
 
     public function testAutocompleteServiceFallsBackSafelyForUnsafeLanguage(): void
@@ -176,7 +280,20 @@ final class LanguageNormalizationTest extends TestCase
         ]);
 
         self::assertNotSame('../../../../tmp/payload', $storage->getTermsForAutocompleteCalls[0]['language'] ?? null);
-        self::assertMatchesRegularExpression('/\A[a-z]{2,3}(?:-[a-z0-9]{2,8}){0,2}\z/', $storage->getTermsForAutocompleteCalls[0]['language'] ?? '');
+        self::assertMatchesRegularExpression('/\A[a-z]{2,3}\z/', $storage->getTermsForAutocompleteCalls[0]['language'] ?? '');
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, string}>
+     */
+    public static function regionalAutocompleteLanguages(): iterable
+    {
+        yield 'English uppercase region' => ['en-US', 'en', 'pro', 'protein'];
+        yield 'English lowercase region' => ['en-us', 'en', 'pro', 'protein'];
+        yield 'Arabic uppercase region' => ['ar-SA', 'ar', 'بر', 'برنامج'];
+        yield 'Arabic lowercase region' => ['ar-sa', 'ar', 'بر', 'برنامج'];
+        yield 'Three-letter uppercase region' => ['eng-US', 'en', 'pro', 'protein'];
+        yield 'Three-letter lowercase region' => ['eng-us', 'en', 'pro', 'protein'];
     }
 
     /**
@@ -221,10 +338,13 @@ final class LanguageRecordingBackendService extends BackendService
     }
 }
 
-final class LanguageRecordingBackend implements BackendInterface, StorageBackedBackendInterface
+final class LanguageRecordingBackend implements AutocompleteBackendInterface, BackendInterface, StorageBackedBackendInterface
 {
     /** @var list<array{indexName: string, query: string, options: array<string, mixed>}> */
     public array $searchCalls = [];
+
+    /** @var list<array{indexName: string, query: string, options: array<string, mixed>}> */
+    public array $autocompleteCalls = [];
 
     public function __construct(private readonly ?RecordingStorage $storage = null)
     {
@@ -280,6 +400,22 @@ final class LanguageRecordingBackend implements BackendInterface, StorageBackedB
         ];
 
         return ['hits' => [], 'total' => 0];
+    }
+
+    public function autocomplete(string $indexName, string $query, array $options = []): array
+    {
+        $this->autocompleteCalls[] = [
+            'indexName' => $indexName,
+            'query' => $query,
+            'options' => $options,
+        ];
+
+        return ['provider:' . $query];
+    }
+
+    public function supportsAutocomplete(): bool
+    {
+        return true;
     }
 
     public function getStorage(string $indexHandle): StorageInterface
