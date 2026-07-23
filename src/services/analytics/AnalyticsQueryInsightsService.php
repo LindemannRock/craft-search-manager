@@ -637,27 +637,33 @@ class AnalyticsQueryInsightsService
     private static function foldNormalizedQueryRows(array $rows): array
     {
         $folded = [];
-        $representativeCounts = [];
+        $casingCounts = [];
 
         foreach ($rows as $row) {
             $queryKey = $row['normalizedQuery'];
             $queryText = $row['query'];
             $count = (int)$row['count'];
 
-            if (
-                !isset($folded[$queryKey])
-                || $count > $representativeCounts[$queryKey]
-                || ($count === $representativeCounts[$queryKey] && strcmp($queryText, $folded[$queryKey]['query']) < 0)
-            ) {
+            if (!isset($folded[$queryKey])) {
                 $folded[$queryKey] = [
                     'query' => $queryText,
                     'normalizedQuery' => $queryKey,
-                    'count' => $folded[$queryKey]['count'] ?? 0,
+                    'count' => 0,
                 ];
-                $representativeCounts[$queryKey] = $count;
             }
 
             $folded[$queryKey]['count'] += $count;
+            $casingCounts[$queryKey][$queryText] = ($casingCounts[$queryKey][$queryText] ?? 0) + $count;
+
+            $representative = $folded[$queryKey]['query'];
+            $representativeCount = $casingCounts[$queryKey][$representative];
+            $queryTextCount = $casingCounts[$queryKey][$queryText];
+            if (
+                $queryTextCount > $representativeCount
+                || ($queryTextCount === $representativeCount && strcmp($queryText, $representative) < 0)
+            ) {
+                $folded[$queryKey]['query'] = $queryText;
+            }
         }
 
         return array_values($folded);

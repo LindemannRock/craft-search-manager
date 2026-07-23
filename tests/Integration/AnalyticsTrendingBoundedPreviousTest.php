@@ -64,7 +64,7 @@ final class AnalyticsTrendingBoundedPreviousTest extends TestCase
         $now = new \DateTime();
         $previous = (clone $now)->modify('-8 days');
 
-        foreach (['Test', 'Test', 'Test', 'test', 'test'] as $query) {
+        foreach (['Test', 'Test', 'test', 'test', 'test'] as $query) {
             $this->seedRow($query, $now);
         }
         foreach (['TEST', 'test', 'test'] as $query) {
@@ -74,7 +74,7 @@ final class AnalyticsTrendingBoundedPreviousTest extends TestCase
         $trending = SearchManager::$plugin->analytics->getTrendingQueries(self::TEST_SITE_ID, 'last7days', 10);
 
         self::assertCount(1, $trending);
-        self::assertSame('Test', $trending[0]['query']);
+        self::assertSame('test', $trending[0]['query']);
         self::assertSame(5, $trending[0]['count']);
         self::assertSame(3, $trending[0]['previousCount']);
         self::assertSame('up', $trending[0]['trend']);
@@ -86,14 +86,57 @@ final class AnalyticsTrendingBoundedPreviousTest extends TestCase
         $method = new \ReflectionMethod(AnalyticsQueryInsightsService::class, 'foldNormalizedQueryRows');
         $method->setAccessible(true);
 
-        self::assertSame([[
+        $expected = [[
             'query' => 'Case Variant',
             'normalizedQuery' => 'case variant',
             'count' => 4,
-        ]], $method->invoke(null, [
+        ]];
+        $rows = [
             ['query' => 'case Variant', 'normalizedQuery' => 'case variant', 'count' => 2],
             ['query' => 'Case Variant', 'normalizedQuery' => 'case variant', 'count' => 2],
+        ];
+
+        self::assertSame($expected, $method->invoke(null, $rows));
+        self::assertSame($expected, $method->invoke(null, array_reverse($rows)));
+    }
+
+    public function testTrendingFoldPreservesTotalWhenRepresentativeChanges(): void
+    {
+        $method = new \ReflectionMethod(AnalyticsQueryInsightsService::class, 'foldNormalizedQueryRows');
+        $method->setAccessible(true);
+
+        self::assertSame([[
+            'query' => 'test',
+            'normalizedQuery' => 'test',
+            'count' => 5,
+        ]], $method->invoke(null, [
+            ['query' => 'Test', 'normalizedQuery' => 'test', 'count' => 1],
+            ['query' => 'Test', 'normalizedQuery' => 'test', 'count' => 1],
+            ['query' => 'test', 'normalizedQuery' => 'test', 'count' => 1],
+            ['query' => 'test', 'normalizedQuery' => 'test', 'count' => 1],
+            ['query' => 'test', 'normalizedQuery' => 'test', 'count' => 1],
         ]));
+    }
+
+    public function testTrendingFoldIsIndependentOfInputOrder(): void
+    {
+        $method = new \ReflectionMethod(AnalyticsQueryInsightsService::class, 'foldNormalizedQueryRows');
+        $method->setAccessible(true);
+
+        $rows = [
+            ['query' => 'test', 'normalizedQuery' => 'test', 'count' => 1],
+            ['query' => 'Test', 'normalizedQuery' => 'test', 'count' => 1],
+            ['query' => 'test', 'normalizedQuery' => 'test', 'count' => 2],
+            ['query' => 'Test', 'normalizedQuery' => 'test', 'count' => 1],
+        ];
+        $expected = [[
+            'query' => 'test',
+            'normalizedQuery' => 'test',
+            'count' => 5,
+        ]];
+
+        self::assertSame($expected, $method->invoke(null, $rows));
+        self::assertSame($expected, $method->invoke(null, array_reverse($rows)));
     }
 
     public function testGroupedQueryDisplaySurfacesDoNotGroupRawQueryText(): void
