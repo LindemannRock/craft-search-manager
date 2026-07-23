@@ -70,7 +70,6 @@
 {% if rule.hasErrors() %}
 	{% set validationSummary = include('lindemannrock-base/_partials/error-summary', {
 		errors: rule.getErrors(),
-		linkMode: 'data-key',
 	})|trim %}
 {% endif %}
 {% set errorSummary = [setupIncompleteSummary, validationSummary]|filter(v => v)|join("\n") %}
@@ -108,7 +107,7 @@
 
 		<hr>
 
-		<div class="field{% if rule.getErrors('matchType') %} has-errors{% endif %}">
+		<div class="field{% if rule.getErrors('matchType') %} has-errors{% endif %}" data-error-key="matchType">
 			<div class="heading">
 				<label for="matchType">{{ 'Match Type'|t('search-manager') }}
 					<span class="required" aria-label="{{ 'Required'|t('search-manager') }}"></span>
@@ -204,7 +203,7 @@
 
 		<hr>
 
-		<div class="field{% if rule.getErrors('actionType') %} has-errors{% endif %}">
+		<div class="field{% if rule.getErrors('actionType') %} has-errors{% endif %}" data-error-key="actionType">
 			<div class="heading">
 				<label for="actionType">{{ 'Action Type'|t('search-manager') }}
 					<span class="required" aria-label="{{ 'Required'|t('search-manager') }}"></span>
@@ -249,7 +248,7 @@
 
 		{# Synonym fields #}
 		<div id="action-synonym" class="action-fields" style="{{ rule.actionType != 'synonym' ? 'display: none;' : '' }}">
-			<div class="field{% if rule.actionType == 'synonym' and rule.getErrors('actionValue') %} has-errors{% endif %}">
+			<div class="field{% if rule.actionType == 'synonym' and rule.getErrors('actionValue') %} has-errors{% endif %}" data-error-key="actionValue">
 				<div class="heading">
 					<label for="synonyms">{{ 'Synonyms'|t('search-manager') }}</label>
 					<div class="instructions">
@@ -293,6 +292,7 @@
 				options: sectionOptions,
 				value: rule.actionValue.sectionHandle ?? '',
 				errors: rule.actionType == 'boost_section' ? rule.getErrors('actionValue') : [],
+				fieldAttributes: {'data-error-key': 'actionValue'},
 			}) }}
 
 			{{ forms.selectField({
@@ -317,6 +317,7 @@
 				limit: 1,
 				elements: (rule.actionValue.categoryId ?? null) ? [craft.categories.id(rule.actionValue.categoryId).status(null).one()] : [],
 				errors: rule.actionType == 'boost_category' ? rule.getErrors('actionValue') : [],
+				fieldAttributes: {'data-error-key': 'actionValue'},
 			}) }}
 
 			{{ forms.selectField({
@@ -341,7 +342,7 @@
 
 			{% for targetTypeOption in targetTypeOptions %}
 				{% set targetType = targetTypeOption.value %}
-				<div id="boost-element-{{ targetType }}-field" class="boost-element-field{{ boostElementTargetType != targetType ? ' hidden' : '' }}">
+				<div id="boost-element-{{ targetType }}-field" class="boost-element-field{{ boostElementTargetType != targetType ? ' hidden' : '' }}" data-error-key="actionValue">
 					{{ forms.elementSelectField({
 						label: 'Boost Element'|t('search-manager'),
 						instructions: 'Select the element to boost when this rule matches.'|t('search-manager'),
@@ -382,7 +383,7 @@
 			}) }}
 
 			{# Custom URL field #}
-			<div id="redirect-url-field" class="{{ redirectType != 'url' ? 'hidden' : '' }}">
+			<div id="redirect-url-field" class="{{ redirectType != 'url' ? 'hidden' : '' }}" data-error-key="actionValue">
 				{{ forms.textField({
 					label: 'Redirect URL'|t('search-manager'),
 					instructions: 'The URL to redirect to. Can be a path (/page) or full URL (https://...).'|t('search-manager'),
@@ -396,7 +397,7 @@
 
 			{% for targetTypeOption in targetTypeOptions %}
 				{% set targetType = targetTypeOption.value %}
-				<div id="redirect-{{ targetType }}-field" class="redirect-element-field{{ redirectType != targetType ? ' hidden' : '' }}">
+				<div id="redirect-{{ targetType }}-field" class="redirect-element-field{{ redirectType != targetType ? ' hidden' : '' }}" data-error-key="actionValue">
 					{{ forms.elementSelectField({
 						label: 'Element'|t('search-manager'),
 						id: 'redirectElement' ~ targetType|capitalize,
@@ -420,7 +421,7 @@
 
 		<hr>
 
-		<div class="field{% if rule.getErrors('priority') %} has-errors{% endif %}">
+		<div class="field{% if rule.getErrors('priority') %} has-errors{% endif %}" data-error-key="priority">
 			<div class="heading">
 				<label for="priority">{{ 'Priority'|t('search-manager') }}</label>
 				<div class="instructions">

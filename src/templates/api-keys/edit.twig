@@ -78,7 +78,6 @@
 {% if apiKey.hasErrors() %}
     {% set validationSummary = include('lindemannrock-base/_partials/error-summary', {
         errors: apiKey.getErrors(),
-        linkMode: 'data-key',
     })|trim %}
 {% endif %}
 
@@ -163,6 +162,7 @@
         on: apiKey.allowsAllIndices(),
         errors: apiKey.getErrors('allowedIndices'),
         data: {key: 'allowedIndices'},
+        fieldAttributes: {'data-error-key': 'allowedIndices'},
     }) }}
 
     <div id="allowed-indices-explicit" {% if apiKey.allowsAllIndices() %}style="display:none;"{% endif %}>
@@ -175,6 +175,7 @@
                 name: 'allowedIndices',
                 values: apiKey.allowedIndices,
                 options: allIndices|map(idx => {value: idx.handle, label: idx.name}),
+                fieldAttributes: {'data-error-key': 'allowedIndices'},
             }) }}
         {% endif %}
     </div>

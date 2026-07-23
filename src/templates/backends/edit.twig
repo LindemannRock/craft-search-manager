@@ -73,7 +73,6 @@
 {% if backend.hasErrors() %}
 	{% set validationSummary = include('lindemannrock-base/_partials/error-summary', {
 		errors: backend.getErrors(),
-		linkMode: 'data-key',
 	})|trim %}
 {% endif %}
 {% set errorSummary = [setupIncompleteSummary, validationSummary]|filter(v => v)|join("\n") %}
@@ -161,6 +160,13 @@
 				{% endif %}
 
 				{% set backendDescriptions = constant('lindemannrock\\searchmanager\\models\\ConfiguredBackend::BACKEND_DESCRIPTIONS') %}
+				{% set errorProducingSettingsKeys = {
+					algolia: ['applicationId', 'adminApiKey'],
+					meilisearch: ['host'],
+					typesense: ['host', 'port', 'protocol', 'adminApiKey'],
+					redis: ['port', 'database'],
+					file: ['storagePath'],
+				} %}
 
 				{% for type, schema in settingsSchemas %}
 					{% set typeDesc = backendDescriptions[type] ?? null %}
@@ -232,6 +238,7 @@
 	                                        placeholder: fieldPlaceholder|t('search-manager'),
                                         suggestEnvVars: true,
                                         errors: backend.getErrors('settings.' ~ key),
+                                        fieldAttributes: key in (errorProducingSettingsKeys[type] ?? []) ? {'data-error-key': 'settings.' ~ key} : {},
                                     }) }}
 									{% elseif config.type == 'number' %}
 										{{ forms.autosuggestField({
@@ -244,6 +251,7 @@
 	                                        placeholder: fieldPlaceholder|t('search-manager'),
                                         suggestEnvVars: true,
                                         errors: backend.getErrors('settings.' ~ key),
+                                        fieldAttributes: key in (errorProducingSettingsKeys[type] ?? []) ? {'data-error-key': 'settings.' ~ key} : {},
                                     }) }}
 									{% elseif config.type == 'select' %}
 										{{ forms.selectField({
@@ -255,6 +263,7 @@
                                         required: config.required ?? false,
                                         options: config.options,
                                         errors: backend.getErrors('settings.' ~ key),
+                                        fieldAttributes: key in (errorProducingSettingsKeys[type] ?? []) ? {'data-error-key': 'settings.' ~ key} : {},
                                     }) }}
 									{% else %}
 										{{ forms.autosuggestField({
@@ -268,6 +277,7 @@
 	                                        placeholder: fieldPlaceholder|t('search-manager'),
                                         suggestEnvVars: true,
                                         errors: backend.getErrors('settings.' ~ key),
+                                        fieldAttributes: key in (errorProducingSettingsKeys[type] ?? []) ? {'data-error-key': 'settings.' ~ key} : {},
                                     }) }}
 
 										{% if type == 'file' and key == 'storagePath' %}

@@ -8,7 +8,8 @@
 		name: 'settings[analytics][analyticsSource]',
 		value: widgetConfig.getAnalyticsSource(),
 		placeholder: 'frontend-widget',
-		errors: widgetConfig.getErrors('settings.analytics.analyticsSource')
+		errors: widgetConfig.getErrors('settings.analytics.analyticsSource'),
+		fieldAttributes: {'data-error-key': 'settings.analytics.analyticsSource'},
 	}) }}
 
 	{{ forms.textField({

@@ -70,7 +70,6 @@
 {% if promotion.hasErrors() %}
 	{% set validationSummary = include('lindemannrock-base/_partials/error-summary', {
 		errors: promotion.getErrors(),
-		linkMode: 'data-key',
 	})|trim %}
 {% endif %}
 {% set errorSummary = [setupIncompleteSummary, validationSummary]|filter(v => v)|join("\n") %}
@@ -108,7 +107,7 @@
 
 		<hr>
 
-		<div class="field{% if promotion.getErrors('matchType') %} has-errors{% endif %}">
+		<div class="field{% if promotion.getErrors('matchType') %} has-errors{% endif %}" data-error-key="matchType">
 			<div class="heading">
 				<label for="matchType">{{ 'Match Type'|t('search-manager') }}</label>
 				<div class="instructions">
@@ -192,11 +191,12 @@
 			name: 'promotedElementType',
 			options: targetTypeOptions,
 			value: selectedTargetType,
+			fieldAttributes: {'data-error-key': 'elementType'},
 		}) }}
 
 		{% for targetTypeOption in targetTypeOptions %}
 			{% set targetType = targetTypeOption.value %}
-			<div id="promoted-element-{{ targetType }}-field" class="promoted-element-field{{ selectedTargetType != targetType ? ' hidden' : '' }}">
+			<div id="promoted-element-{{ targetType }}-field" class="promoted-element-field{{ selectedTargetType != targetType ? ' hidden' : '' }}" data-error-key="elementId">
 				{{ forms.elementSelectField({
 					label: 'Promoted Element'|t('search-manager'),
 					instructions: 'Select the element to pin to the top of search results when the query matches.'|t('search-manager'),
@@ -212,7 +212,7 @@
 			</div>
 		{% endfor %}
 
-		<div class="field">
+		<div class="field" data-error-key="position">
 			<div class="heading">
 				<label for="position">{{ 'Position'|t('search-manager') }}</label>
 				<div class="instructions">
