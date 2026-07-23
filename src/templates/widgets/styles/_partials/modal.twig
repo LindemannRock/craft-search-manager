@@ -394,6 +394,7 @@
 	id: 'styles-backdropBlur',
 	name: namePrefix ~ '[backdropBlur]',
 	on: styles.backdropBlur != '0',
+	errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.backdropBlur') : [],
 }) }}
 
 {% css %}

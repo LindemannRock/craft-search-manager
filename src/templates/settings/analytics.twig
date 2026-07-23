@@ -44,6 +44,7 @@
             name: 'settings[enableAnalytics]',
             on: settings.enableAnalytics ?? true,
             toggle: 'analytics-settings',
+            errors: settings.getErrors('enableAnalytics'),
             disabled: settings.isOverriddenByConfig('enableAnalytics'),
             warning: settings.isOverriddenByConfig('enableAnalytics') ?
                 "This is being overridden by the <code>enableAnalytics</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
@@ -61,6 +62,7 @@
             name: 'settings[enableGeoDetection]',
             on: settings.enableGeoDetection ?? false,
             toggle: 'geo-provider-settings',
+            errors: settings.getErrors('enableGeoDetection'),
             disabled: settings.isOverriddenByConfig('enableGeoDetection'),
             warning: settings.isOverriddenByConfig('enableGeoDetection') ?
                 "This is being overridden by the <code>enableGeoDetection</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
@@ -83,6 +85,7 @@
             id: 'anonymizeIpAddress',
             name: 'settings[anonymizeIpAddress]',
             on: settings.anonymizeIpAddress ?? false,
+            errors: settings.getErrors('anonymizeIpAddress'),
             disabled: settings.isOverriddenByConfig('anonymizeIpAddress'),
             warning: settings.isOverriddenByConfig('anonymizeIpAddress') ?
                 "This is being overridden by the <code>anonymizeIpAddress</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,

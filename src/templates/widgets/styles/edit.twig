@@ -147,6 +147,7 @@
 			id: 'enabled',
 			name: 'enabled',
 			on: widgetStyle.enabled ?? true,
+			errors: widgetStyle.getErrors('enabled'),
 		}) }}
 
 		{{ forms.selectField({

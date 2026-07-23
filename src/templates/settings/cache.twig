@@ -85,6 +85,7 @@
             id: 'enableCache',
             name: 'settings[enableCache]',
             on: settings.enableCache,
+            errors: settings.getErrors('enableCache'),
             disabled: settings.isOverriddenByConfig('enableCache'),
             warning: settings.isOverriddenByConfig('enableCache') ?
                 "This is being overridden by the <code>enableCache</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
@@ -124,6 +125,7 @@
             name: 'settings[enableAutocompleteCache]',
             on: settings.enableAutocompleteCache ?? true,
             toggle: 'autocomplete-cache-settings',
+            errors: settings.getErrors('enableAutocompleteCache'),
             disabled: settings.isOverriddenByConfig('enableAutocompleteCache'),
             warning: settings.isOverriddenByConfig('enableAutocompleteCache') ?
                 "This is being overridden by the <code>enableAutocompleteCache</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
@@ -165,6 +167,7 @@
             name: 'settings[clearCacheOnSave]',
             on: settings.clearCacheOnSave ?? true,
             tip: 'When disabled, cache expires naturally based on Cache Duration setting'|t('search-manager'),
+            errors: settings.getErrors('clearCacheOnSave'),
             disabled: settings.isOverriddenByConfig('clearCacheOnSave'),
             warning: settings.isOverriddenByConfig('clearCacheOnSave') ?
                 "This is being overridden by config file."|t('search-manager')|raw : null,
@@ -212,6 +215,7 @@
                 name: 'settings[enableCacheWarming]',
                 on: settings.enableCacheWarming ?? true,
                 toggle: 'cache-warming-settings',
+                errors: settings.getErrors('enableCacheWarming'),
                 disabled: settings.isOverriddenByConfig('enableCacheWarming'),
                 warning: settings.isOverriddenByConfig('enableCacheWarming') ?
                     "This is being overridden by the <code>enableCacheWarming</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
@@ -276,6 +280,7 @@
                 name: 'settings[cacheDeviceDetection]',
                 on: settings.cacheDeviceDetection ?? true,
                 toggle: 'device-cache-settings',
+                errors: settings.getErrors('cacheDeviceDetection'),
                 disabled: settings.isOverriddenByConfig('cacheDeviceDetection'),
                 warning: settings.isOverriddenByConfig('cacheDeviceDetection') ?
                     "This is being overridden by the <code>cacheDeviceDetection</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,

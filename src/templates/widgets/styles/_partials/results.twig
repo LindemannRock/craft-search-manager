@@ -387,6 +387,7 @@
 				{value: 'b', label: '<b> - Bold text'|t('search-manager')},
 				{value: 'i', label: '<i> - Italic text'|t('search-manager')},
 		],
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.highlightTag') : [],
 		tip: 'Default: <mark> (from global highlighting settings)'|t('search-manager'),
 	}) }}
 
@@ -397,6 +398,7 @@
 		name: namePrefix ~ '[highlightClass]',
 		value: styles.highlightClass ?? '',
 		placeholder: 'search-highlight',
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.highlightClass') : [],
 		tip: 'Use for custom styling via CSS'|t('search-manager'),
 	}) }}
 

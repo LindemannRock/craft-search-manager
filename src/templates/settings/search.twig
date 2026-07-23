@@ -161,6 +161,7 @@
             name: 'settings[enableFuzzy]',
             on: settings.enableFuzzy ?? true,
             toggle: 'fuzzy-settings',
+            errors: settings.getErrors('enableFuzzy'),
             disabled: settings.isOverriddenByConfig('enableFuzzy'),
             warning: settings.isOverriddenByConfig('enableFuzzy') ?
                 "This is being overridden by the <code>enableFuzzy</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
@@ -242,6 +243,7 @@
 				on: settings.replaceNativeSearch,
 				toggle: 'native-search-coverage-settings',
 				tip: "When disabled, use craft.searchManager.search() in templates instead."|t('search-manager'),
+				errors: settings.getErrors('replaceNativeSearch'),
 				disabled: settings.isOverriddenByConfig('replaceNativeSearch'),
 				warning: settings.isOverriddenByConfig('replaceNativeSearch') ?
 					"This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,

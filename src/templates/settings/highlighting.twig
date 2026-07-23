@@ -98,6 +98,7 @@
             name: 'settings[highlightResultsEnabled]',
             on: settings.highlightResultsEnabled ?? true,
             toggle: 'highlighting-settings',
+            errors: settings.getErrors('highlightResultsEnabled'),
             disabled: settings.isOverriddenByConfig('highlightResultsEnabled'),
             warning: settings.isOverriddenByConfig('highlightResultsEnabled') ?
                 "This is being overridden by the <code>highlightResultsEnabled</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,

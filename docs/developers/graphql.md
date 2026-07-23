@@ -125,7 +125,7 @@ Beyond `total`, `page`, `resultsLimit`, `totalPages`, `hits`, and `indices`, the
 | Field | Notes |
 |-------|-------|
 | `error` | Validation failure message, set instead of results when the query exceeds 256 characters, when more than 5 explicit `indexHandles` are passed, when `filters` is used with more than one index, or when no indices are configured. |
-| `redirect` | Redirect URL when a [query rule](../feature-tour/query-rules.md) redirect matched the query — send the user there instead of rendering hits. |
+| `redirect` | Redirect URL when a [query rule](../feature-tour/query-rules.md) redirect matched the query — send the user there instead of rendering hits. For schema-wide searches spanning multiple sites, the first non-null redirect in schema site-scope order wins. |
 | `query` | Echo of the executed query string. |
 | `meta` | Backend/cache metadata for diagnostics (see below). Omitted unless `debugEnabled: true` is requested and debug access is allowed. |
 

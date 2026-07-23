@@ -7,6 +7,7 @@
 	name: 'settings[behavior][highlightDestinationEnabled]',
 	on: widgetConfig.isHighlightDestinationEnabled(),
 	toggle: 'destination-highlight-options',
+	errors: widgetConfig.getErrors('settings.behavior.highlightDestinationEnabled'),
 }) }}
 
 <div id="destination-highlight-options"{% if not widgetConfig.isHighlightDestinationEnabled() %} class="hidden"{% endif %}>
@@ -16,6 +17,7 @@
 		id: 'behavior-highlightDestinationPersistQuery',
 		name: 'settings[behavior][highlightDestinationPersistQuery]',
 		on: widgetConfig.isHighlightDestinationPersistQueryEnabled(),
+		errors: widgetConfig.getErrors('settings.behavior.highlightDestinationPersistQuery'),
 	}) }}
 
 	{{ forms.textField({

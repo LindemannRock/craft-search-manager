@@ -392,7 +392,7 @@ class SearchResolver extends Resolver
                 : SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $siteOptions);
         }
 
-        $merged = ['hits' => [], 'total' => 0, 'indices' => []];
+        $merged = ['hits' => [], 'total' => 0, 'indices' => [], 'redirect' => null];
         foreach ($siteIds as $siteId) {
             $siteOptions = array_merge($options, [
                 'siteId' => $siteId,
@@ -405,6 +405,12 @@ class SearchResolver extends Resolver
 
             $merged['hits'] = array_merge($merged['hits'], is_array($siteResults['hits'] ?? null) ? $siteResults['hits'] : []);
             $merged['total'] += (int)($siteResults['total'] ?? 0);
+
+            // Site scope order is authoritative when multiple sites match
+            // different redirect rules.
+            if ($merged['redirect'] === null && ($siteResults['redirect'] ?? null) !== null) {
+                $merged['redirect'] = $siteResults['redirect'];
+            }
 
             if (isset($siteResults['indices']) && is_array($siteResults['indices'])) {
                 foreach ($siteResults['indices'] as $index => $total) {

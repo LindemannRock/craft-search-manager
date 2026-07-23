@@ -19,6 +19,7 @@
 	id: 'behavior-resultsRequireUrl',
 	name: 'settings[behavior][resultsRequireUrl]',
 	on: widgetConfig.isResultsRequireUrlEnabled(),
+	errors: widgetConfig.getErrors('settings.behavior.resultsRequireUrl'),
 }) }}
 
 <hr>
@@ -45,6 +46,7 @@
 		id: 'behavior-resultsGroupingEnabled',
 		name: 'settings[behavior][resultsGroupingEnabled]',
 		on: widgetConfig.isResultsGroupingEnabled(),
+		errors: widgetConfig.getErrors('settings.behavior.resultsGroupingEnabled'),
 	}) }}
 </div>
 

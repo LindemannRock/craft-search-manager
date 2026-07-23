@@ -550,8 +550,27 @@ class ConfiguredBackend extends Model
         $backends = [];
         $backendConfigs = BaseConfigFileHelper::getConfigSection(self::PLUGIN_HANDLE, 'backends');
 
-        foreach ($backendConfigs as $handle => $backendConfig) {
-            $backends[] = self::createFromConfig($handle, $backendConfig);
+        foreach ($backendConfigs as $rawHandle => $backendConfig) {
+            $handle = (string)$rawHandle;
+
+            if (!is_string($rawHandle) || !is_array($backendConfig)) {
+                Craft::warning([
+                    'message' => 'Skipping invalid config backend item',
+                    'handle' => $handle !== '' ? $handle : '(empty)',
+                    'type' => get_debug_type($backendConfig),
+                ], self::PLUGIN_HANDLE);
+                continue;
+            }
+
+            try {
+                $backends[] = self::createFromConfig($handle, $backendConfig);
+            } catch (\Throwable $e) {
+                Craft::warning([
+                    'message' => 'Failed to build config backend; skipping item',
+                    'handle' => $handle,
+                    'error' => $e->getMessage(),
+                ], self::PLUGIN_HANDLE);
+            }
         }
 
         return $backends;

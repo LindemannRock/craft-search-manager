@@ -51,6 +51,14 @@ final class StubBackend extends BackendService
         'total' => 0,
     ];
 
+    /**
+     * Optional per-site responses for multi-site resolver tests.
+     *
+     * @var array<int, array<string, mixed>>
+     * @since 5.54.0
+     */
+    public array $searchResponsesBySiteId = [];
+
     /** @var array<string, mixed> */
     public array $searchMultipleResponse = [
         'hits' => [],
@@ -256,6 +264,16 @@ final class StubBackend extends BackendService
     }
 
     /**
+     * @since 5.54.0
+     */
+    public function clearIndex(string $indexName): bool
+    {
+        $this->calls[] = ['method' => 'clearIndex', 'indexName' => $indexName];
+
+        return true;
+    }
+
+    /**
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      */
@@ -272,7 +290,11 @@ final class StubBackend extends BackendService
             ],
         ];
 
-        return $this->searchResponse;
+        $siteId = isset($options['siteId']) ? (int)$options['siteId'] : null;
+
+        return $siteId !== null && isset($this->searchResponsesBySiteId[$siteId])
+            ? $this->searchResponsesBySiteId[$siteId]
+            : $this->searchResponse;
     }
 
     /**

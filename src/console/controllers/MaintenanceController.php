@@ -433,6 +433,8 @@ class MaintenanceController extends Controller
             $this->stdout("  Cleared {$tableName}: {$count} rows\n");
         }
 
+        $this->resetIndexDocumentCounts('database');
+
         return [
             'success' => true,
             'message' => "{$driverLabel} storage cleared successfully ({$deletedRows} total rows deleted). Rebuild affected indices to re-index your content.",
@@ -499,6 +501,8 @@ class MaintenanceController extends Controller
             }
         }
 
+        $this->resetIndexDocumentCounts('redis');
+
         return [
             'success' => true,
             'message' => "Redis storage cleared successfully ({$deletedKeysTotal} keys deleted). Rebuild affected indices to re-index your content.",
@@ -525,6 +529,8 @@ class MaintenanceController extends Controller
 
             $this->stdout("  Deleted {$fileCount} files from {$indicesPath}\n");
         }
+
+        $this->resetIndexDocumentCounts('file');
 
         return [
             'success' => true,
@@ -828,6 +834,37 @@ class MaintenanceController extends Controller
             '{{%searchmanager_search_elements}}',
             '{{%searchmanager_search_compounds}}',
         ];
+    }
+
+    /**
+     * Reset document counts for indices backed by a cleared storage type.
+     */
+    private function resetIndexDocumentCounts(string $storageType): void
+    {
+        $typesToMatch = $storageType === 'database' ? ['mysql', 'pgsql'] : [$storageType];
+        $defaultBackendHandle = SearchManager::$plugin->getSettings()->defaultBackendHandle ?? '';
+
+        foreach (SearchIndex::findAll() as $index) {
+            $backendType = $index->effectiveBackendType ?? $this->getBackendTypeFromHandle($defaultBackendHandle);
+            if (!in_array($backendType, $typesToMatch, true)) {
+                continue;
+            }
+
+            $index->updateStats(0);
+            $this->logDebug('Reset documentCount for index', [
+                'index' => $index->handle,
+                'backendType' => $backendType,
+            ]);
+        }
+    }
+
+    private function getBackendTypeFromHandle(string $handle): string
+    {
+        if ($handle === '') {
+            return 'mysql';
+        }
+
+        return ConfiguredBackend::findByHandle($handle)?->backendType ?: 'mysql';
     }
 
     /**

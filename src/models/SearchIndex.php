@@ -1828,73 +1828,42 @@ class SearchIndex extends Model
                 return false;
             }
 
-            // Extract fresh values from config
-            $freshName = $configData['name'] ?? $this->handle;
-            $freshTransformer = $configData['transformer'] ?? null;
-            $freshLanguage = $configData['language'] ?? null;
-            $freshHeadingLevels = $configData['headingLevels'] ?? null;
-            $freshEnabled = $configData['enabled'] ?? true;
-            $freshDisableStopWords = $configData['disableStopWords'] ?? false;
-            $freshRetrievableFields = self::normalizeRetrievableFields($configData['retrievableFields'] ?? null);
-            $criteriaJson = self::encodeConfigCriteriaForPersistence($configData['criteria'] ?? []);
+            $attributes = $this->configPersistenceAttributes($configData);
+            $siteIds = $attributes['siteIds'];
+            unset($attributes['siteIds']);
 
             // Validate transformer class before updating stats
-            if (!$this->validateConfigTransformerClass($freshTransformer)) {
+            if (!$this->validateConfigTransformerClass($attributes['transformerClass'])) {
                 return false;
             }
 
             $now = new \DateTime();
             $nowDb = Db::prepareDateForDb($now);
-            $headingLevelsJson = $freshHeadingLevels ? json_encode($freshHeadingLevels) : null;
-            $retrievableFieldsJson = json_encode($freshRetrievableFields);
+            $insertAttributes = array_merge($attributes, [
+                'lastIndexed' => $nowDb,
+                'documentCount' => $documentCount,
+                'dateCreated' => $nowDb,
+                'dateUpdated' => $nowDb,
+                'uid' => StringHelper::UUID(),
+            ]);
+            $updateAttributes = array_merge($attributes, [
+                'lastIndexed' => $nowDb,
+                'documentCount' => $documentCount,
+                'dateUpdated' => $nowDb,
+            ]);
+            unset($updateAttributes['handle'], $updateAttributes['source']);
 
             Craft::$app->getDb()
                 ->createCommand()
                 ->upsert(
                     '{{%searchmanager_indices}}',
-                    [
-                        'name' => $freshName,
-                        'handle' => $this->handle,
-                        'elementType' => $this->elementType,
-                        'siteId' => is_array($this->siteId) ? null : $this->siteId,
-                        'criteria' => $criteriaJson,
-                        'transformerClass' => $freshTransformer ?: '',
-                        'headingLevels' => $headingLevelsJson,
-                        'language' => $freshLanguage,
-                        'enabled' => (int)$freshEnabled,
-                        'disableStopWords' => (int)$freshDisableStopWords,
-                        'retrievableFields' => $retrievableFieldsJson,
-                        'source' => 'config',
-                        'lastIndexed' => $nowDb,
-                        'documentCount' => $documentCount,
-                        'dateCreated' => $nowDb,
-                        'dateUpdated' => $nowDb,
-                        'uid' => \craft\helpers\StringHelper::UUID(),
-                    ],
-                    [
-                        'name' => $freshName,
-                        'criteria' => $criteriaJson,
-                        'transformerClass' => $freshTransformer ?: '',
-                        'headingLevels' => $headingLevelsJson,
-                        'language' => $freshLanguage,
-                        'enabled' => (int)$freshEnabled,
-                        'disableStopWords' => (int)$freshDisableStopWords,
-                        'retrievableFields' => $retrievableFieldsJson,
-                        'lastIndexed' => $nowDb,
-                        'documentCount' => $documentCount,
-                        'dateUpdated' => $nowDb,
-                    ],
+                    $insertAttributes,
+                    $updateAttributes,
                 )
                 ->execute();
 
-            // Update current object with fresh values
-            $this->name = $freshName;
-            $this->transformerClass = $freshTransformer;
-            $this->headingLevels = $freshHeadingLevels;
-            $this->language = $freshLanguage;
-            $this->enabled = $freshEnabled;
-            $this->disableStopWords = (bool)$freshDisableStopWords;
-            $this->retrievableFields = $freshRetrievableFields;
+            $attributes['siteIds'] = $siteIds;
+            $this->applyConfigPersistenceAttributesToModel($attributes);
             $this->lastIndexed = $now;
             $this->documentCount = $documentCount;
             self::clearCache();

@@ -7,6 +7,7 @@
 	name: 'settings[behavior][recentlyViewedEnabled]',
 	on: widgetConfig.isRecentlyViewedEnabled(),
 	toggle: 'recently-viewed-limit-field',
+	errors: widgetConfig.getErrors('settings.behavior.recentlyViewedEnabled'),
 }) }}
 
 <div id="recently-viewed-limit-field"{% if not widgetConfig.isRecentlyViewedEnabled() and not widgetConfig.getErrors('settings.behavior.recentlyViewedLimit') %} class="hidden"{% endif %}>

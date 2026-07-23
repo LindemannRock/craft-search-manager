@@ -60,8 +60,25 @@ class WidgetStyleService extends Component
         $this->_configFileStyles = [];
         $styles = BaseConfigFileHelper::getConfigSection(self::PLUGIN_HANDLE, 'widgetStyles');
 
-        foreach ($styles as $handle => $configData) {
-            $this->_configFileStyles[$handle] = $this->createFromConfig($handle, $configData);
+        foreach ($styles as $rawHandle => $configData) {
+            $handle = (string)$rawHandle;
+
+            if (!is_string($rawHandle) || !is_array($configData)) {
+                $this->logWarning('Skipping invalid config widget style item', [
+                    'handle' => $handle !== '' ? $handle : '(empty)',
+                    'type' => get_debug_type($configData),
+                ]);
+                continue;
+            }
+
+            try {
+                $this->_configFileStyles[$handle] = $this->createFromConfig($handle, $configData);
+            } catch (\Throwable $e) {
+                $this->logWarning('Failed to build config widget style; skipping item', [
+                    'handle' => $handle,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return $this->_configFileStyles;

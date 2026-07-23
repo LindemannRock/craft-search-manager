@@ -49,6 +49,7 @@
             name: 'settings[enableAutocomplete]',
             on: settings.enableAutocomplete ?? true,
             toggle: 'autocomplete-settings',
+            errors: settings.getErrors('enableAutocomplete'),
             disabled: settings.isOverriddenByConfig('enableAutocomplete'),
             warning: settings.isOverriddenByConfig('enableAutocomplete') ?
                 "This is being overridden by the <code>enableAutocomplete</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,

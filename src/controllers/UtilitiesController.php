@@ -612,6 +612,10 @@ class UtilitiesController extends Controller
             $deletedFilesTotal += $fileCount;
         }
 
+        // Reset documentCount even when storage was already empty: stale
+        // metadata is still part of the clear operation's state.
+        $this->resetIndexDocumentCounts('file');
+
         if ($deletedFilesTotal === 0) {
             return [
                 'success' => true,
@@ -619,9 +623,6 @@ class UtilitiesController extends Controller
                 'deletedFiles' => 0,
             ];
         }
-
-        // Reset documentCount for all File-backed indices
-        $this->resetIndexDocumentCounts('file');
 
         return [
             'success' => true,

@@ -18,6 +18,7 @@
 	id: 'behavior-modalPreventBodyScroll',
 	name: 'settings[behavior][modalPreventBodyScroll]',
 	on: widgetConfig.isModalPreventBodyScrollEnabled(),
+	errors: widgetConfig.getErrors('settings.behavior.modalPreventBodyScroll'),
 }) }}
 
 {{ forms.lightswitchField({
@@ -26,6 +27,7 @@
 	id: 'behavior-loadingIndicatorEnabled',
 	name: 'settings[behavior][loadingIndicatorEnabled]',
 	on: widgetConfig.isLoadingIndicatorEnabled(),
+	errors: widgetConfig.getErrors('settings.behavior.loadingIndicatorEnabled'),
 }) }}
 
 {{ forms.lightswitchField({
@@ -35,6 +37,7 @@
 	name: 'settings[trigger][triggerEnabled]',
 	on: widgetConfig.isTriggerEnabled(),
 	toggle: 'trigger-label-field',
+	errors: widgetConfig.getErrors('settings.trigger.triggerEnabled'),
 }) }}
 
 <div id="trigger-label-field"{% if not widgetConfig.isTriggerEnabled() %} class="hidden"{% endif %}>

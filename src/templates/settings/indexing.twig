@@ -41,6 +41,7 @@
             id: 'autoIndex',
             name: 'settings[autoIndex]',
             on: settings.autoIndex,
+            errors: settings.getErrors('autoIndex'),
             disabled: settings.isOverriddenByConfig('autoIndex'),
             warning: settings.isOverriddenByConfig('autoIndex') ?
                 "This is being overridden by the <code>autoIndex</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,

@@ -124,7 +124,7 @@ class IndexController extends Controller
                 return ExitCode::OK;
             }
 
-            SearchManager::$plugin->backend->clearIndex($this->handle);
+            $this->clearIndex($index);
             $this->stdout("\n✓ Index cleared: {$index->name}\n", Console::FG_GREEN);
         } else {
             if (!$this->confirm('This will clear all indices. Continue?')) {
@@ -134,12 +134,20 @@ class IndexController extends Controller
 
             $indices = SearchIndex::findAll();
             foreach ($indices as $index) {
-                SearchManager::$plugin->backend->clearIndex($index->handle);
+                $this->clearIndex($index);
             }
 
             $this->stdout("\n✓ All indices cleared\n", Console::FG_GREEN);
         }
 
         return ExitCode::OK;
+    }
+
+    private function clearIndex(SearchIndex $index): void
+    {
+        SearchManager::$plugin->backend->clearIndex($index->handle);
+        $index->updateStats(0);
+        SearchManager::$plugin->backend->clearSearchCache($index->handle);
+        SearchManager::$plugin->autocomplete->clearCache($index->handle);
     }
 }

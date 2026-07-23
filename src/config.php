@@ -682,7 +682,7 @@ return [
          *
          * Available options:
          * - name: Display name for the config
-         * - type: Widget type ('modal', 'page', 'inline') — default: 'modal'
+         * - type: Widget type ('modal' only in this version) — default: 'modal'
          * - enabled: Whether the config is active
          * - styleHandle: Handle of a widget style preset (from widgetStyles below or CP)
          * - settings: Widget settings (merged with defaults)
@@ -854,7 +854,7 @@ return [
          *
          * Available options:
          * - name: Display name for the style
-         * - type: Widget type this style applies to ('modal', 'page', 'inline') — default: 'modal'
+         * - type: Widget type this style applies to ('modal' only in this version) — default: 'modal'
          * - enabled: Whether the style is active (default: true)
          * - styles: Visual style properties — all values are strings
          *   Each property has a light mode key and a dark mode key (suffixed with 'Dark').

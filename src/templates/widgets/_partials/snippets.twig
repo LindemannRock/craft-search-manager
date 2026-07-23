@@ -6,6 +6,7 @@
 	id: 'behavior-snippetIncludeCodeBlocks',
 	name: 'settings[behavior][snippetIncludeCodeBlocks]',
 	on: widgetConfig.isSnippetIncludeCodeBlocksEnabled(),
+	errors: widgetConfig.getErrors('settings.behavior.snippetIncludeCodeBlocks'),
 }) }}
 
 {{ forms.selectField({
@@ -43,4 +44,5 @@
 	id: 'behavior-snippetCleanMarkdown',
 	name: 'settings[behavior][snippetCleanMarkdown]',
 	on: widgetConfig.isSnippetCleanMarkdownEnabled(),
+	errors: widgetConfig.getErrors('settings.behavior.snippetCleanMarkdown'),
 }) }}

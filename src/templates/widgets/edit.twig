@@ -219,7 +219,8 @@
 				label: 'Enabled'|t('search-manager'),
 				id: 'enabled',
 				name: 'enabled',
-				on: widgetConfig.enabled ?? true
+				on: widgetConfig.enabled ?? true,
+				errors: widgetConfig.getErrors('enabled')
 			}) }}
 		{% endif %}
 

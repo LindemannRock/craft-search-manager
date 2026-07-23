@@ -76,8 +76,25 @@ class WidgetConfigService extends Component
         $this->_configFileConfigs = [];
         $widgetConfigs = BaseConfigFileHelper::getConfigSection(self::PLUGIN_HANDLE, 'widgets');
 
-        foreach ($widgetConfigs as $handle => $configData) {
-            $this->_configFileConfigs[$handle] = $this->createFromConfig($handle, $configData);
+        foreach ($widgetConfigs as $rawHandle => $configData) {
+            $handle = (string)$rawHandle;
+
+            if (!is_string($rawHandle) || !is_array($configData)) {
+                $this->logWarning('Skipping invalid config widget item', [
+                    'handle' => $handle !== '' ? $handle : '(empty)',
+                    'type' => get_debug_type($configData),
+                ]);
+                continue;
+            }
+
+            try {
+                $this->_configFileConfigs[$handle] = $this->createFromConfig($handle, $configData);
+            } catch (\Throwable $e) {
+                $this->logWarning('Failed to build config widget; skipping item', [
+                    'handle' => $handle,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return $this->_configFileConfigs;

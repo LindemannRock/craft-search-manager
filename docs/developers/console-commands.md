@@ -80,6 +80,7 @@ After rebuilding, cache warming runs automatically if enabled (see [Caching](../
 ### `search-manager/index/clear`
 
 Clear all indices or a specific index without re-indexing. The index configuration remains — only the data is removed.
+The command also resets each cleared index's stored document count and clears its search-results and autocomplete caches, matching the Control Panel action.
 
 Clear all indices:
 
@@ -126,6 +127,7 @@ ddev craft search-manager/maintenance/status
 ### `search-manager/maintenance/clear-storage`
 
 Clear backend storage data. Use this for cleanup or troubleshooting. The `--type` option is **required**.
+After storage is cleared, Search Manager resets the stored document counts for every index using that storage type. Search-results and autocomplete caches are unchanged.
 
 ```bash title="PHP"
 php craft search-manager/maintenance/clear-storage --type=database
