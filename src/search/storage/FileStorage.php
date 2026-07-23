@@ -522,18 +522,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             return [];
         }
 
-        // File storage uses: term_siteId.dat format (e.g., test_1.dat)
-        if ($siteId !== null) {
-            // Specific site
-            $files = glob($termsPath . '/*_' . $siteId . '.dat');
-        } else {
-            // All sites - get all .dat files
-            $files = glob($termsPath . '/*.dat');
-        }
-
-        if (!is_array($files)) {
-            return [];
-        }
+        $files = $this->termFilesForPrefix($prefix, $siteId);
 
         $terms = [];
         foreach ($files as $file) {
@@ -956,7 +945,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         }
 
         $matchingTerms = [];
-        $files = glob($termsDir . '/*_' . $siteId . '.dat');
+        $files = $this->termFilesForPrefix($prefix, $siteId);
 
         foreach ($files as $file) {
             $term = $this->extractTermFromFilename(basename($file), $siteId);
@@ -966,6 +955,43 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         }
 
         return $matchingTerms;
+    }
+
+    /**
+     * Narrow ordinary term filenames by prefix while retaining encoded and
+     * hashed filename families so prefix lookup semantics stay unchanged.
+     *
+     * @return list<string>
+     */
+    private function termFilesForPrefix(?string $prefix, ?int $siteId): array
+    {
+        $termsPath = $this->basePath . '/terms';
+        $siteSuffix = $siteId !== null ? '_' . $siteId : '_*';
+        $patterns = [];
+
+        if ($prefix !== null && $prefix !== '') {
+            if (preg_match('/\A[A-Za-z0-9_-]+\z/', $prefix) === 1) {
+                $patterns[] = $termsPath . '/' . $prefix . '*' . $siteSuffix . '.dat';
+            }
+
+            // Encoded and long hashed terms do not preserve arbitrary textual
+            // prefixes in their filenames, so scan only those reserved families
+            // and apply the exact decoded prefix check at the caller.
+            $patterns[] = $termsPath . '/' . self::ENCODED_FILENAME_PREFIX . '*' . $siteSuffix . '.dat';
+            $patterns[] = $termsPath . '/' . self::HASHED_FILENAME_PREFIX . '*' . $siteSuffix . '.dat';
+        } else {
+            $patterns[] = $termsPath . '/*' . $siteSuffix . '.dat';
+        }
+
+        $files = [];
+        foreach ($patterns as $pattern) {
+            $matches = glob($pattern);
+            if (is_array($matches)) {
+                $files = array_merge($files, $matches);
+            }
+        }
+
+        return array_values(array_unique($files));
     }
 
     /**

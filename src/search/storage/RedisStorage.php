@@ -21,6 +21,8 @@ use lindemannrock\searchmanager\search\TermNormalizer;
  * Key patterns:
  * - sm:idx:{index}:doc:{siteId}:{elementId} → HASH {term: freq, _length: N}
  * - sm:idx:{index}:term:{term}:{siteId} → HASH {docId: frequency}
+ * - sm:idx:{index}:termindex:{siteId} → ZSET {term: 0}
+ * - sm:idx:{index}:termindex:sites → SET {siteId}
  * - sm:idx:{index}:title:{siteId}:{elementId} → SET {terms}
  * - sm:idx:{index}:ngram:{siteId}:{ngram} → SET {terms}
  * - sm:idx:{index}:ngramcount:{siteId}:{term} → STRING (count)
@@ -468,6 +470,7 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         // Note: Redis storage uses siteId for language context, language param not stored separately
 
         $this->redis->hSet($key, $docId, $frequency);
+        $this->addTermToIndex($term, $siteId);
     }
 
     /**
@@ -524,6 +527,7 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         $docId = $siteId . ':' . $elementId;
 
         $this->redis->hDel($key, $docId);
+        $this->removeTermFromIndexIfUnused($term, $siteId);
     }
 
     public function storeTermDocumentByKey(string $term, int $siteId, int $elementId, string $documentKey, int $frequency, string $language = 'en'): void
@@ -535,6 +539,7 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
 
         $key = $this->getTermKey($term, $siteId);
         $this->redis->hSet($key, $siteId . ':' . $documentKey, $frequency);
+        $this->addTermToIndex($term, $siteId);
         $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
     }
 
@@ -547,6 +552,7 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         }
 
         $this->redis->hDel($this->getTermKey($term, $siteId), $siteId . ':' . $documentKey);
+        $this->removeTermFromIndexIfUnused($term, $siteId);
     }
 
     /**
@@ -554,40 +560,34 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
      */
     public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000, ?string $prefix = null): array
     {
-        $termPattern = $prefix !== null && $prefix !== '' ? $prefix . '*' : '*';
-
-        // Pattern: {prefix}term:TERM:SITE_ID
-        // For all-sites indices (siteId = null), match all siteIds with wildcard
-        if ($siteId !== null) {
-            $pattern = $this->keyPrefix . 'term:' . $termPattern . ':' . $siteId;
-        } else {
-            // All sites - use wildcard for siteId
-            $pattern = $this->keyPrefix . 'term:' . $termPattern . ':*';
-        }
-
-        $keys = $this->scanKeys($pattern);
-
-        if (!is_array($keys) || empty($keys)) {
+        if ($limit < 1) {
             return [];
         }
 
+        $siteIds = $siteId !== null
+            ? [$siteId]
+            : array_values(array_unique(array_map(
+                'intval',
+                $this->redis->sMembers($this->getTermIndexSitesKey()) ?: [],
+            )));
+        if ($siteIds === []) {
+            return [];
+        }
+
+        [$min, $max] = $this->termLexBounds($prefix);
         $termKeys = [];
         $termsByKey = [];
-        foreach ($keys as $key) {
-            // Key format: {prefix}term:TERM:SITE_ID
-            $keyRemainder = str_starts_with($key, $this->keyPrefix)
-                ? substr($key, strlen($this->keyPrefix))
-                : '';
-            $parts = explode(':', $keyRemainder, 3);
-
-            if (($parts[0] ?? null) === 'term' && isset($parts[1], $parts[2])) {
-                $term = $parts[1];
-
-                if ($prefix !== null && $prefix !== '' && !str_starts_with($term, $prefix)) {
-                    continue;
-                }
-
-                $termKeys[] = $key;
+        foreach ($siteIds as $sid) {
+            $matchingTerms = $this->redis->zRangeByLex(
+                $this->getTermIndexKey($sid),
+                $min,
+                $max,
+                0,
+                PHP_INT_MAX,
+            );
+            foreach ($matchingTerms as $term) {
+                $term = (string)$term;
+                $termKeys[] = $this->getTermKey($term, $sid);
                 $termsByKey[] = $term;
             }
         }
@@ -1158,18 +1158,15 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
             return [];
         }
 
-        // Use SCAN to find term keys matching the same shape as getTermKey().
-        // Redis key format: {keyPrefix}term:{term}:{siteId}
-        $pattern = $this->keyPrefix . 'term:' . $prefix . '*:' . $siteId;
+        [$min, $max] = $this->termLexBounds($prefix);
 
-        $matchingTerms = [];
-        foreach ($this->scanKeys($pattern) as $key) {
-            if (preg_match('/^' . preg_quote($this->keyPrefix, '/') . 'term:(.+):' . $siteId . '$/', $key, $matches)) {
-                $matchingTerms[] = $matches[1];
-            }
-        }
-
-        return array_unique($matchingTerms);
+        return $this->redis->zRangeByLex(
+            $this->getTermIndexKey($siteId),
+            $min,
+            $max,
+            0,
+            PHP_INT_MAX,
+        );
     }
 
     /**
@@ -1412,6 +1409,7 @@ LUA;
             $this->keyPrefix . 'docelem:' . $siteId . ':*',
             $this->keyPrefix . 'parent:' . $siteId . ':*',
             $this->keyPrefix . 'elemindex:' . $siteId,
+            $this->keyPrefix . 'termindex:' . $siteId,
             $this->keyPrefix . 'compoundidx:site' . $siteId . ':*',
         ];
 
@@ -1419,6 +1417,7 @@ LUA;
             $this->deleteKeysInBatches($this->scanKeys($pattern));
         }
         $this->deleteKeysInBatches($compoundKeys);
+        $this->redis->sRem($this->getTermIndexSitesKey(), (string)$siteId);
 
         $this->logInfo('Cleared site data', [
             'index' => $this->indexHandle,
@@ -1507,6 +1506,52 @@ LUA;
     private function getTermKey(string $term, int $siteId): string
     {
         return $this->keyPrefix . 'term:' . $term . ':' . $siteId;
+    }
+
+    private function getTermIndexKey(int $siteId): string
+    {
+        return $this->keyPrefix . 'termindex:' . $siteId;
+    }
+
+    private function getTermIndexSitesKey(): string
+    {
+        return $this->keyPrefix . 'termindex:sites';
+    }
+
+    private function addTermToIndex(string $term, int $siteId): void
+    {
+        $this->redis->zAdd($this->getTermIndexKey($siteId), 0, $term);
+        $this->redis->sAdd($this->getTermIndexSitesKey(), (string)$siteId);
+    }
+
+    private function removeTermFromIndexIfUnused(string $term, int $siteId): void
+    {
+        $termKey = $this->getTermKey($term, $siteId);
+        $remainingDocuments = $this->redis->hLen($termKey);
+        if (!is_int($remainingDocuments) || $remainingDocuments > 0) {
+            return;
+        }
+
+        $termIndexKey = $this->getTermIndexKey($siteId);
+        $this->redis->del($termKey);
+        $this->redis->zRem($termIndexKey, $term);
+
+        if ($this->redis->zCard($termIndexKey) === 0) {
+            $this->redis->del($termIndexKey);
+            $this->redis->sRem($this->getTermIndexSitesKey(), (string)$siteId);
+        }
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function termLexBounds(?string $prefix): array
+    {
+        if ($prefix === null || $prefix === '') {
+            return ['-', '+'];
+        }
+
+        return ['[' . $prefix, '[' . $prefix . "\xff"];
     }
 
     /**

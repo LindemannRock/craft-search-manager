@@ -569,10 +569,7 @@ class AnalyticsQueryInsightsService
         $previousResults = $previousQuery->all();
 
         // Index previous results by query
-        $previousCounts = [];
-        foreach ($previousResults as $row) {
-            $previousCounts[strtolower($row['query'])] = (int)$row['count'];
-        }
+        $previousCounts = self::foldNormalizedQueryCounts($previousResults);
 
         // Calculate trends
         $trending = [];
@@ -615,6 +612,21 @@ class AnalyticsQueryInsightsService
         });
 
         return array_slice($trending, 0, $limit);
+    }
+
+    /**
+     * @param array<int, array{query: string, count: int|string}> $rows
+     * @return array<string, int>
+     */
+    private static function foldNormalizedQueryCounts(array $rows): array
+    {
+        $counts = [];
+        foreach ($rows as $row) {
+            $queryKey = strtolower($row['query']);
+            $counts[$queryKey] = ($counts[$queryKey] ?? 0) + (int)$row['count'];
+        }
+
+        return $counts;
     }
 
     /**

@@ -15,6 +15,7 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\analytics\AnalyticsQueryInsightsService;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -56,6 +57,19 @@ final class AnalyticsTrendingBoundedPreviousTest extends TestCase
         self::assertSame(1, (int)$trending[0]['count']);
         self::assertSame(2, (int)$trending[0]['previousCount']);
         self::assertSame('down', $trending[0]['trend']);
+    }
+
+    public function testTrendingQueriesAccumulateCaseVariantPreviousRows(): void
+    {
+        $method = new \ReflectionMethod(AnalyticsQueryInsightsService::class, 'foldNormalizedQueryCounts');
+        $method->setAccessible(true);
+
+        self::assertSame([
+            'case variant' => 5,
+        ], $method->invoke(null, [
+            ['query' => 'Case Variant', 'count' => 2],
+            ['query' => 'case variant', 'count' => 3],
+        ]));
     }
 
     private function seedRow(string $query, \DateTimeInterface $dateCreated): void

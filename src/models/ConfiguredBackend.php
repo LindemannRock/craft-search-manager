@@ -475,7 +475,15 @@ class ConfiguredBackend extends Model
         $backendConfig = BaseConfigFileHelper::getConfigByHandle(self::PLUGIN_HANDLE, 'backends', $handle);
 
         if ($backendConfig !== null) {
-            return self::createFromConfig($handle, $backendConfig);
+            try {
+                return self::createFromConfig($handle, $backendConfig);
+            } catch (\Throwable $e) {
+                Craft::warning([
+                    'message' => 'Failed to build config backend during handle lookup; falling back to database',
+                    'handle' => $handle,
+                    'error' => $e->getMessage(),
+                ], self::PLUGIN_HANDLE);
+            }
         }
 
         // Then, check database
@@ -511,7 +519,6 @@ class ConfiguredBackend extends Model
     public static function findAll(): array
     {
         $backends = [];
-        $handlesFromConfig = BaseConfigFileHelper::getHandles(self::PLUGIN_HANDLE, 'backends');
 
         // First, load backends from config file
         $configBackends = self::findAllFromConfig();
@@ -527,8 +534,10 @@ class ConfiguredBackend extends Model
                 ->all();
 
             foreach ($rows as $row) {
-                // Skip if this handle is already defined in config
-                if (in_array($row['handle'], $handlesFromConfig, true)) {
+                // Only successfully constructed config backends suppress their
+                // database siblings. Invalid config items fall through just as
+                // findByHandle() does.
+                if (isset($backends[$row['handle']])) {
                     continue;
                 }
                 $backends[$row['handle']] = self::fromRow($row);

@@ -42,6 +42,20 @@
 	},
 } %}
 
+{% set selectedTab = 'general' %}
+{% if widgetStyle.hasErrors() %}
+	{% set errorKeys = widgetStyle.getErrors()|keys %}
+	{% if errorKeys|filter(k => k starts with 'styles.modal' or k starts with 'styles.backdrop' or k starts with 'styles.header' or k starts with 'styles.footer')|length %}
+		{% set selectedTab = 'modal' %}
+	{% elseif errorKeys|filter(k => k starts with 'styles.input')|length %}
+		{% set selectedTab = 'input' %}
+	{% elseif errorKeys|filter(k => k starts with 'styles.result' or k starts with 'styles.promoted' or k starts with 'styles.highlight')|length %}
+		{% set selectedTab = 'results' %}
+	{% elseif errorKeys|filter(k => k starts with 'styles.trigger' or k starts with 'styles.kbd')|length %}
+		{% set selectedTab = 'controls' %}
+	{% endif %}
+{% endif %}
+
 {% set styles = isNew ? defaultStyles : defaultStyles|merge(widgetStyle.getStyles()) %}
 {% set namePrefix = 'styles' %}
 
@@ -94,14 +108,14 @@
 	{{ csrfInput() }}
 
 	{# General Tab #}
-	<div id="general">
+	<div id="general"{% if selectedTab != 'general' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/styles/_partials/settings" with {
 			widgetStyle: widgetStyle,
 		} %}
 	</div>
 
 	{# Modal Tab #}
-	<div id="modal" class="hidden">
+	<div id="modal"{% if selectedTab != 'modal' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/styles/_partials/modal" with {
 			styles: styles,
 			namePrefix: namePrefix,
@@ -110,7 +124,7 @@
 	</div>
 
 	{# Input Tab #}
-	<div id="input" class="hidden">
+	<div id="input"{% if selectedTab != 'input' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/styles/_partials/input" with {
 			styles: styles,
 			namePrefix: namePrefix,
@@ -119,7 +133,7 @@
 	</div>
 
 	{# Results Tab #}
-	<div id="results" class="hidden">
+	<div id="results"{% if selectedTab != 'results' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/styles/_partials/results" with {
 			styles: styles,
 			namePrefix: namePrefix,
@@ -128,7 +142,7 @@
 	</div>
 
 	{# Controls Tab #}
-	<div id="controls" class="hidden">
+	<div id="controls"{% if selectedTab != 'controls' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/styles/_partials/controls" with {
 			styles: styles,
 			namePrefix: namePrefix,

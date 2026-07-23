@@ -85,25 +85,44 @@ class AutoTransformerSectionSplitter
             return '';
         }
 
-        $baseParts = $contentBag['parts'];
+        $basePartCandidates = [$contentBag['parts']];
         if (!empty($pageData['headings']) && is_scalar($pageData['headings'])) {
-            $baseParts[] = (string)$pageData['headings'];
+            $withHeadings = $contentBag['parts'];
+            $withHeadings[] = (string)$pageData['headings'];
+            $basePartCandidates[] = $withHeadings;
         }
 
-        $baseContent = trim(SearchContentBuilderHelper::content($baseParts));
-        if ($baseContent === '') {
+        // AutoTransformer appends heading text only when headings came from
+        // rich-text HTML. Markdown-fallback headings remain display metadata,
+        // so reconstruct both producer paths and prefer the longest match.
+        $matchedLength = -1;
+        $extraContent = '';
+        $hasBaseContent = false;
+        foreach ($basePartCandidates as $baseParts) {
+            $baseContent = trim(SearchContentBuilderHelper::content($baseParts));
+            if ($baseContent === '') {
+                continue;
+            }
+
+            $hasBaseContent = true;
+            if (!str_starts_with($content, $baseContent)) {
+                continue;
+            }
+
+            $baseLength = strlen($baseContent);
+            if ($baseLength <= $matchedLength) {
+                continue;
+            }
+
+            $matchedLength = $baseLength;
+            $extraContent = trim(substr($content, $baseLength));
+        }
+
+        if (!$hasBaseContent) {
             return $content;
         }
 
-        if ($content === $baseContent) {
-            return '';
-        }
-
-        if (str_starts_with($content, $baseContent)) {
-            return trim(substr($content, strlen($baseContent)));
-        }
-
-        return '';
+        return $matchedLength >= 0 ? $extraContent : '';
     }
 
     /**

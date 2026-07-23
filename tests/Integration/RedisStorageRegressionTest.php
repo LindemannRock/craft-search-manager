@@ -32,7 +32,8 @@ final class RedisStorageRegressionTest extends TestCase
         sort($terms);
 
         self::assertSame(['product', 'protein'], $terms);
-        self::assertSame(['sm:idx:test-index:term:pro*:1'], $redis->scanPatterns);
+        self::assertSame([['sm:idx:test-index:termindex:1', '[pro', "[pro\xff"]], $redis->zRangeByLexCalls);
+        self::assertSame([], $redis->scanPatterns);
         self::assertSame(0, $redis->keysCalls);
     }
 
@@ -171,7 +172,7 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame(['301_1_configure'], array_keys($engine->search('configure', 1, 0, ['returnDocumentKeys' => true])));
     }
 
-    public function testAutocompleteHotPathUsesScanInsteadOfKeys(): void
+    public function testAutocompleteHotPathUsesLexicographicTermIndex(): void
     {
         [$storage, $redis] = $this->makeStorage();
         $storage->storeTermDocument('protein', 1, 101, 3);
@@ -180,7 +181,11 @@ final class RedisStorageRegressionTest extends TestCase
         $terms = $storage->getTermsForAutocomplete(null, null, 10);
 
         self::assertSame(['protein' => 3, 'product' => 2], $terms);
-        self::assertSame(['sm:idx:test-index:term:*:*'], $redis->scanPatterns);
+        self::assertSame([], $redis->scanPatterns);
+        self::assertSame([
+            ['sm:idx:test-index:termindex:1', '-', '+'],
+            ['sm:idx:test-index:termindex:2', '-', '+'],
+        ], $redis->zRangeByLexCalls);
         self::assertSame(0, $redis->keysCalls);
     }
 
@@ -209,8 +214,36 @@ final class RedisStorageRegressionTest extends TestCase
         $terms = $storage->getTermsForAutocomplete(null, null, 2, 'pro');
 
         self::assertSame(['protein' => 4, 'product' => 2], $terms);
-        self::assertSame(['sm:idx:test-index:term:pro*:*'], $redis->scanPatterns);
+        self::assertSame([], $redis->scanPatterns);
+        self::assertSame([
+            ['sm:idx:test-index:termindex:1', '[pro', "[pro\xff"],
+            ['sm:idx:test-index:termindex:2', '[pro', "[pro\xff"],
+        ], $redis->zRangeByLexCalls);
         self::assertSame(0, $redis->keysCalls);
+    }
+
+    public function testTermAutocompleteIndexTracksRetitledDocumentTerms(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'test-index', ['disableStopWords' => true]);
+
+        self::assertTrue($engine->indexDocument(1, 101, 'Legacy title', 'legacyterm', 'en'));
+        self::assertSame(['legacyterm' => 1], $storage->getTermsForAutocomplete(1, null, 10, 'legacyterm'));
+
+        self::assertTrue($engine->indexDocument(1, 101, 'Current title', 'currentterm', 'en'));
+
+        self::assertSame([], $storage->getTermsForAutocomplete(1, null, 10, 'legacyterm'));
+        self::assertSame(['currentterm' => 1], $storage->getTermsForAutocomplete(1, null, 10, 'currentterm'));
+        self::assertGreaterThan(0, $redis->zCard('sm:idx:test-index:termindex:1'));
+        self::assertSame([], $storage->getTermDocuments('legacyterm', 1));
+    }
+
+    public function testTermAutocompleteRequiresRebuiltLexicographicIndex(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+        $redis->hSet('sm:idx:test-index:term:legacy:1', '1:101', 3);
+
+        self::assertSame([], $storage->getTermsForAutocomplete(1, null, 10, 'leg'));
     }
 
     public function testCompoundSuggestionsAggregateByPrefixAndUseAggregateIndex(): void
@@ -435,7 +468,7 @@ final class RedisStorageRegressionTest extends TestCase
         $terms = $storage->getTermsForAutocomplete(null, null, 10);
 
         self::assertSame(['protein' => 3], $terms);
-        self::assertSame(['sm:idx:term:term:*:*'], $redis->scanPatterns);
+        self::assertSame([], $redis->scanPatterns);
         self::assertArrayNotHasKey('term', $terms);
     }
 
@@ -569,6 +602,7 @@ final class RedisStorageRegressionTest extends TestCase
             'sm:idx:test-index:docelem:1:*',
             'sm:idx:test-index:parent:1:*',
             'sm:idx:test-index:elemindex:1',
+            'sm:idx:test-index:termindex:1',
             'sm:idx:test-index:compoundidx:site1:*',
         ], $redis->scanPatterns);
         self::assertFalse($redis->hasKey('sm:idx:test-index:doc:1:101'));
@@ -579,6 +613,7 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertFalse($redis->hasKey('sm:idx:test-index:meta:1:doc_count'));
         self::assertFalse($redis->hasKey('sm:idx:test-index:elem:1:101'));
         self::assertFalse($redis->hasKey('sm:idx:test-index:elemindex:1'));
+        self::assertFalse($redis->hasKey('sm:idx:test-index:termindex:1'));
         self::assertFalse($redis->hasKey('sm:idx:test-index:compound:1:101'));
 
         self::assertTrue($redis->hasKey('sm:idx:test-index:doc:2:202'));
@@ -589,6 +624,7 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertTrue($redis->hasKey('sm:idx:test-index:meta:2:doc_count'));
         self::assertTrue($redis->hasKey('sm:idx:test-index:elem:2:202'));
         self::assertTrue($redis->hasKey('sm:idx:test-index:elemindex:2'));
+        self::assertTrue($redis->hasKey('sm:idx:test-index:termindex:2'));
         self::assertTrue($redis->hasKey('sm:idx:test-index:compound:2:202'));
     }
 
@@ -614,12 +650,16 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertIsString($source);
         self::assertStringNotContainsString('->keys(', $source);
 
-        foreach (['getTermsForAutocomplete', 'getElementSuggestions'] as $method) {
-            preg_match('/public function ' . $method . '\(.*?^    }$/ms', $source, $matches);
-            self::assertNotEmpty($matches, $method . ' source should be found');
-            self::assertStringNotContainsString('->keys(', $matches[0], $method . ' must not use blocking KEYS');
-            self::assertStringContainsString('scanKeys(', $matches[0], $method . ' should use SCAN iteration');
-        }
+        preg_match('/public function getTermsForAutocomplete\(.*?^    }$/ms', $source, $matches);
+        self::assertNotEmpty($matches, 'getTermsForAutocomplete source should be found');
+        self::assertStringNotContainsString('->keys(', $matches[0]);
+        self::assertStringNotContainsString('scanKeys(', $matches[0]);
+        self::assertStringContainsString('zRangeByLex(', $matches[0]);
+
+        preg_match('/public function getElementSuggestions\(.*?^    }$/ms', $source, $matches);
+        self::assertNotEmpty($matches, 'getElementSuggestions source should be found');
+        self::assertStringNotContainsString('->keys(', $matches[0]);
+        self::assertStringContainsString('scanKeys(', $matches[0]);
 
         preg_match('/public function getCompoundSuggestionsForAutocomplete\(.*?^    }$/ms', $source, $matches);
         self::assertNotEmpty($matches, 'getCompoundSuggestionsForAutocomplete source should be found');
@@ -717,6 +757,9 @@ final class RedisStorageFakeRedis
 
     /** @var list<string> */
     public array $scanPatterns = [];
+
+    /** @var list<array{string, string, string}> */
+    public array $zRangeByLexCalls = [];
 
     /** @var array<string, array<string, mixed>> */
     private array $hashes = [];
@@ -826,6 +869,9 @@ final class RedisStorageFakeRedis
             $this->sets[$key] ?? [],
             static fn(string $candidate): bool => $candidate !== $member,
         ));
+        if ($this->sets[$key] === []) {
+            unset($this->sets[$key]);
+        }
     }
 
     public function sCard(string $key): int
@@ -918,11 +964,12 @@ final class RedisStorageFakeRedis
 
     public function zRangeByLex(string $key, string $min, string $max, int $offset, int $limit): array
     {
+        $this->zRangeByLexCalls[] = [$key, $min, $max];
         $members = array_keys($this->zsets[$key] ?? []);
         sort($members);
 
-        $minValue = substr($min, 1);
-        $maxValue = substr($max, 1);
+        $minValue = $min === '-' ? '' : substr($min, 1);
+        $maxValue = $max === '+' ? "\xff" : substr($max, 1);
         $matches = array_values(array_filter(
             $members,
             static fn (string $member): bool => strcmp($member, $minValue) >= 0 && strcmp($member, $maxValue) <= 0,

@@ -19,6 +19,7 @@ use lindemannrock\searchmanager\helpers\AutoTransformerSectionSplitter;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\HtmlSectionSplitter;
 use lindemannrock\searchmanager\helpers\SearchContentCleaner;
+use lindemannrock\searchmanager\helpers\SearchContentBuilderHelper;
 use lindemannrock\searchmanager\helpers\SearchFieldTypeContentHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
@@ -109,6 +110,40 @@ final class CommerceSplitSectionsTest extends TestCase
         self::assertSame($heading['sectionTitle'], $heading['content']);
         self::assertArrayNotHasKey('_fields', $heading);
         self::assertArrayNotHasKey('fields', $heading);
+    }
+
+    public function testMarkdownFallbackHeadingReconstructionRetainsCommerceExtras(): void
+    {
+        $contentBag = [
+            'parts' => ['Eco Shirt', 'catalog copy'],
+            'fields' => [],
+            'richText' => [],
+            'richTextSources' => [],
+            'bodyClean' => '',
+        ];
+        $commerceExtras = 'eco-shirt apparel ECO-001 49.95';
+        $baseContent = SearchContentBuilderHelper::content($contentBag['parts']);
+        $method = new \ReflectionMethod(AutoTransformerSectionSplitter::class, 'extraTransformerContent');
+        $method->setAccessible(true);
+
+        $markdownFallback = [
+            'headings' => 'Sizing Care',
+            'content' => $baseContent . ' ' . $commerceExtras,
+        ];
+        self::assertSame($commerceExtras, $method->invoke(null, $contentBag, $markdownFallback));
+
+        $richTextHeadings = [
+            'headings' => 'Sizing Care',
+            'content' => $baseContent . ' Sizing Care ' . $commerceExtras,
+        ];
+        self::assertSame($commerceExtras, $method->invoke(null, $contentBag, $richTextHeadings));
+
+        $emptyContentBag = $contentBag;
+        $emptyContentBag['parts'] = [];
+        self::assertSame($commerceExtras, $method->invoke(null, $emptyContentBag, [
+            'headings' => '',
+            'content' => $commerceExtras,
+        ]));
     }
 
     public function testHeadinglessProductAndVariantStayNormalRecords(): void
