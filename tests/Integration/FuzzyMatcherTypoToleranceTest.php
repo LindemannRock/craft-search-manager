@@ -11,8 +11,6 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\search\FuzzyMatcher;
-use lindemannrock\searchmanager\search\NgramGenerator;
-use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -26,7 +24,7 @@ final class FuzzyMatcherTypoToleranceTest extends TestCase
     #[DataProvider('rejectedCandidates')]
     public function testRejectsCandidatesOutsideTheQueryLengthTypoBudget(string $query, string $candidate): void
     {
-        self::assertSame([], $this->findMatches($query, $candidate));
+        self::assertFalse(FuzzyMatcher::isCandidateWithinTypoBudget($query, $candidate));
     }
 
     public static function rejectedCandidates(): iterable
@@ -40,7 +38,7 @@ final class FuzzyMatcherTypoToleranceTest extends TestCase
     #[DataProvider('prefixExtensions')]
     public function testAlwaysAcceptsPrefixExtensions(string $query, string $candidate): void
     {
-        self::assertSame([$candidate], $this->findMatches($query, $candidate));
+        self::assertTrue(FuzzyMatcher::isCandidateWithinTypoBudget($query, $candidate));
     }
 
     public static function prefixExtensions(): iterable
@@ -52,7 +50,7 @@ final class FuzzyMatcherTypoToleranceTest extends TestCase
     #[DataProvider('acceptedTypoCandidates')]
     public function testAcceptsCandidatesWithinTheQueryLengthTypoBudget(string $query, string $candidate): void
     {
-        self::assertSame([$candidate], $this->findMatches($query, $candidate));
+        self::assertTrue(FuzzyMatcher::isCandidateWithinTypoBudget($query, $candidate));
     }
 
     public static function acceptedTypoCandidates(): iterable
@@ -64,21 +62,4 @@ final class FuzzyMatcherTypoToleranceTest extends TestCase
         yield 'Arabic adjacent transposition is mb-safe' => ['اخبتار', 'اختبار'];
     }
 
-    /**
-     * @return string[]
-     */
-    private function findMatches(string $query, string $candidate): array
-    {
-        $matcher = new FuzzyMatcher(new NgramGenerator([2, 3]), 0.25);
-        $storage = new RecordingStorage(
-            termDocs: [],
-            titleByElement: [],
-            docLengths: [],
-            totalDocs: 0,
-            avgDocLength: 0.0,
-            fuzzyCandidates: [$candidate => 0.5],
-        );
-
-        return $matcher->findMatches($query, $storage, 1);
-    }
 }

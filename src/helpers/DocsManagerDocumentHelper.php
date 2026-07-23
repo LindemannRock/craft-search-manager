@@ -18,15 +18,27 @@ use lindemannrock\docsmanager\records\SourceRecord;
  */
 class DocsManagerDocumentHelper
 {
+    private const SOURCE_NAMES_CACHE_TTL_SECONDS = 5;
+
     /**
      * @var array<int, string>
      */
     private static array $sourceNames = [];
 
+    private static ?float $sourceNamesExpiresAt = null;
+
     public static function sourceName(?int $sourceId): string
     {
         if (!$sourceId) {
             return 'Docs';
+        }
+
+        if (
+            self::$sourceNamesExpiresAt === null
+            || microtime(true) >= self::$sourceNamesExpiresAt
+        ) {
+            self::$sourceNames = [];
+            self::$sourceNamesExpiresAt = microtime(true) + self::SOURCE_NAMES_CACHE_TTL_SECONDS;
         }
 
         if (!isset(self::$sourceNames[$sourceId])) {

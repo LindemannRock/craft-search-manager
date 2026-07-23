@@ -49,10 +49,6 @@ class SearchFieldTypeContentHelper
             return $this->processRelational($fieldValue);
         }
 
-        if (is_a($field, 'craft\fields\Matrix')) {
-            return $this->processMatrix($fieldValue);
-        }
-
         if (is_a($field, 'craft\fields\Table')) {
             return $this->processTable($fieldValue);
         }
@@ -97,50 +93,6 @@ class SearchFieldTypeContentHelper
         }
 
         return $titles;
-    }
-
-    /**
-     * @return string[]
-     */
-    public function processMatrix(mixed $fieldValue): array
-    {
-        $content = [];
-
-        if (!is_object($fieldValue) && !is_array($fieldValue)) {
-            return $content;
-        }
-
-        if (is_object($fieldValue) && method_exists($fieldValue, 'all')) {
-            $blocks = $fieldValue->all();
-        } elseif (is_array($fieldValue)) {
-            $blocks = $fieldValue;
-        } else {
-            return $content;
-        }
-
-        foreach ($blocks as $block) {
-            if (!is_object($block) || !method_exists($block, 'getFieldLayout') || !method_exists($block, 'getFieldValue')) {
-                continue;
-            }
-
-            $fieldLayout = $block->getFieldLayout();
-            if (!$fieldLayout) {
-                continue;
-            }
-
-            foreach ($fieldLayout->getCustomFields() as $blockField) {
-                try {
-                    $blockValue = $block->getFieldValue($blockField->handle);
-                    if ($blockValue && is_string($blockValue)) {
-                        $content[] = $this->contentCleaner->stripHtml($blockValue);
-                    }
-                } catch (\Throwable) {
-                    continue;
-                }
-            }
-        }
-
-        return $content;
     }
 
     /**

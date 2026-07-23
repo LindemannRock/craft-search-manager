@@ -110,16 +110,16 @@ final class AuditBatch7RegressionTest extends TestCase
     {
         $install = $this->readPluginFile('src/migrations/Install.php');
         $template = $this->readPluginFile('src/templates/settings/search.twig');
-        $fuzzyMatcher = $this->readPluginFile('src/search/FuzzyMatcher.php');
+        $termResolver = $this->readPluginFile('src/search/TermResolver.php');
 
         self::assertStringContainsString("'similarityThreshold' => \$this->decimal(3, 2)->notNull()->defaultValue(0.25)", $install);
         self::assertStringContainsString("'similarityThreshold' => 0.25", $install);
         self::assertStringContainsString('value: settings.similarityThreshold ?? 0.25', $template);
         self::assertStringContainsString('Default: 0.25 (typo-tolerant). Lower = more typo tolerance but more false positives; higher = stricter matching.', $template);
         self::assertStringNotContainsString('Default: 0.50 (balanced)', $template);
-        self::assertStringContainsString('Minimum similarity threshold (default: 0.25)', $fuzzyMatcher);
-        self::assertStringContainsString('float $similarityThreshold = 0.25', $fuzzyMatcher);
-        self::assertStringNotContainsString('float $similarityThreshold = 0.50', $fuzzyMatcher);
+        self::assertStringContainsString('Base fuzzy threshold (default 0.25)', $termResolver);
+        self::assertStringContainsString("\$config['similarityThreshold'] ?? 0.25", $termResolver);
+        self::assertStringNotContainsString("\$config['similarityThreshold'] ?? 0.50", $termResolver);
     }
 
     public function testOptionalAnalyticsColumnRejectsUnsupportedColumnsBeforeSqlInterpolation(): void

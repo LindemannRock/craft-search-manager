@@ -95,45 +95,6 @@ class NgramGenerator
     }
 
     /**
-     * Calculate Jaccard similarity between two sets of n-grams
-     *
-     * Jaccard similarity = |intersection| / |union|
-     * Returns a value between 0.0 (no similarity) and 1.0 (identical)
-     *
-     * @param array $ngrams1 First set of n-grams
-     * @param array $ngrams2 Second set of n-grams
-     * @return float Similarity score between 0.0 and 1.0
-     */
-    public function calculateSimilarity(array $ngrams1, array $ngrams2): float
-    {
-        if (empty($ngrams1) || empty($ngrams2)) {
-            return 0.0;
-        }
-
-        $intersection = count(array_intersect($ngrams1, $ngrams2));
-        $union = count(array_unique(array_merge($ngrams1, $ngrams2)));
-
-        return $intersection / $union;
-    }
-
-    /**
-     * Calculate similarity between two terms
-     *
-     * Convenience method that generates n-grams and calculates similarity
-     *
-     * @param string $term1 First term
-     * @param string $term2 Second term
-     * @return float Similarity score between 0.0 and 1.0
-     */
-    public function calculateTermSimilarity(string $term1, string $term2): float
-    {
-        $ngrams1 = $this->generate($term1);
-        $ngrams2 = $this->generate($term2);
-
-        return $this->calculateSimilarity($ngrams1, $ngrams2);
-    }
-
-    /**
      * Get adaptive similarity threshold based on term length
      *
      * Shorter terms need lower thresholds because they have fewer n-grams,

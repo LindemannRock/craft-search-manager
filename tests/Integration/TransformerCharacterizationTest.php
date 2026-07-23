@@ -12,11 +12,23 @@ namespace lindemannrock\docsmanager\records;
 
 class SourceRecord
 {
+    /**
+     * @var array<int, string>
+     */
+    public static array $names = [];
+
     public ?string $name = null;
 
     public static function findOne(mixed $condition): ?self
     {
-        return null;
+        if (!is_int($condition) || !isset(self::$names[$condition])) {
+            return null;
+        }
+
+        $record = new self();
+        $record->name = self::$names[$condition];
+
+        return $record;
     }
 }
 
@@ -71,7 +83,9 @@ use craft\models\Section;
 use craft\models\Volume;
 use craft\models\VolumeFolder;
 use lindemannrock\docsmanager\elements\SourceDoc;
+use lindemannrock\docsmanager\records\SourceRecord;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
+use lindemannrock\searchmanager\helpers\DocsManagerDocumentHelper;
 use lindemannrock\searchmanager\helpers\SourceDocSectionSplitter;
 use lindemannrock\searchmanager\services\TransformerService;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -473,6 +487,37 @@ final class TransformerCharacterizationTest extends TestCase
             'content' => 'Quickstart Install and configure Search Manager. setup deployment',
             'excerpt' => 'Quickstart Install and configure Search Manager. setup deployment',
         ], (new DocsManagerTransformer())->transform($sourceDoc));
+    }
+
+    public function testSourceNameCacheRefreshesAfterItsTtlExpires(): void
+    {
+        $sourceId = 701469;
+        $sourceNames = new \ReflectionProperty(DocsManagerDocumentHelper::class, 'sourceNames');
+        $sourceNames->setAccessible(true);
+        $sourceNamesExpiresAt = new \ReflectionProperty(DocsManagerDocumentHelper::class, 'sourceNamesExpiresAt');
+        $sourceNamesExpiresAt->setAccessible(true);
+
+        $originalFixtures = SourceRecord::$names;
+        $originalCache = $sourceNames->getValue();
+        $originalExpiresAt = $sourceNamesExpiresAt->getValue();
+
+        try {
+            SourceRecord::$names[$sourceId] = 'Original source name';
+            $sourceNames->setValue(null, []);
+            $sourceNamesExpiresAt->setValue(null, null);
+
+            self::assertSame('Original source name', DocsManagerDocumentHelper::sourceName($sourceId));
+
+            SourceRecord::$names[$sourceId] = 'Renamed source';
+            self::assertSame('Original source name', DocsManagerDocumentHelper::sourceName($sourceId));
+
+            $sourceNamesExpiresAt->setValue(null, microtime(true) - 1.0);
+            self::assertSame('Renamed source', DocsManagerDocumentHelper::sourceName($sourceId));
+        } finally {
+            SourceRecord::$names = $originalFixtures;
+            $sourceNames->setValue(null, $originalCache);
+            $sourceNamesExpiresAt->setValue(null, $originalExpiresAt);
+        }
     }
 
     public function testSourceDocSplitSectionsCreateIntroAndHeadingDocuments(): void

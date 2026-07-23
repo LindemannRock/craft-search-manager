@@ -10,8 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use lindemannrock\searchmanager\search\FuzzyMatcher;
-use lindemannrock\searchmanager\search\NgramGenerator;
+use lindemannrock\searchmanager\search\TermResolver;
 use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -24,23 +23,21 @@ final class FuzzyMatcherCandidateFloorTest extends TestCase
 {
     public function testRejectsShortCandidateWithoutDroppingLegitimateExpansions(): void
     {
-        $matcher = new FuzzyMatcher(new NgramGenerator([2, 3]), 0.25);
-
         $toolStorage = $this->makeStorage([
             'tools' => 7 / 13,
             'to' => 3 / 11,
         ]);
-        self::assertSame(['tools'], $matcher->findMatches('tool', $toolStorage, 1));
+        self::assertSame(['tools'], $this->resolveTerms('tool', $toolStorage));
 
         $testStorage = $this->makeStorage([
             'testing' => 0.41,
         ]);
-        self::assertSame(['testing'], $matcher->findMatches('test', $testStorage, 1));
+        self::assertSame(['testing'], $this->resolveTerms('test', $testStorage));
 
         $testingStorage = $this->makeStorage([
             'test' => 0.41,
         ]);
-        self::assertSame([], $matcher->findMatches('testing', $testingStorage, 1));
+        self::assertSame([], $this->resolveTerms('testing', $testingStorage));
     }
 
     /**
@@ -56,5 +53,15 @@ final class FuzzyMatcherCandidateFloorTest extends TestCase
             avgDocLength: 0.0,
             fuzzyCandidates: $fuzzyCandidates,
         );
+    }
+
+    /**
+     * @return string[]
+     */
+    private function resolveTerms(string $query, RecordingStorage $storage): array
+    {
+        $resolved = (new TermResolver($storage))->resolve($query, 1);
+
+        return array_column($resolved, 'term');
     }
 }
