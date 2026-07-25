@@ -29,6 +29,7 @@ use lindemannrock\searchmanager\widgets\ContentGapsWidget;
 use lindemannrock\searchmanager\widgets\TopSearchesWidget;
 use lindemannrock\searchmanager\widgets\TrendingSearchesWidget;
 use yii\base\Action;
+use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
 use yii\web\HeaderCollection;
 
@@ -39,6 +40,57 @@ final class EditionAnalyticsGateTest extends TestCase
 {
     private const QUERY_PREFIX = 'sm-edition-analytics-';
     private const TEST_SITE_ID = 999996;
+    private const CANONICAL_DATA_TYPES = [
+        'summary',
+        'chart',
+        'query-analysis',
+        'content-gaps',
+        'device-stats',
+        'countries',
+        'cities',
+        'hourly',
+        'trending',
+        'intent',
+        'source',
+        'performance',
+        'cache-stats',
+        'top-queries',
+        'worst-queries',
+        'query-rules-top',
+        'query-rules-by-type',
+        'query-rules-queries',
+        'promotions-top',
+        'promotions-by-position',
+        'promotions-queries',
+        'recent-searches',
+        'recent-unhandled',
+        'bot-stats',
+    ];
+    private const AUTHORED_ASSET_DATA_TYPES = [
+        'chart',
+        'query-analysis',
+        'content-gaps',
+        'device-stats',
+        'countries',
+        'cities',
+        'hourly',
+        'trending',
+        'intent',
+        'source',
+        'performance',
+        'cache-stats',
+        'top-queries',
+        'worst-queries',
+        'query-rules-top',
+        'query-rules-by-type',
+        'query-rules-queries',
+        'promotions-top',
+        'promotions-by-position',
+        'promotions-queries',
+        'recent-searches',
+        'recent-unhandled',
+        'bot-stats',
+    ];
 
     private ?object $originalRequest = null;
     private ?object $originalResponse = null;
@@ -199,6 +251,136 @@ final class EditionAnalyticsGateTest extends TestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertTrue($response->data['success']);
         self::assertArrayHasKey('summary', $response->data['data']);
+    }
+
+    public function testAnalyticsAssetRequestTypesMatchCanonicalControllerAllowlist(): void
+    {
+        $analyticsSource = (string)file_get_contents(dirname(__DIR__, 2) . '/src/web/assets/analytics/src/analytics.js');
+        preg_match_all(
+            "/data:\\s*\\{[^\\n]*\\btype:\\s*'([^']+)'/",
+            $analyticsSource,
+            $literalMatches,
+        );
+        preg_match('/const mapping = \\{(?<mapping>.*?)\\};/s', $analyticsSource, $mappingMatch);
+        preg_match_all("/:\\s*'([^']+)'/", $mappingMatch['mapping'] ?? '', $mappingValues);
+
+        $authoredTypes = array_values(array_unique(array_merge(
+            $literalMatches[1] ?? [],
+            $mappingValues[1] ?? [],
+        )));
+        $expectedAuthoredTypes = self::AUTHORED_ASSET_DATA_TYPES;
+        sort($authoredTypes);
+        sort($expectedAuthoredTypes);
+        self::assertSame($expectedAuthoredTypes, $authoredTypes);
+
+        $controllerSource = $this->methodSource(AnalyticsController::class, 'actionGetData');
+        preg_match('/\\$validTypes = \\[(?<types>.*?)\\];/s', $controllerSource, $allowlistMatch);
+        preg_match_all("/'([^']+)'/", $allowlistMatch['types'] ?? '', $allowlistValues);
+        self::assertSame(self::CANONICAL_DATA_TYPES, $allowlistValues[1] ?? []);
+        self::assertSame(['summary'], array_values(array_diff(self::CANONICAL_DATA_TYPES, self::AUTHORED_ASSET_DATA_TYPES)));
+
+        foreach (['all', 'devices', 'browsers', 'os', 'bots'] as $removedType) {
+            self::assertNotContains($removedType, $authoredTypes);
+            self::assertNotContains($removedType, $allowlistValues[1] ?? []);
+        }
+    }
+
+    public function testOmittedAndRemovedAnalyticsDataTypesAreRejected(): void
+    {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+
+        foreach ([null, 'all', 'devices', 'browsers', 'os', 'bots'] as $invalidType) {
+            $this->installRequest($invalidType === null ? [] : ['type' => $invalidType]);
+
+            try {
+                $this->analyticsControllerWithoutRequestOrPermissionGates()->actionGetData();
+                self::fail(($invalidType ?? 'omitted type') . ' should be rejected.');
+            } catch (BadRequestHttpException $exception) {
+                self::assertSame('Invalid data type', $exception->getMessage());
+            }
+        }
+    }
+
+    public function testEveryCanonicalAnalyticsDataTypeKeepsItsResponseShape(): void
+    {
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+        $expectedDataShapes = [
+            'summary' => ['summary'],
+            'chart' => ['chartData'],
+            'query-analysis' => ['queryAnalysis'],
+            'content-gaps' => ['contentGaps'],
+            'device-stats' => ['deviceStats'],
+            'countries' => null,
+            'cities' => null,
+            'hourly' => ['data', 'labels', 'peakHour', 'peakHourFormatted'],
+            'trending' => null,
+            'intent' => ['data', 'labels', 'values', 'percentages'],
+            'source' => ['data', 'labels', 'values', 'percentages'],
+            'performance' => ['labels', 'avgTime', 'minTime', 'maxTime', 'indexSearches'],
+            'cache-stats' => ['total', 'cacheHits', 'cacheMisses', 'hitRate', 'missRate'],
+            'top-queries' => null,
+            'worst-queries' => null,
+            'query-rules-top' => null,
+            'query-rules-by-type' => ['labels', 'values'],
+            'query-rules-queries' => null,
+            'promotions-top' => null,
+            'promotions-by-position' => ['labels', 'values'],
+            'promotions-queries' => null,
+            'recent-searches' => null,
+            'recent-unhandled' => null,
+            'bot-stats' => [
+                'total',
+                'bots',
+                'systems',
+                'humans',
+                'botPercentage',
+                'nonHumanPercentage',
+                'topBots',
+                'topAgents',
+                'chart',
+            ],
+        ];
+
+        self::assertSame(self::CANONICAL_DATA_TYPES, array_keys($expectedDataShapes));
+
+        foreach ($expectedDataShapes as $type => $expectedKeys) {
+            $this->installRequest([
+                'type' => $type,
+                'dateRange' => 'today',
+            ]);
+            $response = $this->analyticsControllerWithoutRequestOrPermissionGates()->actionGetData();
+
+            self::assertSame(200, $response->getStatusCode(), $type);
+            self::assertTrue($response->data['success'] ?? false, $type);
+            $data = $response->data['data'] ?? null;
+            self::assertIsArray($data, $type);
+            if ($expectedKeys === null) {
+                self::assertTrue(array_is_list($data), $type);
+            } else {
+                self::assertSame($expectedKeys, array_keys($data), $type);
+            }
+        }
+
+        $this->installRequest(['type' => 'summary', 'dateRange' => 'today']);
+        $summary = $this->analyticsControllerWithoutRequestOrPermissionGates()->actionGetData()->data['data']['summary'] ?? [];
+        self::assertSame(
+            ['totalCount', 'handledCount', 'unhandledCount', 'mostCommon', 'recentUnhandled'],
+            array_keys($summary),
+        );
+
+        $this->installRequest(['type' => 'device-stats', 'dateRange' => 'today']);
+        $deviceStats = $this->analyticsControllerWithoutRequestOrPermissionGates()->actionGetData()->data['data']['deviceStats'] ?? [];
+        self::assertSame(
+            ['deviceBreakdown', 'browserBreakdown', 'osBreakdown', 'botStats'],
+            array_keys($deviceStats),
+        );
+        foreach (['deviceBreakdown', 'browserBreakdown', 'osBreakdown'] as $breakdown) {
+            self::assertSame(['labels', 'values'], array_keys($deviceStats[$breakdown] ?? []), $breakdown);
+        }
+
+        $this->installRequest(['type' => 'bot-stats', 'dateRange' => 'today']);
+        $botStats = $this->analyticsControllerWithoutRequestOrPermissionGates()->actionGetData()->data['data'] ?? [];
+        self::assertSame(['labels', 'types', 'values'], array_keys($botStats['chart'] ?? []));
     }
 
     public function testDashboardWidgetsRenderUpgradeNoticeInStandard(): void

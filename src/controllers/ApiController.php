@@ -528,9 +528,8 @@ class ApiController extends Controller
             $results = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
         }
 
-        // Canonical REST mode: enrich is ignored and every request uses the same
-        // indexed-hit response path. Keep backend meta only for the existing
-        // widget/debug toolbar contract.
+        // Present every result through the canonical indexed-hit response path.
+        // Keep backend meta only for the existing widget/debug toolbar contract.
         $results = SearchDebugAccessHelper::filterDebugMeta(
             $results,
             (bool)$request->getParam('debugEnabled', false),

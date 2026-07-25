@@ -530,7 +530,7 @@ class SearchEngine
     public function search(string $query, int $siteId, int $limit = 0, array $options = []): array
     {
         try {
-            // Check if query has advanced operators - use new parser
+            // Route explicit advanced syntax through parsed-query orchestration.
             if (QueryParser::hasAdvancedOperators($query)) {
                 // Get language for localized operators (API can override site language)
                 $language = LanguageNormalizer::normalize(
@@ -541,7 +541,7 @@ class SearchEngine
                 return $this->searchWithParsedQuery($parsed, $siteId, $limit, $options);
             }
 
-            // Fall back to existing simple search for backwards compatibility
+            // Plain queries use the resolver-driven simple relevance path.
             return $this->searchSimple($query, $siteId, $limit, $options);
         } catch (\Throwable $e) {
             $this->logError('Search failed', [
@@ -685,7 +685,7 @@ class SearchEngine
     }
 
     /**
-     * Simple search (original implementation for backwards compatibility)
+     * Plain-query relevance path with fuzzy expansion, exact boosting, and relax-on-zero
      *
      * @param string $query Search query
      * @param int $siteId Site ID

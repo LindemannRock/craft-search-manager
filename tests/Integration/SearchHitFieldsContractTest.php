@@ -321,7 +321,6 @@ final class SearchHitFieldsContractTest extends TestCase
             'q' => 'intro',
             'indexHandles' => $index->handle,
             'siteId' => $entry->siteId,
-            'enrich' => 0,
         ]);
 
         try {
@@ -374,7 +373,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'total' => 1,
         ];
 
-        $response = $this->runApiSearch($index->handle, $entry->siteId, null, 'intro', [
+        $response = $this->runApiSearch($index->handle, $entry->siteId, 'intro', [
             'retrievableFields' => 'intro',
         ]);
 
@@ -398,7 +397,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'total' => 1,
         ];
 
-        $response = $this->runApiSearch($index->handle, $entry->siteId, null, 'intro', [
+        $response = $this->runApiSearch($index->handle, $entry->siteId, 'intro', [
             'retrievableFields' => '*,-wysiwyg',
         ]);
 
@@ -435,8 +434,8 @@ final class SearchHitFieldsContractTest extends TestCase
 
         try {
             $generalConfig->devMode = true;
-            $withoutDebugRequest = $this->runApiSearch($index->handle, $entry->siteId, null, 'intro');
-            $response = $this->runApiSearch($index->handle, $entry->siteId, null, 'intro', [
+            $withoutDebugRequest = $this->runApiSearch($index->handle, $entry->siteId, 'intro');
+            $response = $this->runApiSearch($index->handle, $entry->siteId, 'intro', [
                 'debugEnabled' => 1,
             ]);
         } finally {
@@ -449,7 +448,7 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertArrayNotHasKey('_index', $response->data['hits'][0] ?? []);
     }
 
-    public function testRestIgnoresEnrichAndReturnsCanonicalHitShape(): void
+    public function testRestReturnsCanonicalHitShape(): void
     {
         $pair = $this->findWorkingIndexAndElement();
         if ($pair === null) {
@@ -495,35 +494,32 @@ final class SearchHitFieldsContractTest extends TestCase
         $stub = $this->installStubBackend();
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $absent = $this->runApiSearch($index->handle, $entry->siteId, null, 'metadata snippet')->data['hits'][0] ?? [];
+        $presented = $this->runApiSearch($index->handle, $entry->siteId, 'metadata snippet')->data['hits'][0] ?? [];
 
-        $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $raw = $this->runApiSearch($index->handle, $entry->siteId, 0, 'metadata snippet')->data['hits'][0] ?? [];
-
-        $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $enriched = $this->runApiSearch($index->handle, $entry->siteId, 1, 'metadata snippet')->data['hits'][0] ?? [];
-        self::assertSame($absent, $raw);
-        self::assertSame($raw, $enriched);
-        self::assertSame('Metadata snippet value', $raw['snippet'] ?? null);
-        self::assertSame('metadata-slug', $raw['slug'] ?? null);
-        self::assertSame(1771542126, $raw['dateCreated'] ?? null);
-        self::assertSame(1783631400, $raw['dateUpdated'] ?? null);
-        self::assertSame('Metadata Section', $raw['entrySection'] ?? null);
-        self::assertSame('metadata', $raw['docCategory'] ?? null);
-        self::assertArrayNotHasKey('category', $raw);
-        self::assertSame(5, $raw['sourceId'] ?? null);
-        self::assertSame('metadata-index', $raw['index'] ?? null);
-        self::assertArrayNotHasKey('_index', $raw);
-        self::assertSame($entry->siteId, $raw['siteId'] ?? null);
-        self::assertSame('indexed-site', $raw['site'] ?? null);
-        self::assertSame('de-CH', $raw['language'] ?? null);
-        self::assertArrayNotHasKey('highlights', $raw);
-        self::assertArrayNotHasKey('thumbnail', $raw);
-        self::assertStringNotContainsString('<mark', (string)($raw['snippet'] ?? ''));
-        self::assertArrayNotHasKey('_bodyClean', $raw);
-        self::assertArrayNotHasKey('content', $raw);
-        self::assertArrayNotHasKey('excerpt', $raw);
-        self::assertArrayNotHasKey('description', $raw);
+        self::assertSame($entry->id, $presented['elementId'] ?? null);
+        self::assertSame('Metadata title', $presented['title'] ?? null);
+        self::assertSame('https://example.test/metadata-url', $presented['url'] ?? null);
+        self::assertSame('entry', $presented['type'] ?? null);
+        self::assertSame('Metadata snippet value', $presented['snippet'] ?? null);
+        self::assertSame('metadata-slug', $presented['slug'] ?? null);
+        self::assertSame(1771542126, $presented['dateCreated'] ?? null);
+        self::assertSame(1783631400, $presented['dateUpdated'] ?? null);
+        self::assertSame('Metadata Section', $presented['entrySection'] ?? null);
+        self::assertSame('metadata', $presented['docCategory'] ?? null);
+        self::assertArrayNotHasKey('category', $presented);
+        self::assertSame(5, $presented['sourceId'] ?? null);
+        self::assertSame('metadata-index', $presented['index'] ?? null);
+        self::assertArrayNotHasKey('_index', $presented);
+        self::assertSame($entry->siteId, $presented['siteId'] ?? null);
+        self::assertSame('indexed-site', $presented['site'] ?? null);
+        self::assertSame('de-CH', $presented['language'] ?? null);
+        self::assertArrayNotHasKey('highlights', $presented);
+        self::assertArrayNotHasKey('thumbnail', $presented);
+        self::assertStringNotContainsString('<mark', (string)($presented['snippet'] ?? ''));
+        self::assertArrayNotHasKey('_bodyClean', $presented);
+        self::assertArrayNotHasKey('content', $presented);
+        self::assertArrayNotHasKey('excerpt', $presented);
+        self::assertArrayNotHasKey('description', $presented);
     }
 
     public function testRestDoesNotHydrateMissingTitleUrlSiteOrLanguage(): void
@@ -547,7 +543,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'total' => 1,
         ];
 
-        $hit = $this->runApiSearch($index->handle, $entry->siteId, 1, 'intro')->data['hits'][0] ?? [];
+        $hit = $this->runApiSearch($index->handle, $entry->siteId, 'intro')->data['hits'][0] ?? [];
 
         self::assertArrayNotHasKey('title', $hit);
         self::assertArrayNotHasKey('url', $hit);
@@ -556,7 +552,7 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame('Indexed intro text', $hit['snippet'] ?? null);
     }
 
-    public function testRestSnippetSettingsAreStableWhenLegacyEnrichParamIsPresent(): void
+    public function testRestSnippetSettingsControlCanonicalSnippetsAndHeadings(): void
     {
         $pair = $this->findWorkingIndexAndElement();
         if ($pair === null) {
@@ -592,36 +588,24 @@ final class SearchHitFieldsContractTest extends TestCase
         $stub = $this->installStubBackend();
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $rawShort = $this->runApiSearch($index->handle, $entry->siteId, 0, 'needle', [
+        $short = $this->runApiSearch($index->handle, $entry->siteId, 'needle', [
             'snippetMaxLength' => 50,
             'snippetCleanMarkdown' => true,
         ])->data['hits'][0] ?? [];
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $legacyEnrichShort = $this->runApiSearch($index->handle, $entry->siteId, 1, 'needle', [
-            'snippetMaxLength' => 50,
-            'snippetCleanMarkdown' => true,
-        ])->data['hits'][0] ?? [];
-
-        $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $rawLongUnparsed = $this->runApiSearch($index->handle, $entry->siteId, 0, 'needle', [
+        $longUnparsed = $this->runApiSearch($index->handle, $entry->siteId, 'needle', [
             'snippetMaxLength' => 1000,
             'snippetCleanMarkdown' => false,
         ])->data['hits'][0] ?? [];
 
-        $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $legacyEnrichLongUnparsed = $this->runApiSearch($index->handle, $entry->siteId, 1, 'needle', [
-            'snippetMaxLength' => 1000,
-            'snippetCleanMarkdown' => false,
-        ])->data['hits'][0] ?? [];
-
-        self::assertSame($rawShort['snippet'] ?? null, $legacyEnrichShort['snippet'] ?? null);
-        self::assertSame($rawShort['headings'] ?? null, $legacyEnrichShort['headings'] ?? null);
-        self::assertSame($rawLongUnparsed['snippet'] ?? null, $legacyEnrichLongUnparsed['snippet'] ?? null);
-        self::assertSame($rawLongUnparsed['headings'] ?? null, $legacyEnrichLongUnparsed['headings'] ?? null);
-        self::assertLessThan(mb_strlen((string)($rawLongUnparsed['snippet'] ?? '')), mb_strlen((string)($rawShort['snippet'] ?? '')));
-        self::assertStringContainsString('**needle**', (string)($rawLongUnparsed['snippet'] ?? ''));
-        self::assertStringNotContainsString('**needle**', (string)($rawShort['snippet'] ?? ''));
+        self::assertCount(1, $short['headings'] ?? []);
+        self::assertCount(1, $longUnparsed['headings'] ?? []);
+        self::assertStringNotContainsString('**needle**', (string)($short['headings'][0]['snippet'] ?? ''));
+        self::assertStringContainsString('**needle**', (string)($longUnparsed['headings'][0]['snippet'] ?? ''));
+        self::assertLessThan(mb_strlen((string)($longUnparsed['snippet'] ?? '')), mb_strlen((string)($short['snippet'] ?? '')));
+        self::assertStringContainsString('**needle**', (string)($longUnparsed['snippet'] ?? ''));
+        self::assertStringNotContainsString('**needle**', (string)($short['snippet'] ?? ''));
     }
 
     public function testSourceDocContentMatchReturnsBodySnippetAndFullHeadings(): void
@@ -1047,7 +1031,7 @@ final class SearchHitFieldsContractTest extends TestCase
         $stub = $this->installStubBackend();
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $restHit = $this->runApiSearch($index->handle, $entry->siteId, 0, 'ddev', [
+        $restHit = $this->runApiSearch($index->handle, $entry->siteId, 'ddev', [
             'snippetMaxLength' => 120,
             'snippetIncludeCodeBlocks' => false,
         ])->data['hits'][0] ?? [];
@@ -1212,7 +1196,7 @@ final class SearchHitFieldsContractTest extends TestCase
         $stub = $this->installStubBackend();
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $restHit = $this->runApiSearch($index->handle, $entry->siteId, 0, 'release', [
+        $restHit = $this->runApiSearch($index->handle, $entry->siteId, 'release', [
             'snippetMaxLength' => 70,
         ])->data['hits'][0] ?? [];
 
@@ -1670,7 +1654,7 @@ final class SearchHitFieldsContractTest extends TestCase
         $stub = $this->installStubBackend();
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $restHit = $this->runApiSearch($index->handle, $entry->siteId, 1, 'intro')->data['hits'][0] ?? [];
+        $restHit = $this->runApiSearch($index->handle, $entry->siteId, 'intro')->data['hits'][0] ?? [];
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $graphql = SearchResolver::resolveSearch(null, [
@@ -1810,7 +1794,7 @@ final class SearchHitFieldsContractTest extends TestCase
     /**
      * @param array<string, mixed> $extraParams
      */
-    private function runApiSearch(string $indexHandle, int $siteId, ?int $enrich, string $query, array $extraParams = []): Response
+    private function runApiSearch(string $indexHandle, int $siteId, string $query, array $extraParams = []): Response
     {
         [$originalRequest, $originalResponse] = [Craft::$app->getRequest(), Craft::$app->getResponse()];
         Craft::$app->set('request', new Request([
@@ -1823,9 +1807,6 @@ final class SearchHitFieldsContractTest extends TestCase
             'indexHandles' => $indexHandle,
             'siteId' => $siteId,
         ];
-        if ($enrich !== null) {
-            $params['enrich'] = $enrich;
-        }
         Craft::$app->getRequest()->setQueryParams(array_merge($params, $extraParams));
 
         try {

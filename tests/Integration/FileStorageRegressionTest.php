@@ -574,7 +574,7 @@ final class FileStorageRegressionTest extends TestCase
         self::assertSame(['301_1_configure'], array_keys($engine->search('configure', 1, 0, ['returnDocumentKeys' => true])));
     }
 
-    public function testLegacyPageModeDocumentKeyReadsRemainCompatible(): void
+    public function testPageModeDocumentKeysResolveSharedElementMetadata(): void
     {
         $storage = $this->makeStorage();
         $engine = new SearchEngine($storage, 'file-storage-regression', [

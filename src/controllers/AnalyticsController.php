@@ -582,11 +582,11 @@ class AnalyticsController extends Controller
         $effectiveSiteId = $this->resolveEffectiveSiteId($request->getParam('siteId'));
 
         $dateRange = $request->getParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
-        $type = $request->getParam('type', 'all');
+        $type = $request->getParam('type');
 
         $validTypes = [
-            'all', 'summary', 'chart', 'query-analysis', 'content-gaps',
-            'device-stats', 'devices', 'browsers', 'os', 'bots',
+            'summary', 'chart', 'query-analysis', 'content-gaps',
+            'device-stats',
             'countries', 'cities', 'hourly', 'trending', 'intent',
             'source', 'performance', 'cache-stats', 'top-queries', 'worst-queries',
             'query-rules-top', 'query-rules-by-type', 'query-rules-queries',
@@ -601,7 +601,7 @@ class AnalyticsController extends Controller
             $data = [];
 
             // Summary Stats (Header)
-            if ($type === 'all' || $type === 'summary') {
+            if ($type === 'summary') {
                 $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, null, $dateRange);
                 $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, true, $dateRange);
                 $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, false, $dateRange);
@@ -620,12 +620,12 @@ class AnalyticsController extends Controller
             }
 
             // Main Chart
-            if ($type === 'all' || $type === 'chart') {
+            if ($type === 'chart') {
                 $data['chartData'] = SearchManager::$plugin->analytics->getChartData($effectiveSiteId, $dateRange);
             }
 
             // Query Analysis Tab
-            if ($type === 'all' || $type === 'query-analysis') {
+            if ($type === 'query-analysis') {
                 $data['queryAnalysis'] = [
                     'lengthDistribution' => SearchManager::$plugin->analytics->getQueryLengthDistribution($effectiveSiteId, $dateRange),
                     'wordCloud' => SearchManager::$plugin->analytics->getWordCloudData($effectiveSiteId, $dateRange),
@@ -633,7 +633,7 @@ class AnalyticsController extends Controller
             }
 
             // Content Gaps Tab
-            if ($type === 'all' || $type === 'content-gaps') {
+            if ($type === 'content-gaps') {
                 $data['contentGaps'] = [
                     'clusters' => $this->formatZeroResultClusterRows(
                         SearchManager::$plugin->analytics->getZeroResultClusters($effectiveSiteId, $dateRange, 15)
@@ -642,7 +642,7 @@ class AnalyticsController extends Controller
             }
 
             // Audience/Device Stats
-            if ($type === 'all' || $type === 'device-stats' || $type === 'devices') {
+            if ($type === 'device-stats') {
                 $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($effectiveSiteId, $dateRange);
                 $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($effectiveSiteId, $dateRange);
                 $osData = SearchManager::$plugin->analytics->getOsBreakdown($effectiveSiteId, $dateRange);
@@ -663,50 +663,6 @@ class AnalyticsController extends Controller
                     ],
                     'botStats' => $botStats,
                 ];
-
-                // For backward compatibility with smart-links style requests
-                if ($type === 'devices') {
-                    return $this->asJson([
-                        'success' => true,
-                        'data' => [
-                            'labels' => array_column($deviceData, 'deviceType'),
-                            'values' => array_column($deviceData, 'count'),
-                        ],
-                    ]);
-                }
-            }
-
-            // Browsers only
-            if ($type === 'browsers') {
-                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($effectiveSiteId, $dateRange);
-                return $this->asJson([
-                    'success' => true,
-                    'data' => [
-                        'labels' => array_column($browserData, 'browser'),
-                        'values' => array_column($browserData, 'count'),
-                    ],
-                ]);
-            }
-
-            // OS only
-            if ($type === 'os') {
-                $osData = SearchManager::$plugin->analytics->getOsBreakdown($effectiveSiteId, $dateRange);
-                return $this->asJson([
-                    'success' => true,
-                    'data' => [
-                        'labels' => array_column($osData, 'osName'),
-                        'values' => array_column($osData, 'count'),
-                    ],
-                ]);
-            }
-
-            // Bots only
-            if ($type === 'bots') {
-                $botStats = SearchManager::$plugin->analytics->getBotStats($effectiveSiteId, $dateRange);
-                return $this->asJson([
-                    'success' => true,
-                    'data' => $botStats,
-                ]);
             }
 
             // Geographic data - countries
@@ -916,18 +872,6 @@ class AnalyticsController extends Controller
                 $botStats = SearchManager::$plugin->analytics->getBotStats($effectiveSiteId, $dateRange);
 
                 return $this->asJson(['success' => true, 'data' => $botStats]);
-            }
-
-            // Flatten structure for backward compatibility if 'all' is requested
-            if ($type === 'all') {
-                return $this->asJson([
-                    'success' => true,
-                    'data' => array_merge(
-                        $data['summary'],
-                        ['chartData' => $data['chartData']],
-                        $data['deviceStats']
-                    ),
-                ]);
             }
 
             return $this->asJson([

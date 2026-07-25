@@ -98,7 +98,7 @@ final class SearchHitSectionIdentityContractTest extends TestCase
         self::assertArrayNotHasKey('_sectionBody', $hit);
     }
 
-    public function testPresenterRemovesLegacyIdentitySectionAndInternalKeysAcrossHitShapes(): void
+    public function testPresenterRemovesNoncanonicalIdentityAliasesAndInternalKeysAcrossHitShapes(): void
     {
         $base = [
             'id' => 123,
@@ -109,12 +109,12 @@ final class SearchHitSectionIdentityContractTest extends TestCase
             'title' => 'Contract hit',
             'type' => 'entry',
             'elementType' => 'entry',
-            'section' => 'Legacy Section',
-            'sectionHandle' => 'legacy',
+            'section' => 'Noncanonical Section',
+            'sectionHandle' => 'noncanonical-section',
             'sectionType' => 'channel',
-            'group' => 'Legacy Group',
-            'groupHandle' => 'legacyGroup',
-            'category' => 'legacy-doc-category',
+            'group' => 'Noncanonical Group',
+            'groupHandle' => 'noncanonicalGroup',
+            'category' => 'noncanonical-doc-category',
             'entrySection' => 'Entries',
             'entrySectionHandle' => 'entries',
             'entrySectionType' => 'channel',

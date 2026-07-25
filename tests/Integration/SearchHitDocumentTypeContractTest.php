@@ -168,7 +168,7 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertFalse($matchesTypeFilter->invoke($backend, (string)$hit['type'], 'entry'));
     }
 
-    public function testCustomTransformerLegacyElementTypeDoesNotPromoteToType(): void
+    public function testCustomTransformerNoncanonicalElementTypeDoesNotPromoteToType(): void
     {
         $backend = $this->localBackend();
         $method = new \ReflectionMethod($backend, 'buildSearchHit');
@@ -252,10 +252,10 @@ final class SearchHitDocumentTypeContractTest extends TestCase
 
         self::assertSame('public-slug', $method->invoke($type, [
             'slug' => 'public-slug',
-            '_slug' => 'legacy-slug',
+            '_slug' => 'internal-slug',
         ], [], null, $resolveInfo));
         self::assertNull($method->invoke($type, [
-            '_slug' => 'legacy-slug',
+            '_slug' => 'internal-slug',
         ], [], null, $resolveInfo));
         self::assertNull($method->invoke($type, [
             'slug' => '',
@@ -323,7 +323,7 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         }
     }
 
-    public function testPresenterStripsLegacyElementTypeAcrossContractShapes(): void
+    public function testPresenterStripsNoncanonicalElementTypeAcrossContractShapes(): void
     {
         $shapes = [
             'page entry' => ['type' => 'entry', 'entrySection' => 'News'],

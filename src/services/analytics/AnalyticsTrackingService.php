@@ -301,9 +301,6 @@ class AnalyticsTrackingService
      * @param string $query The search query
      * @return string|null The classified intent
      */
-    // TODO: Consider expanding intent categories later:
-    // - 'local' for "near me", "[city]" queries
-    // - 'support' for "help", "support", "problem", "issue" queries
     public function classifyIntent(string $query): ?string
     {
         $query = strtolower(trim($query));
