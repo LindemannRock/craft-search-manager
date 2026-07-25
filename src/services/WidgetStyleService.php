@@ -268,13 +268,7 @@ class WidgetStyleService extends Component
      */
     public function getUsageCountsByHandle(): array
     {
-        return (new Query())
-            ->select(['styleHandle', 'COUNT(*) as cnt'])
-            ->from('{{%searchmanager_widget_configs}}')
-            ->where(['not', ['styleHandle' => null]])
-            ->andWhere(['not', ['styleHandle' => '']])
-            ->groupBy(['styleHandle'])
-            ->pairs();
+        return SearchManager::$plugin->dependencies->getStyleUsageCountsByHandle();
     }
 
     private function createFromRow(array $row): WidgetStyle

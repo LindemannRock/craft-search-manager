@@ -137,7 +137,11 @@ final class AuditFinding458RegressionTest extends TestCase
             $saveBody,
         );
         self::assertStringContainsString(
-            "'usageCount' => \$styleId ? \$this->getStyleUsageCount(\$widgetStyle->handle) : null,",
+            "'usageCount' => \$styleId ? (int)(\$styleUsageCounts[\$widgetStyle->handle] ?? 0) : null,",
+            $saveStyleBody,
+        );
+        self::assertStringContainsString(
+            'SearchManager::$plugin->dependencies->getStyleUsageCountsByHandle()',
             $saveStyleBody,
         );
         self::assertSame(2, substr_count($saveStyleBody, 'setRouteParams($errorRouteParams)'));

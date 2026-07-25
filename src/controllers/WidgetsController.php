@@ -743,7 +743,7 @@ class WidgetsController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         $widgetStyles = array_values(SearchManager::$plugin->widgetStyles->getAll());
-        $styleUsageCounts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
+        $styleUsageCounts = SearchManager::$plugin->dependencies->getStyleUsageCountsByHandle();
 
         $configHandles = BaseConfigFileHelper::getHandles(self::PLUGIN_HANDLE, 'widgetStyles');
         $databaseHandles = (new Query())
@@ -906,13 +906,13 @@ class WidgetsController extends Controller
         }
 
         $defaultStyles = WidgetConfig::defaultStyleValues();
-        $usageCount = $this->getStyleUsageCount($widgetStyle->handle);
+        $styleUsageCounts = SearchManager::$plugin->dependencies->getStyleUsageCountsByHandle();
 
         return $this->renderTemplate('search-manager/widgets/styles/view', [
             'widgetStyle' => $widgetStyle,
             'defaultStyles' => $defaultStyles,
             'styles' => array_merge($defaultStyles, $widgetStyle->getStyles()),
-            'usageCount' => $usageCount,
+            'usageCount' => (int)($styleUsageCounts[$widgetStyle->handle] ?? 0),
         ]);
     }
 
@@ -942,12 +942,15 @@ class WidgetsController extends Controller
         }
 
         $defaultStyles = WidgetConfig::defaultStyleValues();
+        $styleUsageCounts = $styleId
+            ? SearchManager::$plugin->dependencies->getStyleUsageCountsByHandle()
+            : [];
 
         return $this->renderTemplate('search-manager/widgets/styles/edit', [
             'widgetStyle' => $widgetStyle,
             'isNew' => !$styleId,
             'defaultStyles' => $defaultStyles,
-            'usageCount' => $styleId ? ($this->getStyleUsageCount($widgetStyle->handle)) : null,
+            'usageCount' => $styleId ? (int)($styleUsageCounts[$widgetStyle->handle] ?? 0) : null,
             'widgetTypeOptions' => $this->getWidgetTypeOptions(),
         ]);
     }
@@ -996,11 +999,14 @@ class WidgetsController extends Controller
         $widgetStyle->styles = $styles;
 
         $defaultStyles = WidgetConfig::defaultStyleValues();
+        $styleUsageCounts = $styleId
+            ? SearchManager::$plugin->dependencies->getStyleUsageCountsByHandle()
+            : [];
         $errorRouteParams = [
             'widgetStyle' => $widgetStyle,
             'isNew' => !$styleId,
             'defaultStyles' => $defaultStyles,
-            'usageCount' => $styleId ? $this->getStyleUsageCount($widgetStyle->handle) : null,
+            'usageCount' => $styleId ? (int)($styleUsageCounts[$widgetStyle->handle] ?? 0) : null,
             'widgetTypeOptions' => $this->getWidgetTypeOptions(),
         ];
 
@@ -1209,15 +1215,6 @@ class WidgetsController extends Controller
         }
 
         return $this->asJson(['success' => true, 'count' => $count]);
-    }
-
-    /**
-     * Get usage count for a specific style handle
-     */
-    private function getStyleUsageCount(string $handle): int
-    {
-        $counts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
-        return (int) ($counts[$handle] ?? 0);
     }
 
     private function duplicateFailure(string $error, string $fallbackUrl): Response

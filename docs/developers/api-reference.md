@@ -263,12 +263,14 @@ SearchManager::$plugin->widgetStyles->save($style);
 
 ### `getUsageCountsByHandle()`
 
-Get how many database-defined widget configs reference each style. Config-file-defined widgets are not counted.
+Get how many effective widget configs reference each style. The count uses the same resolved widget set as runtime: config-file and database-only widgets count, disabled widgets still count because they retain the reference, and a config widget replaces a database widget with the same handle.
 
 ```php
 $counts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
 // ['brand-dark' => 3, 'minimal' => 1]
 ```
+
+Styles with no effective references are omitted from the map, so use `$counts[$handle] ?? 0` when you need an explicit zero.
 
 ## IndexedSnippetService @since(5.54.0)
 

@@ -22,7 +22,7 @@ use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
- * Owns index dependencies, permission-safe usage disclosure, reference
+ * Owns dependency inventories, permission-safe usage disclosure, reference
  * validation, and the effective CP index catalogue.
  *
  * @since 5.53.0
@@ -869,21 +869,45 @@ class DependencyService extends Component
      */
     public function getStyleUsages(string $handle): array
     {
-        $usages = [];
+        return $this->getStyleUsageInventory()[$handle] ?? [];
+    }
 
+    /**
+     * Count effective widget references for every Widget Style handle.
+     *
+     * @return array<string, int>
+     * @since 5.54.0
+     */
+    public function getStyleUsageCountsByHandle(): array
+    {
+        return array_map(
+            static fn(array $usages): int => count($usages),
+            $this->getStyleUsageInventory(),
+        );
+    }
+
+    /**
+     * Group Widget Style references from the config-precedence-resolved widget set.
+     *
+     * @return array<string, array<int, array{type: string, label: string, kind: string}>>
+     */
+    private function getStyleUsageInventory(): array
+    {
+        $inventory = [];
         foreach (SearchManager::$plugin->widgetConfigs->getAll() as $widgetConfig) {
-            if ($widgetConfig->styleHandle !== $handle) {
+            $styleHandle = $widgetConfig->styleHandle;
+            if ($styleHandle === null || trim($styleHandle) === '') {
                 continue;
             }
 
-            $usages[] = [
+            $inventory[$styleHandle][] = [
                 'type' => Craft::t('search-manager', 'Widget'),
                 'label' => $widgetConfig->name,
                 'kind' => 'widget',
             ];
         }
 
-        return $usages;
+        return $inventory;
     }
 
     /**
