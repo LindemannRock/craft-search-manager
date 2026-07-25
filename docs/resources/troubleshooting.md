@@ -62,13 +62,30 @@ Search Manager blocks backend deletion when an index still references that backe
 
 **Fix:** Edit the listed indices and either choose another backend or leave the backend field empty to use the default backend. Rebuild those indices after changing backend storage so the new backend has current search data. Once no resolved index uses the backend, the backend can be deleted.
 
-## Index cannot be deleted
+## Index cannot be deleted or its handle cannot be changed
 
-Search Manager blocks index deletion when a widget or a specifically scoped API key still references that index. The error lists each dependency as `Widget: Name` or `API key: Name`.
+Search Manager protects index references instead of silently breaking them. It blocks both index deletion and changes to an existing index handle when the index is still used by any of these:
 
-API keys set to **All indices (current and future)** do not block index deletion because they do not depend on a specific index handle.
+- A widget's **Search Indices** setting
+- A specifically scoped API key
+- A query rule scoped to that index
+- A promotion scoped to that index
 
-**Fix:** Edit the listed widgets and remove the index from their Search Indices setting, or update the listed API keys so the index is no longer allowed. Once no resolved widget or API key uses the index, the index can be deleted.
+The error identifies each dependency you have permission to view. Dependencies from other permission groups appear as counts instead of names.
+
+Global query rules and promotions do not block an index change because they are not tied to a handle. API keys set to **All indices (current and future)** do not block it either.
+
+**Fix:** Open the listed dependencies and move them deliberately:
+
+- Remove the index from each listed widget.
+- Change each listed API key's allowed indices.
+- Select another valid index for each listed query rule or promotion, or delete that rule or promotion.
+
+Search Manager does not cascade a handle change, delete dependent records, or convert scoped rules and promotions to global scope. Once no resolved dependency uses the handle, you can delete the index or save its new handle.
+
+If an index was already removed outside this guarded workflow, or its config definition has an Error, Query Rules and Promotions keep the unavailable handle visible in the **Index** column and show **Error** in the **Status** column. Hover the badge for the reason. The edit page keeps that unavailable value selected, shows the same **Error** status in its sidebar, and places an error box below the Index field explaining the recovery choices. You can choose an available index, explicitly select **All Indices**, or delete the record; Search Manager does not make it global automatically.
+
+All index selectors use the same effective catalogue. A config index with an Error is not offered for a new selection, but remains visible when it is already selected so you can correct the record. Warning-only indices remain available. A disabled but otherwise valid index also remains available and is marked **Disabled** because disabled indices are still valid configuration references.
 
 ## Indexing is slow
 

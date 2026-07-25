@@ -15,7 +15,6 @@ use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\Promotion;
-use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -64,17 +63,21 @@ class PromotionsController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         $promotions = Promotion::findAll();
-        $indices = SearchIndex::findAll();
-
-        $indexLookup = [];
-        foreach ($indices as $index) {
-            $indexLookup[$index->handle] = $index->name;
+        $indexReferences = SearchManager::$plugin->dependencies->resolveIndexReferences(
+            array_map(static fn(Promotion $promotion): ?string => $promotion->indexHandle, $promotions),
+        );
+        $effectiveStatuses = [];
+        foreach ($promotions as $promotion) {
+            $effectiveStatuses[(int)$promotion->id] = SearchManager::$plugin->dependencies->resolveEffectiveStatus(
+                (bool)$promotion->enabled,
+                $indexReferences[trim((string)$promotion->indexHandle)],
+            );
         }
 
         // ---- Param parsing + allowlist validation -------------------------
 
         $statusFilter = (string) $request->getQueryParam('status', 'all');
-        $validStatuses = ['all', 'enabled', 'disabled'];
+        $validStatuses = ['all', 'error', 'enabled', 'disabled'];
         if (!in_array($statusFilter, $validStatuses, true)) {
             $statusFilter = 'all';
         }
@@ -99,10 +102,11 @@ class PromotionsController extends Controller
 
         // ---- Filter -------------------------------------------------------
 
-        if ($statusFilter === 'enabled') {
-            $promotions = array_values(array_filter($promotions, fn(Promotion $p): bool => $p->enabled));
-        } elseif ($statusFilter === 'disabled') {
-            $promotions = array_values(array_filter($promotions, fn(Promotion $p): bool => !$p->enabled));
+        if ($statusFilter !== 'all') {
+            $promotions = array_values(array_filter(
+                $promotions,
+                static fn(Promotion $promotion): bool => ($effectiveStatuses[(int)$promotion->id]['value'] ?? null) === $statusFilter,
+            ));
         }
 
         if ($matchTypeFilter !== 'all') {
@@ -120,7 +124,7 @@ class PromotionsController extends Controller
 
         // ---- Sort + paginate ----------------------------------------------
 
-        $promotions = $this->sortPromotions($promotions, $sort, $dir);
+        $promotions = $this->sortPromotions($promotions, $sort, $dir, $effectiveStatuses);
 
         $totalCount = count($promotions);
         $page = max(1, (int) $request->getParam('page', 1));
@@ -132,7 +136,8 @@ class PromotionsController extends Controller
         return $this->renderTemplate('search-manager/promotions/index', [
             'promotions' => $promotions,
             'promotionElements' => $promotionElements,
-            'indexLookup' => $indexLookup,
+            'indexReferences' => $indexReferences,
+            'effectiveStatuses' => $effectiveStatuses,
             'statusFilter' => $statusFilter,
             'matchTypeFilter' => $matchTypeFilter,
             'search' => $search,
@@ -151,11 +156,11 @@ class PromotionsController extends Controller
      * @param Promotion[] $promotions
      * @return Promotion[]
      */
-    private function sortPromotions(array $promotions, string $sort, string $dir): array
+    private function sortPromotions(array $promotions, string $sort, string $dir, array $effectiveStatuses): array
     {
         $multiplier = $dir === 'desc' ? -1 : 1;
 
-        usort($promotions, function(Promotion $a, Promotion $b) use ($sort, $multiplier): int {
+        usort($promotions, function(Promotion $a, Promotion $b) use ($sort, $multiplier, $effectiveStatuses): int {
             $cmp = match ($sort) {
                 'query' => strcasecmp((string) $a->query, (string) $b->query),
                 'matchType' => strcmp((string) $a->matchType, (string) $b->matchType),
@@ -163,12 +168,18 @@ class PromotionsController extends Controller
                 // siteId is nullable — null sorts as 0, preserving the prior
                 // Twig coalesce behaviour `(a.siteId ?? 0) <=> (b.siteId ?? 0)`.
                 'siteId' => ((int) ($a->siteId ?? 0)) <=> ((int) ($b->siteId ?? 0)),
-                'enabled' => ((int) $a->enabled) <=> ((int) $b->enabled),
+                'enabled' => SearchManager::$plugin->dependencies->compareEffectiveStatuses(
+                    $effectiveStatuses[(int)$a->id],
+                    $effectiveStatuses[(int)$b->id],
+                ),
                 default => strcasecmp((string) ($a->title ?? ''), (string) ($b->title ?? '')),
             };
 
             if ($cmp === 0 && $sort !== 'title') {
                 $cmp = strcasecmp((string) ($a->title ?? ''), (string) ($b->title ?? ''));
+            }
+            if ($cmp === 0) {
+                $cmp = ((int)$a->id) <=> ((int)$b->id);
             }
 
             return $cmp * $multiplier;
@@ -251,19 +262,13 @@ class PromotionsController extends Controller
             }
         }
 
-        // Get indices for dropdown
-        $indices = SearchIndex::findAll();
-        $indexOptions = [
-            ['label' => Craft::t('search-manager', 'All Indexes'), 'value' => ''],
-        ];
-        foreach ($indices as $index) {
-            if ($index->enabled) {
-                $indexOptions[] = [
-                    'label' => $index->name,
-                    'value' => $index->handle,
-                ];
-            }
-        }
+        $indexOptions = SearchManager::$plugin->dependencies->getIndexOptions($promotion->indexHandle);
+        $indexReferences = SearchManager::$plugin->dependencies->resolveIndexReferences([$promotion->indexHandle]);
+        $indexReference = $indexReferences[trim((string)$promotion->indexHandle)];
+        $effectiveStatus = SearchManager::$plugin->dependencies->resolveEffectiveStatus(
+            (bool)$promotion->enabled,
+            $indexReference,
+        );
 
         // Get sites for dropdown
         $siteOptions = [
@@ -287,6 +292,8 @@ class PromotionsController extends Controller
             'promotion' => $promotion,
             'isNew' => !$promotionId,
             'indexOptions' => $indexOptions,
+            'indexReference' => $indexReference,
+            'effectiveStatus' => $effectiveStatus,
             'siteOptions' => $siteOptions,
             'matchTypeOptions' => $matchTypeOptions,
             'targetTypeOptions' => TargetElementTypeHelper::options(),

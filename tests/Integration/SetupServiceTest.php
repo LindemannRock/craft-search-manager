@@ -118,6 +118,27 @@ final class SetupServiceTest extends TestCase
         self::assertSame('backend', $status['configIndexFindings'][0]['key']);
     }
 
+    public function testGetStatusRemainsCompleteForWarningOnlyConfigFindings(): void
+    {
+        $settings = new Settings();
+        $settings->ipHashSalt = str_repeat('a', 40);
+        $result = new ConfigIndexValidationResult(ConfigIndexValidationResult::STATUS_PRESENT);
+        $result->addFinding(
+            'warning-index',
+            ConfigIndexValidationResult::SEVERITY_WARNING,
+            'name',
+            'Empty name',
+        );
+        $this->swapPluginComponent('search-manager', 'configIndexValidator', new FixedConfigIndexValidator($result));
+
+        $status = $this->setup->getStatus($settings);
+
+        self::assertTrue($status['complete']);
+        self::assertTrue($status['configIndicesValid']);
+        self::assertFalse($status['configIndicesClean']);
+        self::assertSame([], $status['missing']);
+    }
+
     public function testGetStatusGroupsConfigIndexFindingsByHandleAndSeverity(): void
     {
         $settings = new Settings();

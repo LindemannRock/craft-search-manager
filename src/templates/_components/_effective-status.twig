@@ -1,0 +1,15 @@
+{% if presentation|default('badge') == 'sidebar' %}
+    {% include 'lindemannrock-base/_components/status-dot' with {
+        value: status.value,
+        colorSet: status.colorSet,
+        title: status.title,
+    } only %}
+    <span{% if status.title %} title="{{ status.title }}"{% endif %}>{{ status.label }}</span>
+{% else %}
+    {% include 'lindemannrock-base/_components/badge' with {
+        label: status.label,
+        value: status.value,
+        colorSet: status.colorSet,
+        title: status.title,
+    } only %}
+{% endif %}

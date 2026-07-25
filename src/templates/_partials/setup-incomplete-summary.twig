@@ -1,12 +1,21 @@
 {% set currentSubnavItem = selectedSubnavItem ?? '' %}
 {% set setupStatus = setupStatus ?? craft.app.plugins.getPlugin('search-manager').setup.getStatus() %}
+{% set setupMessage = null %}
+
+{% if not setupStatus.configIndicesValid and not setupStatus.ipSaltConfigured %}
+    {% set setupMessage = 'Resolve configuration index issues before rebuilding affected indices, and finish setup before tracking search analytics.'|t('search-manager') %}
+{% elseif not setupStatus.configIndicesValid %}
+    {% set setupMessage = 'Resolve configuration index issues before rebuilding affected indices.'|t('search-manager') %}
+{% elseif not setupStatus.ipSaltConfigured %}
+    {% set setupMessage = 'Finish setup before tracking search analytics.'|t('search-manager') %}
+{% endif %}
 
 {% if currentSubnavItem != 'setup' %}
     {% include 'lindemannrock-base/_components/setup-incomplete' with {
         complete: setupStatus.complete,
         setupUrl: setupStatus.setupUrl,
         heading: 'Setup incomplete'|t('search-manager'),
-        message: 'Finish setup before tracking search analytics.'|t('search-manager'),
+        message: setupMessage,
         actionLabel: 'Open setup'|t('search-manager'),
     } only %}
 {% endif %}

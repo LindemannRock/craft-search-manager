@@ -53,6 +53,7 @@
                     colorSet: 'status',
                     options: [
                         {value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+                        {value: 'error', label: 'Error'|t('search-manager'), colorKey: 'error'},
                         {value: 'enabled', label: 'Enabled'|t('search-manager'), colorKey: 'enabled'},
                         {value: 'disabled', label: 'Disabled'|t('search-manager'), colorKey: 'disabled'},
                     ],
@@ -155,11 +156,9 @@
 
     {# Index #}
     <td data-column="index">
-        {% if item.indexHandle %}
-            {{ indexLookup[item.indexHandle] ?? item.indexHandle }}
-        {% else %}
-            <span class="light">{{ 'All'|t('search-manager') }}</span>
-        {% endif %}
+        {% include 'search-manager/_components/_index-reference' with {
+            reference: indexReferences[(item.indexHandle ?? '')|trim],
+        } only %}
     </td>
 
     {# Site #}
@@ -179,19 +178,9 @@
 
     {# Status #}
     <td data-column="enabled">
-        {% if item.enabled %}
-            {% include 'lindemannrock-base/_components/badge' with {
-                label: 'Enabled'|t('search-manager'),
-                value: 'enabled',
-                colorSet: 'status',
-            } only %}
-        {% else %}
-            {% include 'lindemannrock-base/_components/badge' with {
-                label: 'Disabled'|t('search-manager'),
-                value: 'disabled',
-                colorSet: 'status',
-            } only %}
-        {% endif %}
+        {% include 'search-manager/_components/_effective-status' with {
+            status: effectiveStatuses[item.id],
+        } only %}
     </td>
 {% endblock %}
 

@@ -13,7 +13,6 @@ use craft\helpers\Console;
 use craft\helpers\DateTimeHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\searchmanager\models\ApiKey;
-use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\console\ExitCode;
 
@@ -273,14 +272,11 @@ class ApiKeysController extends Controller
             return [];
         }
 
-        $knownHandles = array_fill_keys(
-            array_map(static fn(SearchIndex $index): string => $index->handle, SearchIndex::findAll()),
-            true,
-        );
+        $catalogue = SearchManager::$plugin->dependencies->getIndexCatalogue($handles);
 
         $unknown = array_values(array_filter(
             $handles,
-            static fn(string $handle): bool => !isset($knownHandles[$handle])
+            static fn(string $handle): bool => !($catalogue[$handle]['referenceable'] ?? false),
         ));
 
         return $unknown;

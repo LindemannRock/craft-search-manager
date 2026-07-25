@@ -1,0 +1,7 @@
+{% if reference.global %}
+    <span class="light">{{ reference.identityLabel }}</span>
+{% elseif reference.exists %}
+    {{ reference.identityLabel }}
+{% else %}
+    <code>{{ reference.identityLabel }}</code>
+{% endif %}

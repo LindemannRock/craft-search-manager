@@ -1,0 +1,37 @@
+{% set findings = findings ?? [] %}
+
+{% if findings %}
+    {% set hasErrors = findings|filter(finding => finding.severity == 'error')|length > 0 %}
+    {% set findingList %}
+        <ul{% if listClass ?? null %} class="{{ listClass }}"{% endif %}>
+            {% for finding in findings %}
+                <li>
+                    <strong>{{ finding.severity == 'error' ? 'Error'|t('search-manager') : 'Warning'|t('search-manager') }}:</strong>
+                    {% if finding.emphasis %}
+                        {% set escapedMessage = finding.message|e %}
+                        {% set escapedEmphasis = finding.emphasis|e %}
+                        {% if escapedEmphasis and escapedEmphasis in escapedMessage %}
+                            {{ escapedMessage|replace({(escapedEmphasis): '<strong>' ~ escapedEmphasis ~ '</strong>'})|raw }}
+                        {% else %}
+                            {{ finding.message }}
+                        {% endif %}
+                    {% else %}
+                        {{ finding.message }}
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endset %}
+
+    {% if presentation|default('list') == 'box' %}
+        {% include 'lindemannrock-base/_components/info-box' with {
+            message: findingList,
+            type: hasErrors ? 'error' : 'warning',
+            variant: 'colored',
+            margin: margin|default('bottom'),
+            allowHtml: true,
+        } only %}
+    {% else %}
+        {{ findingList }}
+    {% endif %}
+{% endif %}

@@ -45,6 +45,7 @@
                     colorSet: 'status',
                     options: [
                         {value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+                        {value: 'error', label: 'Error'|t('search-manager'), colorKey: 'error'},
                         {value: 'enabled', label: 'Enabled'|t('search-manager'), colorKey: 'enabled'},
                         {value: 'disabled', label: 'Disabled'|t('search-manager'), colorKey: 'disabled'},
                     ],
@@ -77,6 +78,7 @@
             {key: 'title', label: 'Title'|t('search-manager'), sortable: true},
             {key: 'query', label: 'Query Pattern'|t('search-manager'), sortable: true},
             {key: 'matchType', label: 'Match'|t('search-manager'), sortable: true, hideable: true},
+            {key: 'index', label: 'Index'|t('search-manager'), hideable: true},
             {key: 'element', label: 'Promoted Element'|t('search-manager'), hideable: true},
             {key: 'position', label: 'Position'|t('search-manager'), sortable: true, hideable: true},
             {key: 'siteId', label: 'Site'|t('search-manager'), sortable: true, hideable: true},
@@ -124,6 +126,13 @@
         } only %}
     </td>
 
+    {# Index #}
+    <td data-column="index">
+        {% include 'search-manager/_components/_index-reference' with {
+            reference: indexReferences[(item.indexHandle ?? '')|trim],
+        } only %}
+    </td>
+
     {# Promoted Element #}
     <td data-column="element">
         {% set element = promotionElements[item.id] ?? null %}
@@ -158,19 +167,9 @@
 
     {# Status #}
     <td data-column="enabled">
-        {% if item.enabled %}
-            {% include 'lindemannrock-base/_components/badge' with {
-                label: 'Enabled'|t('search-manager'),
-                value: 'enabled',
-                colorSet: 'status',
-            } only %}
-        {% else %}
-            {% include 'lindemannrock-base/_components/badge' with {
-                label: 'Disabled'|t('search-manager'),
-                value: 'disabled',
-                colorSet: 'status',
-            } only %}
-        {% endif %}
+        {% include 'search-manager/_components/_effective-status' with {
+            status: effectiveStatuses[item.id],
+        } only %}
     </td>
 {% endblock %}
 

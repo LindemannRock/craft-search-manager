@@ -166,7 +166,7 @@
     }) }}
 
     <div id="allowed-indices-explicit" {% if apiKey.allowsAllIndices() %}style="display:none;"{% endif %}>
-        {% if allIndices|length == 0 %}
+        {% if indexOptions|length == 0 %}
             <p class="light">{{ 'No indices configured yet. Add at least one index before this key can be useful.'|t('search-manager') }}</p>
         {% else %}
             {{ forms.checkboxGroupField({
@@ -174,7 +174,7 @@
                 instructions: 'Tick each index this key can query.'|t('search-manager'),
                 name: 'allowedIndices',
                 values: apiKey.allowedIndices,
-                options: allIndices|map(idx => {value: idx.handle, label: idx.name}),
+                options: indexOptions,
                 fieldAttributes: {'data-error-key': 'allowedIndices'},
             }) }}
         {% endif %}

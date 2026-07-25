@@ -25,21 +25,6 @@
 <hr>
 
 {% set selectedIndexHandles = widgetConfig.getIndexHandles() %}
-{% set availableIndices = (selectedApiKey and not selectedApiKey.allowsAllIndices())
-	? indices|filter(index => selectedApiKey.allowsIndex(index.handle))
-	: indices %}
-{% set allIndexOptions = [] %}
-{% set indexOptions = [] %}
-{% for index in indices %}
-	{% set option = {
-		label: index.name ~ ' (' ~ index.handle ~ ')',
-		value: index.handle
-	} %}
-	{% set allIndexOptions = allIndexOptions|merge([option]) %}
-	{% if index in availableIndices %}
-		{% set indexOptions = indexOptions|merge([option]) %}
-	{% endif %}
-{% endfor %}
 
 {{ forms.selectField({
 	label: 'API Key'|t('search-manager'),

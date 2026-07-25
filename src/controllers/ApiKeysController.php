@@ -13,7 +13,6 @@ use craft\web\Controller;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\ApiKey;
-use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -196,7 +195,10 @@ class ApiKeysController extends Controller
             'apiKey' => $apiKey,
             'isNew' => $isNew,
             'title' => $title,
-            'allIndices' => SearchIndex::findAll(),
+            'indexOptions' => SearchManager::$plugin->dependencies->getIndexOptions(
+                $apiKey->allowsAllIndices() ? [] : $apiKey->allowedIndices,
+                false,
+            ),
             'newPlaintext' => is_string($newPlaintext) ? $newPlaintext : null,
             'canCreate' => Craft::$app->getUser()->checkPermission('searchManager:createApiKeys'),
             'canEdit' => Craft::$app->getUser()->checkPermission('searchManager:editApiKeys'),
@@ -243,9 +245,18 @@ class ApiKeysController extends Controller
             // arrives. Form hides the field on edit; this is defence in depth.
         }
 
-        $this->populateRestrictionsFromRequest($apiKey, $request);
+        $restrictionsValid = $this->populateRestrictionsFromRequest($apiKey, $request);
         if ($isNew && $apiKey->handle !== '') {
             $apiKey->handle = SlugHandleHelper::makeUnique('{{%searchmanager_api_keys}}', 'handle', $apiKey->handle);
+        }
+
+        if (!$restrictionsValid) {
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Couldn’t save API key'));
+            Craft::$app->getUrlManager()->setRouteParams([
+                'apiKey' => $apiKey,
+                'keyId' => $keyId,
+            ]);
+            return null;
         }
 
         if (!$isNew && !$this->guardApiKeyWidgetDependenciesForSave($apiKey)) {
@@ -527,8 +538,9 @@ class ApiKeysController extends Controller
      * create and edit normalize the same way and the parsing is testable
      * by exercising actionSave once.
      */
-    private function populateRestrictionsFromRequest(ApiKey $apiKey, \craft\web\Request $request): void
+    private function populateRestrictionsFromRequest(ApiKey $apiKey, \craft\web\Request $request): bool
     {
+        $valid = true;
         $apiKey->name = trim((string)$request->getBodyParam('name', ''));
         $apiKey->handle = SlugHandleHelper::normalizeSlug(
             (string)$request->getBodyParam('handle'),
@@ -542,10 +554,16 @@ class ApiKeysController extends Controller
         if ((bool)$request->getBodyParam('allowAllIndices', false)) {
             $apiKey->allowedIndices = [ApiKey::ALL_INDICES];
         } else {
-            $rawIndices = $request->getBodyParam('allowedIndices', []);
-            $apiKey->allowedIndices = is_array($rawIndices)
-                ? array_values(array_filter(array_map('strval', $rawIndices), fn($h) => $h !== ''))
-                : [];
+            $rawIndices = SearchManager::$plugin->dependencies->normalizeSubmittedIndexHandleList(
+                $request->getBodyParam('allowedIndices', []),
+            );
+            if (!is_array($rawIndices) || !array_is_list($rawIndices)) {
+                $apiKey->allowedIndices = [];
+                $apiKey->addError('allowedIndices', Craft::t('search-manager', 'One or more selected search indices are invalid.'));
+                $valid = false;
+            } else {
+                $apiKey->allowedIndices = array_values($rawIndices);
+            }
         }
 
         // Referrers: textarea → array. Trim, lowercase, drop blanks. Pattern
@@ -567,6 +585,8 @@ class ApiKeysController extends Controller
         // Optional expiry — Craft's datetime picker submits an array {date, time}
         // or a single string. Use Craft's helper for consistent parsing.
         $apiKey->validUntil = \craft\helpers\DateTimeHelper::toDateTime($request->getBodyParam('validUntil')) ?: null;
+
+        return $valid;
     }
 
     private function parseOptionalInt(mixed $raw): ?int

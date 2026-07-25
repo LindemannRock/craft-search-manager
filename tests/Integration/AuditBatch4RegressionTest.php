@@ -18,12 +18,14 @@ use lindemannrock\searchmanager\tests\TestCase;
  */
 final class AuditBatch4RegressionTest extends TestCase
 {
-    public function testApiKeysConsoleUnknownIndexHandlesUsesFindAllOnce(): void
+    public function testApiKeysConsoleUnknownIndexHandlesUsesCanonicalCatalogue(): void
     {
         $source = $this->readPluginSource('src/console/controllers/ApiKeysController.php');
         $body = $this->methodBody($source, 'unknownIndexHandles');
 
-        self::assertStringContainsString('SearchIndex::findAll()', $body);
+        self::assertStringContainsString('dependencies->getIndexCatalogue($handles)', $body);
+        self::assertStringContainsString("['referenceable']", $body);
+        self::assertStringNotContainsString('SearchIndex::findAll()', $body);
         self::assertStringNotContainsString('SearchIndex::findByHandle(', $body);
     }
 

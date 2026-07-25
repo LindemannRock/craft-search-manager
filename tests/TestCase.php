@@ -307,8 +307,12 @@ abstract class TestCase extends IntegrationTestCase
      */
     protected function findWorkingIndexAndElement(): ?array
     {
+        $catalogue = SearchManager::$plugin->dependencies->getIndexCatalogue();
         foreach (SearchIndex::findAll() as $index) {
             if (!$index->enabled) {
+                continue;
+            }
+            if (!($catalogue[$index->handle]['referenceable'] ?? false)) {
                 continue;
             }
             if ($index->elementType !== \craft\elements\Entry::class) {

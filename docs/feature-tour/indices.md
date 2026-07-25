@@ -42,7 +42,7 @@ Nested Matrix entries are indexed as part of their owner's document, never as st
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `name` | `string` | Outer handle in config; required in CP | Display name for the index. An empty config value is allowed but produces a Setup warning and a blank CP label |
+| `name` | `string` | Outer handle in config; required in CP | Display name for the index. A missing, null, blank, or whitespace-only config value falls back to the handle in the CP while still producing a Setup warning |
 | `elementType` | `string` | `Entry::class` in config; required in CP | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, Commerce `Product::class` / `Variant::class`, etc.) |
 | `siteId` | `int\|array\|null` | `null` | Site(s) to index. `null` = all sites |
 | `criteria` | `array\|Closure` | `[]` | Selector list or callback used to filter elements |
@@ -86,7 +86,9 @@ Define indices in `config/search-manager.php`:
 
 ### Config validation and readiness
 
-Search Manager checks config-defined indices without executing them or changing stored data. Open **Search Manager > Setup** to see errors and warnings; the same summary appears on Search Manager CP pages until the issues are resolved. On the Indices list, a config index with an error shows a red **Error** status badge instead of a stale Enabled/Disabled badge; hover it to see the first finding. Errors block a targeted rebuild before its backend is cleared. Warnings identify suspicious but still functional configuration, such as an empty display name.
+Search Manager checks config-defined indices without executing them or changing stored data. Open **Search Manager > Setup** to see errors and warnings. A configuration-error summary appears across Search Manager CP pages while blocking errors remain; the separate analytics-privacy setup message appears only when its IP salt is missing. Warnings alone do not make Setup incomplete.
+
+On the Indices list, a config index with an error shows a red **Error** status badge instead of a stale Enabled/Disabled badge; hover it to see the first error. Open that config index to see one colored findings box containing every applicable error and warning in validator order. A warning-only index keeps its normal Enabled/Disabled status and shows a warning-colored findings box. Errors block a targeted rebuild before its backend is cleared. Warnings identify suspicious but still functional configuration, such as an empty display name.
 
 The `indices` section must be an array keyed by valid index handles. Each index must also be an array and may contain only the options in [Index options](#index-options). Values are checked strictly: booleans must be PHP booleans, site IDs must be existing positive IDs, heading levels must be unique integers from 1 through 6, backend handles must identify enabled configured backends, and element and transformer classes must exist and satisfy their required interfaces. Array values that Search Manager persists must also be JSON-encodable. A legacy backend type such as `file` or `mysql` is not a backend handle unless you have configured a backend with that exact handle.
 

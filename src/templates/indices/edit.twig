@@ -1,12 +1,12 @@
 {% extends "_layouts/cp" %}
 {% do view.registerAssetBundle('lindemannrock\\base\\web\\assets\\components\\ComponentsAsset') %}
-{% set title = isNew ? "Create Index"|t('search-manager') : "Edit Index: {name}"|t('search-manager', { name: index.name }) %}
+{% set title = isNew ? "Create Index"|t('search-manager') : "Edit Index: {name}"|t('search-manager', { name: indexReference.displayName }) %}
 {% set isPro = craft.searchManager.plugin.isPro() %}
 {% set selectedSubnavItem = 'indices' %}
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
     { label: 'Indices'|t('search-manager'), url: url('search-manager/indices') },
-    { label: isNew ? 'New Index'|t('search-manager') : index.name }
+    { label: isNew ? 'New Index'|t('search-manager') : indexReference.displayName }
 ] %}
 {% set fullPageForm = true %}
 {% set saveShortcutRedirect = cpUrl('search-manager/indices/edit/{id}') %}
@@ -680,11 +680,10 @@ document.addEventListener('DOMContentLoaded', function() {
 			<div class="data">
 				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 				<dd class="value">
-					{% include 'lindemannrock-base/_components/status-dot' with {
-						value: index.enabled ? 'enabled' : 'disabled',
-						colorSet: 'status',
+					{% include 'search-manager/_components/_effective-status' with {
+						status: indexReference.status,
+						presentation: 'sidebar',
 					} only %}
-					<span>{{ index.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 				</dd>
 			</div>
 			<div class="data">

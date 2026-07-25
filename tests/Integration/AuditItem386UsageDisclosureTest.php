@@ -70,15 +70,20 @@ final class AuditItem386UsageDisclosureTest extends TestCase
 
         self::assertCount(1, $usages);
         self::assertSame('index', $usages[0]['kind']);
-        self::assertSame('Audit 386 Index', $usages[0]['label']);
+        self::assertSame('Audit 386 Index (audit-386-index-1)', $usages[0]['label']);
     }
 
     public function testIndexUsagesCarryWidgetAndApiKeyKinds(): void
     {
-        $this->installWidgetConfigStub([$this->fakeWidgetConfig('Audit 386 Widget', ['audit-386-index-1'])]);
-        $this->seedApiKey('audit-386-index-1');
+        $usages = $this->withOnlySearchIndices(
+            [$this->fakeIndex('audit-386-index-1', 'Audit 386 Index')],
+            function(): array {
+                $this->installWidgetConfigStub([$this->fakeWidgetConfig('Audit 386 Widget', ['audit-386-index-1'])]);
+                $this->seedApiKey('audit-386-index-1');
 
-        $usages = SearchManager::$plugin->dependencies->getIndexUsages('audit-386-index-1');
+                return SearchManager::$plugin->dependencies->getIndexUsages('audit-386-index-1');
+            },
+        );
 
         $kinds = array_column($usages, 'kind');
         self::assertContains('widget', $kinds);

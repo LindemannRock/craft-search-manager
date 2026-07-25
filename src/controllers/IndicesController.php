@@ -18,7 +18,6 @@ use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchHeadingHelper;
-use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
@@ -63,18 +62,7 @@ class IndicesController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         $indices = SearchIndex::findAll();
-        $configValidation = SearchManager::$plugin->configIndexValidator->validate();
-        $configIndexErrors = [];
-        foreach ($configValidation->getFindings() as $finding) {
-            $handle = $finding['handle'];
-            if ($finding['severity'] !== ConfigIndexValidationResult::SEVERITY_ERROR
-                || $handle === null
-                || isset($configIndexErrors[$handle])) {
-                continue;
-            }
-
-            $configIndexErrors[$handle] = $finding['message'];
-        }
+        $indexCatalogue = SearchManager::$plugin->dependencies->getIndexCatalogue();
         $configHandles = BaseConfigFileHelper::getHandles(self::PLUGIN_HANDLE, 'indices');
         $databaseHandles = (new Query())
             ->select(['handle'])
@@ -86,7 +74,7 @@ class IndicesController extends Controller
         // ---- Param parsing + allowlist validation -------------------------
 
         $statusFilter = (string) $request->getQueryParam('status', 'all');
-        $validStatuses = ['all', 'enabled', 'disabled'];
+        $validStatuses = ['all', 'error', 'enabled', 'disabled'];
         if (!in_array($statusFilter, $validStatuses, true)) {
             $statusFilter = 'all';
         }
@@ -117,10 +105,11 @@ class IndicesController extends Controller
 
         // ---- Filter -------------------------------------------------------
 
-        if ($statusFilter === 'enabled') {
-            $indices = array_values(array_filter($indices, fn(SearchIndex $i): bool => $i->enabled));
-        } elseif ($statusFilter === 'disabled') {
-            $indices = array_values(array_filter($indices, fn(SearchIndex $i): bool => !$i->enabled));
+        if ($statusFilter !== 'all') {
+            $indices = array_values(array_filter(
+                $indices,
+                static fn(SearchIndex $index): bool => ($indexCatalogue[$index->handle]['state'] ?? null) === $statusFilter,
+            ));
         }
 
         if ($sourceFilter === 'config') {
@@ -135,15 +124,15 @@ class IndicesController extends Controller
 
         if ($search !== '') {
             $needle = mb_strtolower($search);
-            $indices = array_values(array_filter($indices, function(SearchIndex $i) use ($needle): bool {
-                return str_contains(mb_strtolower((string) $i->name), $needle)
+            $indices = array_values(array_filter($indices, function(SearchIndex $i) use ($needle, $indexCatalogue): bool {
+                return str_contains(mb_strtolower((string)($indexCatalogue[$i->handle]['displayName'] ?? $i->name)), $needle)
                     || str_contains(mb_strtolower((string) $i->handle), $needle);
             }));
         }
 
         // ---- Sort + paginate ----------------------------------------------
 
-        $indices = $this->sortIndices($indices, $sort, $dir);
+        $indices = $this->sortIndices($indices, $sort, $dir, $indexCatalogue);
 
         $totalCount = count($indices);
         $page = max(1, (int) $request->getParam('page', 1));
@@ -153,7 +142,7 @@ class IndicesController extends Controller
 
         return $this->renderTemplate('search-manager/indices/index', [
             'indices' => $indices,
-            'configIndexErrors' => $configIndexErrors,
+            'indexCatalogue' => $indexCatalogue,
             'collisionHandles' => $collisionHandles,
             'statusFilter' => $statusFilter,
             'sourceFilter' => $sourceFilter,
@@ -178,21 +167,30 @@ class IndicesController extends Controller
      * @param SearchIndex[] $indices
      * @return SearchIndex[]
      */
-    private function sortIndices(array $indices, string $sort, string $dir): array
+    private function sortIndices(array $indices, string $sort, string $dir, array $indexCatalogue): array
     {
         $multiplier = $dir === 'desc' ? -1 : 1;
 
-        usort($indices, function(SearchIndex $a, SearchIndex $b) use ($sort, $multiplier): int {
+        usort($indices, function(SearchIndex $a, SearchIndex $b) use ($sort, $multiplier, $indexCatalogue): int {
             $cmp = match ($sort) {
                 'handle' => strcasecmp((string) $a->handle, (string) $b->handle),
                 'elementType' => strcmp((string) $a->elementType, (string) $b->elementType),
                 'source' => strcmp((string) ($a->source ?? ''), (string) ($b->source ?? '')),
-                'enabled' => ((int) $a->enabled) <=> ((int) $b->enabled),
-                default => strcasecmp((string) $a->name, (string) $b->name),
+                'enabled' => SearchManager::$plugin->dependencies->compareEffectiveStatuses(
+                    $indexCatalogue[$a->handle]['status'],
+                    $indexCatalogue[$b->handle]['status'],
+                ),
+                default => strcasecmp(
+                    (string)($indexCatalogue[$a->handle]['displayName'] ?? $a->name),
+                    (string)($indexCatalogue[$b->handle]['displayName'] ?? $b->name),
+                ),
             };
 
             if ($cmp === 0 && $sort !== 'name') {
-                $cmp = strcasecmp((string) $a->name, (string) $b->name);
+                $cmp = strcasecmp(
+                    (string)($indexCatalogue[$a->handle]['displayName'] ?? $a->name),
+                    (string)($indexCatalogue[$b->handle]['displayName'] ?? $b->name),
+                );
             }
 
             return $cmp * $multiplier;
@@ -225,6 +223,7 @@ class IndicesController extends Controller
 
         return $this->renderTemplate('search-manager/indices/view', [
             'index' => $index,
+            'indexReference' => SearchManager::$plugin->dependencies->getIndexCatalogue([$index->handle])[$index->handle],
             'elementTypeLabels' => $this->getElementTypeLabels(),
         ]);
     }
@@ -262,6 +261,9 @@ class IndicesController extends Controller
         return $this->renderTemplate('search-manager/indices/edit', [
             'index' => $index,
             'isNew' => !$indexId,
+            'indexReference' => $indexId
+                ? SearchManager::$plugin->dependencies->getIndexCatalogue([$index->handle])[$index->handle]
+                : null,
             'defaultHeadingLevels' => SearchHeadingHelper::DEFAULT_LEVELS,
             'elementTypeOptions' => $this->getElementTypeOptions(),
             'docsManagerTransformerAvailable' => $this->isDocsManagerTransformerAvailable(),

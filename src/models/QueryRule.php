@@ -17,6 +17,7 @@ use lindemannrock\base\helpers\UrlSafetyHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\traits\IndexReferenceValidationTrait;
 
 /**
  * Query Rule Model
@@ -28,6 +29,7 @@ use lindemannrock\searchmanager\SearchManager;
  */
 class QueryRule extends Model
 {
+    use IndexReferenceValidationTrait;
     use LoggingTrait;
 
     private const MAX_REGEX_PATTERN_LENGTH = 500;
@@ -107,6 +109,7 @@ class QueryRule extends Model
             [['name', 'matchValue', 'actionType'], 'required'],
             [['name'], 'string', 'max' => 255],
             [['indexHandle'], 'string', 'max' => 255],
+            [['indexHandle'], 'validateIndexReference', 'skipOnEmpty' => false],
             [['matchValue'], 'string', 'max' => 500],
             [['matchType'], 'in', 'range' => [self::MATCH_EXACT, self::MATCH_CONTAINS, self::MATCH_PREFIX, self::MATCH_REGEX]],
             [['actionType'], 'in', 'range' => [

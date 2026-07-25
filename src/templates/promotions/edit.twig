@@ -105,6 +105,11 @@
 			errors: promotion.getErrors('indexHandle'),
 		}) }}
 
+		{% include 'search-manager/_components/_index-reference-error' with {
+			reference: indexReference,
+			entityType: 'promotion'|t('search-manager'),
+		} only %}
+
 		<hr>
 
 		<div class="field{% if promotion.getErrors('matchType') %} has-errors{% endif %}" data-error-key="matchType">
@@ -292,11 +297,10 @@
 				<div class="data">
 					<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 					<dd class="value">
-						{% include 'lindemannrock-base/_components/status-dot' with {
-							value: promotion.enabled ? 'enabled' : 'disabled',
-							colorSet: 'status',
+						{% include 'search-manager/_components/_effective-status' with {
+							status: effectiveStatus,
+							presentation: 'sidebar',
 						} only %}
-						<span>{{ promotion.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 					</dd>
 				</div>
 				<div class="data">

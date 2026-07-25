@@ -27,11 +27,9 @@ final class ConfigIndexStatusBadgeTest extends TestCase
         $error = $this->index('config-error', 'Error Fixture', 'config', true);
         $enabled = $this->index('config-healthy', 'Healthy Config Fixture', 'config', true);
         $disabled = $this->index('database-disabled', 'Disabled Database Fixture', 'database', false);
-        $errors = ['config-error' => 'Configured backend "missing" does not exist.'];
-
-        $errorHtml = $this->renderStatus($error, $errors);
-        $enabledHtml = $this->renderStatus($enabled, $errors);
-        $disabledHtml = $this->renderStatus($disabled, $errors);
+        $errorHtml = $this->renderStatus($error, 'error', 'Configured backend "missing" does not exist.');
+        $enabledHtml = $this->renderStatus($enabled, 'enabled');
+        $disabledHtml = $this->renderStatus($disabled, 'disabled');
 
         self::assertStringContainsString('Error', $errorHtml);
         self::assertStringContainsString('Configured backend &quot;missing&quot; does not exist.', $errorHtml);
@@ -40,15 +38,22 @@ final class ConfigIndexStatusBadgeTest extends TestCase
         self::assertStringContainsString('Disabled', $disabledHtml);
 
         $controllerSource = (string)file_get_contents(dirname(__DIR__, 2) . '/src/controllers/IndicesController.php');
-        self::assertSame(1, substr_count($controllerSource, 'configIndexValidator->validate()'));
+        self::assertSame(1, substr_count($controllerSource, 'dependencies->getIndexCatalogue()'));
+        self::assertStringNotContainsString('configIndexValidator->validate()', $controllerSource);
     }
 
-    /** @param array<string, string> $errors */
-    private function renderStatus(SearchIndex $index, array $errors): string
+    private function renderStatus(SearchIndex $index, string $state, ?string $errorTitle = null): string
     {
-        return Craft::$app->getView()->renderTemplate('search-manager/indices/_status-badge', [
-            'item' => $index,
-            'configIndexErrors' => $errors,
+        $status = SearchManager::$plugin->dependencies->resolveEffectiveStatus(
+            $index->enabled,
+            [
+                'state' => $state,
+                'errorTitle' => $errorTitle,
+            ],
+        );
+
+        return Craft::$app->getView()->renderTemplate('search-manager/_components/_effective-status', [
+            'status' => $status,
         ], View::TEMPLATE_MODE_CP);
     }
 

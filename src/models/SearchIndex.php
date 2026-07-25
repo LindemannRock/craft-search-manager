@@ -936,6 +936,10 @@ class SearchIndex extends Model
     {
         self::$allCache = null;
         self::$allCacheExpiresAt = null;
+
+        if (SearchManager::$plugin !== null && SearchManager::$plugin->has('dependencies')) {
+            SearchManager::$plugin->dependencies->clearIndexCatalogue();
+        }
     }
 
     /**
@@ -969,7 +973,13 @@ class SearchIndex extends Model
     {
         $model = new self();
         $model->handle = $handle;
-        $model->name = $configData['name'] ?? $handle;
+        $configuredName = $configData['name'] ?? null;
+        if ($configuredName !== null && !is_string($configuredName)) {
+            throw new \UnexpectedValueException('Configured index name must be a string or null.');
+        }
+        $model->name = trim($configuredName ?? '') !== ''
+            ? trim($configuredName)
+            : $handle;
         $model->elementType = $configData['elementType'] ?? Entry::class;
         $model->siteId = isset($configData['siteId']) ? self::normalizeSiteIdValue($configData['siteId']) : null;
         $model->criteria = self::normalizeConfigCriteria($handle, $configData['criteria'] ?? []);
@@ -1154,6 +1164,21 @@ class SearchIndex extends Model
         $db = Craft::$app->getDb();
         $originalId = $this->id;
         $previousRow = $this->id ? $this->existingPersistenceRow() : null;
+        if ($previousRow !== null && $previousRow['handle'] !== $this->handle) {
+            $usages = SearchManager::$plugin->dependencies->getIndexUsages($previousRow['handle']);
+            if ($usages !== []) {
+                $this->addError(
+                    'handle',
+                    SearchManager::$plugin->dependencies->formatHandleChangeError($previousRow['name'], $usages),
+                );
+                $this->logError('Cannot change index handle while dependencies exist', [
+                    'currentHandle' => $previousRow['handle'],
+                    'requestedHandle' => $this->handle,
+                    'dependencyCount' => count($usages),
+                ]);
+                return false;
+            }
+        }
         $transaction = $db->beginTransaction();
 
         try {

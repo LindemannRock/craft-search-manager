@@ -1,0 +1,16 @@
+{% if not reference.referenceable %}
+    {% set message %}
+        <strong>{{ 'Error'|t('search-manager') }}:</strong>
+        {{ 'The selected index “{handle}” is unavailable. Choose an available index or All Indices, or delete this {type}. This {type} will not run until its index scope is corrected.'|t('search-manager', {
+            handle: reference.handle,
+            type: entityType,
+        }) }}
+    {% endset %}
+
+    {% include 'lindemannrock-base/_components/info-box' with {
+        type: 'error',
+        variant: 'colored',
+        message: message,
+        margin: 'top',
+    } only %}
+{% endif %}

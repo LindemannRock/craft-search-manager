@@ -57,6 +57,7 @@
                     colorSet: 'status',
                     options: [
                         {value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+                        {value: 'error', label: 'Error'|t('search-manager'), colorKey: 'error'},
                         {value: 'enabled', label: 'Enabled'|t('search-manager'), colorKey: 'enabled'},
                         {value: 'disabled', label: 'Disabled'|t('search-manager'), colorKey: 'disabled'},
                     ],
@@ -142,6 +143,7 @@
 {% endblock %}
 
 {% block tableRow %}
+    {% set indexReference = indexCatalogue[item.handle] %}
     {% set indexBackendType = item.effectiveBackendType %}
     {% set configuredBackend = item.configuredBackend %}
 
@@ -149,11 +151,11 @@
     <td data-column="name">
         {% if item.canEdit() %}
             <a class="label-link" href="{{ url('search-manager/indices/edit/' ~ item.id) }}">
-                <span>{{ item.name }}</span>
+                <span>{{ indexReference.displayName }}</span>
             </a>
         {% else %}
             <a class="label-link" href="{{ url('search-manager/indices/view/' ~ item.handle) }}">
-                <span>{{ item.name }}</span>
+                <span>{{ indexReference.displayName }}</span>
             </a>
             <span class="lr-config-info-icon" data-config="{{ item.rawConfigDisplay|e('html_attr') }}" data-config-source="config/search-manager.php"></span>
         {% endif %}
@@ -236,9 +238,8 @@
 
     {# Status #}
     <td data-column="enabled">
-        {% include 'search-manager/indices/_status-badge' with {
-            item: item,
-            configIndexErrors: configIndexErrors,
+        {% include 'search-manager/_components/_effective-status' with {
+            status: indexReference.status,
         } only %}
     </td>
 
@@ -255,6 +256,7 @@
 {% endblock %}
 
 {% block rowActions %}
+    {% set indexReference = indexCatalogue[item.handle] %}
     {% set indexBackendType = item.effectiveBackendType %}
     {% set itemId = item.id ?: item.handle %}
 
@@ -278,26 +280,26 @@
         {
             label: 'Rebuild Index'|t('search-manager'),
             jsAction: 'rebuild',
-            data: {name: item.name},
+            data: {name: indexReference.displayName},
             permission: 'searchManager:rebuildIndices',
         },
         {
             label: 'Sync Count from Backend'|t('search-manager'),
             jsAction: 'sync-count',
-            data: {name: item.name},
+            data: {name: indexReference.displayName},
             showIf: indexBackendType in ['algolia', 'meilisearch', 'typesense'],
             permission: 'searchManager:rebuildIndices',
         },
         {
             label: 'Clear Index Data'|t('search-manager') ~ ' (' ~ item.documentCount|number_format ~ ')',
             jsAction: 'clear',
-            data: {name: item.name},
+            data: {name: indexReference.displayName},
             permission: 'searchManager:clearIndices',
         },
         {
             label: 'Clear Index Cache'|t('search-manager'),
             jsAction: 'clear-cache',
-            data: {name: item.name},
+            data: {name: indexReference.displayName},
             showIf: globalSettings.enableCache or globalSettings.enableAutocompleteCache,
             permission: 'searchManager:clearCache',
         },
@@ -306,7 +308,7 @@
             label: 'Delete Index'|t('search-manager'),
             class: 'error',
             jsAction: 'delete',
-            data: {name: item.name},
+            data: {name: indexReference.displayName},
             showIf: item.canEdit(),
             permission: 'searchManager:deleteIndices',
         },

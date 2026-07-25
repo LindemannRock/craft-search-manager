@@ -15,6 +15,7 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\SearchManager;
 
 /**
  * API Key Model
@@ -197,6 +198,16 @@ class ApiKey extends Model
      */
     public function validateAllowedIndices(string $attribute): void
     {
+        $normalized = SearchManager::$plugin->dependencies->normalizeIndexHandleList(
+            $this->allowedIndices,
+            true,
+        );
+        if ($normalized === null) {
+            $this->addError($attribute, Craft::t('search-manager', 'One or more selected search indices are invalid.'));
+            return;
+        }
+        $this->allowedIndices = $normalized;
+
         if ($this->enabled && empty($this->allowedIndices)) {
             $this->addError($attribute, Craft::t('search-manager', 'Enabled keys must allow all indices or at least one specific index.'));
         }

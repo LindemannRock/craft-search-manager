@@ -37,6 +37,7 @@ final class ApiKeyTrackingGateTest extends TestCase
 {
     private const KEY_PREFIX = '__sm_trackgate_test__';
     private const INDEX_HANDLE = '__sm_trackgate_index__';
+    private const OTHER_INDEX_HANDLE = '__sm_trackgate_other_index__';
     private const API_KEY_HEADER = 'X-Search-Manager-Key';
 
     private int $seedCounter = 0;
@@ -211,7 +212,8 @@ final class ApiKeyTrackingGateTest extends TestCase
     public function testRejectsIndexNotInAllowlist(): void
     {
         $this->seedIndex(self::INDEX_HANDLE);
-        [, $plaintext] = $this->seedKey(allowedIndices: ['__sm_some_other_index__']);
+        $this->seedIndex(self::OTHER_INDEX_HANDLE);
+        [, $plaintext] = $this->seedKey(allowedIndices: [self::OTHER_INDEX_HANDLE]);
         SearchManager::$plugin->getSettings()->requireApiKey = true;
         $this->installRequest(apiKey: $plaintext, params: ['indexHandles' => self::INDEX_HANDLE]);
 
@@ -333,7 +335,9 @@ final class ApiKeyTrackingGateTest extends TestCase
     {
         $db = Craft::$app->getDb();
         $db->createCommand()->delete('{{%searchmanager_api_keys}}', ['like', 'name', self::KEY_PREFIX . '%', false])->execute();
-        $db->createCommand()->delete('{{%searchmanager_indices}}', ['handle' => self::INDEX_HANDLE])->execute();
+        $db->createCommand()->delete('{{%searchmanager_indices}}', [
+            'handle' => [self::INDEX_HANDLE, self::OTHER_INDEX_HANDLE],
+        ])->execute();
         SearchIndex::clearCache();
     }
 }

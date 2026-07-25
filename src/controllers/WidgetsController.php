@@ -293,22 +293,23 @@ class WidgetsController extends Controller
             }
         }
 
-        // Get indices for multi-select
-        $indices = SearchIndex::findAll();
         $settings = SearchManager::$plugin->getSettings();
         $widgetStyles = SearchManager::$plugin->isPro()
             ? SearchManager::$plugin->widgetStyles->getAll('modal')
             : [];
         $widgetApiKeys = SearchManager::$plugin->apiKeys->widgetUsablePublicKeys();
+        $selectedApiKey = $this->getSelectedWidgetApiKey($widgetConfig, $widgetApiKeys);
+        [$indexOptions, $allIndexOptions] = $this->getWidgetIndexOptions($widgetConfig, $selectedApiKey);
 
         return $this->renderTemplate('search-manager/widgets/edit', [
             'widgetConfig' => $widgetConfig,
             'isNew' => !$configId,
-            'indices' => $indices,
+            'indexOptions' => $indexOptions,
+            'allIndexOptions' => $allIndexOptions,
             'widgetStyles' => $widgetStyles,
             'widgetApiKeyOptions' => $this->getWidgetApiKeyOptions($widgetApiKeys),
             'widgetApiKeyScopes' => $this->getWidgetApiKeyScopes($widgetApiKeys),
-            'selectedApiKey' => $this->getSelectedWidgetApiKey($widgetConfig, $widgetApiKeys),
+            'selectedApiKey' => $selectedApiKey,
             'hasWidgetUsableApiKeys' => !empty($widgetApiKeys),
             'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
             'widgetTypeOptions' => $this->getWidgetTypeOptions(),
@@ -354,6 +355,13 @@ class WidgetsController extends Controller
 
         // Get settings from form
         $widgetSettings = $request->getBodyParam('settings', []);
+        if (is_array($widgetSettings)
+            && is_array($widgetSettings['search'] ?? null)
+            && array_key_exists('indexHandles', $widgetSettings['search'])
+        ) {
+            $widgetSettings['search']['indexHandles'] = SearchManager::$plugin->dependencies
+                ->normalizeSubmittedIndexHandleList($widgetSettings['search']['indexHandles']);
+        }
 
         // Merge with defaults to ensure all keys exist
         $defaults = WidgetConfig::defaultSettings();
@@ -377,13 +385,6 @@ class WidgetsController extends Controller
                 : $defaults['analytics'];
         }
 
-        // Handle indexHandles - ensure it's always an array
-        if (isset($mergedSettings['search']['indexHandles'])) {
-            $indexHandles = $mergedSettings['search']['indexHandles'];
-            if (!is_array($indexHandles)) {
-                $mergedSettings['search']['indexHandles'] = $indexHandles ? [$indexHandles] : [];
-            }
-        }
         $mergedSettings['apiKeyHandle'] = isset($mergedSettings['apiKeyHandle']) && is_string($mergedSettings['apiKeyHandle'])
             ? trim($mergedSettings['apiKeyHandle'])
             : '';
@@ -391,21 +392,23 @@ class WidgetsController extends Controller
         $widgetConfig->settings = $mergedSettings;
 
         $pluginSettings = SearchManager::$plugin->getSettings();
-        $indices = SearchIndex::findAll();
         $widgetStyles = SearchManager::$plugin->isPro()
             ? SearchManager::$plugin->widgetStyles->getAll('modal')
             : [];
         $widgetApiKeys = SearchManager::$plugin->apiKeys->widgetUsablePublicKeys();
+        $selectedApiKey = $this->getSelectedWidgetApiKey($widgetConfig, $widgetApiKeys);
+        [$indexOptions, $allIndexOptions] = $this->getWidgetIndexOptions($widgetConfig, $selectedApiKey);
 
         // Common route params for error returns (template needs all of these)
         $errorRouteParams = [
             'widgetConfig' => $widgetConfig,
             'isNew' => !$configId,
-            'indices' => $indices,
+            'indexOptions' => $indexOptions,
+            'allIndexOptions' => $allIndexOptions,
             'widgetStyles' => $widgetStyles,
             'widgetApiKeyOptions' => $this->getWidgetApiKeyOptions($widgetApiKeys),
             'widgetApiKeyScopes' => $this->getWidgetApiKeyScopes($widgetApiKeys),
-            'selectedApiKey' => $this->getSelectedWidgetApiKey($widgetConfig, $widgetApiKeys),
+            'selectedApiKey' => $selectedApiKey,
             'hasWidgetUsableApiKeys' => !empty($widgetApiKeys),
             'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
             'widgetTypeOptions' => $this->getWidgetTypeOptions(),
@@ -1287,6 +1290,34 @@ class WidgetsController extends Controller
             $options[] = $option;
         }
         return $options;
+    }
+
+    /**
+     * Delegate Widget choice construction to the canonical index catalogue,
+     * applying only the selected API key's irreducible scope restriction.
+     *
+     * @return array{
+     *   0: array<int, array{label: string, value: string, state: string, canChoose: bool, retained: bool}>,
+     *   1: array<int, array{label: string, value: string, state: string, canChoose: bool, retained: bool}>
+     * }
+     */
+    private function getWidgetIndexOptions(
+        WidgetConfig $widgetConfig,
+        ?ApiKey $selectedApiKey,
+    ): array {
+        $selectedHandles = $widgetConfig->getIndexHandles();
+        $allowedHandles = $selectedApiKey !== null && !$selectedApiKey->allowsAllIndices()
+            ? $selectedApiKey->allowedIndices
+            : null;
+
+        return [
+            SearchManager::$plugin->dependencies->getIndexOptions(
+                $selectedHandles,
+                false,
+                $allowedHandles,
+            ),
+            SearchManager::$plugin->dependencies->getIndexOptions($selectedHandles, false),
+        ];
     }
 
     /**

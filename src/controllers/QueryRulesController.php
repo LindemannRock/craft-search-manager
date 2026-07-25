@@ -15,7 +15,6 @@ use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\QueryRule;
-use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -64,17 +63,21 @@ class QueryRulesController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         $rules = QueryRule::findAll();
-        $indices = SearchIndex::findAll();
-
-        $indexLookup = [];
-        foreach ($indices as $index) {
-            $indexLookup[$index->handle] = $index->name;
+        $indexReferences = SearchManager::$plugin->dependencies->resolveIndexReferences(
+            array_map(static fn(QueryRule $rule): ?string => $rule->indexHandle, $rules),
+        );
+        $effectiveStatuses = [];
+        foreach ($rules as $rule) {
+            $effectiveStatuses[(int)$rule->id] = SearchManager::$plugin->dependencies->resolveEffectiveStatus(
+                (bool)$rule->enabled,
+                $indexReferences[trim((string)$rule->indexHandle)],
+            );
         }
 
         // ---- Param parsing + allowlist validation -------------------------
 
         $statusFilter = (string) $request->getQueryParam('status', 'all');
-        $validStatuses = ['all', 'enabled', 'disabled'];
+        $validStatuses = ['all', 'error', 'enabled', 'disabled'];
         if (!in_array($statusFilter, $validStatuses, true)) {
             $statusFilter = 'all';
         }
@@ -105,10 +108,11 @@ class QueryRulesController extends Controller
 
         // ---- Filter -------------------------------------------------------
 
-        if ($statusFilter === 'enabled') {
-            $rules = array_values(array_filter($rules, fn(QueryRule $r): bool => $r->enabled));
-        } elseif ($statusFilter === 'disabled') {
-            $rules = array_values(array_filter($rules, fn(QueryRule $r): bool => !$r->enabled));
+        if ($statusFilter !== 'all') {
+            $rules = array_values(array_filter(
+                $rules,
+                static fn(QueryRule $rule): bool => ($effectiveStatuses[(int)$rule->id]['value'] ?? null) === $statusFilter,
+            ));
         }
 
         if ($matchTypeFilter !== 'all') {
@@ -129,7 +133,7 @@ class QueryRulesController extends Controller
 
         // ---- Sort + paginate ----------------------------------------------
 
-        $rules = $this->sortRules($rules, $sort, $dir);
+        $rules = $this->sortRules($rules, $sort, $dir, $effectiveStatuses);
 
         $totalCount = count($rules);
         $page = max(1, (int) $request->getParam('page', 1));
@@ -139,7 +143,8 @@ class QueryRulesController extends Controller
 
         return $this->renderTemplate('search-manager/query-rules/index', [
             'rules' => $rules,
-            'indexLookup' => $indexLookup,
+            'indexReferences' => $indexReferences,
+            'effectiveStatuses' => $effectiveStatuses,
             'statusFilter' => $statusFilter,
             'matchTypeFilter' => $matchTypeFilter,
             'actionTypeFilter' => $actionTypeFilter,
@@ -159,23 +164,29 @@ class QueryRulesController extends Controller
      * @param QueryRule[] $rules
      * @return QueryRule[]
      */
-    private function sortRules(array $rules, string $sort, string $dir): array
+    private function sortRules(array $rules, string $sort, string $dir, array $effectiveStatuses): array
     {
         $multiplier = $dir === 'desc' ? -1 : 1;
 
-        usort($rules, function(QueryRule $a, QueryRule $b) use ($sort, $multiplier): int {
+        usort($rules, function(QueryRule $a, QueryRule $b) use ($sort, $multiplier, $effectiveStatuses): int {
             $cmp = match ($sort) {
                 'matchValue' => strcasecmp((string) $a->matchValue, (string) $b->matchValue),
                 'matchType' => strcmp((string) $a->matchType, (string) $b->matchType),
                 'actionType' => strcmp((string) $a->actionType, (string) $b->actionType),
                 'priority' => ((int) $a->priority) <=> ((int) $b->priority),
                 'siteId' => ((int) ($a->siteId ?? 0)) <=> ((int) ($b->siteId ?? 0)),
-                'enabled' => ((int) $a->enabled) <=> ((int) $b->enabled),
+                'enabled' => SearchManager::$plugin->dependencies->compareEffectiveStatuses(
+                    $effectiveStatuses[(int)$a->id],
+                    $effectiveStatuses[(int)$b->id],
+                ),
                 default => strcasecmp((string) $a->name, (string) $b->name),
             };
 
             if ($cmp === 0 && $sort !== 'name') {
                 $cmp = strcasecmp((string) $a->name, (string) $b->name);
+            }
+            if ($cmp === 0) {
+                $cmp = ((int)$a->id) <=> ((int)$b->id);
             }
 
             return $cmp * $multiplier;
@@ -207,19 +218,13 @@ class QueryRulesController extends Controller
             }
         }
 
-        // Get indices for dropdown
-        $indices = SearchIndex::findAll();
-        $indexOptions = [
-            ['label' => Craft::t('search-manager', 'All Indices'), 'value' => ''],
-        ];
-        foreach ($indices as $index) {
-            if ($index->enabled) {
-                $indexOptions[] = [
-                    'label' => $index->name,
-                    'value' => $index->handle,
-                ];
-            }
-        }
+        $indexOptions = SearchManager::$plugin->dependencies->getIndexOptions($rule->indexHandle);
+        $indexReferences = SearchManager::$plugin->dependencies->resolveIndexReferences([$rule->indexHandle]);
+        $indexReference = $indexReferences[trim((string)$rule->indexHandle)];
+        $effectiveStatus = SearchManager::$plugin->dependencies->resolveEffectiveStatus(
+            (bool)$rule->enabled,
+            $indexReference,
+        );
 
         // Get sites for dropdown
         $siteOptions = [
@@ -272,6 +277,8 @@ class QueryRulesController extends Controller
             'rule' => $rule,
             'isNew' => !$ruleId,
             'indexOptions' => $indexOptions,
+            'indexReference' => $indexReference,
+            'effectiveStatus' => $effectiveStatus,
             'siteOptions' => $siteOptions,
             'matchTypeOptions' => $matchTypeOptions,
             'actionTypeOptions' => $actionTypeOptions,

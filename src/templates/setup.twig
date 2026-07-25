@@ -46,19 +46,10 @@
                     ? 'Review config/search-manager.php before rebuilding affected indices.'|t('search-manager')
                     : 'Review this index in config/search-manager.php before rebuilding it.'|t('search-manager') }}
             </p>
-            <ul class="lr-setup-task__list">
-                {% for finding in group.findings %}
-                    {% set findingMessage = finding.message|e %}
-                    {% if finding.emphasis %}
-                        {% set escapedEmphasis = finding.emphasis|e %}
-                        {% set findingMessage = findingMessage|replace({(escapedEmphasis): '<strong>' ~ escapedEmphasis ~ '</strong>'}) %}
-                    {% endif %}
-                    <li>
-                        <strong>{{ finding.severity == 'error' ? 'Error'|t('search-manager') : 'Warning'|t('search-manager') }}:</strong>
-                        {{ findingMessage|raw }}
-                    </li>
-                {% endfor %}
-            </ul>
+            {% include 'search-manager/_components/_config-index-findings' with {
+                findings: group.findings,
+                listClass: 'lr-setup-task__list',
+            } only %}
         {% endset %}
         {% set groupHeading = group.handle is null
             ? 'Configuration index issues'|t('search-manager')

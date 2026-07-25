@@ -884,29 +884,19 @@ class WidgetConfig extends Model
     private function validateIndexHandles(array $settings, ?ApiKey $selectedApiKey = null): void
     {
         $handles = $settings['search']['indexHandles'] ?? [];
-        if ($handles === '' || $handles === []) {
+        if ($handles === []) {
             return;
         }
 
-        if (!is_array($handles)) {
+        $normalized = SearchManager::$plugin->dependencies->normalizeIndexHandleList($handles);
+        if ($normalized === null) {
             $this->addError('settings.search.indexHandles', Craft::t('search-manager', 'Search Indices must be an array of index handles.'));
             return;
         }
-
-        $validHandles = array_map(
-            static fn(SearchIndex $index): string => $index->handle,
-            SearchIndex::findAll(),
-        );
-
-        foreach ($handles as $handle) {
-            if (!is_string($handle) || $handle === '' || !in_array($handle, $validHandles, true)) {
-                $this->addError('settings.search.indexHandles', Craft::t('search-manager', 'One or more selected search indices are invalid.'));
-                return;
-            }
-        }
+        $this->setSetting('search.indexHandles', $normalized);
 
         if ($selectedApiKey !== null && !$selectedApiKey->allowsAllIndices()) {
-            foreach ($handles as $handle) {
+            foreach ($normalized as $handle) {
                 if (!$selectedApiKey->allowsIndex((string)$handle)) {
                     $this->addError('settings.search.indexHandles', Craft::t('search-manager', 'Selected indices must be allowed by the selected API key.'));
                     return;

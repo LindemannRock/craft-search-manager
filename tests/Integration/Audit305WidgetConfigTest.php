@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
+use craft\errors\MissingComponentException;
 use craft\helpers\Db;
 use craft\web\Request;
 use craft\web\Response;
@@ -221,14 +222,10 @@ final class Audit305WidgetConfigTest extends TestCase
         $widget = $this->makeWidget('filtered-options');
         $widget->settings = $settings;
 
-        $docsIndex = SearchIndex::findByHandle($docs);
-        $secretIndex = SearchIndex::findByHandle($secret);
-        self::assertNotNull($docsIndex);
-        self::assertNotNull($secretIndex);
-
         $html = Craft::$app->getView()->renderTemplate('search-manager/widgets/_partials/settings', [
             'widgetConfig' => $widget,
-            'indices' => [$docsIndex, $secretIndex],
+            'indexOptions' => SearchManager::$plugin->dependencies->getIndexOptions([], false, [$docs]),
+            'allIndexOptions' => SearchManager::$plugin->dependencies->getIndexOptions([], false),
             'widgetApiKeyOptions' => [
                 ['value' => '', 'label' => 'None'],
                 ['value' => $key->handle, 'label' => SearchManager::$plugin->apiKeys->widgetKeyLabel($key)],
@@ -301,7 +298,8 @@ final class Audit305WidgetConfigTest extends TestCase
         self::assertStringContainsString('forms.selectField', $source);
         self::assertStringContainsString("name: 'settings[apiKeyHandle]'", $source);
         self::assertStringContainsString('widgetApiKeyOptions', $source);
-        self::assertStringContainsString('availableIndices', $source);
+        self::assertStringContainsString('indexOptions', $source);
+        self::assertStringContainsString('allIndexOptions', $source);
         self::assertStringContainsString('search-manager-widget-api-key-scopes', $source);
         self::assertStringNotContainsString("name: 'settings[apiKey]'", $source);
         self::assertLessThan(
@@ -483,6 +481,104 @@ final class Audit305WidgetConfigTest extends TestCase
         self::assertFalse(ApiKey::findById((int)$unusedKey->id)?->enabled);
     }
 
+    public function testWidgetSaveNormalizesEmptyCheckboxSentinelAndPreservesCheckedList(): void
+    {
+        $this->forcePluginEdition(SearchManager::EDITION_STANDARD);
+        $this->withMutationPermissions([
+            'searchManager:manageWidgetConfigs',
+            'searchManager:createWidgetConfigs',
+        ]);
+
+        $emptyHandle = self::PREFIX . 'sentinel-empty';
+        $this->withPostParams($this->widgetSaveParams($emptyHandle, ''));
+        $this->runCpSave(
+            static fn(): ?Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionSave(),
+        );
+
+        $emptyWidget = SearchManager::$plugin->widgetConfigs->getByHandle($emptyHandle);
+        self::assertInstanceOf(WidgetConfig::class, $emptyWidget);
+        self::assertSame([], $emptyWidget->getIndexHandles());
+
+        $indexHandle = $this->seedIndex('sentinel-checked');
+        $checkedHandle = self::PREFIX . 'sentinel-checked';
+        $this->withPostParams($this->widgetSaveParams($checkedHandle, [$indexHandle]));
+        $this->runCpSave(
+            static fn(): ?Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionSave(),
+        );
+
+        $checkedWidget = SearchManager::$plugin->widgetConfigs->getByHandle($checkedHandle);
+        self::assertInstanceOf(WidgetConfig::class, $checkedWidget);
+        self::assertSame([$indexHandle], $checkedWidget->getIndexHandles());
+    }
+
+    public function testWidgetSaveStillRejectsForgedNonEmptyScalarIndexList(): void
+    {
+        $this->forcePluginEdition(SearchManager::EDITION_STANDARD);
+        $this->withMutationPermissions([
+            'searchManager:manageWidgetConfigs',
+            'searchManager:createWidgetConfigs',
+        ]);
+        $handle = self::PREFIX . 'sentinel-forged-widget';
+        $this->withPostParams($this->widgetSaveParams($handle, 'forged-index'));
+
+        $this->runCpSave(
+            static fn(): ?Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionSave(),
+        );
+
+        self::assertNull(SearchManager::$plugin->widgetConfigs->getByHandle($handle));
+    }
+
+    public function testApiKeySaveNormalizesEmptySentinelOnlyForDisabledDraft(): void
+    {
+        $this->withMutationPermissions([
+            'searchManager:manageApiKeys',
+            'searchManager:createApiKeys',
+        ]);
+
+        $disabledHandle = self::PREFIX . 'sentinel-disabled-key';
+        $this->withPostParams($this->apiKeySaveParams($disabledHandle, false, ''));
+        $this->runCpSave(
+            static fn(): ?Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
+        );
+
+        $disabledKey = ApiKey::findByHandle($disabledHandle);
+        self::assertInstanceOf(ApiKey::class, $disabledKey);
+        self::assertSame([], $disabledKey->allowedIndices);
+
+        $enabledHandle = self::PREFIX . 'sentinel-enabled-key';
+        $this->withPostParams($this->apiKeySaveParams($enabledHandle, true, ''));
+        $this->runCpSave(
+            static fn(): ?Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
+        );
+
+        self::assertNull(ApiKey::findByHandle($enabledHandle));
+    }
+
+    public function testApiKeySaveRejectsForgedScalarAndPreservesCheckedList(): void
+    {
+        $this->withMutationPermissions([
+            'searchManager:manageApiKeys',
+            'searchManager:createApiKeys',
+        ]);
+
+        $forgedHandle = self::PREFIX . 'sentinel-forged-key';
+        $this->withPostParams($this->apiKeySaveParams($forgedHandle, false, 'forged-index'));
+        $this->runCpSave(
+            static fn(): ?Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
+        );
+
+        self::assertNull(ApiKey::findByHandle($forgedHandle));
+
+        $indexHandle = $this->seedIndex('sentinel-key-checked');
+        $checkedHandle = self::PREFIX . 'sentinel-checked-key';
+        $this->withPostParams($this->apiKeySaveParams($checkedHandle, true, [$indexHandle]));
+        $this->runCpSave(
+            static fn(): ?Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
+        );
+
+        self::assertSame([$indexHandle], ApiKey::findByHandle($checkedHandle)?->allowedIndices);
+    }
+
     private function filterSettings(array $data, array $defaults): array
     {
         $controller = new WidgetsController('widgets', SearchManager::$plugin);
@@ -500,6 +596,67 @@ final class Audit305WidgetConfigTest extends TestCase
         $widget->enabled = true;
 
         return $widget;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function widgetSaveParams(string $handle, mixed $indexHandles): array
+    {
+        return [
+            'name' => 'Audit 305 sentinel widget',
+            'handle' => $handle,
+            'type' => 'modal',
+            'enabled' => false,
+            'settings' => [
+                'search' => [
+                    'indexHandles' => $indexHandles,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function apiKeySaveParams(string $handle, bool $enabled, mixed $allowedIndices): array
+    {
+        return [
+            'name' => self::MARKER . $handle,
+            'handle' => $handle,
+            'type' => ApiKey::TYPE_PUBLIC,
+            'enabled' => $enabled,
+            'allowAllIndices' => false,
+            'allowedIndices' => $allowedIndices,
+            'allowedReferrers' => '',
+        ];
+    }
+
+    /**
+     * @param list<string> $permissions
+     */
+    private function withMutationPermissions(array $permissions): void
+    {
+        $user = $this->createTestUser(self::PREFIX, ['admin' => true]);
+        $this->grantPermissions($user, array_values(array_unique(array_merge(['accessCp'], $permissions))));
+        $this->actingAs($user);
+    }
+
+    /**
+     * Direct controller actions reach their expected CP session notification
+     * after the behavior under test. The integration harness is a console app,
+     * so that final notification is the only expected exception.
+     *
+     * @param callable(): (?Response) $callback
+     */
+    private function runCpSave(callable $callback): void
+    {
+        try {
+            $callback();
+            self::fail('The console integration harness should not provide a CP session.');
+        } catch (MissingComponentException $exception) {
+            self::assertSame('Session does not exist in a console request.', $exception->getMessage());
+        }
     }
 
     /**
@@ -554,6 +711,7 @@ final class Audit305WidgetConfigTest extends TestCase
         ])->execute();
 
         SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
 
         return $fullHandle;
     }

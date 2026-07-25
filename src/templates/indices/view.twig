@@ -1,13 +1,17 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
 
-{% set title = index.name %}
+{% set title = indexReference.displayName %}
 {% set fullPageForm = false %}
 {% set selectedSubnavItem = 'indices' %}
 {% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
     selectedSubnavItem: selectedSubnavItem,
 })|trim %}
-{% set errorSummary = setupIncompleteSummary %}
+{% set configIndexFindingsSummary = include('search-manager/_components/_config-index-findings', {
+    findings: indexReference.findings,
+    presentation: 'box',
+})|trim %}
+{% set errorSummary = [setupIncompleteSummary, configIndexFindingsSummary]|filter(summary => summary)|join("\n") %}
 
 {% set canRebuild = currentUser.can('searchManager:rebuildIndices') %}
 {% set canClear = currentUser.can('searchManager:clearIndices') %}
@@ -17,7 +21,7 @@
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
     { label: 'Indices'|t('search-manager'), url: url('search-manager/indices') },
-    { label: index.name }
+    { label: indexReference.displayName }
 ] %}
 
 {% block content %}
@@ -125,11 +129,10 @@
 			<div class="data">
 				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 				<dd class="value">
-					{% include 'lindemannrock-base/_components/status-dot' with {
-						value: index.enabled ? 'enabled' : 'disabled',
-						colorSet: 'status',
+					{% include 'search-manager/_components/_effective-status' with {
+						status: indexReference.status,
+						presentation: 'sidebar',
 					} only %}
-					<span>{{ index.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 				</dd>
 			</div>
 			<div class="data">

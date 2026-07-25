@@ -16,6 +16,7 @@ use craft\helpers\StringHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\traits\IndexReferenceValidationTrait;
 
 /**
  * Promotion Model
@@ -27,6 +28,7 @@ use lindemannrock\searchmanager\SearchManager;
  */
 class Promotion extends Model
 {
+    use IndexReferenceValidationTrait;
     use LoggingTrait;
 
     // =========================================================================
@@ -80,6 +82,7 @@ class Promotion extends Model
         return [
             [['title', 'query', 'elementId'], 'required'],
             [['indexHandle', 'query'], 'string', 'max' => 500],
+            [['indexHandle'], 'validateIndexReference', 'skipOnEmpty' => false],
             [['title'], 'string', 'max' => 255],
             [['matchType'], 'in', 'range' => ['exact', 'contains', 'prefix']],
             [['elementType'], 'string', 'max' => 255],

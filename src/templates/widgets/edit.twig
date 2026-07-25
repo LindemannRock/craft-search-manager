@@ -134,7 +134,8 @@
 	<div id="general"{% if selectedTab != 'general' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/_partials/settings" with {
 			widgetConfig: widgetConfig,
-			indices: indices,
+			indexOptions: indexOptions,
+			allIndexOptions: allIndexOptions,
 			widgetApiKeyOptions: widgetApiKeyOptions,
 			widgetApiKeyScopes: widgetApiKeyScopes,
 			selectedApiKey: selectedApiKey,
