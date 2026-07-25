@@ -175,6 +175,45 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
         }
     }
 
+    /** @inheritdoc */
+    public function batchDelete(string $indexName, array $items): bool
+    {
+        $normalized = $this->normalizeBatchDeleteItems($items);
+        $backendIds = array_column($normalized['items'], 'backendId');
+        if ($backendIds === []) {
+            return $normalized['valid'];
+        }
+
+        $fullIndexName = $this->getFullIndexName($indexName);
+
+        try {
+            $response = $this->getAdminClient()
+                ->index($fullIndexName)
+                ->deleteDocuments($backendIds);
+            if (!isset($response['taskUid'])) {
+                $this->logError('Meilisearch batch deletion returned an invalid task response', [
+                    'index' => $fullIndexName,
+                ]);
+
+                return false;
+            }
+
+            $this->logInfo('Batch deleted from Meilisearch', [
+                'index' => $fullIndexName,
+                'count' => count($backendIds),
+            ]);
+
+            return $normalized['valid'];
+        } catch (\Throwable $e) {
+            $this->logError('Failed to batch delete from Meilisearch', [
+                'index' => $fullIndexName,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
     /**
      * @param list<array<string, mixed>> $items
      */

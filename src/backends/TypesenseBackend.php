@@ -165,6 +165,48 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
         }
     }
 
+    /** @inheritdoc */
+    public function batchDelete(string $indexName, array $items): bool
+    {
+        $normalized = $this->normalizeBatchDeleteItems($items);
+        $backendIds = array_column($normalized['items'], 'backendId');
+        if ($backendIds === []) {
+            return $normalized['valid'];
+        }
+
+        $fullIndexName = $this->getFullIndexName($indexName);
+        $filter = $this->parseFilters(['id' => $backendIds]);
+
+        try {
+            $response = $this->getClient()
+                ->collections[$fullIndexName]
+                ->documents
+                ->delete(['filter_by' => $filter]);
+            if (!isset($response['num_deleted']) || !is_numeric($response['num_deleted'])) {
+                $this->logError('Typesense batch deletion returned an invalid response', [
+                    'index' => $fullIndexName,
+                ]);
+
+                return false;
+            }
+
+            $this->logInfo('Batch deleted from Typesense', [
+                'index' => $fullIndexName,
+                'count' => count($backendIds),
+                'deleted' => (int)$response['num_deleted'],
+            ]);
+
+            return $normalized['valid'];
+        } catch (\Throwable $e) {
+            $this->logError('Failed to batch delete from Typesense', [
+                'index' => $fullIndexName,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
     /**
      * @param list<array<string, mixed>> $items
      */

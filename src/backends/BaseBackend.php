@@ -233,29 +233,125 @@ abstract class BaseBackend extends Component implements BackendInterface
      */
     public function batchDelete(string $indexName, array $items): bool
     {
-        $success = true;
+        $normalized = $this->normalizeBatchDeleteItems($items);
+        $success = $normalized['valid'];
 
-        foreach ($items as $item) {
-            if (isset($item['backendId']) && is_string($item['backendId']) && $item['backendId'] !== '') {
+        foreach ($normalized['items'] as $item) {
+            if ($item['explicitBackendId']) {
                 if (!$this->deleteByBackendId($indexName, $item['backendId'])) {
                     $success = false;
                 }
                 continue;
             }
 
-            $elementId = (int)($item['elementId'] ?? $item['id'] ?? 0);
-            if ($elementId <= 0) {
-                $success = false;
-                continue;
-            }
-
-            $siteId = isset($item['siteId']) ? (int)$item['siteId'] : null;
-            if (!$this->delete($indexName, $elementId, $siteId)) {
+            if (!$this->delete($indexName, $item['elementId'], $item['siteId'])) {
                 $success = false;
             }
         }
 
         return $success;
+    }
+
+    /**
+     * Normalize batch-delete input into canonical, unique document identities.
+     *
+     * @param array<int, mixed> $items
+     * @return array{
+     *     items: list<array{
+     *         backendId: string,
+     *         elementId: int,
+     *         siteId: int|null,
+     *         explicitBackendId: bool,
+     *     }>,
+     *     valid: bool,
+     * }
+     */
+    protected function normalizeBatchDeleteItems(array $items): array
+    {
+        $normalized = [];
+        $valid = true;
+
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                $valid = false;
+                continue;
+            }
+
+            if (array_key_exists('backendId', $item)) {
+                $backendId = $item['backendId'];
+                if (!is_string($backendId) || trim($backendId) === '') {
+                    $valid = false;
+                    continue;
+                }
+
+                $siteId = $this->batchDeleteSiteId($item);
+                $normalized[$backendId] = [
+                    'backendId' => SearchHitIdentityHelper::documentId(['backendId' => $backendId]) ?? $backendId,
+                    'elementId' => SearchHitIdentityHelper::elementId($item) ?? 0,
+                    'siteId' => is_int($siteId) ? $siteId : null,
+                    'explicitBackendId' => true,
+                ];
+                continue;
+            }
+
+            $elementId = SearchHitIdentityHelper::elementId($item);
+            $siteId = $this->batchDeleteSiteId($item);
+            if ($elementId === null || $elementId <= 0 || $siteId === false) {
+                $valid = false;
+                continue;
+            }
+
+            $identity = [
+                'elementId' => $elementId,
+                'siteId' => $siteId,
+            ];
+            $explicitBackendId = false;
+
+            if (array_key_exists('sectionId', $item)) {
+                $sectionId = $item['sectionId'];
+                if (!is_scalar($sectionId) || trim((string)$sectionId) === '') {
+                    $valid = false;
+                    continue;
+                }
+
+                $identity['sectionId'] = (string)$sectionId;
+                $explicitBackendId = true;
+            }
+
+            $backendId = SearchHitIdentityHelper::documentId($identity);
+            if ($backendId === null) {
+                $valid = false;
+                continue;
+            }
+
+            if (!isset($normalized[$backendId]) || $explicitBackendId) {
+                $normalized[$backendId] = [
+                    'backendId' => $backendId,
+                    'elementId' => $elementId,
+                    'siteId' => $siteId,
+                    'explicitBackendId' => $explicitBackendId,
+                ];
+            }
+        }
+
+        return [
+            'items' => array_values($normalized),
+            'valid' => $valid,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function batchDeleteSiteId(array $item): int|false|null
+    {
+        if (!array_key_exists('siteId', $item) || $item['siteId'] === null || $item['siteId'] === '') {
+            return null;
+        }
+
+        $siteId = filter_var($item['siteId'], FILTER_VALIDATE_INT);
+
+        return $siteId !== false && $siteId > 0 ? $siteId : false;
     }
 
     /**

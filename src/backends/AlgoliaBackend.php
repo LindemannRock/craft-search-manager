@@ -171,6 +171,53 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
         }
     }
 
+    /** @inheritdoc */
+    public function batchDelete(string $indexName, array $items): bool
+    {
+        $normalized = $this->normalizeBatchDeleteItems($items);
+        $backendIds = array_column($normalized['items'], 'backendId');
+        if ($backendIds === []) {
+            return $normalized['valid'];
+        }
+
+        $fullIndexName = $this->getFullIndexName($indexName);
+
+        try {
+            $responses = $this->getClient()->deleteObjects($fullIndexName, $backendIds);
+            if (!is_array($responses) || $responses === []) {
+                $this->logError('Algolia batch deletion returned no task response', [
+                    'index' => $fullIndexName,
+                ]);
+
+                return false;
+            }
+
+            foreach ($responses as $response) {
+                if (!is_array($response) || !isset($response['taskID'])) {
+                    $this->logError('Algolia batch deletion returned an invalid task response', [
+                        'index' => $fullIndexName,
+                    ]);
+
+                    return false;
+                }
+            }
+
+            $this->logInfo('Batch deleted from Algolia', [
+                'index' => $fullIndexName,
+                'count' => count($backendIds),
+            ]);
+
+            return $normalized['valid'];
+        } catch (\Throwable $e) {
+            $this->logError('Failed to batch delete from Algolia', [
+                'index' => $fullIndexName,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
     /**
      * @param list<array<string, mixed>> $items
      */

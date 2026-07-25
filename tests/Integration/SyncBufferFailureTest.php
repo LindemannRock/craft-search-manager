@@ -133,6 +133,44 @@ final class SyncBufferFailureTest extends TestCase
         );
     }
 
+    public function testBatchDeleteFailurePreservesWholeGroupRetryAndAbandonBehavior(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
+
+        [$index, $element] = $pair;
+        $stub = $this->installStubBackend();
+        $stub->failBatchDelete = true;
+        $fakeElementId = (int)((new Query())
+            ->from('{{%elements}}')
+            ->max('id')) + 1_000_000;
+
+        $this->repository->upsertRows([[
+            'indexHandle' => $index->handle,
+            'elementType' => $index->elementType,
+            'elementId' => $fakeElementId,
+            'siteId' => (int)$element->siteId,
+            'op' => PendingSyncRepository::OP_DELETE,
+        ]]);
+
+        (new BatchSyncJob())->execute(Craft::$app->queue);
+
+        $failed = $this->fetchPendingRow($index->handle, $fakeElementId, (int)$element->siteId);
+        $this->assertNotNull($failed);
+        $this->assertSame('failed', $failed['status']);
+        $this->assertSame(1, (int)$failed['attemptCount']);
+        $this->assertStringContainsString('Batch delete failed', (string)$failed['lastError']);
+
+        $this->resetAllBackoff();
+        (new BatchSyncJob())->execute(Craft::$app->queue);
+
+        $abandoned = $this->fetchPendingRow($index->handle, $fakeElementId, (int)$element->siteId);
+        $this->assertNotNull($abandoned);
+        $this->assertSame('abandoned', $abandoned['status']);
+        $this->assertSame(2, (int)$abandoned['attemptCount']);
+        $this->assertCount(2, $stub->callsFor('batchDelete'));
+    }
+
     private function resetAllBackoff(): void
     {
         Craft::$app->getDb()
