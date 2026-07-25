@@ -410,10 +410,6 @@ final class SearchHitFieldsContractTest extends TestCase
 
     public function testRestDebugReturnsBackendMetaWhenAllowed(): void
     {
-        if (!SearchDebugAccessHelper::canExposeDebugMeta()) {
-            $this->markTestSkipped('REST debug meta requires devMode or searchManager:viewDebug.');
-        }
-
         $pair = $this->findWorkingIndexAndElement();
         if ($pair === null) {
             $this->markTestSkipped('No enabled entry index available.');
@@ -434,11 +430,20 @@ final class SearchHitFieldsContractTest extends TestCase
                 'promotionsMatched' => [],
             ],
         ];
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $originalDevMode = $generalConfig->devMode;
 
-        $response = $this->runApiSearch($index->handle, $entry->siteId, null, 'intro', [
-            'debugEnabled' => 1,
-        ]);
+        try {
+            $generalConfig->devMode = true;
+            $withoutDebugRequest = $this->runApiSearch($index->handle, $entry->siteId, null, 'intro');
+            $response = $this->runApiSearch($index->handle, $entry->siteId, null, 'intro', [
+                'debugEnabled' => 1,
+            ]);
+        } finally {
+            $generalConfig->devMode = $originalDevMode;
+        }
 
+        self::assertArrayNotHasKey('meta', $withoutDebugRequest->data);
         self::assertSame($stub->searchResponse['meta'], $response->data['meta'] ?? null);
         self::assertArrayNotHasKey('_fields', $response->data['hits'][0] ?? []);
         self::assertArrayNotHasKey('_index', $response->data['hits'][0] ?? []);

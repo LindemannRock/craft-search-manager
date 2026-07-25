@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\variables;
 use Craft;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
+use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\TwigSearchOptionsHelper;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\web\assets\highlighter\SearchHighlighterAsset;
@@ -96,9 +97,10 @@ class SearchManagerVariable
         }
 
         $options = TwigSearchOptionsHelper::normalizeSearchLimitOptions($options);
-        $presentOptions = TwigSearchOptionsHelper::presentHitOptions([$indexName], $options);
         $raw = ($options['raw'] ?? false) === true;
-        unset($options['raw']);
+        $debugEnabled = (bool)($options['debugEnabled'] ?? false);
+        unset($options['debugEnabled'], $options['raw']);
+        $presentOptions = TwigSearchOptionsHelper::presentHitOptions([$indexName], $options);
         $options['retrievableFieldsByIndex'] = $presentOptions['retrievableFieldsByIndex'];
 
         $results = SearchManager::$plugin->backend->search($indexName, $query, $options);
@@ -107,7 +109,7 @@ class SearchManagerVariable
             $results['hits'] = CanonicalHitPipeline::presentHits(is_array($hits) ? $hits : [], $query, [$indexName], $presentOptions);
         }
 
-        return $results;
+        return SearchDebugAccessHelper::filterDebugMeta($results, $debugEnabled);
     }
 
     /**
@@ -131,9 +133,10 @@ class SearchManagerVariable
         }
 
         $options = TwigSearchOptionsHelper::normalizeSearchLimitOptions($options);
-        $presentOptions = TwigSearchOptionsHelper::presentHitOptions($indexNames, $options);
         $raw = ($options['raw'] ?? false) === true;
-        unset($options['raw']);
+        $debugEnabled = (bool)($options['debugEnabled'] ?? false);
+        unset($options['debugEnabled'], $options['raw']);
+        $presentOptions = TwigSearchOptionsHelper::presentHitOptions($indexNames, $options);
         $options['retrievableFieldsByIndex'] = $presentOptions['retrievableFieldsByIndex'];
 
         $results = SearchManager::$plugin->backend->searchMultiple($indexNames, $query, $options);
@@ -142,7 +145,7 @@ class SearchManagerVariable
             $results['hits'] = CanonicalHitPipeline::presentHits(is_array($hits) ? $hits : [], $query, $indexNames, $presentOptions);
         }
 
-        return $results;
+        return SearchDebugAccessHelper::filterDebugMeta($results, $debugEnabled);
     }
 
     /**

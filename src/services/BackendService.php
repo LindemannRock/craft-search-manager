@@ -20,6 +20,7 @@ use lindemannrock\searchmanager\backends\PostgreSqlBackend;
 use lindemannrock\searchmanager\backends\RedisBackend;
 use lindemannrock\searchmanager\backends\TypesenseBackend;
 use lindemannrock\searchmanager\events\SearchEvent;
+use lindemannrock\searchmanager\helpers\CacheKeyHelper;
 use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
@@ -770,9 +771,9 @@ class BackendService extends Component
 
         // 5. Add metadata about rules and promotions applied
         // Note: This meta is internal — consumers must gate exposure:
-        // - ApiController: only includes when devMode or explicit debug param
-        // - Raw API mode: strips meta entirely
-        // - Widget endpoint: does not return meta
+        // - Public REST, GraphQL, and Twig boundaries require an explicit
+        //   debug request plus server-controlled debug access.
+        // - Raw hit presentation never grants debug-data authority.
         $results['meta'] = [
             'cached' => false,
             'took' => round($executionTime, 2),
@@ -1242,9 +1243,9 @@ class BackendService extends Component
      * @param string $indexName
      * @param string $query
      * @param array $options
-     * @return string
+     * @return string|null
      */
-    private function _generateCacheKey(string $indexName, string $query, array $options): string
+    private function _generateCacheKey(string $indexName, string $query, array $options): ?string
     {
         // Normalize query to improve cache hit rate
         $normalizedQuery = QueryNormalizer::forCacheIdentity($query);
@@ -1266,7 +1267,7 @@ class BackendService extends Component
             'options' => $cacheOptions, // Future-proof: any new options automatically included
         ];
 
-        return md5(json_encode($keyData));
+        return CacheKeyHelper::generate($keyData);
     }
 
     /**
@@ -1282,6 +1283,10 @@ class BackendService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $fullIndexName = $settings->getFullIndexName($indexName);
         $cacheKey = $this->_generateCacheKey($fullIndexName, $query, $options);
+        if ($cacheKey === null) {
+            return null;
+        }
+
         // Include full index name (with prefix) in key path for per-index cache clearing
         $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $fullIndexName . ':' . $cacheKey;
 
@@ -1340,6 +1345,10 @@ class BackendService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $fullIndexName = $settings->getFullIndexName($indexName);
         $cacheKey = $this->_generateCacheKey($fullIndexName, $query, $options);
+        if ($cacheKey === null) {
+            return;
+        }
+
         // Include full index name (with prefix) in key path for per-index cache clearing
         $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $fullIndexName . ':' . $cacheKey;
 

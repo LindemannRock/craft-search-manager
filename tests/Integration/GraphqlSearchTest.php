@@ -178,6 +178,11 @@ final class GraphqlSearchTest extends TestCase
         $generalConfig->devMode = true;
 
         try {
+            $withoutDebugRequest = SearchResolver::resolveSearch(null, [
+                'query' => 'coffee',
+                'indexHandles' => [$index->handle],
+                'siteId' => (int)($index->getSiteIds()[0] ?? 1),
+            ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
             $response = SearchResolver::resolveSearch(null, [
                 'query' => 'coffee',
                 'indexHandles' => [$index->handle],
@@ -188,6 +193,7 @@ final class GraphqlSearchTest extends TestCase
             $generalConfig->devMode = $originalDevMode;
         }
 
+        $this->assertArrayNotHasKey('meta', $withoutDebugRequest);
         $this->assertSame(['cached' => false, 'backend' => 'test'], $response['meta'] ?? null);
     }
 

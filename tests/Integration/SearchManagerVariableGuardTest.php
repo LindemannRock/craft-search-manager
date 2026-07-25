@@ -154,6 +154,106 @@ final class SearchManagerVariableGuardTest extends TestCase
         ], $callback);
     }
 
+    public function testTwigAndProxyDebugMetadataRequiresExplicitAuthorizedAccess(): void
+    {
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $originalDevMode = $generalConfig->devMode;
+        $user = $this->createTestUser('twig-debug-meta');
+        $this->actingAs($user);
+
+        $meta = [
+            'cached' => false,
+            'rulesMatched' => ['rule-a'],
+        ];
+        $variable = new SearchManagerVariable();
+        $stub = $this->installStubBackend();
+        $stub->searchResponse = [
+            'hits' => [$this->rawTwigHit('content')],
+            'total' => 1,
+            'meta' => $meta,
+        ];
+        $stub->searchMultipleResponse = [
+            'hits' => [],
+            'total' => 0,
+            'indices' => ['content' => 0],
+            'meta' => $meta,
+        ];
+        $proxyStub = new SearchManagerVariableRecordingBackend();
+        $proxyStub->searchResponse = $stub->searchResponse;
+        $proxy = new BackendVariableProxy($proxyStub, 'stub');
+
+        try {
+            $generalConfig->devMode = false;
+
+            self::assertArrayNotHasKey('meta', $variable->search('content', 'coffee'));
+            self::assertArrayNotHasKey('meta', $variable->searchMultiple(['content'], 'coffee'));
+            self::assertArrayNotHasKey('meta', $proxy->search('content', 'coffee'));
+            self::assertArrayNotHasKey('meta', $variable->search('content', 'coffee', ['debugEnabled' => true]));
+
+            $generalConfig->devMode = true;
+
+            self::assertArrayNotHasKey('meta', $variable->search('content', 'coffee'));
+            self::assertSame($meta, $variable->search('content', 'coffee', ['debugEnabled' => true])['meta'] ?? null);
+            self::assertSame($meta, $variable->searchMultiple(['content'], 'coffee', ['debugEnabled' => true])['meta'] ?? null);
+            self::assertSame($meta, $proxy->search('content', 'coffee', ['debugEnabled' => true])['meta'] ?? null);
+
+            $generalConfig->devMode = false;
+            $rawWithoutDebug = $variable->search('content', 'coffee', ['raw' => true]);
+            self::assertArrayHasKey('id', $rawWithoutDebug['hits'][0]);
+            self::assertArrayNotHasKey('meta', $rawWithoutDebug);
+
+            $generalConfig->devMode = true;
+            $rawWithDebug = $variable->search('content', 'coffee', [
+                'raw' => true,
+                'debugEnabled' => true,
+            ]);
+            self::assertArrayHasKey('id', $rawWithDebug['hits'][0]);
+            self::assertSame($meta, $rawWithDebug['meta'] ?? null);
+        } finally {
+            $generalConfig->devMode = $originalDevMode;
+        }
+
+        foreach ($stub->callsFor('search') as $call) {
+            self::assertArrayNotHasKey('raw', $call['items'][0]['options']);
+            self::assertArrayNotHasKey('debugEnabled', $call['items'][0]['options']);
+        }
+        foreach ($stub->callsFor('searchMultiple') as $call) {
+            self::assertArrayNotHasKey('raw', $call['items'][0]['options']);
+            self::assertArrayNotHasKey('debugEnabled', $call['items'][0]['options']);
+        }
+        foreach ($proxyStub->callsFor('search') as $call) {
+            self::assertArrayNotHasKey('raw', $call['items'][0]['options']);
+            self::assertArrayNotHasKey('debugEnabled', $call['items'][0]['options']);
+        }
+    }
+
+    public function testTwigDebugMetadataCanBeAuthorizedByPermission(): void
+    {
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $originalDevMode = $generalConfig->devMode;
+        $user = $this->createTestUser('twig-debug-permission');
+        $this->grantPermissions($user, ['searchManager:viewDebug']);
+        $this->actingAs($user);
+        $variable = new SearchManagerVariable();
+        $stub = $this->installStubBackend();
+        $stub->searchResponse = [
+            'hits' => [],
+            'total' => 0,
+            'meta' => ['cached' => false],
+        ];
+
+        try {
+            $generalConfig->devMode = false;
+
+            self::assertSame(
+                ['cached' => false],
+                $variable->search('content', 'coffee', ['debugEnabled' => true])['meta'] ?? null,
+            );
+        } finally {
+            $generalConfig->devMode = $originalDevMode;
+        }
+    }
+
     public function testProxySearchReturnsPresentedHitsAndNarrowsRetrievableFieldsByDefault(): void
     {
         /** @param list<SearchIndex> $indices */

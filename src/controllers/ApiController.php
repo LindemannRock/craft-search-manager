@@ -531,9 +531,10 @@ class ApiController extends Controller
         // Canonical REST mode: enrich is ignored and every request uses the same
         // indexed-hit response path. Keep backend meta only for the existing
         // widget/debug toolbar contract.
-        if (!(bool) $request->getParam('debugEnabled', false) || !SearchDebugAccessHelper::canExposeDebugMeta()) {
-            unset($results['meta']);
-        }
+        $results = SearchDebugAccessHelper::filterDebugMeta(
+            $results,
+            (bool)$request->getParam('debugEnabled', false),
+        );
 
         if (!empty($results['hits'])) {
             $results['hits'] = CanonicalHitPipeline::presentHits($results['hits'], $query, $searchedIndexHandles, [

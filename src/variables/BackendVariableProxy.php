@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\variables;
 
 use Craft;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
+use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\TwigSearchOptionsHelper;
 use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
@@ -76,9 +77,10 @@ class BackendVariableProxy
         }
 
         $options = TwigSearchOptionsHelper::normalizeSearchLimitOptions($options);
-        $presentOptions = TwigSearchOptionsHelper::presentHitOptions([$indexName], $options);
         $raw = ($options['raw'] ?? false) === true;
-        unset($options['raw']);
+        $debugEnabled = (bool)($options['debugEnabled'] ?? false);
+        unset($options['debugEnabled'], $options['raw']);
+        $presentOptions = TwigSearchOptionsHelper::presentHitOptions([$indexName], $options);
         $options['retrievableFieldsByIndex'] = $presentOptions['retrievableFieldsByIndex'];
 
         $results = $this->backend->search($indexName, $query, $options);
@@ -87,7 +89,7 @@ class BackendVariableProxy
             $results['hits'] = CanonicalHitPipeline::presentHits(is_array($hits) ? $hits : [], $query, [$indexName], $presentOptions);
         }
 
-        return $results;
+        return SearchDebugAccessHelper::filterDebugMeta($results, $debugEnabled);
     }
 
     /**

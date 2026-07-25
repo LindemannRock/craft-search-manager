@@ -163,9 +163,10 @@ class SearchResolver extends Resolver
         $options['retrievableFieldsByIndex'] = SearchIndex::retrievableFieldsByIndex($indexHandles, $requestedRetrievableFields);
 
         $results = self::runSearch($indexHandles, $query, $options, $siteIds);
-        if (!(bool)($arguments['debugEnabled'] ?? false) || !SearchDebugAccessHelper::canExposeDebugMeta()) {
-            unset($results['meta']);
-        }
+        $results = SearchDebugAccessHelper::filterDebugMeta(
+            $results,
+            (bool)($arguments['debugEnabled'] ?? false),
+        );
 
         if (!empty($results['hits']) && is_array($results['hits'])) {
             $results['hits'] = CanonicalHitPipeline::presentHits($results['hits'], $query, $indexHandles, [

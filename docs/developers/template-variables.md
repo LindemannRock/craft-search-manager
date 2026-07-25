@@ -27,7 +27,9 @@ Perform a search against a specific index.
 | `query` | `string` | — | Search query (supports all operators) |
 | `options` | `array` | `[]` | Additional options (`siteId`, `analyticsSource`, `platform`, snippet options, `retrievableFields`, etc.) |
 
-**Returns:** `array` with `hits`, `total`, and `meta` keys. Hits are presented through the same public contract as REST, GraphQL, and the Control Panel test tool: public identity is `elementId` + `backendId`, the source index is `index`, custom field values are under `fields`, and `snippet` / `headings` are generated from indexed snippet sources when available. Internal backend keys such as raw `id`, `objectID`, and top-level `_...` values are stripped.
+**Returns:** `array` with `hits` and `total`. Hits are presented through the same public contract as REST, GraphQL, and the Control Panel test tool: public identity is `elementId` + `backendId`, the source index is `index`, custom field values are under `fields`, and `snippet` / `headings` are generated from indexed snippet sources when available. Internal backend keys such as raw `id`, `objectID`, and top-level `_...` values are stripped.
+
+Top-level backend/cache metadata is omitted by default. To inspect it, pass `debugEnabled: true`; Search Manager returns the original `meta` value only when Craft is in `devMode` or the current user has the **View debug information** permission.
 
 Twig search supports the same display options as the REST search endpoint:
 
@@ -39,7 +41,8 @@ Twig search supports the same display options as the REST search endpoint:
 | `snippetCleanMarkdown` | Strip common Markdown markers from plain-text snippets |
 | `resultsRequireUrl` | Omit hits that have no indexed URL |
 | `retrievableFields` | Request-time field narrowing; it can narrow the index's `retrievableFields` allowlist but never widen it |
-| `raw` | Set to `true` to return unpresented backend hits for debugging or custom migration code |
+| `debugEnabled` | Request top-level backend/cache `meta`; requires `devMode` or the **View debug information** permission |
+| `raw` | Set to `true` to return unpresented backend hits for debugging or custom migration code; it does not grant access to `meta` |
 
 ### `searchMultiple(indexNames, query, options)`
 
@@ -55,7 +58,7 @@ Search across multiple indices at once. Results are merged using the backend rel
 | `query` | `string` | Search query |
 | `options` | `array` | Search options |
 
-**Returns:** `array` with presented `hits` (each tagged with `index`), `total`, and `indices` count breakdown. Snippet options, `retrievableFields`, and `raw: true` behave the same as `search()`.
+**Returns:** `array` with presented `hits` (each tagged with `index`), `total`, and `indices` count breakdown. Snippet options, `retrievableFields`, `debugEnabled`, and `raw: true` behave the same as `search()`.
 
 ### `getIndices()`
 
@@ -250,7 +253,7 @@ Get a proxy for a specific configured backend. The proxy supports `search()`, `s
 - `getBackend()` — returns the underlying `BackendInterface` instance
 - `getStatus()` — returns backend status as an array
 
-The proxy's `search()` follows the same public-hit contract and accepts the same snippet, `resultsRequireUrl`, and `retrievableFields` options as the main `search()` method. Hits are presented by default; use `raw: true` only when you intentionally need the selected backend's unpresented response.
+The proxy's `search()` follows the same public-hit and debug-metadata contract and accepts the same snippet, `resultsRequireUrl`, `retrievableFields`, `debugEnabled`, and `raw` options as the main `search()` method. Hits are presented by default; use `raw: true` only when you intentionally need the selected backend's unpresented hits. `raw` does not expose top-level `meta` unless you also pass `debugEnabled: true` and have debug access.
 
 ```twig
 {% set algolia = craft.searchManager.withBackend('production-algolia') %}

@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\CacheKeyHelper;
 use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
@@ -742,7 +743,7 @@ class AutocompleteService extends Component
         ?string $language,
         int $limit,
         bool $fuzzy,
-    ): string {
+    ): ?string {
         $keyData = [
             'type' => $type,
             'index' => $indexHandle,
@@ -753,14 +754,18 @@ class AutocompleteService extends Component
             'fuzzy' => $fuzzy,
         ];
 
-        return md5(json_encode($keyData));
+        return CacheKeyHelper::generate($keyData);
     }
 
     /**
      * Get from autocomplete cache
      */
-    private function getFromCache(string $cacheKey, ?string $indexHandle = null): ?array
+    private function getFromCache(?string $cacheKey, ?string $indexHandle = null): ?array
     {
+        if ($cacheKey === null) {
+            return null;
+        }
+
         $settings = SearchManager::$plugin->getSettings();
         $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $cacheKey;
 
@@ -810,8 +815,12 @@ class AutocompleteService extends Component
     /**
      * Save to autocomplete cache
      */
-    private function saveToCache(string $cacheKey, array $data, ?string $indexHandle = null): void
+    private function saveToCache(?string $cacheKey, array $data, ?string $indexHandle = null): void
     {
+        if ($cacheKey === null) {
+            return;
+        }
+
         $settings = SearchManager::$plugin->getSettings();
         $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $cacheKey;
 

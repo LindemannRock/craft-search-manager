@@ -22,4 +22,20 @@ class SearchDebugAccessHelper
         return Craft::$app->getConfig()->getGeneral()->devMode
             || Craft::$app->getUser()->checkPermission('searchManager:viewDebug');
     }
+
+    /**
+     * Remove debug metadata unless it was explicitly requested and authorized.
+     *
+     * @param array<string, mixed> $results
+     * @return array<string, mixed>
+     * @since 5.54.0
+     */
+    public static function filterDebugMeta(array $results, bool $debugEnabled): array
+    {
+        if (!$debugEnabled || !self::canExposeDebugMeta()) {
+            unset($results['meta']);
+        }
+
+        return $results;
+    }
 }

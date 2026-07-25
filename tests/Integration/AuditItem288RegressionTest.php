@@ -113,6 +113,55 @@ final class AuditItem288RegressionTest extends TestCase
         self::assertNotSame($enAr, $allSites);
     }
 
+    public function testSearchAndAutocompleteCacheKeyEncodingFailuresBypassCaching(): void
+    {
+        $backendService = new \lindemannrock\searchmanager\services\BackendService();
+        $searchMethod = new \ReflectionMethod($backendService, '_generateCacheKey');
+        $searchMethod->setAccessible(true);
+        $autocompleteService = new \lindemannrock\searchmanager\services\AutocompleteService();
+        $autocompleteMethod = new \ReflectionMethod($autocompleteService, 'generateCacheKey');
+        $autocompleteMethod->setAccessible(true);
+
+        $invalidUtf8 = "\xB1\x31";
+        $resource = fopen('php://memory', 'r');
+        self::assertIsResource($resource);
+        $cyclic = [];
+        $cyclic['self'] = &$cyclic;
+
+        try {
+            self::assertNull($searchMethod->invoke(
+                $backendService,
+                'docs',
+                'coffee',
+                ['nested' => ['invalid' => $invalidUtf8]],
+            ));
+            self::assertNull($searchMethod->invoke(
+                $backendService,
+                'docs',
+                'coffee',
+                ['nested' => ['resource' => $resource]],
+            ));
+            self::assertNull($searchMethod->invoke(
+                $backendService,
+                'docs',
+                'coffee',
+                ['nested' => $cyclic],
+            ));
+            self::assertNull($autocompleteMethod->invoke(
+                $autocompleteService,
+                'suggest',
+                'docs',
+                $invalidUtf8,
+                1,
+                'en',
+                10,
+                true,
+            ));
+        } finally {
+            fclose($resource);
+        }
+    }
+
     public function testSettingsControllerTestSearchUsesResolvedSelectedSiteSet(): void
     {
         $source = $this->readPluginFile('src/controllers/SettingsController.php');
