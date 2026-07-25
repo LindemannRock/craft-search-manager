@@ -16,7 +16,6 @@ use lindemannrock\searchmanager\helpers\SplitSectionDocumentHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\IndexingService;
-use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 use yii\base\Component;
 
 /**
@@ -29,7 +28,6 @@ use yii\base\Component;
 class PendingSyncProcessor extends Component
 {
     use LoggingTrait;
-    use ElementTypeGuardTrait;
 
     /** @inheritdoc */
     public function init(): void
@@ -98,6 +96,17 @@ class PendingSyncProcessor extends Component
             ];
         }
 
+        // A disabled optional provider can leave its classes autoloadable.
+        // Drain buffered rows without touching backend storage; re-enabling the
+        // provider schedules the existing full rebuild for reconciliation.
+        if (!SearchManager::$plugin->dependencies->isIndexAvailable($indexHandle)) {
+            return [
+                'success' => $this->rowIds($rows),
+                'failures' => [],
+                'synced' => false,
+            ];
+        }
+
         // Batch auto-sync deliberately does NOT issue per-row documentExists
         // probes. The whole point of L3 is to collapse N save events into one
         // backend write — re-introducing a read-before-write for each row would
@@ -135,8 +144,7 @@ class PendingSyncProcessor extends Component
         $synced = false;
 
         $indexing = SearchManager::$plugin->indexing;
-        $elementTypeAvailable = $this->isElementTypeAvailable($index->elementType, 'batch-sync');
-        $elementsByKey = $elementTypeAvailable ? $this->preloadElements($index, $rows) : [];
+        $elementsByKey = $this->preloadElements($index, $rows);
         $criteriaMatchesByKey = $index->matchesCriteriaBatch(array_values($elementsByKey));
 
         foreach ($rows as $row) {
@@ -151,7 +159,7 @@ class PendingSyncProcessor extends Component
                 continue;
             }
 
-            if ($op === PendingSyncRepository::OP_DELETE || !$elementTypeAvailable) {
+            if ($op === PendingSyncRepository::OP_DELETE) {
                 $this->queueDelete($elementId, $siteId, $row, $deleteItems, $deleteRows);
                 continue;
             }

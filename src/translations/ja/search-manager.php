@@ -95,6 +95,8 @@ return [
     'The index name is empty.' => 'インデックス名が空です。',
     'Invalid value for "{key}".' => '{key} の値が無効です。',
     'Element type "{value}" is unavailable.' => '要素タイプ {value} は利用できません。',
+    'The element type "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'エレメントタイプ「 {class} 」は無効なプラグイン「 {plugin} 」に属しています。このインデックスを再構築する前にプラグインを有効にしてください。',
+    'The transformer "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'トランスフォーマー「 {class} 」は無効なプラグイン「 {plugin} 」に属しています。このインデックスを再構築する前にプラグインを有効にしてください。',
     'Element type "{value}" must implement ElementInterface.' => '要素タイプ {value} は ElementInterface を実装する必要があります。',
     'Site ID {value} does not exist.' => 'サイト ID {value} は存在しません。',
     'Unsupported criteria key "{key}".' => '条件キー {key} はサポートされていません。',

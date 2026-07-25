@@ -7,11 +7,11 @@
 {% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
     selectedSubnavItem: selectedSubnavItem,
 })|trim %}
-{% set configIndexFindingsSummary = include('search-manager/_components/_config-index-findings', {
+{% set indexFindingsSummary = include('search-manager/_components/_index-findings', {
     findings: indexReference.findings,
     presentation: 'box',
 })|trim %}
-{% set errorSummary = [setupIncompleteSummary, configIndexFindingsSummary]|filter(summary => summary)|join("\n") %}
+{% set errorSummary = [setupIncompleteSummary, indexFindingsSummary]|filter(summary => summary)|join("\n") %}
 
 {% set canRebuild = currentUser.can('searchManager:rebuildIndices') %}
 {% set canClear = currentUser.can('searchManager:clearIndices') %}

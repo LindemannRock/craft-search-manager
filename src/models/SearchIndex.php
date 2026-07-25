@@ -797,14 +797,14 @@ class SearchIndex extends Model
             $indexHandles = array_slice($indexHandles, 0, $maxCount);
         }
 
-        // Validate - only allow enabled indices
+        // Validate against the canonical effective catalogue so optional
+        // provider availability is identical across REST, GraphQL, CP, and jobs.
         if (!empty($indexHandles)) {
-            $enabledIndices = self::findAll();
-            $enabledHandles = array_map(
-                fn(self $idx) => $idx->handle,
-                array_filter($enabledIndices, fn(self $idx) => $idx->enabled),
-            );
-            $indexHandles = array_values(array_intersect($indexHandles, $enabledHandles));
+            $catalogue = SearchManager::$plugin->dependencies->getIndexCatalogue($indexHandles);
+            $indexHandles = array_values(array_filter(
+                $indexHandles,
+                static fn(string $handle): bool => (bool)($catalogue[$handle]['available'] ?? false),
+            ));
         }
 
         return [$indexHandles, $indicesProvided, $exceededMax];

@@ -8,8 +8,7 @@
 
 namespace lindemannrock\searchmanager\traits;
 
-use craft\base\ElementInterface;
-use lindemannrock\base\helpers\PluginHelper;
+use lindemannrock\searchmanager\SearchManager;
 
 /**
  * Element Type Guard Trait
@@ -22,42 +21,21 @@ trait ElementTypeGuardTrait
 {
     protected function isElementTypeAvailable(string $elementType, string $context): bool
     {
-        if ($this->hasValidElementTypeContract($elementType)) {
+        $availability = SearchManager::$plugin->dependencies->getClassAvailability(
+            $elementType,
+            \craft\base\ElementInterface::class,
+        );
+        if ($availability['available']) {
             return true;
         }
 
-        $pluginHandle = $this->getPluginHandleForElementType($elementType);
-        if ($pluginHandle && !PluginHelper::isPluginEnabled($pluginHandle)) {
-            $this->logWarning('Element type plugin disabled; skipping', [
-                'elementType' => $elementType,
-                'plugin' => $pluginHandle,
-                'context' => $context,
-            ]);
-            return false;
-        }
-
-        $this->logWarning(class_exists($elementType)
-            ? 'Element type does not implement ElementInterface; skipping'
-            : 'Element type class not found; skipping', [
+        $this->logWarning('Element type dependency unavailable; skipping', [
             'elementType' => $elementType,
+            'plugin' => $availability['providerHandle'],
+            'reason' => $availability['reason'],
             'context' => $context,
         ]);
 
         return false;
-    }
-
-    protected function hasValidElementTypeContract(string $elementType): bool
-    {
-        return class_exists($elementType) && is_subclass_of($elementType, ElementInterface::class);
-    }
-
-    protected function getPluginHandleForElementType(string $elementType): ?string
-    {
-        return match ($elementType) {
-            'lindemannrock\\docsmanager\\elements\\SourceDoc' => 'docs-manager',
-            'lindemannrock\\smartlinkmanager\\elements\\SmartLink' => 'smartlink-manager',
-            'lindemannrock\\shortlinkmanager\\elements\\ShortLink' => 'shortlink-manager',
-            default => null,
-        };
     }
 }

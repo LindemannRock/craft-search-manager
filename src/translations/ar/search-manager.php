@@ -95,6 +95,8 @@ return [
     'The index name is empty.' => 'اسم الفهرس فارغ.',
     'Invalid value for "{key}".' => 'قيمة غير صالحة للمفتاح «{key}».',
     'Element type "{value}" is unavailable.' => 'نوع العنصر «{value}» غير متاح.',
+    'The element type "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'ينتمي نوع العنصر «{class}» إلى الإضافة المعطّلة «{plugin}». فعّل الإضافة قبل إعادة بناء هذا الفهرس.',
+    'The transformer "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'ينتمي المحوّل «{class}» إلى الإضافة المعطّلة «{plugin}». فعّل الإضافة قبل إعادة بناء هذا الفهرس.',
     'Element type "{value}" must implement ElementInterface.' => 'يجب أن ينفّذ نوع العنصر «{value}» الواجهة ElementInterface.',
     'Site ID {value} does not exist.' => 'ID الموقع {value} غير موجود.',
     'Unsupported criteria key "{key}".' => 'مفتاح المعيار «{key}» غير مدعوم.',

@@ -19,7 +19,6 @@ use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
 use lindemannrock\searchmanager\transformers\DocsManagerTransformer;
 use yii\base\Component;
@@ -31,8 +30,6 @@ use yii\base\Component;
  */
 class ConfigIndexValidator extends Component
 {
-    use ElementTypeGuardTrait;
-
     private const PLUGIN_HANDLE = 'search-manager';
 
     private const ALLOWED_KEYS = [
@@ -231,7 +228,11 @@ class ConfigIndexValidator extends Component
         }
 
         $value = trim($value);
-        if (!class_exists($value)) {
+        $availability = SearchManager::$plugin->dependencies->getClassAvailability(
+            $value,
+            \craft\base\ElementInterface::class,
+        );
+        if (!$availability['classExists'] || !$availability['providerEnabled']) {
             $result->addFinding(
                 $handle,
                 ConfigIndexValidationResult::SEVERITY_ERROR,
@@ -243,7 +244,7 @@ class ConfigIndexValidator extends Component
             return null;
         }
 
-        if (!$this->hasValidElementTypeContract($value)) {
+        if (!$availability['implementsContract']) {
             $result->addFinding(
                 $handle,
                 ConfigIndexValidationResult::SEVERITY_ERROR,

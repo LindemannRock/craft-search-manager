@@ -14,6 +14,7 @@ use craft\base\Plugin;
 use craft\console\Application as ConsoleApplication;
 use craft\events\ElementEvent;
 use craft\events\ExecuteGqlQueryEvent;
+use craft\events\PluginEvent;
 use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterGqlQueriesEvent;
@@ -22,10 +23,13 @@ use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterTemplateRootsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\events\SiteEvent;
 use craft\helpers\UrlHelper;
 use craft\services\Dashboard;
 use craft\services\Elements;
 use craft\services\Gql;
+use craft\services\Plugins;
+use craft\services\Sites;
 use craft\services\UserPermissions;
 use craft\services\Utilities;
 use craft\utilities\ClearCaches;
@@ -987,7 +991,61 @@ class SearchManager extends Plugin
             }
         );
 
+        // Site additions and removals change the resolved scope of all-sites
+        // indices. Ordinary site edits deliberately do not rebuild anything.
+        Event::on(
+            Sites::class,
+            Sites::EVENT_AFTER_SAVE_SITE,
+            function(SiteEvent $event) {
+                if ($event->isNew) {
+                    $this->scheduleAllSitesReconciliation('site-created');
+                }
+            },
+        );
+        Event::on(
+            Sites::class,
+            Sites::EVENT_AFTER_DELETE_SITE,
+            fn() => $this->scheduleAllSitesReconciliation('site-deleted'),
+        );
+
+        Event::on(
+            Plugins::class,
+            Plugins::EVENT_AFTER_DISABLE_PLUGIN,
+            fn(PluginEvent $event) => $this->reconcileProviderAvailability($event, false),
+        );
+        Event::on(
+            Plugins::class,
+            Plugins::EVENT_AFTER_ENABLE_PLUGIN,
+            fn(PluginEvent $event) => $this->reconcileProviderAvailability($event, true),
+        );
+
         // DO NOT log here - this is called from init() on every request
+    }
+
+    private function scheduleAllSitesReconciliation(string $reason): void
+    {
+        $this->indexing->scheduleAffectedIndexRebuilds(
+            $this->dependencies->getEnabledAllSitesIndices(),
+            $reason,
+        );
+    }
+
+    private function reconcileProviderAvailability(PluginEvent $event, bool $enabled): void
+    {
+        $providerHandle = $event->plugin->getHandle();
+        if ($providerHandle === $this->id) {
+            return;
+        }
+
+        $indices = $this->dependencies->getEnabledIndicesForProvider($providerHandle);
+        if ($indices === []) {
+            return;
+        }
+
+        $this->dependencies->invalidateIndexCaches($indices);
+        if ($enabled) {
+            $this->indexing->scheduleAffectedIndexRebuilds($indices, 'provider-enabled');
+        }
     }
 
     /**

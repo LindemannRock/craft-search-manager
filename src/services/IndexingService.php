@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\services;
 
 use Craft;
 use craft\base\ElementInterface;
+use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\events\IndexEvent;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
@@ -159,8 +160,8 @@ class IndexingService extends Component
                 $data = SearchManager::$plugin->transformers->transform(
                     $element,
                     $indexHandle,
-                    $index?->transformerClass,
-                    $index?->headingLevels,
+                    $index->transformerClass,
+                    $index->headingLevels,
                 );
 
                 if ($data === null) {
@@ -270,6 +271,9 @@ class IndexingService extends Component
             if (!$index->enabled) {
                 continue;
             }
+            if (!SearchManager::$plugin->dependencies->isIndexAvailable($index->handle)) {
+                continue;
+            }
             if ($index->elementType !== $elementClass) {
                 continue;
             }
@@ -361,6 +365,17 @@ class IndexingService extends Component
 
         // Get index config for transformer class and heading levels
         $index = SearchIndex::findByHandle($indexHandle);
+        if ($index === null) {
+            foreach (SearchIndex::findAll() as $candidate) {
+                if ($candidate->handle === $indexHandle) {
+                    $index = $candidate;
+                    break;
+                }
+            }
+        }
+        if (!$index || !SearchManager::$plugin->dependencies->isIndexAvailable($indexHandle)) {
+            return false;
+        }
 
         SearchManager::$plugin->transformers->withTransformerReuse(function() use (
             $elements,
@@ -375,8 +390,8 @@ class IndexingService extends Component
                 $transformResult = SearchManager::$plugin->transformers->transformWithResult(
                     $element,
                     $indexHandle,
-                    $index?->transformerClass,
-                    $index?->headingLevels,
+                    $index->transformerClass,
+                    $index->headingLevels,
                 );
 
                 if ($transformResult['status'] === 'skipped') {
@@ -655,6 +670,126 @@ class IndexingService extends Component
         return true;
     }
 
+    /**
+     * Queue existing full rebuild jobs for an affected set, coalesced per handle.
+     *
+     * @param iterable<SearchIndex> $indices
+     * @return list<string> Handles queued by this call.
+     * @since 5.54.0
+     */
+    public function scheduleAffectedIndexRebuilds(iterable $indices, string $reason): array
+    {
+        $queued = [];
+        foreach ($indices as $index) {
+            if (
+                !$index->enabled
+                || !$this->isAffectedIndexAvailable($index->handle)
+            ) {
+                continue;
+            }
+
+            try {
+                $queuedNow = $this->withAffectedRebuildLock(
+                    $index->handle,
+                    function() use ($index): bool {
+                        $state = $this->getAffectedRebuildState($index->handle);
+                        if ($state !== null) {
+                            $this->setAffectedRebuildState($index->handle, true);
+
+                            return false;
+                        }
+
+                        $this->setAffectedRebuildState($index->handle, false);
+                        try {
+                            $this->pushAffectedSchedulerJob($index->handle);
+                        } catch (\Throwable $e) {
+                            $this->deleteAffectedRebuildState($index->handle);
+                            throw $e;
+                        }
+
+                        return true;
+                    },
+                );
+            } catch (\Throwable $e) {
+                $this->logError('Unable to queue affected index rebuild', [
+                    'indexHandle' => $index->handle,
+                    'reason' => $reason,
+                    'error' => $e->getMessage(),
+                ]);
+                continue;
+            }
+
+            if (!$queuedNow) {
+                $this->logDebug('Coalesced affected index rebuild event', [
+                    'indexHandle' => $index->handle,
+                    'reason' => $reason,
+                ]);
+                continue;
+            }
+
+            $queued[] = $index->handle;
+            $this->logInfo('Queued affected index rebuild', [
+                'indexHandle' => $index->handle,
+                'reason' => $reason,
+            ]);
+        }
+
+        return $queued;
+    }
+
+    /**
+     * Complete an affected rebuild and either queue one coalesced follow-up or release ownership.
+     *
+     * @since 5.54.0
+     */
+    public function completeAffectedIndexRebuild(string $indexHandle): void
+    {
+        try {
+            $queuedFollowUp = $this->withAffectedRebuildLock(
+                $indexHandle,
+                function() use ($indexHandle): bool {
+                    $state = $this->getAffectedRebuildState($indexHandle);
+                    if ($state === null) {
+                        return false;
+                    }
+
+                    if (!$state['dirty']) {
+                        $this->deleteAffectedRebuildState($indexHandle);
+
+                        return false;
+                    }
+
+                    $this->setAffectedRebuildState($indexHandle, false);
+                    try {
+                        $this->pushAffectedSchedulerJob($indexHandle);
+                    } catch (\Throwable $e) {
+                        $this->deleteAffectedRebuildState($indexHandle);
+                        throw $e;
+                    }
+
+                    return true;
+                },
+            );
+        } catch (\Throwable $e) {
+            $this->logError('Unable to advance affected index rebuild scheduling', [
+                'indexHandle' => $indexHandle,
+                'error' => $e->getMessage(),
+            ]);
+
+            return;
+        }
+
+        if ($queuedFollowUp) {
+            $this->logInfo('Queued coalesced affected index rebuild follow-up', [
+                'indexHandle' => $indexHandle,
+            ]);
+        } else {
+            $this->logDebug('Released affected index rebuild scheduling', [
+                'indexHandle' => $indexHandle,
+            ]);
+        }
+    }
+
     // =========================================================================
     // HELPER METHODS
     // =========================================================================
@@ -678,6 +813,12 @@ class IndexingService extends Component
         foreach ($indices as $index) {
             if (!$index->enabled) {
                 $this->logDebug('Index skipped (disabled)', [
+                    'indexHandle' => $index->handle,
+                ]);
+                continue;
+            }
+            if (!SearchManager::$plugin->dependencies->isIndexAvailable($index->handle)) {
+                $this->logDebug('Index skipped (dependency unavailable)', [
                     'indexHandle' => $index->handle,
                 ]);
                 continue;
@@ -766,5 +907,101 @@ class IndexingService extends Component
     private function getAllIndices(): array
     {
         return SearchIndex::findAll();
+    }
+
+    private function scheduledRebuildCacheKey(string $indexHandle): string
+    {
+        return PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'affected-index-rebuild')
+            . $indexHandle;
+    }
+
+    private function scheduledRebuildMutexName(string $indexHandle): string
+    {
+        return PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'affected-index-rebuild-mutex')
+            . $indexHandle;
+    }
+
+    /**
+     * @template T
+     * @param callable(): T $callback
+     * @return T
+     */
+    protected function withAffectedRebuildLock(string $indexHandle, callable $callback): mixed
+    {
+        $mutex = Craft::$app->getMutex();
+        $lockName = $this->scheduledRebuildMutexName($indexHandle);
+        if (!$mutex->acquire($lockName, 30)) {
+            throw new \RuntimeException("Unable to acquire affected rebuild scheduler lock for '{$indexHandle}'.");
+        }
+
+        try {
+            return $callback();
+        } finally {
+            $mutex->release($lockName);
+        }
+    }
+
+    /**
+     * @return array{active: true, dirty: bool}|null
+     */
+    protected function getAffectedRebuildState(string $indexHandle): ?array
+    {
+        $state = Craft::$app->getCache()->get($this->scheduledRebuildCacheKey($indexHandle));
+        if ($state === true) {
+            return ['active' => true, 'dirty' => false];
+        }
+        if (!is_array($state) || ($state['active'] ?? null) !== true || !is_bool($state['dirty'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'active' => true,
+            'dirty' => $state['dirty'],
+        ];
+    }
+
+    protected function setAffectedRebuildState(string $indexHandle, bool $dirty): void
+    {
+        $stored = Craft::$app->getCache()->set(
+            $this->scheduledRebuildCacheKey($indexHandle),
+            ['active' => true, 'dirty' => $dirty],
+            0,
+        );
+        if (!$stored) {
+            throw new \RuntimeException("Unable to persist affected rebuild scheduler state for '{$indexHandle}'.");
+        }
+    }
+
+    protected function deleteAffectedRebuildState(string $indexHandle): void
+    {
+        $cache = Craft::$app->getCache();
+        $cacheKey = $this->scheduledRebuildCacheKey($indexHandle);
+        $released = $cache->set($cacheKey, ['active' => false, 'dirty' => false], 60);
+        if (!$released) {
+            throw new \RuntimeException("Unable to release affected rebuild scheduler state for '{$indexHandle}'.");
+        }
+
+        $cache->delete($cacheKey);
+    }
+
+    private function pushAffectedSchedulerJob(string $indexHandle): void
+    {
+        $jobId = $this->pushAffectedRebuildJob(new RebuildIndexJob([
+            'indexHandle' => $indexHandle,
+            'releaseAffectedSchedule' => true,
+        ]));
+        if ($jobId === null) {
+            throw new \RuntimeException('Queue did not accept the rebuild job.');
+        }
+    }
+
+    protected function pushAffectedRebuildJob(RebuildIndexJob $job): string|int|null
+    {
+        return Craft::$app->getQueue()->push($job);
+    }
+
+    protected function isAffectedIndexAvailable(string $indexHandle): bool
+    {
+        return SearchManager::$plugin->dependencies->isIndexAvailable($indexHandle);
     }
 }

@@ -95,6 +95,8 @@ return [
     'The index name is empty.' => 'De indexnaam is leeg.',
     'Invalid value for "{key}".' => 'Ongeldige waarde voor ‘{key}’.',
     'Element type "{value}" is unavailable.' => 'Het elementtype ‘{value}’ is niet beschikbaar.',
+    'The element type "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'Het elementtype ‘{class}’ behoort tot de uitgeschakelde plugin ‘{plugin}’. Schakel de plugin in voordat u deze index herindexeert.',
+    'The transformer "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'De transformer ‘{class}’ behoort tot de uitgeschakelde plugin ‘{plugin}’. Schakel de plugin in voordat u deze index herindexeert.',
     'Element type "{value}" must implement ElementInterface.' => 'Het elementtype ‘{value}’ moet ElementInterface implementeren.',
     'Site ID {value} does not exist.' => 'Site-ID {value} bestaat niet.',
     'Unsupported criteria key "{key}".' => 'Niet-ondersteunde criteriasleutel ‘{key}’.',

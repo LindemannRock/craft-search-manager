@@ -209,6 +209,8 @@ Index content from every site:
 
 When indexing multiple sites, each element is stored with its `siteId`. This allows language filtering and per-site search results. Built-in backends store `siteId` as a field; external backends use composite document IDs (`{elementId}_{siteId}`).
 
+Enabled all-sites indices also stay aligned with Craft's site list automatically. Creating or deleting a site queues a full rebuild through the index's configured backend, so a new site's content is added and documents for a deleted site are removed. Explicitly scoped indices and disabled indices are not rebuilt by those site events.
+
 ## Filtering with criteria
 
 For predictable config diffs, use the array form when one of the built-in selectors is enough:
@@ -261,6 +263,8 @@ For project-specific result data, create a transformer in a module namespace and
 ```
 
 Custom transformer classes must be autoloadable from your project or module namespace, constructible without required constructor arguments, and implement `TransformerInterface`. Extending `BaseTransformer` is the recommended route for custom document shapes; extending `AutoTransformer` is useful when you want automatic extraction plus project-specific fields. `supports()` is still required by the interface, but Search Manager does not use it to guard an index-specific configured override.
+
+If an index's element type or transformer belongs to another plugin, that plugin must be enabled. Disabling the provider makes the affected index fail closed with an **Error** state; Search Manager leaves the index configuration and backend storage intact. Open the affected index to see which disabled plugin owns the unavailable element type or transformer and the action required before rebuilding. Re-enabling the provider queues full rebuilds only for affected enabled indices, while unrelated and disabled indices remain untouched.
 
 ## Per-index settings
 

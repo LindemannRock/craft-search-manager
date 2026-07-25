@@ -14,6 +14,10 @@
 {% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
     selectedSubnavItem: selectedSubnavItem,
 })|trim %}
+{% set indexFindingsSummary = not isNew ? include('search-manager/_components/_index-findings', {
+    findings: indexReference.findings,
+    presentation: 'box',
+})|trim : '' %}
 
 {% import "_includes/forms" as forms %}
 
@@ -54,7 +58,7 @@
 		errors: index.getErrors(),
 	})|trim %}
 {% endif %}
-{% set errorSummary = [setupIncompleteSummary, validationSummary]|filter(v => v)|join("\n") %}
+{% set errorSummary = [setupIncompleteSummary, indexFindingsSummary, validationSummary]|filter(v => v)|join("\n") %}
 
 {% block content %}
 

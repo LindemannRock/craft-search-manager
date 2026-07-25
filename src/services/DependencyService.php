@@ -10,7 +10,10 @@ namespace lindemannrock\searchmanager\services;
 
 use Craft;
 use craft\base\Component;
+use craft\base\ElementInterface;
 use craft\base\Model;
+use lindemannrock\base\helpers\PluginHelper;
+use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\models\Promotion;
@@ -63,6 +66,184 @@ class DependencyService extends Component
         'disabled' => 0,
         'enabled' => 1,
     ];
+
+    /**
+     * Resolve one class through Search Manager's optional-plugin availability contract.
+     *
+     * @return array{
+     *   class: string,
+     *   providerHandle: string|null,
+     *   providerEnabled: bool,
+     *   classExists: bool,
+     *   implementsContract: bool,
+     *   constructible: bool,
+     *   available: bool,
+     *   reason: string|null
+     * }
+     * @since 5.54.0
+     */
+    public function getClassAvailability(
+        string $class,
+        string $requiredInterface,
+        bool $verifyConstruction = false,
+    ): array {
+        $classExists = class_exists($class);
+        $providerHandle = $classExists ? $this->providerHandleForClass($class) : null;
+        $providerEnabled = $providerHandle === null || $this->isProviderEnabled($providerHandle);
+        $implementsContract = $classExists && is_subclass_of($class, $requiredInterface);
+        $constructible = false;
+
+        if ($implementsContract) {
+            try {
+                $reflection = new \ReflectionClass($class);
+                $constructor = $reflection->getConstructor();
+                $constructible = $reflection->isInstantiable()
+                    && ($constructor === null || $constructor->getNumberOfRequiredParameters() === 0);
+                if ($constructible && $verifyConstruction && $providerEnabled) {
+                    $reflection->newInstance();
+                }
+            } catch (\ReflectionException) {
+                $constructible = false;
+            } catch (\Throwable) {
+                $constructible = false;
+            }
+        }
+
+        $reason = match (true) {
+            !$classExists => 'class-missing',
+            !$implementsContract => 'invalid-contract',
+            !$constructible => 'not-constructible',
+            !$providerEnabled => 'provider-disabled',
+            default => null,
+        };
+
+        return [
+            'class' => $class,
+            'providerHandle' => $providerHandle,
+            'providerEnabled' => $providerEnabled,
+            'classExists' => $classExists,
+            'implementsContract' => $implementsContract,
+            'constructible' => $constructible,
+            'available' => $reason === null,
+            'reason' => $reason,
+        ];
+    }
+
+    /**
+     * Resolve the element and effective transformer dependencies for an index.
+     *
+     * @return array{
+     *   available: bool,
+     *   providerHandles: list<string>,
+     *   element: array<string, mixed>,
+     *   transformer: array<string, mixed>
+     * }
+     * @since 5.54.0
+     */
+    public function getIndexAvailability(SearchIndex $index): array
+    {
+        $element = $this->getClassAvailability($index->elementType, ElementInterface::class);
+        $transformerClass = SearchManager::$plugin->transformers
+            ->resolveTransformerClassForElementTypeSilently($index->elementType, $index->transformerClass);
+        $transformer = $this->getClassAvailability((string)$transformerClass, TransformerInterface::class);
+        $providerHandles = array_values(array_unique(array_filter([
+            $element['providerHandle'],
+            $transformer['providerHandle'],
+        ], 'is_string')));
+
+        return [
+            'available' => $element['available'] && $transformer['available'],
+            'providerHandles' => $providerHandles,
+            'element' => $element,
+            'transformer' => $transformer,
+        ];
+    }
+
+    /**
+     * Whether an enabled index can currently be used by Search Manager.
+     *
+     * @since 5.54.0
+     */
+    public function isIndexAvailable(string $handle, bool $allowUnmanaged = false): bool
+    {
+        $record = $this->getIndexCatalogue([$handle])[$handle];
+
+        return (bool)$record['available'] || ($allowUnmanaged && !$record['exists']);
+    }
+
+    /**
+     * Whether a low-level backend operation has loadable index dependencies.
+     *
+     * This intentionally does not impose the index's enabled flag; public
+     * Search Manager resolution applies enabled-state policy before reaching
+     * low-level backend proxies, which also support diagnostic/raw operations.
+     *
+     * @since 5.54.0
+     */
+    public function areIndexDependenciesAvailable(string $handle, bool $allowUnmanaged = false): bool
+    {
+        $record = $this->getIndexCatalogue([$handle])[$handle];
+        if (!$record['exists']) {
+            return $allowUnmanaged;
+        }
+
+        return !$record['configError']
+            && (bool)($record['dependencyAvailability']['available'] ?? false);
+    }
+
+    /**
+     * Select enabled indices whose resolved site scope includes every site.
+     *
+     * @return list<SearchIndex>
+     * @since 5.54.0
+     */
+    public function getEnabledAllSitesIndices(): array
+    {
+        return array_values(array_filter(
+            SearchIndex::findAll(),
+            static fn(SearchIndex $index): bool => $index->enabled && $index->getSiteIds() === null,
+        ));
+    }
+
+    /**
+     * Select enabled indices owned by an optional provider through either dependency.
+     *
+     * @return list<SearchIndex>
+     * @since 5.54.0
+     */
+    public function getEnabledIndicesForProvider(string $providerHandle): array
+    {
+        $indices = [];
+        foreach (SearchIndex::findAll() as $index) {
+            if (!$index->enabled) {
+                continue;
+            }
+
+            $availability = $this->getIndexAvailability($index);
+            if (in_array($providerHandle, $availability['providerHandles'], true)) {
+                $indices[] = $index;
+            }
+        }
+
+        return $indices;
+    }
+
+    /**
+     * Invalidate Search Manager's derived state without deleting backend storage.
+     *
+     * @param iterable<SearchIndex> $indices
+     * @since 5.54.0
+     */
+    public function invalidateIndexCaches(iterable $indices): void
+    {
+        $this->clearIndexCatalogue();
+        SearchIndex::clearCache();
+
+        foreach ($indices as $index) {
+            SearchManager::$plugin->backend->clearSearchCache($index->handle);
+            SearchManager::$plugin->autocomplete->clearCache($index->handle);
+        }
+    }
 
     /**
      * @return array<int, array{type: string, label: string, kind: string}>
@@ -275,6 +456,12 @@ class DependencyService extends Component
      *   retained: bool,
      *   errorTitle: string|null,
      *   findings: list<array{severity: string, handle: string|null, key: string, message: string, emphasis: string|null}>,
+     *   dependencyAvailability: array{
+     *     available: bool,
+     *     providerHandles: list<string>,
+     *     element: array<string, mixed>,
+     *     transformer: array<string, mixed>
+     *   }|null,
      *   status: array{label: string, value: string, colorSet: string, title: string|null}
      * }>
      * @since 5.54.0
@@ -287,10 +474,19 @@ class DependencyService extends Component
             $catalogue = [];
 
             foreach (SearchIndex::findAll() as $index) {
-                $findings = $index->source === 'config'
+                $configFindings = $index->source === 'config'
                     ? $validation->getFindingsForHandle($index->handle)
                     : [];
-                $errorTitle = $this->firstConfigError($findings);
+                $dependencyAvailability = $this->getIndexAvailability($index);
+                $findings = $this->mergeIndexFindings(
+                    $index,
+                    $configFindings,
+                    $dependencyAvailability,
+                );
+                $errorTitle = $this->firstError($findings);
+                if ($errorTitle === null && !$dependencyAvailability['available']) {
+                    $errorTitle = $this->statusData('error', null)['label'];
+                }
                 $displayName = $this->indexDisplayName($index);
                 $identityLabel = $this->indexIdentityLabel($displayName, $index->handle);
                 $status = $this->resolveEffectiveStatus((bool)$index->enabled, [
@@ -316,6 +512,7 @@ class DependencyService extends Component
                     'retained' => false,
                     'errorTitle' => $errorTitle,
                     'findings' => $findings,
+                    'dependencyAvailability' => $dependencyAvailability,
                     'status' => $status,
                 ];
             }
@@ -354,6 +551,7 @@ class DependencyService extends Component
                 'retained' => true,
                 'errorTitle' => $errorTitle,
                 'findings' => [],
+                'dependencyAvailability' => null,
                 'status' => $status,
             ];
         }
@@ -474,6 +672,37 @@ class DependencyService extends Component
     }
 
     /**
+     * Resolve class ownership using Craft's Composer-aware plugin lookup.
+     */
+    protected function providerHandleForClass(string $class): ?string
+    {
+        return Craft::$app->getPlugins()->getPluginHandleByClass($class);
+    }
+
+    /**
+     * Resolve enabled state through Base's shared plugin authority.
+     */
+    protected function isProviderEnabled(string $handle): bool
+    {
+        return PluginHelper::isPluginEnabled($handle);
+    }
+
+    /**
+     * Resolve a provider's display name without loading its disabled plugin.
+     */
+    protected function providerNameForHandle(string $handle): string
+    {
+        try {
+            $info = Craft::$app->getPlugins()->getComposerPluginInfo($handle);
+            $name = is_array($info) ? trim((string)($info['name'] ?? '')) : '';
+
+            return $name !== '' ? $name : $handle;
+        } catch (\Throwable) {
+            return $handle;
+        }
+    }
+
+    /**
      * @param array<int, string|null>|string|null $handles
      * @return list<string>
      */
@@ -514,7 +743,7 @@ class DependencyService extends Component
     /**
      * @param list<array{severity: string, handle: string|null, key: string, message: string, emphasis: string|null}> $findings
      */
-    private function firstConfigError(array $findings): ?string
+    private function firstError(array $findings): ?string
     {
         foreach ($findings as $finding) {
             if ($finding['severity'] === ConfigIndexValidationResult::SEVERITY_ERROR) {
@@ -523,6 +752,72 @@ class DependencyService extends Component
         }
 
         return null;
+    }
+
+    /**
+     * Merge validator findings with disabled-provider recovery details.
+     *
+     * Config validation already records a generic unavailable-element error.
+     * The catalogue replaces only that provider-disabled result with its
+     * actionable equivalent; every malformed-config finding remains intact.
+     *
+     * @param list<array{severity: string, handle: string|null, key: string, message: string, emphasis: string|null}> $configFindings
+     * @param array{
+     *   available: bool,
+     *   providerHandles: list<string>,
+     *   element: array<string, mixed>,
+     *   transformer: array<string, mixed>
+     * } $availability
+     * @return list<array{severity: string, handle: string|null, key: string, message: string, emphasis: string|null}>
+     */
+    private function mergeIndexFindings(
+        SearchIndex $index,
+        array $configFindings,
+        array $availability,
+    ): array {
+        if (($availability['element']['reason'] ?? null) === 'provider-disabled') {
+            $configFindings = array_values(array_filter(
+                $configFindings,
+                static fn(array $finding): bool => $finding['key'] !== 'elementType',
+            ));
+        }
+
+        $findings = $configFindings;
+        $seenProviders = [];
+        foreach (['element', 'transformer'] as $dependencyKind) {
+            $dependency = $availability[$dependencyKind];
+            if (($dependency['reason'] ?? null) !== 'provider-disabled') {
+                continue;
+            }
+
+            $providerHandle = $dependency['providerHandle'] ?? null;
+            if (!is_string($providerHandle) || in_array($providerHandle, $seenProviders, true)) {
+                continue;
+            }
+            $seenProviders[] = $providerHandle;
+
+            $providerName = $this->providerNameForHandle($providerHandle);
+            $class = (string)$dependency['class'];
+            $message = $dependencyKind === 'element'
+                ? Craft::t('search-manager', 'The element type "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.', [
+                    'class' => $class,
+                    'plugin' => $providerName,
+                ])
+                : Craft::t('search-manager', 'The transformer "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.', [
+                    'class' => $class,
+                    'plugin' => $providerName,
+                ]);
+
+            $findings[] = [
+                'severity' => ConfigIndexValidationResult::SEVERITY_ERROR,
+                'handle' => $index->handle,
+                'key' => sprintf('%s-provider-disabled', $dependencyKind),
+                'message' => $message,
+                'emphasis' => $providerName,
+            ];
+        }
+
+        return $findings;
     }
 
     /**

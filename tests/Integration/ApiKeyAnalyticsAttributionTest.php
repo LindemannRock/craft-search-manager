@@ -618,7 +618,10 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
     private function resolveAnalyticsIndexHandle(): string
     {
         foreach (SearchIndex::findAll() as $index) {
-            if ($index->enabled && $index->enableAnalytics) {
+            if (
+                $index->enableAnalytics
+                && SearchManager::$plugin->dependencies->isIndexAvailable($index->handle)
+            ) {
                 return $index->handle;
             }
         }

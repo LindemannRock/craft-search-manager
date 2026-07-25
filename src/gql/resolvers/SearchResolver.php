@@ -323,9 +323,9 @@ class SearchResolver extends Resolver
      */
     private static function enabledIndexHandles(): array
     {
-        return array_values(array_map(
-            static fn(SearchIndex $index): string => $index->handle,
-            array_filter(SearchIndex::findAll(), static fn(SearchIndex $index): bool => $index->enabled),
+        return array_keys(array_filter(
+            SearchManager::$plugin->dependencies->getIndexCatalogue(),
+            static fn(array $record): bool => (bool)$record['available'],
         ));
     }
 

@@ -46,7 +46,7 @@
                     ? 'Review config/search-manager.php before rebuilding affected indices.'|t('search-manager')
                     : 'Review this index in config/search-manager.php before rebuilding it.'|t('search-manager') }}
             </p>
-            {% include 'search-manager/_components/_config-index-findings' with {
+            {% include 'search-manager/_components/_index-findings' with {
                 findings: group.findings,
                 listClass: 'lr-setup-task__list',
             } only %}

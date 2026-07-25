@@ -67,6 +67,10 @@ class BackendVariableProxy
      */
     public function search(string $indexName, string $query, array $options = []): array
     {
+        if (!SearchManager::$plugin->dependencies->areIndexDependenciesAvailable($indexName, true)) {
+            return [];
+        }
+
         if (mb_strlen($query) > TwigSearchOptionsHelper::MAX_QUERY_LENGTH) {
             return [
                 'hits' => [],
@@ -102,6 +106,10 @@ class BackendVariableProxy
      */
     public function suggest(string $query, string $indexHandle = 'all-sites', array $options = []): array
     {
+        if (!SearchManager::$plugin->dependencies->areIndexDependenciesAvailable($indexHandle, true)) {
+            return [];
+        }
+
         if (mb_strlen($query) > TwigSearchOptionsHelper::MAX_QUERY_LENGTH) {
             return [];
         }

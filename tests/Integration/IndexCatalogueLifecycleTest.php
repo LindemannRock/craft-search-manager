@@ -428,7 +428,7 @@ final class IndexCatalogueLifecycleTest extends TestCase
     {
         $root = dirname(__DIR__, 2) . '/src/templates';
         foreach ([
-            '_components/_config-index-findings.twig',
+            '_components/_index-findings.twig',
             '_components/_index-reference.twig',
             '_components/_index-reference-error.twig',
             '_components/_effective-status.twig',

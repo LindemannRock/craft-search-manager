@@ -494,6 +494,10 @@ class BackendService extends Component
      */
     public function search(string $indexName, string $query, array $options = []): array
     {
+        if (!SearchManager::$plugin->dependencies->areIndexDependenciesAvailable($indexName, true)) {
+            return [];
+        }
+
         $backend = $this->getBackendForIndex($indexName);
         if (!$backend) {
             $this->logError('No backend available for search', ['index' => $indexName]);
@@ -956,6 +960,19 @@ class BackendService extends Component
      */
     public function searchMultiple(array $indexNames, string $query, array $options = []): array
     {
+        $catalogue = SearchManager::$plugin->dependencies->getIndexCatalogue($indexNames);
+        $indexNames = array_values(array_filter(
+            $indexNames,
+            static fn(string $handle): bool => !($catalogue[$handle]['exists'] ?? true)
+                || (
+                    !($catalogue[$handle]['configError'] ?? true)
+                    && (bool)($catalogue[$handle]['dependencyAvailability']['available'] ?? false)
+                ),
+        ));
+        if ($indexNames === []) {
+            return ['hits' => [], 'total' => 0, 'indices' => []];
+        }
+
         $backend = $this->getActiveBackend();
         if (!$backend) {
             $this->logError('No active backend available for multi-index search');

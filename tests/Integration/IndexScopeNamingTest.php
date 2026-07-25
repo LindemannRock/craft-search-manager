@@ -12,6 +12,7 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\gql\queries\SearchQuery;
 use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -80,7 +81,7 @@ final class IndexScopeNamingTest extends TestCase
     private function firstEnabledIndexHandle(): ?string
     {
         foreach (SearchIndex::findAll() as $index) {
-            if ($index->enabled) {
+            if (SearchManager::$plugin->dependencies->isIndexAvailable($index->handle)) {
                 return $index->handle;
             }
         }

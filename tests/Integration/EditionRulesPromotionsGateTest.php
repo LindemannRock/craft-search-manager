@@ -340,7 +340,7 @@ final class EditionRulesPromotionsGateTest extends TestCase
     private function firstEnabledIndex(): ?SearchIndex
     {
         foreach (SearchIndex::findAll() as $index) {
-            if ($index->enabled) {
+            if (SearchManager::$plugin->dependencies->isIndexAvailable($index->handle)) {
                 return $index;
             }
         }

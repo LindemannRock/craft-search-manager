@@ -26,7 +26,8 @@ final class PendingSyncProcessorBatchingTest extends TestCase
         $this->assertIsString($source);
 
         $processBody = $this->methodBody($source, 'processIndexRows');
-        self::assertStringContainsString('$elementsByKey = $elementTypeAvailable ? $this->preloadElements($index, $rows) : [];', $processBody);
+        self::assertStringContainsString('dependencies->isIndexAvailable($indexHandle)', $processBody);
+        self::assertStringContainsString('$elementsByKey = $this->preloadElements($index, $rows);', $processBody);
         self::assertStringContainsString('$criteriaMatchesByKey = $index->matchesCriteriaBatch(array_values($elementsByKey));', $processBody);
         self::assertStringContainsString('$elementsByKey[$this->elementCacheKey($siteId, $elementId)] ?? null', $processBody);
         self::assertStringNotContainsString('matchesElement(', $processBody);

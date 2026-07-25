@@ -16,11 +16,9 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexQueryHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
-use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 use yii\queue\RetryableJobInterface;
 
 /**
@@ -34,9 +32,15 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 {
     use QueueTtrTrait;
     use LoggingTrait;
-    use ElementTypeGuardTrait;
 
     public ?string $indexHandle = null;
+
+    /**
+     * Whether this job owns an affected-index scheduler marker.
+     *
+     * @since 5.54.0
+     */
+    public bool $releaseAffectedSchedule = false;
 
     /**
      * @inheritdoc
@@ -55,6 +59,17 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 
     /** @inheritdoc */
     public function execute($queue): void
+    {
+        try {
+            $this->executeRebuild($queue);
+        } finally {
+            if ($this->releaseAffectedSchedule && $this->indexHandle !== null) {
+                SearchManager::$plugin->indexing->completeAffectedIndexRebuild($this->indexHandle);
+            }
+        }
+    }
+
+    protected function executeRebuild($queue): void
     {
         if ($this->indexHandle) {
             $this->rebuildSingleIndex($queue, $this->indexHandle);
@@ -232,10 +247,33 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
             $this->logInfo('Sync result: SUCCESS');
         }
 
-        $elementType = $index->elementType;
-        if (!$this->isElementTypeAvailable($elementType, 'rebuild-index-preflight')) {
-            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': element type '{$elementType}' is not available.");
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
+        $catalogue = SearchManager::$plugin->dependencies->getIndexCatalogue([$indexHandle]);
+        $dependencyAvailability = $catalogue[$indexHandle]['dependencyAvailability'] ?? null;
+        if (!is_array($dependencyAvailability) || !($dependencyAvailability['element']['available'] ?? false)) {
+            throw new \RuntimeException(
+                "Cannot rebuild index '{$indexHandle}': element type '{$index->elementType}' is not available.",
+            );
         }
+        if (!($dependencyAvailability['transformer']['available'] ?? false)) {
+            $transformerClass = $dependencyAvailability['transformer']['class'] ?? '(none)';
+            throw new \RuntimeException(
+                "Cannot rebuild index '{$indexHandle}': transformer '{$transformerClass}' is not available.",
+            );
+        }
+
+        $transformerClass = (string)$dependencyAvailability['transformer']['class'];
+        $transformerReadiness = SearchManager::$plugin->dependencies->getClassAvailability(
+            $transformerClass,
+            \lindemannrock\searchmanager\interfaces\TransformerInterface::class,
+            true,
+        );
+        if (!$transformerReadiness['available']) {
+            throw new \RuntimeException(
+                "Cannot rebuild index '{$indexHandle}': transformer '{$transformerClass}' could not be created.",
+            );
+        }
+        $elementType = $index->elementType;
 
         $sitesToIndex = $index->getSiteIds();
         if ($sitesToIndex === null) {
@@ -273,20 +311,6 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         }
 
         try {
-            $transformerClass = SearchManager::$plugin->transformers->resolveTransformerClassForElementType(
-                $elementType,
-                $index->transformerClass,
-            );
-        } catch (\Throwable $e) {
-            throw new \RuntimeException(
-                "Cannot rebuild index '{$indexHandle}': transformer resolution failed: {$e->getMessage()}",
-                0,
-                $e,
-            );
-        }
-        $this->assertTransformerResolvable($indexHandle, $transformerClass);
-
-        try {
             $backend = SearchManager::$plugin->backend->getBackendForIndex($indexHandle);
         } catch (\Throwable $e) {
             throw new \RuntimeException(
@@ -304,37 +328,6 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
             'elementType' => $elementType,
             'siteQueries' => $siteQueries,
         ];
-    }
-
-    private function assertTransformerResolvable(string $indexHandle, ?string $transformerClass): void
-    {
-        if ($transformerClass === null || !class_exists($transformerClass)) {
-            $label = $transformerClass ?: '(none)';
-            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': transformer '{$label}' could not be resolved.");
-        }
-
-        try {
-            $reflection = new \ReflectionClass($transformerClass);
-            $constructor = $reflection->getConstructor();
-            if (
-                !$reflection->implementsInterface(TransformerInterface::class)
-                || !$reflection->isInstantiable()
-                || ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0)
-            ) {
-                throw new \RuntimeException('the class is not a constructible TransformerInterface implementation');
-            }
-
-            $transformer = $reflection->newInstance();
-            if (!$transformer instanceof TransformerInterface) {
-                throw new \RuntimeException('the constructed object does not implement TransformerInterface');
-            }
-        } catch (\Throwable $e) {
-            throw new \RuntimeException(
-                "Cannot rebuild index '{$indexHandle}': transformer '{$transformerClass}' could not be resolved: {$e->getMessage()}",
-                0,
-                $e,
-            );
-        }
     }
 
     private function rebuildAllIndices($queue): void

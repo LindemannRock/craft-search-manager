@@ -15,6 +15,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\events\TransformEvent;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
 use lindemannrock\searchmanager\transformers\BaseTransformer;
 use lindemannrock\searchmanager\transformers\CommerceTransformer;
@@ -58,6 +59,11 @@ class TransformerService extends Component
 
     private array $_transformers = [];
 
+    private bool $defaultTransformersRegistered = false;
+
+    /** @var array<string, string> */
+    private array $dynamicTransformers = [];
+
     /**
      * @var array<string, TransformerInterface>|null Batch-scoped transformer instances.
      */
@@ -73,6 +79,9 @@ class TransformerService extends Component
         parent::init();
         $this->setLoggingHandle('search-manager');
         $this->registerDefaultTransformers();
+        $this->dynamicTransformers = $this->loadDynamicTransformers();
+        $this->_transformers = array_replace($this->_transformers, $this->dynamicTransformers);
+        $this->defaultTransformersRegistered = true;
     }
 
     /**
@@ -83,21 +92,21 @@ class TransformerService extends Component
         // AutoTransformer is the default fallback for all element types.
         // Register element-specific transformers here for richer indexing:
 
-        if (PluginHelper::isPluginEnabled('docs-manager')) {
+        if (class_exists('lindemannrock\\docsmanager\\elements\\SourceDoc')) {
             $this->registerTransformer(
                 'lindemannrock\docsmanager\elements\SourceDoc',
                 DocsManagerTransformer::class,
             );
         }
 
-        if (CommerceElementTypeHelper::productElementTypeAvailable()) {
+        if (class_exists(CommerceElementTypeHelper::productElementType())) {
             $this->registerTransformer(
                 CommerceElementTypeHelper::productElementType(),
                 CommerceTransformer::class,
             );
         }
 
-        if (CommerceElementTypeHelper::variantElementTypeAvailable()) {
+        if (class_exists(CommerceElementTypeHelper::variantElementType())) {
             $this->registerTransformer(
                 CommerceElementTypeHelper::variantElementType(),
                 CommerceTransformer::class,
@@ -117,6 +126,23 @@ class TransformerService extends Component
     {
         $this->_transformers[$elementType] = $transformerClass;
 
+        if ($this->defaultTransformersRegistered && SearchManager::$plugin !== null) {
+            $this->dynamicTransformers[$elementType] = $transformerClass;
+            try {
+                Craft::$app->getCache()->set(
+                    $this->dynamicTransformerCacheKey(),
+                    $this->dynamicTransformers,
+                );
+            } catch (\Throwable $e) {
+                $this->logWarning('Unable to persist dynamic transformer registration', [
+                    'elementType' => $elementType,
+                    'transformer' => $transformerClass,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+            SearchManager::$plugin->dependencies->clearIndexCatalogue();
+        }
+
         $this->logDebug('Registered transformer', [
             'elementType' => $elementType,
             'transformer' => $transformerClass,
@@ -134,8 +160,21 @@ class TransformerService extends Component
      */
     public function getTransformer(ElementInterface $element, ?string $transformerClass = null, ?array $headingLevels = null): ?TransformerInterface
     {
+        if (!SearchManager::$plugin->dependencies->getClassAvailability(
+            get_class($element),
+            ElementInterface::class,
+        )['available']) {
+            return null;
+        }
+
         $resolvedClass = $this->resolveTransformerClass($element, $transformerClass);
-        if ($resolvedClass === null) {
+        if (
+            $resolvedClass === null
+            || !SearchManager::$plugin->dependencies->getClassAvailability(
+                $resolvedClass,
+                TransformerInterface::class,
+            )['available']
+        ) {
             return null;
         }
 
@@ -395,5 +434,38 @@ class TransformerService extends Component
         } finally {
             $this->transformerReuseCache = $previousCache;
         }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function loadDynamicTransformers(): array
+    {
+        try {
+            $registered = Craft::$app->getCache()->get($this->dynamicTransformerCacheKey());
+        } catch (\Throwable $e) {
+            $this->logWarning('Unable to load dynamic transformer registrations', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+        if (!is_array($registered)) {
+            return [];
+        }
+
+        return array_filter(
+            $registered,
+            static fn(mixed $transformer, mixed $elementType): bool => is_string($elementType)
+                && $elementType !== ''
+                && is_string($transformer)
+                && $transformer !== '',
+            ARRAY_FILTER_USE_BOTH,
+        );
+    }
+
+    private function dynamicTransformerCacheKey(): string
+    {
+        return PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'dynamic-transformers') . 'registry';
     }
 }

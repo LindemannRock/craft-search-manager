@@ -62,6 +62,10 @@ class AutocompleteService extends Component
      */
     public function suggest(string $query, string $indexHandle, array $options = []): array
     {
+        if (!SearchManager::$plugin->dependencies->areIndexDependenciesAvailable($indexHandle, true)) {
+            return [];
+        }
+
         $startTime = microtime(true);
 
         // Get options with defaults from settings

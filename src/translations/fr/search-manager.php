@@ -95,6 +95,8 @@ return [
     'The index name is empty.' => 'Le nom de l\'index est vide.',
     'Invalid value for "{key}".' => 'Valeur non valide pour « {key} ».',
     'Element type "{value}" is unavailable.' => 'Le type d\'élément « {value} » n\'est pas disponible.',
+    'The element type "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'Le type d\'élément « {class} » appartient au plugin désactivé « {plugin} ». Activez le plugin avant de reconstruire cet index.',
+    'The transformer "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'Le transformateur « {class} » appartient au plugin désactivé « {plugin} ». Activez le plugin avant de reconstruire cet index.',
     'Element type "{value}" must implement ElementInterface.' => 'Le type d\'élément « {value} » doit implémenter ElementInterface.',
     'Site ID {value} does not exist.' => 'L\'ID de site {value} n\'existe pas.',
     'Unsupported criteria key "{key}".' => 'Clé de critère non prise en charge « {key} ».',

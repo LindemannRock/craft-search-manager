@@ -561,8 +561,6 @@ class SearchController extends Controller
             return false;
         }
 
-        $index = SearchIndex::findByHandle(trim($indexHandle));
-
-        return $index !== null && $index->enabled;
+        return SearchManager::$plugin->dependencies->isIndexAvailable(trim($indexHandle));
     }
 }

@@ -95,6 +95,8 @@ return [
     'The index name is empty.' => 'Indexnamnet är tomt.',
     'Invalid value for "{key}".' => 'Ogiltigt värde för «{key}».',
     'Element type "{value}" is unavailable.' => 'Elementtypen «{value}» är inte tillgänglig.',
+    'The element type "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'Elementtypen «{class}» tillhör det inaktiverade pluginet «{plugin}». Aktivera pluginet innan du återuppbygger detta index.',
+    'The transformer "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'Transformeraren «{class}» tillhör det inaktiverade pluginet «{plugin}». Aktivera pluginet innan du återuppbygger detta index.',
     'Element type "{value}" must implement ElementInterface.' => 'Elementtypen «{value}» måste implementera ElementInterface.',
     'Site ID {value} does not exist.' => 'Webbplats-ID {value} finns inte.',
     'Unsupported criteria key "{key}".' => 'Kriterianyckeln «{key}» stöds inte.',

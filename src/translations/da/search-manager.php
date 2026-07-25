@@ -95,6 +95,8 @@ return [
     'The index name is empty.' => 'Indeksnavnet er tomt.',
     'Invalid value for "{key}".' => 'Ugyldig værdi for «{key}».',
     'Element type "{value}" is unavailable.' => 'Elementtypen «{value}» er ikke tilgængelig.',
+    'The element type "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'Elementtypen «{class}» tilhører det deaktiverede plugin «{plugin}». Aktiver pluginet, før du genopbygger dette indeks.',
+    'The transformer "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'Transformeren «{class}» tilhører det deaktiverede plugin «{plugin}». Aktiver pluginet, før du genopbygger dette indeks.',
     'Element type "{value}" must implement ElementInterface.' => 'Elementtypen «{value}» skal implementere ElementInterface.',
     'Site ID {value} does not exist.' => 'Website-ID {value} findes ikke.',
     'Unsupported criteria key "{key}".' => 'Kriterianøglen «{key}» understøttes ikke.',

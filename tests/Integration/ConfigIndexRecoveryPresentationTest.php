@@ -12,6 +12,9 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
 use craft\elements\Entry;
+use craft\elements\User;
+use craft\web\Request;
+use craft\web\Response;
 use craft\web\View;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -30,11 +33,16 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
     private const HANDLE = 'sm-config-recovery';
 
     private mixed $originalConfigCache = null;
+    private User $renderIdentity;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->originalConfigCache = $this->configCache();
+        $user = $this->createTestUser('__sm_config_recovery_user_');
+        $this->grantPermissions($user, ['accessCp']);
+        $this->actingAs($user);
+        $this->renderIdentity = $user;
     }
 
     protected function tearDown(): void
@@ -325,24 +333,97 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
         self::assertStringContainsString('&amp; &quot;quote&quot; field', $html);
     }
 
-    public function testSetupAndConfigViewShareOneFindingComponentAndDatabaseEditDoesNot(): void
+    public function testSetupConfigViewAndDatabaseEditShareOneFindingComponent(): void
     {
         $setup = $this->pluginFile('src/templates/setup.twig');
         $view = $this->pluginFile('src/templates/indices/view.twig');
         $edit = $this->pluginFile('src/templates/indices/edit.twig');
         $controller = $this->pluginFile('src/controllers/IndicesController.php');
         $dependencies = $this->pluginFile('src/services/DependencyService.php');
-        $component = 'search-manager/_components/_config-index-findings';
+        $component = 'search-manager/_components/_index-findings';
 
         self::assertStringContainsString($component, $setup);
         self::assertStringContainsString($component, $view);
-        self::assertStringNotContainsString($component, $edit);
+        self::assertStringContainsString($component, $edit);
         self::assertStringNotContainsString('configIndexValidator->validate()', $controller);
         self::assertSame(1, substr_count($dependencies, 'configIndexValidator->validate()'));
         self::assertLessThan(
-            strpos($view, 'configIndexFindingsSummary'),
+            strpos($view, 'indexFindingsSummary'),
             strpos($view, 'setupIncompleteSummary'),
         );
+        self::assertLessThan(
+            strpos($edit, 'indexFindingsSummary'),
+            strpos($edit, 'setupIncompleteSummary'),
+        );
+        self::assertStringContainsString(
+            '[setupIncompleteSummary, indexFindingsSummary, validationSummary]',
+            $edit,
+        );
+        self::assertFileDoesNotExist(
+            dirname(__DIR__, 2) . '/src/templates/_components/_config-index-findings.twig',
+        );
+    }
+
+    public function testDatabaseEditAndConfigViewRenderTheSameRecoveryBox(): void
+    {
+        $message = 'Disabled provider recovery detail.';
+        $findings = [[
+            'severity' => ConfigIndexValidationResult::SEVERITY_ERROR,
+            'handle' => self::HANDLE,
+            'key' => 'element-provider-disabled',
+            'message' => $message,
+            'emphasis' => 'provider',
+        ]];
+        $status = [
+            'label' => 'Error',
+            'value' => 'error',
+            'colorSet' => 'status',
+            'title' => $message,
+        ];
+        $reference = [
+            'displayName' => 'Recovery Index',
+            'findings' => $findings,
+            'status' => $status,
+        ];
+
+        $configIndex = new SearchIndex([
+            'name' => 'Recovery Index',
+            'handle' => self::HANDLE,
+            'elementType' => Entry::class,
+            'source' => 'config',
+            'enabled' => true,
+        ]);
+        $databaseIndex = new SearchIndex([
+            'id' => 987654,
+            'name' => 'Recovery Index',
+            'handle' => self::HANDLE,
+            'elementType' => Entry::class,
+            'source' => 'database',
+            'enabled' => true,
+        ]);
+
+        $viewHtml = $this->renderCpTemplate('search-manager/indices/view', [
+            'index' => $configIndex,
+            'indexReference' => $reference,
+            'elementTypeLabels' => [Entry::class => 'Entry'],
+        ]);
+        $editHtml = $this->renderCpTemplate('search-manager/indices/edit', [
+            'index' => $databaseIndex,
+            'isNew' => false,
+            'indexReference' => $reference,
+            'defaultHeadingLevels' => [2, 3, 4],
+            'elementTypeOptions' => [Entry::class => 'Entry'],
+            'docsManagerTransformerAvailable' => false,
+            'defaultTransformerPlaceholder' => Entry::class,
+            'transformerPlaceholders' => [],
+            'splitSectionsByElementType' => [Entry::class => true],
+        ]);
+
+        foreach ([$viewHtml, $editHtml] as $html) {
+            self::assertSame(2, substr_count($html, $message));
+            self::assertSame(1, substr_count($html, 'lr-info-box--error'));
+            self::assertStringContainsString('title="' . $message . '"', $html);
+        }
     }
 
     /**
@@ -400,7 +481,7 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
     private function renderFindings(array $findings): string
     {
         return Craft::$app->getView()->renderTemplate(
-            'search-manager/_components/_config-index-findings',
+            'search-manager/_components/_index-findings',
             [
                 'findings' => $findings,
                 'presentation' => 'box',
@@ -415,5 +496,52 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
         self::assertIsString($source);
 
         return $source;
+    }
+
+    /**
+     * @param array<string, mixed> $variables
+     */
+    private function renderCpTemplate(string $template, array $variables): string
+    {
+        $originalRequest = Craft::$app->getRequest();
+        $originalResponse = Craft::$app->getResponse();
+        $originalUser = Craft::$app->getUser();
+        $originalRequestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+        $request = new Request([
+            'enableCookieValidation' => false,
+            'enableCsrfValidation' => false,
+        ]);
+        Craft::$app->set('request', $request);
+        Craft::$app->set('response', new Response());
+        $renderUser = new class extends \craft\console\User {
+            public function getRemainingSessionTime(): int
+            {
+                return -1;
+            }
+
+            public function getImpersonator(): ?User
+            {
+                return null;
+            }
+        };
+        $renderUser->setIdentity($this->renderIdentity);
+        Craft::$app->set('user', $renderUser);
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+
+        try {
+            $variables['currentUser'] = $this->renderIdentity;
+
+            return Craft::$app->getView()->renderTemplate(
+                $template,
+                $variables,
+                View::TEMPLATE_MODE_CP,
+            );
+        } finally {
+            Craft::$app->set('request', $originalRequest);
+            Craft::$app->set('response', $originalResponse);
+            Craft::$app->set('user', $originalUser);
+            $_SERVER['REQUEST_METHOD'] = $originalRequestMethod;
+        }
     }
 }

@@ -95,6 +95,8 @@ return [
     'The index name is empty.' => 'The index name is empty.',
     'Invalid value for "{key}".' => 'Invalid value for "{key}".',
     'Element type "{value}" is unavailable.' => 'Element type "{value}" is unavailable.',
+    'The element type "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'The element type "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.',
+    'The transformer "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.' => 'The transformer "{class}" belongs to the disabled plugin "{plugin}". Enable the plugin before rebuilding this index.',
     'Element type "{value}" must implement ElementInterface.' => 'Element type "{value}" must implement ElementInterface.',
     'Site ID {value} does not exist.' => 'Site ID {value} does not exist.',
     'Unsupported criteria key "{key}".' => 'Unsupported criteria key "{key}".',
