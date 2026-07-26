@@ -6,7 +6,7 @@ Get search running with nothing but PHP: the File backend stores search data as 
 
 - Development and testing environments
 - Quick prototyping before choosing a production backend
-- Sites with fewer than ~500 indexed elements
+- Small, persistent, single-node installations with fewer than ~500 indexed elements
 - Zero dependencies beyond PHP
 
 ## Create your first File backend
@@ -14,6 +14,7 @@ Get search running with nothing but PHP: the File backend stores search data as 
 1. Go to **Search Manager → Backends** and click **New Backend**.
 2. Give it a **Name** (e.g. "Local File Storage") — the **Handle** fills in automatically as you type, or edit it yourself.
 3. Set **Backend Type** to **File**.
+   Search Manager shows an environment warning while File is selected. The same warning appears when viewing a config-defined File backend.
 4. Optionally set **Storage Path** to a custom directory. Leave it blank and Search Manager stores index files under `storage/runtime/search-manager/indices/` — see [Storage location](#storage-location) below. The field supports environment-variable autosuggest — start typing `$` to pick from your defined environment variables.
 5. In the sidebar, confirm **Enabled** is on, and turn on **Default** if this should be the backend new indices use automatically.
 6. Click **Save**. Search Manager tests the connection and switches to a **Diagnostics** tab showing the result, response time, and whether this backend supports **Browse** and **Multi-Query** (both **No** for File — see [Built-in vs external backends](backends.md#built-in-vs-external-backends)). Use **Refresh Connection** to retest anytime.
@@ -47,7 +48,21 @@ storage/runtime/search-manager/cache/autocomplete/
 
 These cache folders belong to Search Manager's general result-cache layer (used whenever the `cacheStorageMethod` setting is `file`, the default) — they exist regardless of which search backend you choose, not just with the File backend.
 
-These directories are created automatically and can be safely deleted — they'll be recreated on the next index rebuild.
+These directories are created automatically. If you remove File index storage manually, run a full rebuild before searching it again. Search Manager does not reconstruct a missing File index manifest from individual document files.
+
+## Manifest and rebuild requirement
+
+Each File index has one authoritative `manifest.json` beside its document files. It contains the rich element-suggestion rows and aggregate document metadata used for language filtering, autocomplete filtering, document lengths, and normal or split-section document keys. Search Manager reads that manifest under a shared lock, while any operation that changes both the manifest and physical File storage holds one exclusive index lock for the whole mutation. Before touching document, element, title, parent-key, or related cleanup files, it atomically marks the manifest as updating; it returns the manifest to ready only after every physical step succeeds. Concurrent File storage instances therefore cannot expose a ready manifest that describes a partially applied mutation.
+
+The manifest has an explicit format, version, and ready state. A new empty File index starts with a ready empty manifest, and a successful full clear or rebuild creates a fresh ready manifest before indexing documents.
+
+After upgrading from a Search Manager version that predates the manifest, rebuild every existing File-backed index once:
+
+```bash
+php craft search-manager/index/rebuild --handle=entries-en
+```
+
+Until that rebuild succeeds, a populated legacy File index has no authoritative manifest. Suggestions and metadata-dependent operations fail closed and Search Manager logs an instruction to rebuild; it does not fall back to scanning element files or reopening document files. The same recovery applies if `manifest.json` is missing, corrupt, incomplete, left non-ready by an interrupted or failed mutation, or from an unsupported format version.
 
 ## Configuration
 
@@ -86,7 +101,8 @@ The path supports Craft aliases (`@storage`, `@root`), absolute paths inside tho
 ## Limitations
 
 - Slower than MySQL or Redis for indices above ~500 elements due to file I/O overhead
-- Not suitable for multi-server deployments (files are local to each server)
+- Intended only for persistent, single-node storage
+- MySQL or Redis is preferred for edge, ephemeral, shared-volume, multi-server, or larger environments
 - No `browse()` or native `multipleQueries()` support (sequential fallback is used)
 
 For production sites with more than ~500 indexed elements, switch to MySQL, Redis, or an external backend.

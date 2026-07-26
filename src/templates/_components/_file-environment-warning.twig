@@ -1,0 +1,7 @@
+{% if backendType == 'file' %}
+	{% include 'lindemannrock-base/_components/info-box' with {
+        type: 'warning',
+        message: 'File is intended for small, persistent, single-node installations. Prefer MySQL or Redis for edge, ephemeral, shared-volume, multi-server, or larger environments.'|t('search-manager'),
+        margin: margin ?? 'top',
+    } only %}
+{% endif %}

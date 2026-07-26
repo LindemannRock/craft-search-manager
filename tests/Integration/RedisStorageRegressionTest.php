@@ -65,6 +65,87 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame([101 => ['alpha' => 2]], $storage->getDocumentTermsBatch(1, [101]));
     }
 
+    public function testSplitFallbackPagePostingReturnsCanonicalRedisDocumentKey(): void
+    {
+        [$storage] = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'test-index', [
+            'disableStopWords' => true,
+        ]);
+        $siteId = 3;
+        $elementId = 75996;
+        $documentKey = $elementId . '_' . $siteId;
+        $documentData = [
+            'title' => 'Smokey',
+            'url' => '/fr/smokey',
+            'site' => 'Fr',
+            'siteId' => $siteId,
+            'language' => 'fr',
+            'elementId' => $elementId,
+            'backendId' => $documentKey,
+        ];
+
+        self::assertTrue(
+            $engine->indexDocumentWithKeyResult(
+                $siteId,
+                $elementId,
+                $documentKey,
+                'Smokey',
+                'smokeyfallback page content',
+                'fr',
+            )['success'],
+        );
+        $storage->storeElementByKey(
+            $siteId,
+            $elementId,
+            $documentKey,
+            'Smokey',
+            'entry',
+            json_encode($documentData, JSON_THROW_ON_ERROR),
+        );
+        self::assertSame(
+            [$siteId . ':' . $elementId],
+            array_keys($storage->getTermDocuments('smokeyfallback', $siteId)),
+            'Redis keeps the compact numeric page posting contract.',
+        );
+
+        $results = $engine->search('smokeyfallback', $siteId, 0, [
+            'returnDocumentKeys' => true,
+        ]);
+        self::assertSame([$documentKey], array_keys($results));
+
+        $hydrated = $storage->getElementsByDocumentKeys($siteId, array_keys($results));
+        self::assertSame('Smokey', $hydrated[$documentKey]['title'] ?? null);
+        self::assertSame('entry', $hydrated[$documentKey]['elementType'] ?? null);
+        self::assertSame('/fr/smokey', $hydrated[$documentKey]['documentData']['url'] ?? null);
+        self::assertSame('Fr', $hydrated[$documentKey]['documentData']['site'] ?? null);
+        self::assertSame($siteId, $hydrated[$documentKey]['documentData']['siteId'] ?? null);
+        self::assertSame('fr', $hydrated[$documentKey]['documentData']['language'] ?? null);
+        self::assertSame(
+            [$documentKey => 'fr'],
+            $storage->getDocumentLanguagesBatchByKeys($siteId, array_keys($results)),
+        );
+        self::assertGreaterThan(
+            0,
+            $storage->getDocumentLengthsBatchByKeys($siteId, array_keys($results))[$documentKey] ?? 0,
+        );
+        $lengthsMethod = new \ReflectionMethod($engine, 'documentLengthsForDocIds');
+        $scoringLengths = $lengthsMethod->invoke($engine, [$siteId . ':' . $elementId]);
+        self::assertIsArray($scoringLengths);
+        self::assertGreaterThan(0, $scoringLengths[$siteId . ':' . $documentKey] ?? 0);
+        self::assertSame(
+            [$documentKey],
+            array_keys($engine->search('smokeyfallback', $siteId, 0, [
+                'language' => 'fr',
+                'returnDocumentKeys' => true,
+            ])),
+        );
+        self::assertSame(
+            [$elementId],
+            array_keys($engine->search('smokeyfallback', $siteId)),
+            'Normal non-split result mode must continue returning element IDs.',
+        );
+    }
+
     public function testDocumentLengthsByKeysUseOnePipelineAndPreserveSingleReadOutcomes(): void
     {
         [$storage, $redis] = $this->makeStorage();

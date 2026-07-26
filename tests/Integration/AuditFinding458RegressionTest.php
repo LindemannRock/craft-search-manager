@@ -102,7 +102,7 @@ final class AuditFinding458RegressionTest extends TestCase
             'snippets' => ['settings'],
             'cache' => ['settings'],
             'interface' => ['settings'],
-            'test' => ['settings', 'cacheEnabled', 'backends', 'snippetOptions'],
+            'test' => ['settings', 'cacheEnabled', 'backends', 'snippetOptions', 'testIndexChoices', 'indexSiteIds'],
         ];
 
         foreach ($expectedKeys as $section => $keys) {

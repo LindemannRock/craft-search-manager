@@ -444,6 +444,8 @@ class DependencyService extends Component
      *   displayName: string,
      *   identityLabel: string,
      *   choiceLabel: string,
+     *   siteIds: list<int>|null,
+     *   siteLabel: string,
      *   exists: bool,
      *   global: bool,
      *   source: string|null,
@@ -472,6 +474,10 @@ class DependencyService extends Component
         if ($this->indexCatalogue === null) {
             $validation = SearchManager::$plugin->configIndexValidator->validate();
             $catalogue = [];
+            $siteNames = [];
+            foreach (Craft::$app->getSites()->getAllSites() as $site) {
+                $siteNames[(int)$site->id] = $site->name;
+            }
 
             foreach (SearchIndex::findAll() as $index) {
                 $configFindings = $index->source === 'config'
@@ -489,6 +495,7 @@ class DependencyService extends Component
                 }
                 $displayName = $this->indexDisplayName($index);
                 $identityLabel = $this->indexIdentityLabel($displayName, $index->handle);
+                $siteScope = $this->indexSiteScope($index, $siteNames);
                 $status = $this->resolveEffectiveStatus((bool)$index->enabled, [
                     'state' => $errorTitle !== null ? 'error' : 'enabled',
                     'errorTitle' => $errorTitle,
@@ -500,6 +507,8 @@ class DependencyService extends Component
                     'displayName' => $displayName,
                     'identityLabel' => $identityLabel,
                     'choiceLabel' => $this->choiceLabel($identityLabel, $state, $status['label']),
+                    'siteIds' => $siteScope['siteIds'],
+                    'siteLabel' => $siteScope['siteLabel'],
                     'exists' => true,
                     'global' => false,
                     'source' => $index->source,
@@ -539,6 +548,8 @@ class DependencyService extends Component
                 'displayName' => $handle,
                 'identityLabel' => $handle,
                 'choiceLabel' => $this->choiceLabel($handle, 'error', $status['label']),
+                'siteIds' => [],
+                'siteLabel' => '',
                 'exists' => false,
                 'global' => false,
                 'source' => null,
@@ -557,6 +568,44 @@ class DependencyService extends Component
         }
 
         return $catalogue;
+    }
+
+    /**
+     * Build the CP Test selector from the canonical effective catalogue.
+     *
+     * Only enabled, referenceable indices are exposed. The companion site map
+     * preserves the Test tool's single-site request behavior without requiring
+     * Twig to resolve index models or Craft sites independently.
+     *
+     * @return array{
+     *   choices: list<array{label: string, value: string}>,
+     *   indexSiteIds: array<string, int|null>
+     * }
+     * @since 5.54.0
+     */
+    public function getTestIndexChoices(): array
+    {
+        $choices = [];
+        $indexSiteIds = [];
+        foreach ($this->getIndexCatalogue() as $handle => $record) {
+            if (!$record['available'] || !$record['referenceable']) {
+                continue;
+            }
+
+            $siteIds = $record['siteIds'];
+            $choices[] = [
+                'label' => sprintf('%s — %s', $record['identityLabel'], $record['siteLabel']),
+                'value' => $handle,
+            ];
+            $indexSiteIds[$handle] = is_array($siteIds) && count($siteIds) === 1
+                ? $siteIds[0]
+                : null;
+        }
+
+        return [
+            'choices' => $choices,
+            'indexSiteIds' => $indexSiteIds,
+        ];
     }
 
     /**
@@ -738,6 +787,33 @@ class DependencyService extends Component
         return $displayName === $handle
             ? $handle
             : sprintf('%s (%s)', $displayName, $handle);
+    }
+
+    /**
+     * @param array<int, string> $siteNames
+     * @return array{siteIds: list<int>|null, siteLabel: string}
+     */
+    private function indexSiteScope(SearchIndex $index, array $siteNames): array
+    {
+        $siteIds = $index->getSiteIds();
+        if ($siteIds === null) {
+            return [
+                'siteIds' => null,
+                'siteLabel' => Craft::t('search-manager', 'All Sites'),
+            ];
+        }
+
+        sort($siteIds, SORT_NUMERIC);
+        $labels = array_map(
+            static fn(int $siteId): string => $siteNames[$siteId]
+                ?? Craft::t('search-manager', 'Site #{id}', ['id' => $siteId]),
+            $siteIds,
+        );
+
+        return [
+            'siteIds' => $siteIds,
+            'siteLabel' => implode(', ', $labels),
+        ];
     }
 
     /**

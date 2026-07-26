@@ -31,6 +31,7 @@ use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 use lindemannrock\searchmanager\transformers\CommerceTransformer;
+use yii\web\BadRequestHttpException;
 use yii\web\Response;
 
 /**
@@ -265,14 +266,14 @@ class SettingsController extends Controller
 
         try {
             $request = Craft::$app->getRequest();
-            // Get the index
-            $index = SearchIndex::findByHandle($indexHandle);
+            $index = $this->requireAvailableTestIndex($indexHandle);
+            $indexHandle = $index->handle;
 
             $originalQuery = $query;
 
             // Respect the index's resolved site scope for scoping.
             $searchOptions = [];
-            $indexSiteIds = $index ? $index->getSiteIds() : null;
+            $indexSiteIds = $index->getSiteIds();
             if ($indexSiteIds !== null) {
                 $searchOptions['siteId'] = count($indexSiteIds) === 1 ? $indexSiteIds[0] : $indexSiteIds;
             }
@@ -917,6 +918,8 @@ class SettingsController extends Controller
         $siteId = $siteId ? (int)$siteId : null;
 
         try {
+            $index = $this->requireAvailableTestIndex($indexHandle);
+            $indexHandle = $index->handle;
             $options = [
                 'includeMeta' => true,
             ];
@@ -1000,6 +1003,8 @@ class SettingsController extends Controller
         $indexHandle = Craft::$app->getRequest()->getRequiredBodyParam('indexHandle');
 
         try {
+            $index = $this->requireAvailableTestIndex($indexHandle);
+            $indexHandle = $index->handle;
             // CP Test: Get ALL promotions that match the query pattern (ignoring element status)
             // This shows all promotions for testing, with status info per site
             $allPromotions = \lindemannrock\searchmanager\models\Promotion::findByIndex($indexHandle);
@@ -1086,6 +1091,11 @@ class SettingsController extends Controller
         $indexHandle = Craft::$app->getRequest()->getBodyParam('indexHandle');
 
         try {
+            if ($indexHandle !== null && $indexHandle !== '') {
+                $index = $this->requireAvailableTestIndex($indexHandle);
+                $indexHandle = $index->handle;
+            }
+
             // Get matching rules
             $matchingRules = \lindemannrock\searchmanager\models\QueryRule::findMatching($query, $indexHandle);
 
@@ -1544,13 +1554,42 @@ class SettingsController extends Controller
                 'nativeSearchDefaultBackendIsLocal' => SearchManager::$plugin->nativeSearchCoverage->defaultBackendIsLocal(),
                 'nativeSearchLocalBackendOptions' => SearchManager::$plugin->nativeSearchCoverage->getLocalBackendOptions(),
             ]),
-            'test' => array_merge($variables, [
-                'cacheEnabled' => $settings->enableCache ?? true,
-                'backends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
-                'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
-            ]),
+            'test' => (function() use ($variables, $settings): array {
+                $testIndices = SearchManager::$plugin->dependencies->getTestIndexChoices();
+
+                return array_merge($variables, [
+                    'cacheEnabled' => $settings->enableCache ?? true,
+                    'backends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
+                    'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
+                    'testIndexChoices' => $testIndices['choices'],
+                    'indexSiteIds' => $testIndices['indexSiteIds'],
+                ]);
+            }
+            )(),
             default => $variables,
         };
+    }
+
+    /**
+     * Resolve a CP Test index through the canonical effective catalogue.
+     */
+    private function requireAvailableTestIndex(mixed $rawHandle): SearchIndex
+    {
+        $handle = is_string($rawHandle) ? trim($rawHandle) : '';
+        $record = $handle !== ''
+            ? (SearchManager::$plugin->dependencies->getIndexCatalogue()[$handle] ?? null)
+            : null;
+
+        if ($record === null || !$record['available'] || !$record['referenceable']) {
+            throw new BadRequestHttpException(Craft::t('search-manager', 'Index not found'));
+        }
+
+        $index = SearchIndex::findByHandle($handle);
+        if ($index === null) {
+            throw new BadRequestHttpException(Craft::t('search-manager', 'Index not found'));
+        }
+
+        return $index;
     }
 
     public function actionCleanupAnalytics(): Response

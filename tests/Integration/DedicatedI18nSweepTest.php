@@ -25,10 +25,13 @@ final class DedicatedI18nSweepTest extends TestCase
 {
     public function testTestToolTwigSectionFallbacksAreTranslated(): void
     {
-        // #178: search.twig Twig-section site dropdown fallback reuses the Site #{id} key.
+        // #178: the canonical catalogue owns the translated site-scope labels
+        // before the Test selector reaches Twig.
         $search = $this->readPluginFile('src/templates/settings/test/_partials/search.twig');
-        self::assertStringContainsString("'Site #{id}'|t('search-manager', {id: siteId})", $search);
-        self::assertStringContainsString("'Site #{id}'|t('search-manager', {id: index.siteId})", $search);
+        $dependencies = $this->readPluginFile('src/services/DependencyService.php');
+        self::assertStringContainsString("Craft::t('search-manager', 'All Sites')", $dependencies);
+        self::assertStringContainsString("Craft::t('search-manager', 'Site #{id}', ['id' => \$siteId])", $dependencies);
+        self::assertStringNotContainsString("'Site #{id}'|t('search-manager'", $search);
         self::assertStringNotContainsString("'Site ' ~ siteId", $search);
         self::assertStringNotContainsString("'Site ' ~ index.siteId", $search);
 

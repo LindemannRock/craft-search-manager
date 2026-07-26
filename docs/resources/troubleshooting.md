@@ -204,6 +204,20 @@ Other tips for large rebuilds:
 - **Rebuild individual indices** instead of all at once: `php craft search-manager/index/rebuild --handle=my-index`
 - **Check your transformer** — slow transformers (heavy relation queries, API calls) multiply rebuild time
 
+## File index reports an unavailable manifest
+
+**Symptom:** File-backed rich suggestions are empty, a metadata-dependent search or autocomplete operation fails closed, or the Search Manager log contains `File index manifest unavailable` followed by `Rebuild the File index`.
+
+**Cause:** The File index is populated by an older Search Manager version and has no manifest; its `manifest.json` is missing, corrupt, incomplete, or uses an unsupported format version; or a document, element, delete, or site-clear mutation was interrupted after Search Manager marked the manifest as updating. Search Manager deliberately keeps an interrupted index non-ready and does not scan old element files or reopen every document file as a fallback, because either behavior could expose partially applied storage as authoritative.
+
+**Fix:** Run one full rebuild for the affected index:
+
+```bash
+php craft search-manager/index/rebuild --handle=entries-en
+```
+
+The rebuild clears only that configured backend index, creates a ready empty manifest, and repopulates it through normal indexing. Do not copy a manifest from another index or create one by hand. If the error returns after a successful rebuild, confirm the configured File storage path is persistent and writable and that deployments are not replacing or partially synchronizing the directory. For edge, ephemeral, shared-volume, multi-server, or larger environments, move the index to MySQL or Redis and rebuild it there.
+
 ## Connection refused (Redis)
 
 ```text

@@ -166,7 +166,7 @@ final class AuditItem288RegressionTest extends TestCase
     {
         $source = $this->readPluginFile('src/controllers/SettingsController.php');
 
-        self::assertStringContainsString('$indexSiteIds = $index ? $index->getSiteIds() : null;', $source);
+        self::assertStringContainsString('$indexSiteIds = $index->getSiteIds();', $source);
         self::assertStringContainsString("\$searchOptions['siteId'] = count(\$indexSiteIds) === 1 ? \$indexSiteIds[0] : \$indexSiteIds;", $source);
         self::assertStringContainsString("'siteId' => \$searchOptions['siteId'] ?? null,", $source);
     }

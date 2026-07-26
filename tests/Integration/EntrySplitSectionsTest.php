@@ -363,6 +363,7 @@ final class EntrySplitSectionsTest extends TestCase
         $cleanupCalls = array_values(array_filter(
             $stub->calls,
             static fn(array $call): bool => $call['method'] === 'deleteOrphanDocuments'
+                && $call['indexName'] === self::INDEX_HANDLE
                 && ($call['items'][0]['keepBackendIds'] ?? null) === [],
         ));
         self::assertCount(1, $cleanupCalls);
@@ -463,6 +464,7 @@ final class EntrySplitSectionsTest extends TestCase
         ])->execute();
 
         SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
 
     /**
@@ -471,7 +473,11 @@ final class EntrySplitSectionsTest extends TestCase
      */
     private function lastKeepSet(array $calls): array
     {
-        $orphanCalls = array_values(array_filter($calls, static fn(array $call): bool => $call['method'] === 'deleteOrphanDocuments'));
+        $orphanCalls = array_values(array_filter(
+            $calls,
+            static fn(array $call): bool => $call['method'] === 'deleteOrphanDocuments'
+                && $call['indexName'] === self::INDEX_HANDLE,
+        ));
         self::assertNotEmpty($orphanCalls);
         $last = $orphanCalls[array_key_last($orphanCalls)];
 
@@ -528,6 +534,7 @@ final class EntrySplitSectionsTest extends TestCase
             ->delete('{{%searchmanager_indices}}', ['handle' => $handle])
             ->execute();
         SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
 
     private static function defineRichTextTestClass(): void

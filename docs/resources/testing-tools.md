@@ -16,7 +16,7 @@ Use **Search Manager → Settings → Test** when you need to prove a backend, i
 
 Open **Search Manager → Settings → Test**, then use the **Search** tab.
 
-1. Choose a **Search Index**. The selector only includes enabled indices and appends the relevant site label, such as **All Sites** or a site name.
+1. Choose a **Search Index**. The selector includes enabled indices whose configuration and plugin dependencies are available, and appends the resolved site scope, such as **All Sites** or the applicable site names. Fix configuration errors or unavailable element-type/transformer dependencies before testing an excluded index.
 2. Enter a **Search Query**. The field accepts Search Manager operators and offers the same examples as the page placeholder: `Try: 'exact phrase', test NOT spam, title:blog, test*`.
 3. Turn on any **Test Features** you need: **Auto Wildcards**, **Test Autocomplete**, **Test Promotions**, **Test Query Rules**, **Show Highlighting**, **Live Comparison**, **Hide Without URL**, or **Debug Metadata**.
 4. Adjust **Snippet Options** when snippet behavior matters: **Snippet Mode**, **Snippet Length (50–1000 chars)**, **Show Code Snippets**, and **Parse Markdown**.

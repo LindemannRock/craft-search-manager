@@ -146,17 +146,23 @@ final class FileStorageRegressionTest extends TestCase
     public function testConcurrentParentDocumentKeyRemovalPreservesCompetingKey(): void
     {
         $storage = $this->makeStorage();
-        $parentPath = $this->indexPath() . '/parents/1_301.dat';
-        $this->writeJsonFile($parentPath, [
-            '301_1_intro',
-        ]);
+        $storage->storeDocumentByKey(1, 301, '301_1_intro', ['intro' => 1], 1, 'en');
+        $manifestPath = $this->indexPath() . '/manifest.json';
+        $manifest = json_decode((string)file_get_contents($manifestPath), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($manifest);
 
         $this->runMutationWhileFileLockIsHeld(
-            $parentPath,
-            fn() => $this->writeJsonFile($parentPath, [
-                '301_1_intro',
-                '301_1_install',
-            ]),
+            $this->basePath . '/file-storage-regression.manifest.lock',
+            function() use ($manifestPath, $manifest): void {
+                $manifest['documents']['1:301_1_install'] = [
+                    'siteId' => 1,
+                    'elementId' => 301,
+                    'documentKey' => '301_1_install',
+                    'length' => 2,
+                    'language' => 'en',
+                ];
+                $this->writeJsonFile($manifestPath, $manifest);
+            },
             ['delete-document-by-key', $this->basePath, '1', '301_1_intro'],
         );
 
@@ -171,7 +177,7 @@ final class FileStorageRegressionTest extends TestCase
         foreach ([
             'removeTermDocument',
             'removeTermDocumentByKey',
-            'removeDocumentKeyForParent',
+            'removeDocumentKeyForParentOrFail',
         ] as $method) {
             $body = $this->methodBody($source, $method);
             self::assertStringContainsString('updateJsonFile(', $body, $method);
@@ -491,6 +497,141 @@ final class FileStorageRegressionTest extends TestCase
         self::assertSame([], $storage->getCompoundSuggestionsForAutocomplete('legacy', null, 'en', 10));
     }
 
+    public function testSplitFallbackPagePostingReturnsCanonicalFileDocumentKey(): void
+    {
+        $storage = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'file-storage-regression', [
+            'disableStopWords' => true,
+        ]);
+        $siteId = 2;
+        $elementId = 75996;
+        $documentKey = $elementId . '_' . $siteId;
+        $documentData = [
+            'title' => 'Smokey',
+            'url' => '/ar/smokey',
+            'site' => 'Ar',
+            'siteId' => $siteId,
+            'language' => 'ar',
+            'elementId' => $elementId,
+            'backendId' => $documentKey,
+        ];
+
+        self::assertTrue(
+            $engine->indexDocumentWithKeyResult(
+                $siteId,
+                $elementId,
+                $documentKey,
+                'Smokey',
+                'smokeyfallback page content',
+                'ar',
+            )['success'],
+        );
+        $storage->storeElementByKey(
+            $siteId,
+            $elementId,
+            $documentKey,
+            'Smokey',
+            'entry',
+            json_encode($documentData, JSON_THROW_ON_ERROR),
+        );
+        self::assertSame(
+            [$siteId . ':' . $elementId],
+            array_keys($storage->getTermDocuments('smokeyfallback', $siteId)),
+            'File keeps the compact numeric page posting contract.',
+        );
+
+        $results = $engine->search('smokeyfallback', $siteId, 0, [
+            'returnDocumentKeys' => true,
+        ]);
+        self::assertSame([$documentKey], array_keys($results));
+
+        $hydrated = $storage->getElementsByDocumentKeys($siteId, array_keys($results));
+        self::assertSame('Smokey', $hydrated[$documentKey]['title'] ?? null);
+        self::assertSame('entry', $hydrated[$documentKey]['elementType'] ?? null);
+        self::assertSame('/ar/smokey', $hydrated[$documentKey]['documentData']['url'] ?? null);
+        self::assertSame('Ar', $hydrated[$documentKey]['documentData']['site'] ?? null);
+        self::assertSame($siteId, $hydrated[$documentKey]['documentData']['siteId'] ?? null);
+        self::assertSame('ar', $hydrated[$documentKey]['documentData']['language'] ?? null);
+        self::assertSame(
+            [$documentKey => 'ar'],
+            $storage->getDocumentLanguagesBatchByKeys($siteId, array_keys($results)),
+        );
+        self::assertGreaterThan(
+            0,
+            $storage->getDocumentLengthsBatchByKeys($siteId, array_keys($results))[$documentKey] ?? 0,
+        );
+        $lengthsMethod = new \ReflectionMethod($engine, 'documentLengthsForDocIds');
+        $scoringLengths = $lengthsMethod->invoke($engine, [$siteId . ':' . $elementId]);
+        self::assertIsArray($scoringLengths);
+        self::assertGreaterThan(0, $scoringLengths[$siteId . ':' . $documentKey] ?? 0);
+        self::assertSame(
+            [$documentKey],
+            array_keys($engine->search('smokeyfallback', $siteId, 0, [
+                'language' => 'ar',
+                'returnDocumentKeys' => true,
+            ])),
+        );
+        self::assertSame(
+            [$elementId],
+            array_keys($engine->search('smokeyfallback', $siteId)),
+            'Normal non-split result mode must continue returning element IDs.',
+        );
+
+        $otherSiteId = 3;
+        $otherDocumentKey = $elementId . '_' . $otherSiteId;
+        self::assertTrue(
+            $engine->indexDocumentWithKeyResult(
+                $otherSiteId,
+                $elementId,
+                $otherDocumentKey,
+                'Smokey Français',
+                'smokeyfallback page content',
+                'fr',
+            )['success'],
+        );
+        $storage->storeElementByKey(
+            $otherSiteId,
+            $elementId,
+            $otherDocumentKey,
+            'Smokey Français',
+            'entry',
+            json_encode([
+                'title' => 'Smokey Français',
+                'url' => '/fr/smokey',
+                'site' => 'Fr',
+                'siteId' => $otherSiteId,
+                'language' => 'fr',
+                'elementId' => $elementId,
+                'backendId' => $otherDocumentKey,
+            ], JSON_THROW_ON_ERROR),
+        );
+        $otherResults = $engine->search('smokeyfallback', $otherSiteId, 0, [
+            'returnDocumentKeys' => true,
+        ]);
+        self::assertSame([$otherDocumentKey], array_keys($otherResults));
+        self::assertSame(
+            'Smokey Français',
+            $storage->getElementsByDocumentKeys($otherSiteId, array_keys($otherResults))[$otherDocumentKey]['title'] ?? null,
+        );
+        self::assertNotSame(array_keys($results), array_keys($otherResults));
+    }
+
+    public function testSearchEngineDocumentKeyConversionPreservesCanonicalSplitIdentities(): void
+    {
+        $engine = new SearchEngine($this->makeStorage(), 'file-storage-regression');
+        $method = new \ReflectionMethod($engine, 'documentKeyFromDocId');
+
+        self::assertSame('75996_2', $method->invoke($engine, '2:75996'));
+        self::assertSame('75996_3', $method->invoke($engine, '3:75996'));
+        self::assertSame('75996_2', $method->invoke($engine, '2:75996_2'));
+        self::assertSame(
+            '75996_1_meaning-of-lorem-ipsum',
+            $method->invoke($engine, '1:75996_1_meaning-of-lorem-ipsum'),
+        );
+        self::assertSame('75996', $method->invoke($engine, '75996'));
+        self::assertSame('75996', $method->invoke($engine, 'external:75996'));
+    }
+
     public function testSplitSectionDocumentsAreSearchableAndHydratedByDocumentKey(): void
     {
         $storage = $this->makeStorage();
@@ -589,8 +730,20 @@ final class FileStorageRegressionTest extends TestCase
 
         self::assertSame($storage->getDocumentTerms(1, 401), $storage->getDocumentTermsByKey(1, '401_1'));
         self::assertSame(['401_1'], $storage->getDocumentKeysByParent(1, 401));
-        self::assertSame([401], array_keys($engine->search('legacy', 1, 0, ['returnDocumentKeys' => true])));
-        self::assertSame('Legacy Page', $storage->getElementsByDocumentKeys(1, ['401_1'])['401_1']['title'] ?? null);
+        $results = $engine->search('legacy', 1, 0, ['returnDocumentKeys' => true]);
+        self::assertSame(['401_1'], array_keys($results));
+        self::assertSame(
+            'Legacy Page',
+            $storage->getElementsByDocumentKeys(1, array_keys($results))['401_1']['title'] ?? null,
+        );
+        self::assertSame(
+            ['401_1' => 'en'],
+            $storage->getDocumentLanguagesBatchByKeys(1, array_keys($results)),
+        );
+        self::assertGreaterThan(
+            0,
+            $storage->getDocumentLengthsBatchByKeys(1, array_keys($results))['401_1'] ?? 0,
+        );
     }
 
     public function testDocumentLengthsBatchByKeysPreservesSingleReadOutcomes(): void

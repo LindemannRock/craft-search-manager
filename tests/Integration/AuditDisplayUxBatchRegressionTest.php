@@ -135,7 +135,8 @@ final class AuditDisplayUxBatchRegressionTest extends TestCase
         self::assertStringContainsString('COUNT(DISTINCT [[elementId]])', $mysql);
         self::assertStringContainsString('COUNT(DISTINCT [[elementId]])', $pgsql);
         self::assertStringContainsString("zCard(\$this->keyPrefix . 'elemindex:' . \$siteId)", $redis);
-        self::assertStringContainsString("glob(\$this->basePath . '/elements/' . \$siteId . '_*.dat')", $file);
+        self::assertStringContainsString("\$manifest = \$this->readManifest('counting distinct File index parents')", $file);
+        self::assertStringNotContainsString("glob(\$this->basePath . '/elements/' . \$siteId . '_*.dat')", $file);
 
         self::assertStringContainsString("\$settingsUpdate['attributeForDistinct'] = 'elementId'", $algolia);
         self::assertStringContainsString("\$params['distinct'] = 1", $algolia);

@@ -185,6 +185,10 @@
 							{% endif %}
 						{% endif %}
 
+						{% include 'search-manager/_components/_file-environment-warning' with {
+                            backendType: type,
+                        } only %}
+
 						{# Show availability warnings for MySQL/PostgreSQL #}
 						{% if type == 'mysql' and dbDriver != 'mysql' %}
 							{% include 'lindemannrock-base/_components/info-box' with {
@@ -301,6 +305,12 @@
 		{# Diagnostics Tab #}
 		{% if not isNew %}
 			<div id="diagnostics" class="{{ canEdit ? 'hidden' : '' }}">
+				{% if not canEdit %}
+					{% include 'search-manager/_components/_file-environment-warning' with {
+                        backendType: backend.backendType,
+                        margin: 'none',
+                    } only %}
+				{% endif %}
 				{% include 'search-manager/backends/_partials/diagnostics' %}
 			</div>
 		{% endif %}

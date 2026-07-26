@@ -355,12 +355,16 @@ final class EditionRulesPromotionsGateTest extends TestCase
         Craft::$app->set('response', new Response());
 
         try {
+            $testIndices = SearchManager::$plugin->dependencies->getTestIndexChoices();
+
             return Craft::$app->getView()->renderTemplate(
                 'search-manager/settings/test/_partials/search',
                 [
                     'settings' => $settings,
                     'cacheEnabled' => $settings->enableCache,
                     'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
+                    'testIndexChoices' => $testIndices['choices'],
+                    'indexSiteIds' => $testIndices['indexSiteIds'],
                 ],
                 View::TEMPLATE_MODE_CP,
             );

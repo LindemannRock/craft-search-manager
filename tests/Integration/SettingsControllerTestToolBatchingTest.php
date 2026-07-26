@@ -215,7 +215,7 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
     {
         $this->withPostJson([
             'query' => '__cache_status_test__',
-            'indexHandle' => '__missing_index__',
+            'indexHandle' => 'fixture-valid-minimal',
             'includeQueryRuleDebug' => $includeQueryRuleDebug,
         ]);
         $this->withSettingsManagerPermissions();

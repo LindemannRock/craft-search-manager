@@ -39,7 +39,17 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
     private const ENCODED_FILENAME_PREFIX = '__utf8_';
     private const HASHED_FILENAME_PREFIX = '__utf8_sha256_';
+    private const MANIFEST_FILENAME = 'manifest.json';
+    private const MANIFEST_FORMAT = 'search-manager-file-index-manifest';
+    private const MANIFEST_READINESS_READY = 'ready';
+    private const MANIFEST_READINESS_UPDATING = 'updating';
+    private const MANIFEST_VERSION = 1;
     private const MAX_FILENAME_SEGMENT_LENGTH = 200;
+
+    /**
+     * @var array<string, true> Manifest failures already logged in this request.
+     */
+    private static array $loggedManifestFailures = [];
 
     /**
      * @var string Index handle
@@ -74,8 +84,12 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             $this->basePath = FileBackendStoragePathHelper::defaultBasePath() . '/' . $indexHandle;
         }
 
+        $hasPersistedData = $this->hasPersistedIndexData();
+        $hasManifestLock = is_file($this->getManifestLockPath());
+
         // Create directory structure
         $this->ensureDirectoryStructure();
+        $this->initializeManifestForNewIndex($hasPersistedData || $hasManifestLock);
 
         $this->logDebug('Initialized FileStorage', [
             'index' => $this->indexHandle,
@@ -126,9 +140,21 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     /** @inheritdoc */
     public function getDistinctParentCount(int $siteId): int
     {
-        $paths = glob($this->basePath . '/elements/' . $siteId . '_*.dat');
+        $manifest = $this->readManifest('counting distinct File index parents');
+        if ($manifest === null) {
+            return 0;
+        }
 
-        return is_array($paths) ? count($paths) : 0;
+        $parentIds = [];
+        foreach ($manifest['documents'] as $document) {
+            if (is_array($document) && (int)($document['siteId'] ?? 0) === $siteId) {
+                $parentIds[(int)($document['elementId'] ?? 0)] = true;
+            }
+        }
+
+        unset($parentIds[0]);
+
+        return count($parentIds);
     }
 
     /**
@@ -137,13 +163,31 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     public function storeDocument(int $siteId, int $elementId, array $termFreqs, int $docLength, string $language = 'en'): void
     {
         $docPath = $this->getDocPath($siteId, $elementId);
+        $documentKey = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+        $manifestId = $this->manifestDocumentId($siteId, $documentKey);
 
         // Add _length and _language to the data
         $data = $termFreqs;
         $data['_length'] = $docLength;
         $data['_language'] = $language;
 
-        $this->writeFile($docPath, $data);
+        $this->mutateStorageAndManifest(
+            'storing File document metadata',
+            static function(array $manifest) use ($manifestId, $siteId, $elementId, $documentKey, $docLength, $language): array {
+                $manifest['documents'][$manifestId] = [
+                    'siteId' => $siteId,
+                    'elementId' => $elementId,
+                    'documentKey' => $documentKey,
+                    'length' => $docLength,
+                    'language' => $language,
+                ];
+
+                return $manifest;
+            },
+            function() use ($docPath, $data): void {
+                $this->writeFileOrFail($docPath, $data);
+            },
+        );
 
         $this->logDebug('Stored document', [
             'site_id' => $siteId,
@@ -158,10 +202,11 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function getDocumentLanguage(int $siteId, int $elementId): string
     {
-        $docPath = $this->getDocPath($siteId, $elementId);
-        $data = $this->readFile($docPath);
+        $manifest = $this->readManifest('reading File document language', true);
+        $documentKey = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+        $data = $manifest['documents'][$this->manifestDocumentId($siteId, $documentKey)] ?? null;
 
-        return $data['_language'] ?? 'en';
+        return is_array($data) ? (string)($data['language'] ?? 'en') : 'en';
     }
 
     /**
@@ -169,11 +214,13 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function getDocumentLanguagesBatch(int $siteId, array $elementIds): array
     {
+        $manifest = $this->readManifest('reading File document languages', true);
         $byElement = [];
 
         foreach (array_values(array_unique(array_map('intval', $elementIds))) as $elementId) {
-            $data = $this->readFile($this->getDocPath($siteId, $elementId));
-            $byElement[$elementId] = $data['_language'] ?? 'en';
+            $documentKey = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+            $data = $manifest['documents'][$this->manifestDocumentId($siteId, $documentKey)] ?? null;
+            $byElement[$elementId] = is_array($data) ? (string)($data['language'] ?? 'en') : 'en';
         }
 
         return $byElement;
@@ -222,30 +269,40 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function deleteDocument(int $siteId, int $elementId): void
     {
-        $documentKeys = $this->getDocumentKeysByParent($siteId, $elementId);
-        if ($documentKeys !== []) {
-            foreach ($documentKeys as $documentKey) {
-                $this->deleteDocumentByKey($siteId, $documentKey);
-            }
+        $documentKeys = [];
+        $this->mutateStorageAndManifest(
+            'deleting File documents for an element',
+            static function(array $manifest) use ($siteId, $elementId, &$documentKeys): array {
+                foreach ($manifest['documents'] as $manifestId => $document) {
+                    if (
+                        is_array($document)
+                        && (int)($document['siteId'] ?? 0) === $siteId
+                        && (int)($document['elementId'] ?? 0) === $elementId
+                    ) {
+                        $documentKey = (string)($document['documentKey'] ?? '');
+                        if ($documentKey !== '') {
+                            $documentKeys[] = $documentKey;
+                        }
+                        unset($manifest['documents'][$manifestId]);
+                    }
+                }
 
-            return;
-        }
+                unset($manifest['elements'][$siteId . '_' . $elementId]);
 
-        // Delete document data file
-        $docPath = $this->getDocPath($siteId, $elementId);
-        if (file_exists($docPath)) {
-            @unlink($docPath);
-        }
+                return $manifest;
+            },
+            function() use ($siteId, $elementId, &$documentKeys): void {
+                if ($documentKeys === []) {
+                    $documentKeys[] = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+                }
 
-        // Delete title terms file
-        $titlePath = $this->getTitlePath($siteId, $elementId);
-        if (file_exists($titlePath)) {
-            @unlink($titlePath);
-        }
+                foreach (array_values(array_unique($documentKeys)) as $documentKey) {
+                    $this->deleteDocumentPhysicalByKeyOrFail($siteId, $elementId, $documentKey);
+                }
 
-        // Delete element metadata file
-        $this->deleteElement($siteId, $elementId);
-        $this->deleteCompoundSuggestions($siteId, $elementId);
+                $this->deleteFileOrFail($this->getElementPath($siteId, $elementId));
+            },
+        );
 
         $this->logDebug('Deleted document, title, element, and compound files', [
             'site_id' => $siteId,
@@ -258,10 +315,11 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function getDocumentLength(int $siteId, int $elementId): int
     {
-        $docPath = $this->getDocPath($siteId, $elementId);
-        $data = $this->readFile($docPath);
+        $manifest = $this->readManifest('reading File document length', true);
+        $documentKey = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+        $data = $manifest['documents'][$this->manifestDocumentId($siteId, $documentKey)] ?? null;
 
-        return $data['_length'] ?? 0;
+        return is_array($data) ? (int)($data['length'] ?? 0) : 0;
     }
 
     /**
@@ -269,16 +327,17 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function getDocumentLengthsBatch(array $docIds): array
     {
+        $manifest = $this->readManifest('reading File document lengths', true);
         $lengths = [];
 
         foreach ($docIds as $siteId => $elementIds) {
             foreach ($elementIds as $elementId) {
-                $docPath = $this->getDocPath($siteId, $elementId);
-                $data = $this->readFile($docPath);
+                $documentKey = SearchHitIdentityHelper::pageDocumentId((int)$elementId, (int)$siteId);
+                $data = $manifest['documents'][$this->manifestDocumentId((int)$siteId, $documentKey)] ?? null;
 
-                if (isset($data['_length'])) {
+                if (is_array($data) && isset($data['length'])) {
                     $docId = $siteId . ':' . $elementId;
-                    $lengths[$docId] = (int)$data['_length'];
+                    $lengths[$docId] = (int)$data['length'];
                 }
             }
         }
@@ -293,16 +352,31 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             return;
         }
 
-        $this->rememberFilenameKey($documentKey);
-        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
-
         $data = $termFreqs;
         $data['_length'] = $docLength;
         $data['_language'] = $language;
         $data['_elementId'] = $elementId;
         $data['_documentKey'] = $documentKey;
+        $manifestId = $this->manifestDocumentId($siteId, $documentKey);
 
-        $this->writeFile($this->getDocPathByKey($siteId, $documentKey), $data);
+        $this->mutateStorageAndManifest(
+            'storing File document metadata',
+            static function(array $manifest) use ($manifestId, $siteId, $elementId, $documentKey, $docLength, $language): array {
+                $manifest['documents'][$manifestId] = [
+                    'siteId' => $siteId,
+                    'elementId' => $elementId,
+                    'documentKey' => $documentKey,
+                    'length' => $docLength,
+                    'language' => $language,
+                ];
+
+                return $manifest;
+            },
+            function() use ($siteId, $elementId, $documentKey, $data): void {
+                $this->addDocumentKeyForParentOrFail($siteId, $elementId, $documentKey);
+                $this->writeFileOrFail($this->getDocPathByKey($siteId, $documentKey), $data);
+            },
+        );
     }
 
     public function getDocumentTermsByKey(int $siteId, string $documentKey): array
@@ -333,34 +407,54 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
     public function deleteDocumentByKey(int $siteId, string $documentKey): void
     {
-        $data = $this->readFile($this->getDocPathByKey($siteId, $documentKey));
-        $elementId = isset($data['_elementId']) ? (int)$data['_elementId'] : $this->elementIdFromDocumentKey($documentKey);
+        $manifestId = $this->manifestDocumentId($siteId, $documentKey);
+        $elementId = null;
+        $removeElement = false;
+        $this->mutateStorageAndManifest(
+            'deleting a File document',
+            function(array $manifest) use ($manifestId, $siteId, $documentKey, &$elementId, &$removeElement): array {
+                $document = $manifest['documents'][$manifestId] ?? null;
+                $elementId = is_array($document)
+                    ? (int)($document['elementId'] ?? 0)
+                    : $this->elementIdFromDocumentKey($documentKey);
+                unset($manifest['documents'][$manifestId]);
 
-        foreach ([
-            $this->getDocPathByKey($siteId, $documentKey),
-            $this->getTitlePathByKey($siteId, $documentKey),
-            $this->getDocumentElementPath($siteId, $documentKey),
-        ] as $path) {
-            if (file_exists($path)) {
-                @unlink($path);
-            }
-        }
+                if ($elementId !== null && $elementId !== 0) {
+                    $hasSibling = false;
+                    foreach ($manifest['documents'] as $candidate) {
+                        if (
+                            is_array($candidate)
+                            && (int)($candidate['siteId'] ?? 0) === $siteId
+                            && (int)($candidate['elementId'] ?? 0) === $elementId
+                        ) {
+                            $hasSibling = true;
+                            break;
+                        }
+                    }
 
-        $this->deleteCompoundSuggestionsByKey($siteId, $documentKey);
+                    if (!$hasSibling) {
+                        unset($manifest['elements'][$siteId . '_' . $elementId]);
+                        $removeElement = true;
+                    }
+                }
 
-        if ($elementId !== null) {
-            $this->removeDocumentKeyForParent($siteId, $elementId, $documentKey);
-            if ($this->getDocumentKeysByParent($siteId, $elementId) === []) {
-                $this->deleteElement($siteId, $elementId);
-            }
-        }
+                return $manifest;
+            },
+            function() use ($siteId, $documentKey, &$elementId, &$removeElement): void {
+                $this->deleteDocumentPhysicalByKeyOrFail($siteId, $elementId, $documentKey);
+                if ($removeElement && $elementId !== null && $elementId !== 0) {
+                    $this->deleteFileOrFail($this->getElementPath($siteId, $elementId));
+                }
+            },
+        );
     }
 
     public function getDocumentLengthByKey(int $siteId, string $documentKey): int
     {
-        $data = $this->readFile($this->getDocPathByKey($siteId, $documentKey));
+        $manifest = $this->readManifest('reading File document length', true);
+        $data = $manifest['documents'][$this->manifestDocumentId($siteId, $documentKey)] ?? null;
 
-        return (int)($data['_length'] ?? 0);
+        return is_array($data) ? (int)($data['length'] ?? 0) : 0;
     }
 
     /**
@@ -368,15 +462,12 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function getDocumentLengthsBatchByKeys(int $siteId, array $documentKeys): array
     {
+        $manifest = $this->readManifest('reading File document lengths', true);
         $byDocument = [];
 
-        // File storage keeps each document in its own locked JSON file, so a
-        // batch still needs one file read per requested key. Centralizing the
-        // pass here avoids the search engine's per-document accessor calls
-        // without adding a second metadata index that could drift.
         foreach (array_values(array_unique(array_map('strval', $documentKeys))) as $documentKey) {
-            $data = $this->readFile($this->getDocPathByKey($siteId, $documentKey));
-            $byDocument[$documentKey] = (int)($data['_length'] ?? 0);
+            $data = $manifest['documents'][$this->manifestDocumentId($siteId, $documentKey)] ?? null;
+            $byDocument[$documentKey] = is_array($data) ? (int)($data['length'] ?? 0) : 0;
         }
 
         return $byDocument;
@@ -384,11 +475,12 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
     public function getDocumentLanguagesBatchByKeys(int $siteId, array $documentKeys): array
     {
+        $manifest = $this->readManifest('reading File document languages', true);
         $byDocument = [];
 
         foreach (array_values(array_unique(array_map('strval', $documentKeys))) as $documentKey) {
-            $data = $this->readFile($this->getDocPathByKey($siteId, $documentKey));
-            $byDocument[$documentKey] = (string)($data['_language'] ?? 'en');
+            $data = $manifest['documents'][$this->manifestDocumentId($siteId, $documentKey)] ?? null;
+            $byDocument[$documentKey] = is_array($data) ? (string)($data['language'] ?? 'en') : 'en';
         }
 
         return $byDocument;
@@ -736,7 +828,23 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             $data['documentData'] = json_decode($documentData, true);
         }
 
-        $this->writeFile($elementPath, $data);
+        $this->mutateStorageAndManifest(
+            'storing File element suggestion data',
+            static function(array $manifest) use ($siteId, $elementId, $title, $elementType, $searchText): array {
+                $manifest['elements'][$siteId . '_' . $elementId] = [
+                    'title' => $title,
+                    'elementType' => $elementType,
+                    'searchText' => $searchText,
+                    'elementId' => $elementId,
+                    'siteId' => $siteId,
+                ];
+
+                return $manifest;
+            },
+            function() use ($elementPath, $data): void {
+                $this->writeFileOrFail($elementPath, $data);
+            },
+        );
 
         $this->logDebug('Stored element for suggestions', [
             'site_id' => $siteId,
@@ -756,9 +864,17 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     {
         $elementPath = $this->getElementPath($siteId, $elementId);
 
-        if (file_exists($elementPath)) {
-            @unlink($elementPath);
-        }
+        $this->mutateStorageAndManifest(
+            'deleting File element suggestion data',
+            static function(array $manifest) use ($siteId, $elementId): array {
+                unset($manifest['elements'][$siteId . '_' . $elementId]);
+
+                return $manifest;
+            },
+            function() use ($elementPath): void {
+                $this->deleteFileOrFail($elementPath);
+            },
+        );
     }
 
     /**
@@ -801,12 +917,15 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             return;
         }
 
-        $this->storeElement($siteId, $elementId, $title, $elementType, $documentData);
-        $this->rememberFilenameKey($documentKey);
-        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
-
         $searchText = TermNormalizer::normalizeSearchText($title);
-        $data = [
+        $elementData = [
+            'title' => $title,
+            'elementType' => $elementType,
+            'searchText' => $searchText,
+            'elementId' => $elementId,
+            'siteId' => $siteId,
+        ];
+        $documentElementData = [
             'title' => $title,
             'elementType' => $elementType,
             'searchText' => $searchText,
@@ -816,10 +935,33 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         ];
 
         if ($documentData !== null) {
-            $data['documentData'] = json_decode($documentData, true);
+            $decodedDocumentData = json_decode($documentData, true);
+            $elementData['documentData'] = $decodedDocumentData;
+            $documentElementData['documentData'] = $decodedDocumentData;
         }
 
-        $this->writeFile($this->getDocumentElementPath($siteId, $documentKey), $data);
+        $this->mutateStorageAndManifest(
+            'storing split File element suggestion data',
+            static function(array $manifest) use ($siteId, $elementId, $title, $elementType, $searchText): array {
+                $manifest['elements'][$siteId . '_' . $elementId] = [
+                    'title' => $title,
+                    'elementType' => $elementType,
+                    'searchText' => $searchText,
+                    'elementId' => $elementId,
+                    'siteId' => $siteId,
+                ];
+
+                return $manifest;
+            },
+            function() use ($siteId, $elementId, $documentKey, $elementData, $documentElementData): void {
+                $this->writeFileOrFail($this->getElementPath($siteId, $elementId), $elementData);
+                $this->addDocumentKeyForParentOrFail($siteId, $elementId, $documentKey);
+                $this->writeFileOrFail(
+                    $this->getDocumentElementPath($siteId, $documentKey),
+                    $documentElementData,
+                );
+            },
+        );
     }
 
     public function getElementsByDocumentKeys(int $siteId, array $documentKeys): array
@@ -863,41 +1005,38 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     public function getElementSuggestions(string $query, ?int $siteId, int $limit = 10, ?string $elementType = null): array
     {
         $searchText = TermNormalizer::normalizeSearchText($query);
-        $elementsDir = $this->basePath . '/elements';
-
-        if (!is_dir($elementsDir)) {
+        $manifest = $this->readManifest('reading File element suggestions');
+        if ($manifest === null) {
             return [];
         }
 
-        // Find all element files (siteId_elementId.dat pattern)
-        // null siteId = search all sites, otherwise filter by specific site
-        $pattern = $elementsDir . '/' . ($siteId !== null ? $siteId : '*') . '_*.dat';
-        $files = glob($pattern);
-
+        $elements = $manifest['elements'];
+        ksort($elements, SORT_STRING);
         $results = [];
 
-        foreach ($files as $file) {
-            $data = $this->readFile($file);
-
-            if (!$data) {
+        foreach ($elements as $data) {
+            if (!is_array($data)) {
                 continue;
             }
 
-            // Check prefix match
-            if (!str_starts_with($data['searchText'] ?? '', $searchText)) {
+            $candidateSiteId = (int)($data['siteId'] ?? 0);
+            if ($siteId !== null && $candidateSiteId !== $siteId) {
                 continue;
             }
 
-            // Apply type filter if specified
-            if ($elementType !== null && ($data['elementType'] ?? '') !== $elementType) {
+            if (!str_starts_with((string)($data['searchText'] ?? ''), $searchText)) {
+                continue;
+            }
+
+            if ($elementType !== null && (string)($data['elementType'] ?? '') !== $elementType) {
                 continue;
             }
 
             $results[] = [
-                'title' => $data['title'] ?? '',
-                'elementType' => $data['elementType'] ?? 'entry',
-                'elementId' => $data['elementId'] ?? 0,
-                'siteId' => $data['siteId'] ?? $siteId,
+                'title' => (string)($data['title'] ?? ''),
+                'elementType' => (string)($data['elementType'] ?? 'entry'),
+                'elementId' => (int)($data['elementId'] ?? 0),
+                'siteId' => $candidateSiteId,
             ];
 
             if (count($results) >= $limit) {
@@ -1139,13 +1278,20 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
     public function getDocumentKeysByParent(int $siteId, int $elementId): array
     {
-        $keys = $this->readFile($this->getParentPath($siteId, $elementId));
-        if (is_array($keys) && $keys !== []) {
-            return array_values(array_unique(array_map('strval', $keys)));
+        $manifest = $this->readManifest('reading File document keys', true);
+        $keys = [];
+
+        foreach ($manifest['documents'] as $document) {
+            if (
+                is_array($document)
+                && (int)($document['siteId'] ?? 0) === $siteId
+                && (int)($document['elementId'] ?? 0) === $elementId
+            ) {
+                $keys[] = (string)($document['documentKey'] ?? '');
+            }
         }
 
-        $pageDocumentKey = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
-        return file_exists($this->getDocPath($siteId, $elementId)) ? [$pageDocumentKey] : [];
+        return array_values(array_unique(array_filter($keys, static fn(string $key): bool => $key !== '')));
     }
 
     /**
@@ -1226,59 +1372,73 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function clearSite(int $siteId): void
     {
-        $compoundFiles = glob($this->basePath . '/compounds/' . $siteId . '_*.dat');
-        if (is_array($compoundFiles)) {
-            foreach ($compoundFiles as $file) {
-                $rows = $this->readFile($file);
-                if (is_array($rows)) {
-                    $this->applyCompoundAggregateDelta($siteId, array_values(array_filter($rows, 'is_array')), -1);
+        $this->mutateStorageAndManifest(
+            'clearing a File index site',
+            static function(array $manifest) use ($siteId): array {
+                $manifest['elements'] = array_filter(
+                    $manifest['elements'],
+                    static fn(mixed $element): bool => !is_array($element) || (int)($element['siteId'] ?? 0) !== $siteId,
+                );
+                $manifest['documents'] = array_filter(
+                    $manifest['documents'],
+                    static fn(mixed $document): bool => !is_array($document) || (int)($document['siteId'] ?? 0) !== $siteId,
+                );
+
+                return $manifest;
+            },
+            function() use ($siteId): void {
+                $compoundFiles = $this->globFilesOrFail($this->basePath . '/compounds/' . $siteId . '_*.dat');
+                foreach ($compoundFiles as $file) {
+                    $rows = $this->readFile($file);
+                    if (
+                        is_array($rows)
+                        && !$this->applyCompoundAggregateDelta(
+                            $siteId,
+                            array_values(array_filter($rows, 'is_array')),
+                            -1,
+                        )
+                    ) {
+                        throw new \RuntimeException('Unable to update File compound aggregates while clearing a site.');
+                    }
                 }
-            }
-        }
 
-        // Clear all files for this site
-        $patterns = [
-            $this->basePath . '/docs/' . $siteId . '_*.dat',
-            $this->basePath . '/titles/' . $siteId . '_*.dat',
-            $this->basePath . '/meta/' . $siteId . '_*.dat',
-            $this->basePath . '/elements/' . $siteId . '_*.dat',
-            $this->basePath . '/document-elements/' . $siteId . '_*.dat',
-            $this->basePath . '/compounds/' . $siteId . '_*.dat',
-            $this->basePath . '/parents/' . $siteId . '_*.dat',
-        ];
+                // Clear all files for this site
+                $patterns = [
+                    $this->basePath . '/docs/' . $siteId . '_*.dat',
+                    $this->basePath . '/titles/' . $siteId . '_*.dat',
+                    $this->basePath . '/meta/' . $siteId . '_*.dat',
+                    $this->basePath . '/elements/' . $siteId . '_*.dat',
+                    $this->basePath . '/document-elements/' . $siteId . '_*.dat',
+                    $this->basePath . '/compounds/' . $siteId . '_*.dat',
+                    $this->basePath . '/parents/' . $siteId . '_*.dat',
+                ];
 
-        foreach ($patterns as $pattern) {
-            $files = glob($pattern);
-            foreach ($files as $file) {
-                @unlink($file);
-            }
-        }
+                foreach ($patterns as $pattern) {
+                    foreach ($this->globFilesOrFail($pattern) as $file) {
+                        $this->deleteFileOrFail($file);
+                    }
+                }
 
-        // Clear site-specific n-grams
-        $ngramDir = $this->basePath . '/ngrams/site' . $siteId;
-        if (is_dir($ngramDir)) {
-            $this->deleteDirectory($ngramDir);
-        }
+                // Clear site-specific n-grams
+                foreach ([
+                    $this->basePath . '/ngrams/site' . $siteId,
+                    $this->basePath . '/ngrams-index/site' . $siteId,
+                    $this->basePath . '/compounds-index/site' . $siteId,
+                ] as $directory) {
+                    $this->deleteDirectoryOrFail($directory);
+                }
 
-        $ngramIndexDir = $this->basePath . '/ngrams-index/site' . $siteId;
-        if (is_dir($ngramIndexDir)) {
-            $this->deleteDirectory($ngramIndexDir);
-        }
-
-        $compoundSiteIndexDir = $this->basePath . '/compounds-index/site' . $siteId;
-        if (is_dir($compoundSiteIndexDir)) {
-            $this->deleteDirectory($compoundSiteIndexDir);
-        }
-
-        // Clear site-specific terms
-        $termFiles = glob($this->basePath . '/terms/*_' . $siteId . '.dat');
-        foreach ($termFiles as $file) {
-            @unlink($file);
-        }
-        $termLanguageFiles = glob($this->basePath . '/term-languages/*_' . $siteId . '.dat');
-        foreach ($termLanguageFiles as $file) {
-            @unlink($file);
-        }
+                // Clear site-specific terms
+                foreach ([
+                    $this->basePath . '/terms/*_' . $siteId . '.dat',
+                    $this->basePath . '/term-languages/*_' . $siteId . '.dat',
+                ] as $pattern) {
+                    foreach ($this->globFilesOrFail($pattern) as $file) {
+                        $this->deleteFileOrFail($file);
+                    }
+                }
+            },
+        );
 
         $this->logInfo('Cleared site data', [
             'index' => $this->indexHandle,
@@ -1291,10 +1451,18 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function clearAll(): void
     {
-        if (is_dir($this->basePath)) {
-            $this->deleteDirectory($this->basePath);
+        $this->withManifestLock(LOCK_EX, function(): void {
+            $inProgress = $this->emptyManifest();
+            $inProgress['readiness'] = self::MANIFEST_READINESS_UPDATING;
+            $this->writeManifestUnlocked($inProgress);
+
+            if (is_dir($this->basePath)) {
+                $this->deleteDirectoryOrFail($this->basePath);
+            }
+
             $this->ensureDirectoryStructure();
-        }
+            $this->writeManifestUnlocked($this->emptyManifest());
+        });
 
         $this->logInfo('Cleared all data', [
             'index' => $this->indexHandle,
@@ -1304,6 +1472,316 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     // =========================================================================
     // HELPER METHODS
     // =========================================================================
+
+    /**
+     * @return array{
+     *     format: string,
+     *     version: int,
+     *     readiness: string,
+     *     elements: array<string, array<string, mixed>>,
+     *     documents: array<string, array<string, mixed>>
+     * }
+     */
+    private function emptyManifest(): array
+    {
+        return [
+            'format' => self::MANIFEST_FORMAT,
+            'version' => self::MANIFEST_VERSION,
+            'readiness' => self::MANIFEST_READINESS_READY,
+            'elements' => [],
+            'documents' => [],
+        ];
+    }
+
+    private function initializeManifestForNewIndex(bool $hasExistingState): void
+    {
+        if ($hasExistingState || is_file($this->getManifestPath())) {
+            return;
+        }
+
+        $this->withManifestLock(LOCK_EX, function(): void {
+            if (is_file($this->getManifestPath()) || $this->hasPersistedIndexData()) {
+                return;
+            }
+
+            $this->writeManifestUnlocked($this->emptyManifest());
+        });
+    }
+
+    private function hasPersistedIndexData(): bool
+    {
+        if (!is_dir($this->basePath)) {
+            return false;
+        }
+
+        $entries = scandir($this->basePath);
+        if (!is_array($entries)) {
+            return false;
+        }
+
+        foreach (array_diff($entries, ['.', '..', self::MANIFEST_FILENAME]) as $entry) {
+            $path = $this->basePath . '/' . $entry;
+            if (is_file($path)) {
+                return true;
+            }
+
+            if (!is_dir($path)) {
+                continue;
+            }
+
+            $children = scandir($path);
+            if (!is_array($children)) {
+                continue;
+            }
+
+            foreach (array_diff($children, ['.', '..']) as $child) {
+                $childPath = $path . '/' . $child;
+                if (is_file($childPath)) {
+                    return true;
+                }
+
+                if (is_dir($childPath) && $this->directoryContainsFile($childPath)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function directoryContainsFile(string $directory): bool
+    {
+        $entries = scandir($directory);
+        if (!is_array($entries)) {
+            return false;
+        }
+
+        foreach (array_diff($entries, ['.', '..']) as $entry) {
+            $path = $directory . '/' . $entry;
+            if (is_file($path) || (is_dir($path) && $this->directoryContainsFile($path))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function manifestDocumentId(int $siteId, string $documentKey): string
+    {
+        return $siteId . ':' . $documentKey;
+    }
+
+    private function getManifestPath(): string
+    {
+        return $this->basePath . '/' . self::MANIFEST_FILENAME;
+    }
+
+    private function getManifestLockPath(): string
+    {
+        return $this->basePath . '.manifest.lock';
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function readManifest(string $operation, bool $throwOnFailure = false): ?array
+    {
+        return $this->withManifestLock(
+            LOCK_SH,
+            function() use ($operation, $throwOnFailure): ?array {
+                [$manifest, $reason] = $this->loadManifestUnlocked();
+                if ($manifest !== null) {
+                    return $manifest;
+                }
+
+                return $this->handleManifestFailure((string)$reason, $operation, $throwOnFailure);
+            },
+        );
+    }
+
+    /**
+     * Run a physical File mutation and its authoritative manifest update as one
+     * fail-closed transaction.
+     *
+     * Lock ordering is always manifest lock, then individual physical-file
+     * locks. Physical helpers never acquire the manifest lock, so this method
+     * cannot recursively acquire the fixed manifest lock or form a lock cycle.
+     *
+     * @param callable(array<string, mixed>): array<string, mixed> $prepareManifest
+     * @param callable(): void $mutatePhysicalStorage
+     */
+    private function mutateStorageAndManifest(
+        string $operation,
+        callable $prepareManifest,
+        callable $mutatePhysicalStorage,
+    ): void {
+        $this->withManifestLock(
+            LOCK_EX,
+            function() use ($operation, $prepareManifest, $mutatePhysicalStorage): void {
+                [$manifest, $reason] = $this->loadManifestUnlocked();
+                if ($manifest === null) {
+                    $this->handleManifestFailure((string)$reason, $operation, true);
+                    return;
+                }
+
+                $finalManifest = $prepareManifest($manifest);
+                if ($this->manifestInvalidReason($finalManifest) !== null) {
+                    throw new \RuntimeException('The File index manifest update produced an invalid manifest.');
+                }
+
+                $inProgressManifest = $manifest;
+                $inProgressManifest['readiness'] = self::MANIFEST_READINESS_UPDATING;
+                $this->writeManifestUnlocked($inProgressManifest);
+
+                try {
+                    $mutatePhysicalStorage();
+                    $this->writeManifestUnlocked($finalManifest);
+                } catch (\Throwable $e) {
+                    throw new \RuntimeException(sprintf(
+                        'File index mutation failed while %s. The manifest remains incomplete. Rebuild the File index "%s" before using it.',
+                        $operation,
+                        $this->indexHandle,
+                    ), 0, $e);
+                }
+            },
+        );
+    }
+
+    /**
+     * @return array{0: array<string, mixed>|null, 1: string|null}
+     */
+    private function loadManifestUnlocked(): array
+    {
+        $path = $this->getManifestPath();
+        if (!is_file($path)) {
+            return [
+                null,
+                $this->hasPersistedIndexData()
+                    ? 'legacy populated index has no manifest'
+                    : 'manifest is missing',
+            ];
+        }
+
+        $contents = @file_get_contents($path);
+        if (!is_string($contents) || $contents === '') {
+            return [null, 'manifest is corrupt'];
+        }
+
+        $manifest = json_decode($contents, true);
+        if (!is_array($manifest) || json_last_error() !== JSON_ERROR_NONE) {
+            return [null, 'manifest is corrupt'];
+        }
+
+        $reason = $this->manifestInvalidReason($manifest);
+
+        return $reason === null ? [$manifest, null] : [null, $reason];
+    }
+
+    /**
+     * @param array<string, mixed> $manifest
+     */
+    private function manifestInvalidReason(array $manifest): ?string
+    {
+        if (($manifest['format'] ?? null) !== self::MANIFEST_FORMAT) {
+            return 'manifest format is unsupported';
+        }
+
+        if (($manifest['version'] ?? null) !== self::MANIFEST_VERSION) {
+            return 'manifest version is unsupported';
+        }
+
+        if (
+            ($manifest['readiness'] ?? null) !== self::MANIFEST_READINESS_READY
+            || !is_array($manifest['elements'] ?? null)
+            || !is_array($manifest['documents'] ?? null)
+        ) {
+            return 'manifest is incomplete';
+        }
+
+        return null;
+    }
+
+    private function handleManifestFailure(string $reason, string $operation, bool $throwOnFailure): null
+    {
+        $message = sprintf(
+            'File index manifest unavailable while %s: %s. Rebuild the File index "%s" before using it.',
+            $operation,
+            $reason,
+            $this->indexHandle,
+        );
+        $logKey = $this->getManifestPath() . ':' . $reason;
+        if (!isset(self::$loggedManifestFailures[$logKey])) {
+            self::$loggedManifestFailures[$logKey] = true;
+            $this->logError($message, [
+                'index' => $this->indexHandle,
+                'path' => $this->getManifestPath(),
+                'reason' => $reason,
+            ]);
+        }
+
+        if ($throwOnFailure) {
+            throw new \RuntimeException($message);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $manifest
+     */
+    private function writeManifestUnlocked(array $manifest): void
+    {
+        try {
+            $json = json_encode(
+                $manifest,
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+            );
+            $temporaryPath = $this->getManifestPath() . '.tmp.' . bin2hex(random_bytes(8));
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('Unable to encode the File index manifest.', 0, $e);
+        }
+
+        $written = @file_put_contents($temporaryPath, $json, LOCK_EX);
+        if ($written !== strlen($json)) {
+            @unlink($temporaryPath);
+            throw new \RuntimeException('Unable to write the File index manifest temporary file.');
+        }
+
+        if (!@rename($temporaryPath, $this->getManifestPath())) {
+            @unlink($temporaryPath);
+            throw new \RuntimeException('Unable to replace the File index manifest atomically.');
+        }
+    }
+
+    /**
+     * @template T
+     * @param callable(): T $callback
+     * @return T
+     */
+    private function withManifestLock(int $operation, callable $callback): mixed
+    {
+        $lockPath = $this->getManifestLockPath();
+        $lockDirectory = dirname($lockPath);
+        if (!is_dir($lockDirectory)) {
+            @mkdir($lockDirectory, 0755, true);
+        }
+
+        $handle = @fopen($lockPath, 'c+');
+        if ($handle === false) {
+            throw new \RuntimeException('Unable to open the File index manifest lock.');
+        }
+
+        try {
+            if (!flock($handle, $operation)) {
+                throw new \RuntimeException('Unable to acquire the File index manifest lock.');
+            }
+
+            return $callback();
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+    }
 
     /**
      * Get document file path
@@ -1503,6 +1981,37 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         return $result !== false;
     }
 
+    private function writeFileOrFail(string $path, mixed $data): void
+    {
+        if (!$this->writeFile($path, $data)) {
+            throw new \RuntimeException('Unable to write File index storage at: ' . $path);
+        }
+    }
+
+    private function deleteFileOrFail(string $path): void
+    {
+        if (!file_exists($path) && !is_link($path)) {
+            return;
+        }
+
+        if (!@unlink($path)) {
+            throw new \RuntimeException('Unable to delete File index storage at: ' . $path);
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function globFilesOrFail(string $pattern): array
+    {
+        $files = glob($pattern);
+        if ($files === false) {
+            throw new \RuntimeException('Unable to enumerate File index storage for: ' . $pattern);
+        }
+
+        return array_values($files);
+    }
+
     private function rememberFilenameKey(string $filename): void
     {
         $safe = $this->sanitizeFilename($filename);
@@ -1511,6 +2020,18 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         }
 
         $this->writeFile($this->basePath . '/keys/' . $safe . '.dat', [
+            'value' => $filename,
+        ]);
+    }
+
+    private function rememberFilenameKeyOrFail(string $filename): void
+    {
+        $safe = $this->sanitizeFilename($filename);
+        if ($safe === $filename) {
+            return;
+        }
+
+        $this->writeFileOrFail($this->basePath . '/keys/' . $safe . '.dat', [
             'value' => $filename,
         ]);
     }
@@ -1531,11 +2052,29 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         );
     }
 
-    private function removeDocumentKeyForParent(int $siteId, int $elementId, string $documentKey): void
+    private function addDocumentKeyForParentOrFail(int $siteId, int $elementId, string $documentKey): void
+    {
+        $this->rememberFilenameKeyOrFail($documentKey);
+        $path = $this->getParentPath($siteId, $elementId);
+
+        if (!$this->updateJsonFile(
+            $path,
+            static function(mixed $current) use ($documentKey): array {
+                $keys = is_array($current) ? array_values(array_map('strval', $current)) : [];
+                $keys[] = $documentKey;
+
+                return array_values(array_unique($keys));
+            },
+        )) {
+            throw new \RuntimeException('Unable to update File parent document keys at: ' . $path);
+        }
+    }
+
+    private function removeDocumentKeyForParentOrFail(int $siteId, int $elementId, string $documentKey): void
     {
         $path = $this->getParentPath($siteId, $elementId);
 
-        $this->updateJsonFile(
+        if (!$this->updateJsonFile(
             $path,
             static function(mixed $current) use ($documentKey): array {
                 if (!is_array($current)) {
@@ -1547,7 +2086,33 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
                     static fn(string $key): bool => $key !== $documentKey,
                 ));
             },
-        );
+        )) {
+            throw new \RuntimeException('Unable to update File parent document keys at: ' . $path);
+        }
+    }
+
+    private function deleteDocumentPhysicalByKeyOrFail(
+        int $siteId,
+        ?int $elementId,
+        string $documentKey,
+    ): void {
+        foreach ([
+            $this->getDocPathByKey($siteId, $documentKey),
+            $this->getTitlePathByKey($siteId, $documentKey),
+            $this->getDocumentElementPath($siteId, $documentKey),
+        ] as $path) {
+            $this->deleteFileOrFail($path);
+        }
+
+        $oldRows = $this->readCompoundRowsByKey($siteId, $documentKey);
+        if (!empty($oldRows) && !$this->applyCompoundAggregateDelta($siteId, $oldRows, -1)) {
+            throw new \RuntimeException('Unable to update File compound aggregates while deleting a document.');
+        }
+        $this->deleteFileOrFail($this->getCompoundPathByKey($siteId, $documentKey));
+
+        if ($elementId !== null && $elementId !== 0) {
+            $this->removeDocumentKeyForParentOrFail($siteId, $elementId, $documentKey);
+        }
     }
 
     private function elementIdFromDocumentKey(string $documentKey): ?int
@@ -1804,7 +2369,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     /**
      * @param array<int, array<string, mixed>> $rows
      */
-    private function applyCompoundAggregateDelta(int $siteId, array $rows, int $direction): void
+    private function applyCompoundAggregateDelta(int $siteId, array $rows, int $direction): bool
     {
         foreach ($rows as $row) {
             $normalizedSuggestion = (string)($row['normalizedSuggestion'] ?? '');
@@ -1820,9 +2385,19 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             }
 
             foreach (['site' . $siteId, 'all'] as $scope) {
-                $this->updateCompoundAggregateBucket($scope, $language, $normalizedSuggestion, $suggestion, $frequency);
+                if (!$this->updateCompoundAggregateBucket(
+                    $scope,
+                    $language,
+                    $normalizedSuggestion,
+                    $suggestion,
+                    $frequency,
+                )) {
+                    return false;
+                }
             }
         }
+
+        return true;
     }
 
     private function updateCompoundAggregateBucket(
@@ -1831,9 +2406,9 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         string $normalizedSuggestion,
         string $suggestion,
         int $frequencyDelta,
-    ): void {
+    ): bool {
         $path = $this->getCompoundBucketPath($scope, $language, $normalizedSuggestion);
-        $this->updateJsonFile(
+        return $this->updateJsonFile(
             $path,
             static function(mixed $current) use ($normalizedSuggestion, $suggestion, $frequencyDelta): array {
                 $bucket = is_array($current) ? $current : [];
@@ -1957,30 +2532,29 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         return $this->sanitizeFilename(mb_substr($normalizedSuggestion, 0, 1) ?: '_');
     }
 
-    /**
-     * Recursively delete directory
-     *
-     * @param string $dir Directory path
-     * @return void
-     */
-    private function deleteDirectory(string $dir): void
+    private function deleteDirectoryOrFail(string $dir): void
     {
         if (!is_dir($dir)) {
             return;
         }
 
-        $files = array_diff(scandir($dir), ['.', '..']);
+        $entries = scandir($dir);
+        if (!is_array($entries)) {
+            throw new \RuntimeException('Unable to enumerate File index directory: ' . $dir);
+        }
 
-        foreach ($files as $file) {
+        foreach (array_diff($entries, ['.', '..']) as $file) {
             $path = $dir . '/' . $file;
 
             if (is_dir($path)) {
-                $this->deleteDirectory($path);
+                $this->deleteDirectoryOrFail($path);
             } else {
-                @unlink($path);
+                $this->deleteFileOrFail($path);
             }
         }
 
-        @rmdir($dir);
+        if (!@rmdir($dir)) {
+            throw new \RuntimeException('Unable to delete File index directory: ' . $dir);
+        }
     }
 }

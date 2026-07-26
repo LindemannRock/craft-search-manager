@@ -1781,7 +1781,16 @@ class SearchEngine
     private function documentKeyFromDocId(string $docId): string
     {
         if (str_contains($docId, ':')) {
-            return (string)explode(':', $docId, 2)[1];
+            [$siteId, $documentKey] = explode(':', $docId, 2);
+            if (
+                $this->documentKeyStorage() !== null
+                && ctype_digit($siteId)
+                && ctype_digit($documentKey)
+            ) {
+                return SearchHitIdentityHelper::pageDocumentId((int)$documentKey, (int)$siteId);
+            }
+
+            return $documentKey;
         }
 
         return $docId;
