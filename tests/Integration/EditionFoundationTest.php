@@ -94,6 +94,121 @@ final class EditionFoundationTest extends TestCase
         }
     }
 
+    public function testPr142StandardPermissionOrderAndNestingAreCanonical(): void
+    {
+        $permissions = $this->registeredPermissions(SearchManager::EDITION_STANDARD);
+
+        self::assertSame([
+            'searchManager:manageBackends',
+            'searchManager:manageIndices',
+            'searchManager:manageApiKeys',
+            'searchManager:manageWidgetConfigs',
+            'searchManager:viewDebug',
+            'searchManager:exportAnalytics',
+            'searchManager:clearAnalytics',
+            'searchManager:clearCache',
+            'searchManager:viewLogs',
+            'searchManager:manageSettings',
+        ], array_keys($permissions));
+        self::assertSame([
+            'searchManager:manageBackends',
+            'searchManager:createBackends',
+            'searchManager:editBackends',
+            'searchManager:deleteBackends',
+            'searchManager:manageIndices',
+            'searchManager:createIndices',
+            'searchManager:editIndices',
+            'searchManager:deleteIndices',
+            'searchManager:rebuildIndices',
+            'searchManager:clearIndices',
+            'searchManager:manageApiKeys',
+            'searchManager:createApiKeys',
+            'searchManager:editApiKeys',
+            'searchManager:revokeApiKeys',
+            'searchManager:manageWidgetConfigs',
+            'searchManager:createWidgetConfigs',
+            'searchManager:editWidgetConfigs',
+            'searchManager:deleteWidgetConfigs',
+            'searchManager:viewDebug',
+            'searchManager:exportAnalytics',
+            'searchManager:clearAnalytics',
+            'searchManager:clearCache',
+            'searchManager:viewLogs',
+            'searchManager:viewSystemLogs',
+            'searchManager:downloadSystemLogs',
+            'searchManager:manageSettings',
+        ], $this->flattenPermissionHandles($permissions));
+        $this->assertCanonicalNestedFamilies($permissions, false);
+    }
+
+    public function testPr142ProPermissionOrderAndNestingAreCanonical(): void
+    {
+        $permissions = $this->registeredPermissions(SearchManager::EDITION_PRO);
+
+        self::assertSame([
+            'searchManager:manageBackends',
+            'searchManager:manageIndices',
+            'searchManager:managePendingSyncs',
+            'searchManager:managePromotions',
+            'searchManager:manageQueryRules',
+            'searchManager:manageApiKeys',
+            'searchManager:manageWidgetConfigs',
+            'searchManager:manageWidgetStyles',
+            'searchManager:viewDebug',
+            'searchManager:viewAnalytics',
+            'searchManager:exportAnalytics',
+            'searchManager:clearAnalytics',
+            'searchManager:clearCache',
+            'searchManager:viewLogs',
+            'searchManager:manageSettings',
+        ], array_keys($permissions));
+        self::assertSame([
+            'searchManager:manageBackends',
+            'searchManager:createBackends',
+            'searchManager:editBackends',
+            'searchManager:deleteBackends',
+            'searchManager:manageIndices',
+            'searchManager:createIndices',
+            'searchManager:editIndices',
+            'searchManager:deleteIndices',
+            'searchManager:rebuildIndices',
+            'searchManager:clearIndices',
+            'searchManager:managePendingSyncs',
+            'searchManager:retryPendingSyncs',
+            'searchManager:purgePendingSyncs',
+            'searchManager:managePromotions',
+            'searchManager:createPromotions',
+            'searchManager:editPromotions',
+            'searchManager:deletePromotions',
+            'searchManager:manageQueryRules',
+            'searchManager:createQueryRules',
+            'searchManager:editQueryRules',
+            'searchManager:deleteQueryRules',
+            'searchManager:manageApiKeys',
+            'searchManager:createApiKeys',
+            'searchManager:editApiKeys',
+            'searchManager:revokeApiKeys',
+            'searchManager:manageWidgetConfigs',
+            'searchManager:createWidgetConfigs',
+            'searchManager:editWidgetConfigs',
+            'searchManager:deleteWidgetConfigs',
+            'searchManager:manageWidgetStyles',
+            'searchManager:createWidgetStyles',
+            'searchManager:editWidgetStyles',
+            'searchManager:deleteWidgetStyles',
+            'searchManager:viewDebug',
+            'searchManager:viewAnalytics',
+            'searchManager:exportAnalytics',
+            'searchManager:clearAnalytics',
+            'searchManager:clearCache',
+            'searchManager:viewLogs',
+            'searchManager:viewSystemLogs',
+            'searchManager:downloadSystemLogs',
+            'searchManager:manageSettings',
+        ], $this->flattenPermissionHandles($permissions));
+        $this->assertCanonicalNestedFamilies($permissions, true);
+    }
+
     public function testConsoleRequestUsesExceptionGateForStandard(): void
     {
         $this->withEdition(SearchManager::EDITION_STANDARD, function(): void {
@@ -132,18 +247,91 @@ final class EditionFoundationTest extends TestCase
      */
     private function registeredPermissionHandles(string $edition): array
     {
+        return $this->flattenPermissionHandles($this->registeredPermissions($edition));
+    }
+
+    /**
+     * @return array<string, array{nested?: array}>
+     */
+    private function registeredPermissions(string $edition): array
+    {
         return $this->withEdition($edition, function(): array {
             $event = new RegisterUserPermissionsEvent();
             Event::trigger(UserPermissions::class, UserPermissions::EVENT_REGISTER_PERMISSIONS, $event);
 
             foreach ($event->permissions as $group) {
                 if (isset($group['permissions']['searchManager:manageBackends'])) {
-                    return $this->flattenPermissionHandles($group['permissions']);
+                    return $group['permissions'];
                 }
             }
 
             self::fail('Search Manager permission group was not registered.');
         });
+    }
+
+    /**
+     * @param array<string, array{nested?: array}> $permissions
+     */
+    private function assertCanonicalNestedFamilies(array $permissions, bool $pro): void
+    {
+        $expected = [
+            'searchManager:manageBackends' => [
+                'searchManager:createBackends',
+                'searchManager:editBackends',
+                'searchManager:deleteBackends',
+            ],
+            'searchManager:manageIndices' => [
+                'searchManager:createIndices',
+                'searchManager:editIndices',
+                'searchManager:deleteIndices',
+                'searchManager:rebuildIndices',
+                'searchManager:clearIndices',
+            ],
+            'searchManager:manageApiKeys' => [
+                'searchManager:createApiKeys',
+                'searchManager:editApiKeys',
+                'searchManager:revokeApiKeys',
+            ],
+            'searchManager:manageWidgetConfigs' => [
+                'searchManager:createWidgetConfigs',
+                'searchManager:editWidgetConfigs',
+                'searchManager:deleteWidgetConfigs',
+            ],
+            'searchManager:viewLogs' => [
+                'searchManager:viewSystemLogs',
+            ],
+        ];
+        if ($pro) {
+            $expected += [
+                'searchManager:managePendingSyncs' => [
+                    'searchManager:retryPendingSyncs',
+                    'searchManager:purgePendingSyncs',
+                ],
+                'searchManager:managePromotions' => [
+                    'searchManager:createPromotions',
+                    'searchManager:editPromotions',
+                    'searchManager:deletePromotions',
+                ],
+                'searchManager:manageQueryRules' => [
+                    'searchManager:createQueryRules',
+                    'searchManager:editQueryRules',
+                    'searchManager:deleteQueryRules',
+                ],
+                'searchManager:manageWidgetStyles' => [
+                    'searchManager:createWidgetStyles',
+                    'searchManager:editWidgetStyles',
+                    'searchManager:deleteWidgetStyles',
+                ],
+            ];
+        }
+
+        foreach ($expected as $parent => $children) {
+            self::assertSame($children, array_keys($permissions[$parent]['nested'] ?? []), $parent);
+        }
+        self::assertSame(
+            ['searchManager:downloadSystemLogs'],
+            array_keys($permissions['searchManager:viewLogs']['nested']['searchManager:viewSystemLogs']['nested'] ?? []),
+        );
     }
 
     /**

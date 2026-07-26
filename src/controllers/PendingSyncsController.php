@@ -151,9 +151,7 @@ class PendingSyncsController extends Controller
 
         $context = $this->pendingSyncListContext();
         $sites = Craft::$app->getSites()->getAllSites();
-        $canRetry = Craft::$app->getUser()->checkPermission('searchManager:retryPendingSyncs');
-        $canPurge = Craft::$app->getUser()->checkPermission('searchManager:purgePendingSyncs');
-        $checkboxesEnabled = $canRetry || $canPurge;
+        $checkboxesEnabled = $context['canRetry'] || $context['canPurge'];
 
         $rowsHtml = '';
         foreach ($context['rows'] as $row) {
@@ -163,16 +161,18 @@ class PendingSyncsController extends Controller
                 'existsAnywhere' => $context['existsAnywhere'],
                 'sites' => $sites,
                 'staleCutoffSeconds' => $context['staleCutoffSeconds'],
-                'canRetry' => $canRetry,
-                'canPurge' => $canPurge,
+                'canRetry' => $context['canRetry'],
+                'canPurge' => $context['canPurge'],
                 'checkboxesEnabled' => $checkboxesEnabled,
-                'rowActionsEnabled' => true,
+                'rowActionsEnabled' => $context['hasAvailableRowActions'],
             ]);
         }
 
         if ($rowsHtml === '') {
             $rowsHtml = Craft::$app->getView()->renderTemplate('search-manager/pending-syncs/_empty-row', [
-                'colspan' => 9 + ($checkboxesEnabled ? 1 : 0) + 1,
+                'colspan' => 9
+                    + ($checkboxesEnabled ? 1 : 0)
+                    + ($context['hasAvailableRowActions'] ? 1 : 0),
             ]);
         }
 
@@ -184,6 +184,7 @@ class PendingSyncsController extends Controller
         return $this->asJson([
             'success' => true,
             'rowsHtml' => $rowsHtml,
+            'hasAvailableRowActions' => $context['hasAvailableRowActions'],
             'totalCount' => $context['totalCount'],
             'pagination' => [
                 'page' => $context['page'],
@@ -240,11 +241,26 @@ class PendingSyncsController extends Controller
         $result = $repository->search($filters, $sort, $dir, $limit, $offset);
         $stats = $repository->getStats();
         ['elements' => $elements, 'existsAnywhere' => $existsAnywhere] = $this->preloadElements($result['rows']);
+        $canRetry = Craft::$app->getUser()->checkPermission('searchManager:retryPendingSyncs');
+        $canPurge = Craft::$app->getUser()->checkPermission('searchManager:purgePendingSyncs');
+        $hasAvailableRowActions = $result['rows'] !== [] && ($canRetry || $canPurge);
+
+        if (!$hasAvailableRowActions) {
+            foreach ($elements as $element) {
+                if ($element->getCpEditUrl()) {
+                    $hasAvailableRowActions = true;
+                    break;
+                }
+            }
+        }
 
         return [
             'rows' => $result['rows'],
             'elements' => $elements,
             'existsAnywhere' => $existsAnywhere,
+            'canRetry' => $canRetry,
+            'canPurge' => $canPurge,
+            'hasAvailableRowActions' => $hasAvailableRowActions,
             'totalCount' => $result['total'],
             'stats' => $stats,
             'filters' => $filters,

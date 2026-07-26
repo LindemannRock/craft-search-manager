@@ -16,10 +16,6 @@
 {% set siteIdFilter = filters.siteId ?? 'all' %}
 {% set searchValue = filters.search ?? '' %}
 
-{# Permissions #}
-{% set canRetry = currentUser.can('searchManager:retryPendingSyncs') %}
-{% set canPurge = currentUser.can('searchManager:purgePendingSyncs') %}
-
 {# Stats counts indexed by status (used to gate the "Purge abandoned" toolbar
    button so it only renders when there is something to purge). #}
 {% set countByStatus = {} %}
@@ -136,6 +132,7 @@
         itemLabel: {singular: 'pending sync'|t('search-manager'), plural: 'pending syncs'|t('search-manager')},
     },
     checkboxes: canRetry or canPurge,
+    rowActions: hasAvailableRowActions,
     ajax: {
         enabled: ((countByStatus.pending ?? 0) + (countByStatus.processing ?? 0)) > 0,
         interval: 5,
@@ -294,6 +291,8 @@
                 items: actionItems,
             },
         } only %}
+    {% else %}
+        <td class="thin"></td>
     {% endif %}
 {% endblock %}
 
@@ -315,6 +314,8 @@
 (function() {
     if (typeof Craft === 'undefined') return;
 
+    const initialHasAvailableRowActions = {{ hasAvailableRowActions|json_encode|raw }};
+
     // Auto-refresh: replace the current page of rows without a full browser
     // navigation. The endpoint returns server-rendered row HTML so badges,
     // dates, disabled row actions, and element links stay aligned with Twig.
@@ -322,6 +323,13 @@
         const data = e.detail || {};
         const tbody = document.getElementById('lr-table-body');
         if (!tbody || typeof data.rowsHtml !== 'string') return;
+        if (
+            typeof data.hasAvailableRowActions === 'boolean'
+            && data.hasAvailableRowActions !== initialHasAvailableRowActions
+        ) {
+            window.location.reload();
+            return;
+        }
 
         tbody.innerHTML = data.rowsHtml;
     });

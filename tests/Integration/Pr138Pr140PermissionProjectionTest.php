@@ -19,17 +19,21 @@ use craft\web\Response;
 use craft\web\View;
 use lindemannrock\base\helpers\CpNavHelper;
 use lindemannrock\searchmanager\controllers\AnalyticsController;
+use lindemannrock\searchmanager\controllers\ApiKeysController;
 use lindemannrock\searchmanager\controllers\BackendsController;
 use lindemannrock\searchmanager\controllers\IndicesController;
+use lindemannrock\searchmanager\controllers\PendingSyncsController;
 use lindemannrock\searchmanager\controllers\PromotionsController;
 use lindemannrock\searchmanager\controllers\QueryRulesController;
 use lindemannrock\searchmanager\controllers\SettingsController;
 use lindemannrock\searchmanager\controllers\WidgetsController;
+use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
+use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use yii\web\ForbiddenHttpException;
@@ -40,7 +44,9 @@ use yii\web\ForbiddenHttpException;
  * @since 5.54.0
  */
 #[CoversClass(SearchManager::class)]
+#[CoversClass(ApiKeysController::class)]
 #[CoversClass(IndicesController::class)]
+#[CoversClass(PendingSyncsController::class)]
 #[CoversClass(WidgetsController::class)]
 #[CoversClass(PromotionsController::class)]
 #[CoversClass(QueryRulesController::class)]
@@ -49,13 +55,17 @@ use yii\web\ForbiddenHttpException;
 final class Pr138Pr140PermissionProjectionTest extends TestCase
 {
     private const PREFIX = 'sm-pr138-140';
+    private const CONFIG_BACKEND = self::PREFIX . '-config-backend';
+    private const HOSTED_BACKEND = self::PREFIX . '-hosted-backend';
     private const DATABASE_BACKEND = self::PREFIX . '-database-backend';
     private const DATABASE_INDEX = self::PREFIX . '-database-index';
     private const CONFIG_INDEX = self::PREFIX . '-config-index';
+    private const HOSTED_INDEX = self::PREFIX . '-hosted-index';
     private const INDEX_COLLISION = self::PREFIX . '-index-collision';
     private const DATABASE_STYLE = self::PREFIX . '-database-style';
     private const CONFIG_STYLE = self::PREFIX . '-config-style';
     private const STYLE_COLLISION = self::PREFIX . '-style-collision';
+    private const CONFIG_WIDGET = self::PREFIX . '-config-widget';
     private const DATABASE_WIDGET = self::PREFIX . '-database-widget';
     private const PROMOTION_TITLE = 'PR1.38 Promotion';
     private const RULE_NAME = 'PR1.38 Query Rule';
@@ -64,6 +74,8 @@ final class Pr138Pr140PermissionProjectionTest extends TestCase
     private object $originalRequest;
     private object $originalResponse;
     private object $originalUser;
+    private mixed $originalTwigCurrentUser = null;
+    private bool $twigCurrentUserCaptured = false;
     private string $originalRequestMethod;
     private int $databaseBackendId;
     private int $databaseIndexId;
@@ -106,6 +118,9 @@ final class Pr138Pr140PermissionProjectionTest extends TestCase
         Craft::$app->set('request', $this->originalRequest);
         Craft::$app->set('response', $this->originalResponse);
         Craft::$app->set('user', $this->originalUser);
+        if ($this->twigCurrentUserCaptured) {
+            Craft::$app->getView()->getTwig()->addGlobal('currentUser', $this->originalTwigCurrentUser);
+        }
         $_SERVER['REQUEST_METHOD'] = $this->originalRequestMethod;
 
         $this->purgeRows();
@@ -725,6 +740,550 @@ final class Pr138Pr140PermissionProjectionTest extends TestCase
         );
     }
 
+    public function testPr141ActionsColumnTracksEmptyAndParentOnlyPageCapabilities(): void
+    {
+        $this->seedActionProjectionRows();
+        $parents = [
+            'searchManager:manageApiKeys',
+            'searchManager:manageBackends',
+            'searchManager:manageIndices',
+            'searchManager:managePendingSyncs',
+            'searchManager:managePromotions',
+            'searchManager:manageQueryRules',
+            'searchManager:manageWidgetConfigs',
+            'searchManager:manageWidgetStyles',
+        ];
+
+        $this->actWithPermissions($parents, false, 'pr141-parent-only');
+        $tables = $this->renderActionTables();
+
+        $this->assertTableActionProjection($tables['apiKeys'], false, 'API Keys parent-only');
+        $this->assertTableActionProjection($tables['backends'], true, 'Backends parent-only');
+        $this->assertTableActionProjection($tables['indices'], true, 'Indices parent-only');
+        $this->assertTableActionProjection($tables['pendingSyncs'], false, 'Pending Syncs unresolved parent-only');
+        $this->assertTableActionProjection($tables['promotions'], false, 'Promotions parent-only');
+        $this->assertTableActionProjection($tables['queryRules'], false, 'Query Rules parent-only');
+        $this->assertTableActionProjection($tables['widgetConfigs'], true, 'Widget Configs parent-only');
+        $this->assertTableActionProjection($tables['widgetStyles'], true, 'Widget Styles parent-only');
+
+        self::assertStringContainsString('Test Connection', $tables['backends']);
+        self::assertStringContainsString('View', $tables['backends']);
+        self::assertStringContainsString('View', $tables['indices']);
+        self::assertStringContainsString('View', $tables['widgetConfigs']);
+        self::assertStringContainsString('View', $tables['widgetStyles']);
+        self::assertStringContainsString('Config Backend', $tables['backends']);
+        self::assertStringContainsString('Config Widget', $tables['widgetConfigs']);
+        self::assertStringContainsString('Config Index', $tables['indices']);
+        self::assertStringContainsString('Config Style', $tables['widgetStyles']);
+
+        $resolvedPending = $this->renderFiltered(
+            ['search' => self::PREFIX, 'status' => PendingSyncRepository::STATUS_ABANDONED],
+            fn(): Response => (new Pr141PendingSyncsController('pending-syncs', SearchManager::$plugin))
+                ->actionIndex(),
+        );
+        $this->assertTableActionProjection($resolvedPending, true, 'Pending Syncs resolved View Element');
+        self::assertStringContainsString('View element', $resolvedPending);
+        $mixedPending = $this->renderFiltered(
+            ['search' => self::PREFIX],
+            fn(): Response => (new Pr141PendingSyncsController('pending-syncs', SearchManager::$plugin))
+                ->actionIndex(),
+        );
+        $this->assertTableActionProjection($mixedPending, true, 'Pending Syncs mixed resolvability');
+
+        $this->actWithPermissions($parents, true, 'pr141-empty-admin');
+        foreach ($this->renderActionTables(self::PREFIX . '-no-matches') as $resource => $html) {
+            $this->assertTableActionProjection($html, false, $resource . ' empty administrator page');
+        }
+    }
+
+    public function testPr141PendingSyncAjaxKeepsProjectionAndRowsAligned(): void
+    {
+        $this->seedActionProjectionRows();
+        $this->actWithPermissions(
+            ['searchManager:managePendingSyncs'],
+            false,
+            'pr141-pending-ajax-parent',
+        );
+
+        $unresolved = $this->pendingSyncAjaxData([
+            'search' => self::PREFIX,
+            'status' => PendingSyncRepository::STATUS_FAILED,
+        ]);
+        self::assertFalse($unresolved['hasAvailableRowActions']);
+        $this->assertFragmentRowCellCounts($unresolved['rowsHtml'], 9);
+
+        $resolved = $this->pendingSyncAjaxData([
+            'search' => self::PREFIX,
+            'status' => PendingSyncRepository::STATUS_ABANDONED,
+        ]);
+        self::assertTrue($resolved['hasAvailableRowActions']);
+        self::assertStringContainsString('View element', $resolved['rowsHtml']);
+        $this->assertFragmentRowCellCounts($resolved['rowsHtml'], 10);
+
+        $mixed = $this->pendingSyncAjaxData(['search' => self::PREFIX]);
+        self::assertTrue($mixed['hasAvailableRowActions']);
+        $this->assertFragmentRowCellCounts($mixed['rowsHtml'], 10);
+
+        $this->actWithPermissions(
+            ['searchManager:managePendingSyncs', 'searchManager:retryPendingSyncs'],
+            false,
+            'pr141-pending-ajax-retry',
+        );
+        $retry = $this->pendingSyncAjaxData([
+            'search' => self::PREFIX,
+            'status' => PendingSyncRepository::STATUS_FAILED,
+        ]);
+        self::assertTrue($retry['hasAvailableRowActions']);
+        self::assertStringContainsString('Retry now', $retry['rowsHtml']);
+        $this->assertFragmentRowCellCounts($retry['rowsHtml'], 11);
+    }
+
+    public function testPr141ActionsColumnTracksChildFullFamilyAndAdministratorCapabilities(): void
+    {
+        $this->seedActionProjectionRows();
+        SearchManager::$plugin->getSettings()->enableCache = true;
+
+        $individualCases = [
+            'API Keys edit' => [
+                ['searchManager:manageApiKeys', 'searchManager:editApiKeys'],
+                fn(): Response => (new Pr141ApiKeysController('api-keys', SearchManager::$plugin))->actionIndex(),
+                'Edit',
+                [],
+            ],
+            'API Keys revoke' => [
+                ['searchManager:manageApiKeys', 'searchManager:revokeApiKeys'],
+                fn(): Response => (new Pr141ApiKeysController('api-keys', SearchManager::$plugin))->actionIndex(),
+                'Revoke',
+                [],
+            ],
+            'Backends edit' => [
+                ['searchManager:manageBackends', 'searchManager:editBackends'],
+                fn(): Response => (new Pr138BackendsController('backends', SearchManager::$plugin))->actionIndex(),
+                'Edit',
+                [],
+            ],
+            'Backends delete' => [
+                ['searchManager:manageBackends', 'searchManager:deleteBackends'],
+                fn(): Response => (new Pr138BackendsController('backends', SearchManager::$plugin))->actionIndex(),
+                'Delete',
+                [],
+            ],
+            'Indices edit' => [
+                ['searchManager:manageIndices', 'searchManager:editIndices'],
+                fn(): Response => (new Pr138IndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                'Edit',
+                [],
+            ],
+            'Indices rebuild' => [
+                ['searchManager:manageIndices', 'searchManager:rebuildIndices'],
+                fn(): Response => (new Pr138IndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                'Sync Count from Backend',
+                [],
+            ],
+            'Indices clear' => [
+                ['searchManager:manageIndices', 'searchManager:clearIndices'],
+                fn(): Response => (new Pr138IndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                'Clear Index Data',
+                [],
+            ],
+            'Indices delete' => [
+                ['searchManager:manageIndices', 'searchManager:deleteIndices'],
+                fn(): Response => (new Pr138IndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                'Delete Index',
+                [],
+            ],
+            'Indices cache clear' => [
+                ['searchManager:manageIndices', 'searchManager:clearCache'],
+                fn(): Response => (new Pr138IndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                'Clear Index Cache',
+                [],
+            ],
+            'Pending Syncs retry' => [
+                ['searchManager:managePendingSyncs', 'searchManager:retryPendingSyncs'],
+                fn(): Response => (new Pr141PendingSyncsController('pending-syncs', SearchManager::$plugin))
+                    ->actionIndex(),
+                'Retry now',
+                ['status' => PendingSyncRepository::STATUS_FAILED],
+            ],
+            'Pending Syncs purge' => [
+                ['searchManager:managePendingSyncs', 'searchManager:purgePendingSyncs'],
+                fn(): Response => (new Pr141PendingSyncsController('pending-syncs', SearchManager::$plugin))
+                    ->actionIndex(),
+                'Delete from buffer',
+                ['status' => PendingSyncRepository::STATUS_FAILED],
+            ],
+            'Promotions duplicate' => [
+                ['searchManager:managePromotions', 'searchManager:createPromotions'],
+                fn(): Response => (new Pr138PromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
+                'Duplicate',
+                [],
+            ],
+            'Promotions edit' => [
+                ['searchManager:managePromotions', 'searchManager:editPromotions'],
+                fn(): Response => (new Pr138PromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
+                'Edit',
+                [],
+            ],
+            'Promotions delete' => [
+                ['searchManager:managePromotions', 'searchManager:deletePromotions'],
+                fn(): Response => (new Pr138PromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
+                'Delete',
+                [],
+            ],
+            'Query Rules duplicate' => [
+                ['searchManager:manageQueryRules', 'searchManager:createQueryRules'],
+                fn(): Response => (new Pr138QueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
+                'Duplicate',
+                [],
+            ],
+            'Query Rules edit' => [
+                ['searchManager:manageQueryRules', 'searchManager:editQueryRules'],
+                fn(): Response => (new Pr138QueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
+                'Edit',
+                [],
+            ],
+            'Query Rules delete' => [
+                ['searchManager:manageQueryRules', 'searchManager:deleteQueryRules'],
+                fn(): Response => (new Pr138QueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
+                'Delete',
+                [],
+            ],
+            'Widget Configs edit' => [
+                ['searchManager:manageWidgetConfigs', 'searchManager:editWidgetConfigs'],
+                fn(): Response => (new Pr138WidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
+                'Edit',
+                [],
+            ],
+            'Widget Configs duplicate' => [
+                [
+                    'searchManager:manageWidgetConfigs',
+                    'searchManager:createWidgetConfigs',
+                    'searchManager:editWidgetConfigs',
+                ],
+                fn(): Response => (new Pr138WidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
+                'Duplicate',
+                [],
+            ],
+            'Widget Configs delete' => [
+                [
+                    'searchManager:manageWidgetConfigs',
+                    'searchManager:editWidgetConfigs',
+                    'searchManager:deleteWidgetConfigs',
+                ],
+                fn(): Response => (new Pr138WidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
+                'Delete',
+                [],
+            ],
+            'Widget Styles edit' => [
+                ['searchManager:manageWidgetStyles', 'searchManager:editWidgetStyles'],
+                fn(): Response => (new Pr138WidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
+                'Edit',
+                [],
+            ],
+            'Widget Styles duplicate' => [
+                [
+                    'searchManager:manageWidgetStyles',
+                    'searchManager:createWidgetStyles',
+                    'searchManager:editWidgetStyles',
+                ],
+                fn(): Response => (new Pr138WidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
+                'Duplicate',
+                [],
+            ],
+            'Widget Styles delete' => [
+                [
+                    'searchManager:manageWidgetStyles',
+                    'searchManager:editWidgetStyles',
+                    'searchManager:deleteWidgetStyles',
+                ],
+                fn(): Response => (new Pr138WidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
+                'Delete',
+                [],
+            ],
+        ];
+
+        foreach ($individualCases as $label => [$permissions, $action, $menuLabel, $params]) {
+            $this->actWithPermissions($permissions, false, 'pr141-' . $label);
+            $html = $this->renderFiltered(['search' => self::PREFIX, ...$params], $action);
+            $this->assertTableActionProjection($html, true, $label);
+            self::assertStringContainsString($menuLabel, $html, $label);
+        }
+
+        $fullPermissions = [
+            'searchManager:manageApiKeys',
+            'searchManager:createApiKeys',
+            'searchManager:editApiKeys',
+            'searchManager:revokeApiKeys',
+            'searchManager:manageBackends',
+            'searchManager:createBackends',
+            'searchManager:editBackends',
+            'searchManager:deleteBackends',
+            'searchManager:manageIndices',
+            'searchManager:createIndices',
+            'searchManager:editIndices',
+            'searchManager:deleteIndices',
+            'searchManager:rebuildIndices',
+            'searchManager:clearIndices',
+            'searchManager:clearCache',
+            'searchManager:managePendingSyncs',
+            'searchManager:retryPendingSyncs',
+            'searchManager:purgePendingSyncs',
+            'searchManager:managePromotions',
+            'searchManager:createPromotions',
+            'searchManager:editPromotions',
+            'searchManager:deletePromotions',
+            'searchManager:manageQueryRules',
+            'searchManager:createQueryRules',
+            'searchManager:editQueryRules',
+            'searchManager:deleteQueryRules',
+            'searchManager:manageWidgetConfigs',
+            'searchManager:createWidgetConfigs',
+            'searchManager:editWidgetConfigs',
+            'searchManager:deleteWidgetConfigs',
+            'searchManager:manageWidgetStyles',
+            'searchManager:createWidgetStyles',
+            'searchManager:editWidgetStyles',
+            'searchManager:deleteWidgetStyles',
+        ];
+
+        foreach ([
+            'full families' => [$fullPermissions, false],
+            'administrator' => [$fullPermissions, true],
+        ] as $label => [$permissions, $admin]) {
+            $this->actWithPermissions($permissions, $admin, 'pr141-' . $label);
+            $tables = $this->renderActionTables();
+            foreach ($tables as $resource => $html) {
+                $this->assertTableActionProjection($html, true, $resource . ' ' . $label);
+            }
+            foreach ([
+                'apiKeys' => ['Edit', 'Revoke'],
+                'backends' => ['View', 'Edit', 'Test Connection', 'Delete'],
+                'indices' => [
+                    'View',
+                    'Edit',
+                    'Rebuild Index',
+                    'Sync Count from Backend',
+                    'Clear Index Data',
+                    'Clear Index Cache',
+                    'Delete Index',
+                ],
+                'pendingSyncs' => ['Retry now', 'Delete from buffer'],
+                'promotions' => ['Edit', 'Duplicate', 'Delete'],
+                'queryRules' => ['Edit', 'Duplicate', 'Delete'],
+                'widgetConfigs' => ['View', 'Edit', 'Duplicate', 'Delete'],
+                'widgetStyles' => ['View', 'Edit', 'Duplicate', 'Delete'],
+            ] as $resource => $actionLabels) {
+                foreach ($actionLabels as $actionLabel) {
+                    self::assertStringContainsString($actionLabel, $tables[$resource], $resource . ' ' . $label);
+                }
+            }
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function renderActionTables(string $search = self::PREFIX): array
+    {
+        return [
+            'apiKeys' => $this->renderFiltered(
+                ['search' => $search],
+                fn(): Response => (new Pr141ApiKeysController('api-keys', SearchManager::$plugin))->actionIndex(),
+            ),
+            'backends' => $this->renderFiltered(
+                ['search' => $search],
+                fn(): Response => (new Pr138BackendsController('backends', SearchManager::$plugin))->actionIndex(),
+            ),
+            'indices' => $this->renderFiltered(
+                ['search' => $search],
+                fn(): Response => (new Pr138IndicesController('indices', SearchManager::$plugin))->actionIndex(),
+            ),
+            'pendingSyncs' => $this->renderFiltered(
+                ['search' => $search, 'status' => PendingSyncRepository::STATUS_FAILED],
+                fn(): Response => (new Pr141PendingSyncsController('pending-syncs', SearchManager::$plugin))
+                    ->actionIndex(),
+            ),
+            'promotions' => $this->renderFiltered(
+                ['search' => $search],
+                fn(): Response => (new Pr138PromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
+            ),
+            'queryRules' => $this->renderFiltered(
+                ['search' => $search],
+                fn(): Response => (new Pr138QueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
+            ),
+            'widgetConfigs' => $this->renderFiltered(
+                ['search' => $search],
+                fn(): Response => (new Pr138WidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
+            ),
+            'widgetStyles' => $this->renderFiltered(
+                ['search' => $search],
+                fn(): Response => (new Pr138WidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
+            ),
+        ];
+    }
+
+    /**
+     * @param array<string, scalar> $queryParams
+     * @param callable(): Response $action
+     */
+    private function renderFiltered(array $queryParams, callable $action): string
+    {
+        $request = Craft::$app->getRequest();
+        $originalQueryParams = $request->getQueryParams();
+        $request->setQueryParams($queryParams);
+
+        try {
+            return $this->renderCaptured($action());
+        } finally {
+            $request->setQueryParams($originalQueryParams);
+        }
+    }
+
+    private function assertTableActionProjection(string $html, bool $expected, string $message): void
+    {
+        $dom = new \DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $loaded = $dom->loadHTML($html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        self::assertTrue($loaded, $message);
+
+        $xpath = new \DOMXPath($dom);
+        $table = $xpath->query('//*[@id="lr-data-table"]')->item(0);
+        self::assertNotNull($table, $message);
+
+        $headers = $xpath->query('.//thead/tr[1]/th', $table);
+        self::assertNotFalse($headers, $message);
+        $actionHeaders = 0;
+        foreach ($headers as $header) {
+            if (trim($header->textContent) === 'Actions') {
+                $actionHeaders++;
+            }
+        }
+        self::assertSame($expected ? 1 : 0, $actionHeaders, $message);
+
+        $rows = $xpath->query(
+            './/tbody/tr[contains(concat(" ", normalize-space(@class), " "), " lr-data-row ")]',
+            $table,
+        );
+        self::assertNotFalse($rows, $message);
+        foreach ($rows as $row) {
+            $cells = $xpath->query('./td', $row);
+            self::assertNotFalse($cells, $message);
+            self::assertSame($headers->length, $cells->length, $message);
+        }
+    }
+
+    /**
+     * @param array<string, scalar> $queryParams
+     * @return array<string, mixed>
+     */
+    private function pendingSyncAjaxData(array $queryParams): array
+    {
+        $request = Craft::$app->getRequest();
+        $originalQueryParams = $request->getQueryParams();
+        $headers = $request->getHeaders();
+        $originalAccept = $headers->get('Accept');
+        $request->setQueryParams($queryParams);
+        $headers->set('Accept', 'application/json');
+
+        try {
+            $response = (new Pr141PendingSyncsController('pending-syncs', SearchManager::$plugin))
+                ->actionGetData();
+            self::assertIsArray($response->data);
+
+            return $response->data;
+        } finally {
+            $request->setQueryParams($originalQueryParams);
+            if ($originalAccept === null) {
+                $headers->remove('Accept');
+            } else {
+                $headers->set('Accept', $originalAccept);
+            }
+        }
+    }
+
+    private function assertFragmentRowCellCounts(string $rowsHtml, int $expected): void
+    {
+        $dom = new \DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $loaded = $dom->loadHTML('<table><tbody>' . $rowsHtml . '</tbody></table>');
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        self::assertTrue($loaded);
+
+        $xpath = new \DOMXPath($dom);
+        $rows = $xpath->query(
+            '//tbody/tr[contains(concat(" ", normalize-space(@class), " "), " lr-data-row ")]',
+        );
+        self::assertNotFalse($rows);
+        self::assertGreaterThan(0, $rows->length);
+        foreach ($rows as $row) {
+            $cells = $xpath->query('./td', $row);
+            self::assertNotFalse($cells);
+            self::assertSame($expected, $cells->length);
+        }
+    }
+
+    private function seedActionProjectionRows(): void
+    {
+        $generated = SearchManager::$plugin->apiKeys->generateKey(ApiKey::TYPE_PUBLIC);
+        $apiKey = new ApiKey();
+        $apiKey->name = self::PREFIX . ' API Key';
+        $apiKey->handle = self::PREFIX . '-api-key';
+        $apiKey->type = ApiKey::TYPE_PUBLIC;
+        $apiKey->keyHash = $generated['hash'];
+        $apiKey->keyPrefix = $generated['prefix'];
+        $apiKey->allowedIndices = [ApiKey::ALL_INDICES];
+        self::assertTrue($apiKey->save());
+
+        $entry = Entry::find()
+            ->siteId('*')
+            ->status(null)
+            ->drafts(null)
+            ->revisions(false)
+            ->one();
+        self::assertNotNull($entry, 'The projection fixture requires one resolvable entry.');
+        self::assertNotNull($entry->siteId);
+        self::assertNotNull($entry->getCpEditUrl());
+
+        $now = Db::prepareDateForDb(new \DateTimeImmutable());
+        foreach ([
+            [
+                'elementId' => 2_000_000_000,
+                'siteId' => (int)$entry->siteId,
+                'status' => PendingSyncRepository::STATUS_FAILED,
+                'lastError' => self::PREFIX . ' unresolved',
+            ],
+            [
+                'elementId' => (int)$entry->id,
+                'siteId' => (int)$entry->siteId,
+                'status' => PendingSyncRepository::STATUS_ABANDONED,
+                'lastError' => self::PREFIX . ' resolved',
+            ],
+        ] as $row) {
+            Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_pending_syncs}}', [
+                'indexHandle' => self::DATABASE_INDEX,
+                'elementType' => Entry::class,
+                'elementId' => $row['elementId'],
+                'siteId' => $row['siteId'],
+                'op' => PendingSyncRepository::OP_UPSERT,
+                'status' => $row['status'],
+                'attemptCount' => 1,
+                'queuedAt' => $now,
+                'nextAttemptAt' => $now,
+                'claimedAt' => null,
+                'claimToken' => null,
+                'dirtyAt' => null,
+                'lastError' => $row['lastError'],
+                'lastProcessedAt' => null,
+                'dateCreated' => $now,
+                'dateUpdated' => $now,
+                'uid' => StringHelper::UUID(),
+            ])->execute();
+        }
+    }
+
     /**
      * @param list<string> $permissions
      */
@@ -737,12 +1296,24 @@ final class Pr138Pr140PermissionProjectionTest extends TestCase
         $user = $this->createTestUser(self::PREFIX . '-' . $handle, ['admin' => $admin]);
         if ($admin) {
             $permissions = [
+                'searchManager:manageApiKeys',
+                'searchManager:createApiKeys',
+                'searchManager:editApiKeys',
+                'searchManager:revokeApiKeys',
+                'searchManager:manageBackends',
+                'searchManager:createBackends',
+                'searchManager:editBackends',
+                'searchManager:deleteBackends',
                 'searchManager:manageIndices',
                 'searchManager:createIndices',
                 'searchManager:editIndices',
                 'searchManager:deleteIndices',
                 'searchManager:rebuildIndices',
                 'searchManager:clearIndices',
+                'searchManager:clearCache',
+                'searchManager:managePendingSyncs',
+                'searchManager:retryPendingSyncs',
+                'searchManager:purgePendingSyncs',
                 'searchManager:manageWidgetConfigs',
                 'searchManager:createWidgetConfigs',
                 'searchManager:editWidgetConfigs',
@@ -777,6 +1348,13 @@ final class Pr138Pr140PermissionProjectionTest extends TestCase
         };
         $renderUser->setIdentity($user);
         Craft::$app->set('user', $renderUser);
+
+        $twig = Craft::$app->getView()->getTwig();
+        if (!$this->twigCurrentUserCaptured) {
+            $this->originalTwigCurrentUser = $twig->getGlobals()['currentUser'] ?? null;
+            $this->twigCurrentUserCaptured = true;
+        }
+        $twig->addGlobal('currentUser', $user);
     }
 
     private function webUserForCurrentIdentity(): \craft\web\User
@@ -937,9 +1515,35 @@ final class Pr138Pr140PermissionProjectionTest extends TestCase
     {
         $cache = is_array($this->originalConfigCache) ? $this->originalConfigCache : [];
         $cache['search-manager'] = [
+            'backends' => [
+                self::CONFIG_BACKEND => [
+                    'name' => 'Config Backend',
+                    'backendType' => 'file',
+                    'enabled' => true,
+                    'settings' => [],
+                ],
+                self::HOSTED_BACKEND => [
+                    'name' => 'Hosted Backend',
+                    'backendType' => 'algolia',
+                    'enabled' => true,
+                    'settings' => [],
+                ],
+            ],
             'indices' => [
                 self::CONFIG_INDEX => $this->configIndexDefinition('Config Index'),
+                self::HOSTED_INDEX => [
+                    ...$this->configIndexDefinition('Hosted Index'),
+                    'backend' => self::HOSTED_BACKEND,
+                ],
                 self::INDEX_COLLISION => $this->configIndexDefinition('Config Collision Index'),
+            ],
+            'widgets' => [
+                self::CONFIG_WIDGET => [
+                    'name' => 'Config Widget',
+                    'type' => 'modal',
+                    'enabled' => true,
+                    'settings' => WidgetConfig::defaultSettings(),
+                ],
             ],
             'widgetStyles' => [
                 self::CONFIG_STYLE => $this->configStyleDefinition('Config Style'),
@@ -1141,6 +1745,12 @@ final class Pr138Pr140PermissionProjectionTest extends TestCase
     {
         $db = Craft::$app->getDb();
         $db->createCommand()
+            ->delete('{{%searchmanager_pending_syncs}}', ['like', 'lastError', self::PREFIX . '%', false])
+            ->execute();
+        $db->createCommand()
+            ->delete('{{%searchmanager_api_keys}}', ['like', 'name', self::PREFIX . '%', false])
+            ->execute();
+        $db->createCommand()
             ->delete('{{%searchmanager_promotions}}', ['like', 'query', self::PREFIX . '%', false])
             ->execute();
         $db->createCommand()
@@ -1210,6 +1820,22 @@ final class Pr138SettingsController extends SettingsController
 }
 
 final class Pr138AnalyticsController extends AnalyticsController
+{
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    {
+        return Pr138ResponseFactory::captured($template, $variables);
+    }
+}
+
+final class Pr141ApiKeysController extends ApiKeysController
+{
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    {
+        return Pr138ResponseFactory::captured($template, $variables);
+    }
+}
+
+final class Pr141PendingSyncsController extends PendingSyncsController
 {
     public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
     {

@@ -19,6 +19,8 @@
     'prefix': 'Starts With'|t('search-manager'),
 } %}
 
+{% set hasAvailableRowActions = promotions|length > 0 and (canEdit or canCreate or canDelete) %}
+
 {% set tableConfig = {
     plugin: {
         handle: 'search-manager',
@@ -94,6 +96,7 @@
         itemLabel: {singular: 'promotion'|t('search-manager'), plural: 'promotions'|t('search-manager')},
     },
     checkboxes: canEdit or canDelete,
+    rowActions: hasAvailableRowActions,
     newButton: canCreate ?? false ? {
         url: url('search-manager/promotions/create'),
         label: 'New Promotion'|t('search-manager'),

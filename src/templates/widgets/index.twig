@@ -10,6 +10,8 @@
    validation, filter, sort, and pagination. This template stays
    presentational and just renders what's handed in. #}
 
+{% set hasAvailableRowActions = widgetConfigs|length > 0 %}
+
 {% set tableConfig = {
 	plugin: {
 		handle: 'search-manager',
@@ -100,6 +102,7 @@
 		itemLabel: {singular: 'config'|t('search-manager'), plural: 'configs'|t('search-manager')},
 	},
 	checkboxes: canEdit or canDelete,
+	rowActions: hasAvailableRowActions,
 	newButton: canCreate ?? false ? {
 		url: url('search-manager/widgets/new'),
 		label: 'New Widget Config'|t('search-manager'),

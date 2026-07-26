@@ -29,6 +29,8 @@
    TABLE CONFIGURATION
    ============================================================================ #}
 
+{% set hasAvailableRowActions = backends|length > 0 %}
+
 {% set tableConfig = {
     plugin: {
         handle: 'search-manager',
@@ -117,6 +119,7 @@
         itemLabel: {singular: 'backend'|t('search-manager'), plural: 'backends'|t('search-manager')},
     },
     checkboxes: canEdit or canDelete,
+    rowActions: hasAvailableRowActions,
     newButton: canCreate ? {
         url: url('search-manager/backends/new'),
         label: 'New Backend'|t('search-manager'),

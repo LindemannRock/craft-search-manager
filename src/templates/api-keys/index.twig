@@ -24,6 +24,8 @@
     {key: 'lastUsedAt', label: 'Last used'|t('search-manager'), sortable: true, hideable: true},
 ] %}
 
+{% set hasAvailableRowActions = keys|length > 0 and (canEdit or canRevoke) %}
+
 {% set tableConfig = {
     plugin: {
         handle: 'search-manager',
@@ -95,7 +97,7 @@
         label: 'New API Key'|t('search-manager'),
     } : null,
     checkboxes: canEdit or canRevoke,
-    rowActions: canEdit or canRevoke,
+    rowActions: hasAvailableRowActions,
 } %}
 
 {% block beforeTable %}

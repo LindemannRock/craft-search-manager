@@ -31,6 +31,8 @@
     {% set columns = columns|merge([{key: 'analytics', label: 'Analytics'|t('search-manager'), hideable: true}]) %}
 {% endif %}
 
+{% set hasAvailableRowActions = indices|length > 0 %}
+
 {% set tableConfig = {
     plugin: {
         handle: 'search-manager',
@@ -113,6 +115,7 @@
         itemLabel: {singular: 'index'|t('search-manager'), plural: 'indices'|t('search-manager')},
     },
     checkboxes: canEdit or canDelete,
+    rowActions: hasAvailableRowActions,
     newButton: canCreate ?? false ? {
         url: url('search-manager/indices/create'),
         label: 'New Index'|t('search-manager'),

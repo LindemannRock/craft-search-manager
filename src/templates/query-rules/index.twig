@@ -27,6 +27,8 @@
     'redirect': 'Redirect'|t('search-manager'),
 } %}
 
+{% set hasAvailableRowActions = rules|length > 0 and (canEdit or canCreate or canDelete) %}
+
 {% set tableConfig = {
     plugin: {
         handle: 'search-manager',
@@ -117,6 +119,7 @@
         itemLabel: {singular: 'rule'|t('search-manager'), plural: 'rules'|t('search-manager')},
     },
     checkboxes: canEdit or canDelete,
+    rowActions: hasAvailableRowActions,
     newButton: canCreate ?? false ? {
         url: url('search-manager/query-rules/create'),
         label: 'New Query Rule'|t('search-manager'),
