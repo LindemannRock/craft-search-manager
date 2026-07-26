@@ -55,16 +55,18 @@ final class MaintenanceStorageClearTest extends TestCase
     public function testDatabaseClearSurfacesCoverStorageLayerTables(): void
     {
         $maintenanceSource = file_get_contents(dirname(__DIR__, 2) . '/src/console/controllers/MaintenanceController.php');
-        $utilitiesSource = file_get_contents(dirname(__DIR__, 2) . '/src/controllers/UtilitiesController.php');
+        $utilitiesSource = file_get_contents(dirname(__DIR__, 2) . '/src/services/StorageMaintenanceService.php');
+        $utilitiesControllerSource = file_get_contents(dirname(__DIR__, 2) . '/src/controllers/UtilitiesController.php');
         $mysqlSource = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/MySqlStorage.php');
         $postgresSource = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/PostgreSqlStorage.php');
         self::assertIsString($maintenanceSource);
         self::assertIsString($utilitiesSource);
+        self::assertIsString($utilitiesControllerSource);
         self::assertIsString($mysqlSource);
         self::assertIsString($postgresSource);
 
         $maintenanceTables = self::tablesInMethod($maintenanceSource, 'databaseStorageTables');
-        $utilitiesTables = self::tablesInMethod($utilitiesSource, 'clearDatabaseStorage');
+        $utilitiesTables = self::tablesInMethod($utilitiesSource, 'databaseStorageTables');
         $mysqlTables = self::tablesInMethod($mysqlSource, 'clearAll');
         $postgresTables = self::tablesInMethod($postgresSource, 'clearAll');
 
@@ -74,6 +76,10 @@ final class MaintenanceStorageClearTest extends TestCase
         self::assertSame($mysqlTables, $utilitiesTables);
         self::assertSame($postgresTables, $maintenanceTables);
         self::assertSame($postgresTables, $utilitiesTables);
+        self::assertStringContainsString(
+            'storageMaintenance->databaseStorageTables()',
+            self::methodSource($utilitiesControllerSource, 'clearDatabaseStorage'),
+        );
     }
 
     public function testTypeOptionDocblockMatchesAcceptedStorageTypes(): void
@@ -88,23 +94,24 @@ final class MaintenanceStorageClearTest extends TestCase
     public function testDatabaseStatsSurfacesCountCompounds(): void
     {
         $maintenanceSource = file_get_contents(dirname(__DIR__, 2) . '/src/console/controllers/MaintenanceController.php');
-        $utilitiesSource = file_get_contents(dirname(__DIR__, 2) . '/src/controllers/UtilitiesController.php');
+        $utilitiesSource = file_get_contents(dirname(__DIR__, 2) . '/src/services/StorageMaintenanceService.php');
         self::assertIsString($maintenanceSource);
         self::assertIsString($utilitiesSource);
 
         foreach ([
             'console maintenance' => $maintenanceSource,
-            'CP utilities' => $utilitiesSource,
+            'CP Utilities projection' => $utilitiesSource,
         ] as $label => $source) {
             $methodSource = self::methodSource($source, 'getDatabaseStats');
 
-            self::assertStringContainsString('SELECT COUNT(*) FROM {{%searchmanager_search_compounds}}', $methodSource, $label);
             self::assertStringContainsString("'compoundRows' => \$compoundRows", $methodSource, $label);
             // [[...]]-bracketed so the identifier keeps its case on PostgreSQL.
             self::assertStringContainsString('SELECT [[indexHandle]] FROM {{%searchmanager_search_compounds}}', $methodSource, $label);
         }
 
-        self::assertStringContainsString("'totalRows' => \$documentRows + \$termRows + \$compoundRows", self::methodSource($utilitiesSource, 'getDatabaseStats'));
+        $utilitiesStats = self::methodSource($utilitiesSource, 'getDatabaseStats');
+        self::assertStringContainsString('foreach ($this->databaseStorageTables() as $table)', $utilitiesStats);
+        self::assertStringContainsString("'totalRows' => array_sum(\$tableRows)", $utilitiesStats);
     }
 
     public function testOrphanedStoragePurgeKeepsOtherPrefixesAndLiveHandles(): void

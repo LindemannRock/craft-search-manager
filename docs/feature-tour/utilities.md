@@ -30,7 +30,7 @@ Queues a rebuild of every configured index. Each index is cleared and re-indexed
 
 ### Clear storage by type
 
-Clear ALL search index data from a specific storage type. The dropdown shows three options:
+Clear ALL search index data from a specific local storage type. The dropdown only shows a storage type when Search Manager can safely reach it and either an effective configured backend uses it or clearable data remains there.
 
 | Storage Type | What It Clears |
 |---|---|
@@ -38,7 +38,7 @@ Clear ALL search index data from a specific storage type. The dropdown shows thr
 | **Redis** | All Search Manager keys (`sm:idx:*`) from the configured Redis database |
 | **File** | All index files from the default runtime path and configured File backend storage paths |
 
-Each option shows a live count (rows, keys, or files) loaded via AJAX.
+Each visible option shows its final storage name and current row, key, or file count when the page loads. A configured local backend remains visible when it is empty, including a disabled backend that still establishes storage ownership. An unconfigured type also remains visible when orphaned data can be cleared. Available but unconfigured and empty types are hidden, as are unavailable types that cannot be cleared safely.
 
 > [!NOTE]
 > Clear Storage only covers local storage types: Database, Redis, and File. External search backends run on shared provider accounts, and a matching index-name prefix does not prove Search Manager ownership. For Algolia, Meilisearch, and Typesense, rebuild or clear configured indices individually; delete old or renamed provider indices in the provider dashboard.
@@ -52,7 +52,7 @@ Each option shows a live count (rows, keys, or files) loaded via AJAX.
 - **Troubleshooting** — An index rebuild fails or produces stale results. Clear the storage type and rebuild fresh.
 - **Resetting a storage driver** — You want to wipe one storage driver completely before rebuilding the affected indices.
 
-The "Database" option automatically detects whether you're running MySQL or PostgreSQL and labels accordingly.
+The database option automatically detects whether you're running MySQL or PostgreSQL and labels itself accordingly. If no local storage type is currently eligible, the section shows a safe empty state with no clear action.
 
 ### Orphaned handles
 

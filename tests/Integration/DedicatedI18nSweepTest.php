@@ -120,10 +120,25 @@ final class DedicatedI18nSweepTest extends TestCase
     public function testUtilitiesStorageStatLabelsAreTranslated(): void
     {
         $util = $this->readPluginFile('src/templates/utilities/index.twig');
-        self::assertStringContainsString('var storageStrings = {', $util);
-        self::assertStringContainsString("rowsPlural: {{ '{count} rows'|t('search-manager')|json_encode|raw }}", $util);
-        self::assertStringContainsString("notConfigured: {{ 'Not configured'|t('search-manager')|json_encode|raw }}", $util);
-        // Raw English suffixes/labels are gone from the JS builder.
+        $service = $this->readPluginFile('src/services/StorageMaintenanceService.php');
+
+        foreach ([
+            'Database',
+            'File',
+            '{count} row',
+            '{count} rows',
+            '{count} key',
+            '{count} keys',
+            '{count} file',
+            '{count} files',
+        ] as $key) {
+            self::assertStringContainsString("Craft::t('search-manager', '{$key}'", $service);
+        }
+
+        // The server projection supplies final labels; JavaScript only installs
+        // the already-filtered rows returned by the shared endpoint.
+        self::assertStringContainsString('applyStorageOptions(response.storageOptions);', $util);
+        self::assertStringNotContainsString('var storageStrings = {', $util);
         self::assertStringNotContainsString("' rows)'", $util);
         self::assertStringNotContainsString("' keys)'", $util);
         self::assertStringNotContainsString("' (not configured)'", $util);

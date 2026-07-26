@@ -780,7 +780,8 @@ final class RedisStorageRegressionTest extends TestCase
     public function testRedisMaintenanceSurfacesDoNotContainBlockingKeysCalls(): void
     {
         foreach ([
-            'src/controllers/UtilitiesController.php' => ['clearRedisStorage', 'getRedisStats'],
+            'src/controllers/UtilitiesController.php' => ['clearRedisStorage'],
+            'src/services/StorageMaintenanceService.php' => ['getRedisStats'],
             'src/console/controllers/MaintenanceController.php' => ['clearRedisStorage', 'getRedisStats'],
         ] as $file => $methods) {
             $source = file_get_contents(dirname(__DIR__, 2) . '/' . $file);

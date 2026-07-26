@@ -73,6 +73,7 @@ use lindemannrock\searchmanager\services\NativeSearchCoverageService;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\services\SetupService;
+use lindemannrock\searchmanager\services\StorageMaintenanceService;
 use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\services\TransformerService;
@@ -106,6 +107,7 @@ use yii\base\Event;
  * @property-read PromotionService $promotions
  * @property-read QueryRuleService $queryRules
  * @property-read SetupService $setup
+ * @property-read StorageMaintenanceService $storageMaintenance
  * @property-read PendingSyncRepository $pendingSyncs
  * @property-read PendingSyncProcessor $pendingSyncProcessor
  * @property-read WidgetConfigService $widgetConfigs
@@ -349,6 +351,7 @@ class SearchManager extends Plugin
             'promotions' => PromotionService::class,
             'queryRules' => QueryRuleService::class,
             'setup' => SetupService::class,
+            'storageMaintenance' => StorageMaintenanceService::class,
             'transformers' => TransformerService::class,
             'widgetConfigs' => WidgetConfigService::class,
             'widgetStyles' => \lindemannrock\searchmanager\services\WidgetStyleService::class,

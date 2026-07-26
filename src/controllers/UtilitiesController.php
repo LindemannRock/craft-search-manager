@@ -9,13 +9,11 @@
 namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
-use craft\helpers\App;
 use craft\helpers\FileHelper;
 use craft\web\Controller;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
-use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\Response;
 
@@ -458,15 +456,12 @@ class UtilitiesController extends Controller
         $this->requireAcceptsJson();
 
         try {
-            $stats = [
-                'database' => $this->getDatabaseStats(),
-                'redis' => $this->getRedisStats(),
-                'file' => $this->getFileStats(),
-            ];
+            $projection = SearchManager::$plugin->storageMaintenance->getProjection();
 
             return $this->asJson([
                 'success' => true,
-                'stats' => $stats,
+                'stats' => $projection['stats'],
+                'storageOptions' => $projection['storageOptions'],
             ]);
         } catch (\Throwable $e) {
             $this->logError('Failed to get storage stats', [
@@ -485,17 +480,7 @@ class UtilitiesController extends Controller
      */
     private function clearDatabaseStorage(): array
     {
-        $tables = [
-            '{{%searchmanager_search_documents}}',
-            '{{%searchmanager_search_terms}}',
-            '{{%searchmanager_search_titles}}',
-            '{{%searchmanager_search_ngrams}}',
-            '{{%searchmanager_search_ngram_counts}}',
-            '{{%searchmanager_search_metadata}}',
-            '{{%searchmanager_search_elements}}',
-            '{{%searchmanager_search_compounds}}',
-        ];
-
+        $tables = SearchManager::$plugin->storageMaintenance->databaseStorageTables();
         $db = Craft::$app->getDb();
         $driverName = $db->getDriverName();
         $driverLabel = $driverName === 'pgsql' ? 'PostgreSQL' : 'MySQL';
@@ -536,7 +521,8 @@ class UtilitiesController extends Controller
             ];
         }
 
-        $config = $this->getRedisConfig();
+        $storageMaintenance = SearchManager::$plugin->storageMaintenance;
+        $config = $storageMaintenance->getRedisConfig();
 
         if (empty($config['host'])) {
             return [
@@ -545,24 +531,11 @@ class UtilitiesController extends Controller
             ];
         }
 
-        $redis = new \Redis();
-
         try {
-            $host = $this->resolveEnvVar($config['host'], '127.0.0.1');
-            $port = (int)$this->resolveEnvVar($config['port'], 6379);
-            $password = $this->resolveEnvVar($config['password'], null);
-            $database = (int)$this->resolveEnvVar($config['database'], 0);
-
-            $redis->connect($host, $port);
-
-            if ($password) {
-                $redis->auth($password);
-            }
-
-            $redis->select($database);
+            $redis = $storageMaintenance->connectRedis($config);
 
             // Find all Search Manager keys without blocking Redis like KEYS does.
-            $keys = $this->scanRedisKeys($redis, 'sm:idx:*');
+            $keys = $storageMaintenance->scanRedisKeys($redis, 'sm:idx:*');
             $deletedKeys = 0;
 
             if (!empty($keys)) {
@@ -606,7 +579,7 @@ class UtilitiesController extends Controller
                 continue;
             }
 
-            $fileCount = $this->countFilesInDirectory($indicesPath);
+            $fileCount = SearchManager::$plugin->storageMaintenance->countFilesInDirectory($indicesPath);
             FileHelper::removeDirectory($indicesPath);
 
             $deletedFilesTotal += $fileCount;
@@ -631,243 +604,6 @@ class UtilitiesController extends Controller
             ]),
             'deletedFiles' => $deletedFilesTotal,
         ];
-    }
-
-    /**
-     * Get database storage statistics (MySQL or PostgreSQL)
-     */
-    private function getDatabaseStats(): array
-    {
-        try {
-            $db = Craft::$app->getDb();
-            $driverName = $db->getDriverName();
-            $driverLabel = $driverName === 'pgsql' ? 'PostgreSQL' : 'MySQL';
-
-            $documentRows = (int)$db->createCommand(
-                'SELECT COUNT(*) FROM {{%searchmanager_search_documents}}'
-            )->queryScalar();
-
-            $termRows = (int)$db->createCommand(
-                'SELECT COUNT(*) FROM {{%searchmanager_search_terms}}'
-            )->queryScalar();
-
-            $compoundRows = (int)$db->createCommand(
-                'SELECT COUNT(*) FROM {{%searchmanager_search_compounds}}'
-            )->queryScalar();
-
-            $indexHandles = $db->createCommand(
-                'SELECT DISTINCT [[indexHandle]] FROM (
-                    SELECT [[indexHandle]] FROM {{%searchmanager_search_documents}}
-                    UNION
-                    SELECT [[indexHandle]] FROM {{%searchmanager_search_compounds}}
-                ) storage_index_handles
-                ORDER BY [[indexHandle]]'
-            )->queryColumn();
-
-            return [
-                'available' => true,
-                'driver' => $driverName,
-                'driverLabel' => $driverLabel,
-                'documentRows' => $documentRows,
-                'termRows' => $termRows,
-                'compoundRows' => $compoundRows,
-                'indexHandles' => $indexHandles,
-                'totalRows' => $documentRows + $termRows + $compoundRows,
-            ];
-        } catch (\Throwable $e) {
-            $this->logError('Failed to get database storage stats', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return [
-                'available' => false,
-                'error' => Craft::$app->getConfig()->getGeneral()->devMode
-                    ? $e->getMessage()
-                    : Craft::t('search-manager', 'Failed to get storage statistics'),
-            ];
-        }
-    }
-
-    /**
-     * Get Redis storage statistics
-     */
-    private function getRedisStats(): array
-    {
-        if (!class_exists('\Redis')) {
-            return [
-                'available' => false,
-                'status' => 'extension_not_installed',
-            ];
-        }
-
-        $config = $this->getRedisConfig();
-
-        if (empty($config['host'])) {
-            return [
-                'available' => false,
-                'status' => 'not_configured',
-            ];
-        }
-
-        try {
-            $redis = new \Redis();
-
-            $host = $this->resolveEnvVar($config['host'], '127.0.0.1');
-            $port = (int)$this->resolveEnvVar($config['port'], 6379);
-            $password = $this->resolveEnvVar($config['password'], null);
-            $database = (int)$this->resolveEnvVar($config['database'], 0);
-
-            $redis->connect($host, $port);
-
-            if ($password) {
-                $redis->auth($password);
-            }
-
-            $redis->select($database);
-
-            $keys = $this->scanRedisKeys($redis, 'sm:idx:*');
-
-            return [
-                'available' => true,
-                'status' => 'connected',
-                'keyCount' => count($keys),
-            ];
-        } catch (\Throwable $e) {
-            $this->logError('Failed to get Redis storage stats', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return [
-                'available' => false,
-                'status' => 'connection_failed',
-                'error' => Craft::$app->getConfig()->getGeneral()->devMode
-                    ? $e->getMessage()
-                    : Craft::t('search-manager', 'Failed to get storage statistics'),
-            ];
-        }
-    }
-
-    /**
-     * Get file storage statistics
-     */
-    private function getFileStats(): array
-    {
-        $indexCount = 0;
-        $fileCount = 0;
-
-        foreach (FileBackendStoragePathHelper::configuredBasePaths() as $indicesPath) {
-            if (!is_dir($indicesPath)) {
-                continue;
-            }
-
-            $indexDirs = glob($indicesPath . '/*', GLOB_ONLYDIR);
-            $indexCount += count($indexDirs ?: []);
-            $fileCount += $this->countFilesInDirectory($indicesPath);
-        }
-
-        return [
-            'available' => true,
-            'indexCount' => $indexCount,
-            'fileCount' => $fileCount,
-        ];
-    }
-
-    /**
-     * Get Redis configuration from settings
-     * Looks for any configured backend with backendType 'redis'
-     */
-    private function getRedisConfig(): array
-    {
-        // First try to get from ConfiguredBackend model (handles both config and database)
-        $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
-
-        foreach ($backends as $backend) {
-            if ($backend->backendType === 'redis' && $backend->enabled) {
-                return RedisConnectionHelper::storageSettings($backend->settings ?? []);
-            }
-        }
-
-        // Fallback: try to read directly from config file
-        try {
-            $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
-
-            if (isset($config['backends'])) {
-                foreach ($config['backends'] as $backendConfig) {
-                    if (($backendConfig['backendType'] ?? '') === 'redis' && ($backendConfig['enabled'] ?? false)) {
-                        return RedisConnectionHelper::storageSettings($backendConfig['settings'] ?? []);
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            // Ignore config errors
-        }
-
-        return [];
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function scanRedisKeys(\Redis $redis, string $pattern, int $count = 1000): array
-    {
-        $keys = [];
-        $iterator = null;
-
-        do {
-            $batch = $redis->scan($iterator, $pattern, $count);
-            if ($batch !== false) {
-                foreach ($batch as $key) {
-                    $keys[] = (string)$key;
-                }
-            }
-        } while ((int)$iterator > 0);
-
-        return $keys;
-    }
-
-    /**
-     * Count files recursively in a directory
-     */
-    private function countFilesInDirectory(string $dir): int
-    {
-        if (!is_dir($dir)) {
-            return 0;
-        }
-
-        $count = 0;
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::LEAVES_ONLY
-        );
-
-        foreach ($iterator as $file) {
-            if ($file->isFile()) {
-                $count++;
-            }
-        }
-
-        return $count;
-    }
-
-    /**
-     * Resolve environment variable
-     *
-     * @param mixed $value Config value
-     * @param mixed $default Default value
-     * @return mixed Resolved value
-     */
-    private function resolveEnvVar(mixed $value, mixed $default): mixed
-    {
-        if ($value === null || $value === '') {
-            return $default;
-        }
-
-        if (is_string($value) && str_starts_with($value, '$')) {
-            $envVarName = ltrim($value, '$');
-            return App::env($envVarName) ?? $default;
-        }
-
-        return $value;
     }
 
     /**

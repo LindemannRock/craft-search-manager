@@ -196,7 +196,7 @@ final class ControllerMessageI18nTest extends TestCase
         self::assertStringNotContainsString("Craft::t('search-manager', 'Redis connection failed: {error}'", $clearRedisStorage);
 
         foreach (['getDatabaseStats' => 'database', 'getRedisStats' => 'Redis'] as $method => $label) {
-            $methodBody = $this->controllerMethodBody('UtilitiesController.php', $method);
+            $methodBody = $this->sourceMethodBody('src/services/StorageMaintenanceService.php', $method);
             self::assertStringContainsString("\$this->logError('Failed to get {$label} storage stats'", $methodBody);
             self::assertStringContainsString("'error' => Craft::\$app->getConfig()->getGeneral()->devMode", $methodBody);
             self::assertStringContainsString(": Craft::t('search-manager', 'Failed to get storage statistics')", $methodBody);
@@ -226,7 +226,12 @@ final class ControllerMessageI18nTest extends TestCase
 
     private function controllerMethodBody(string $filename, string $method): string
     {
-        $source = file_get_contents(dirname(__DIR__, 2) . '/src/controllers/' . $filename);
+        return $this->sourceMethodBody('src/controllers/' . $filename, $method);
+    }
+
+    private function sourceMethodBody(string $relativePath, string $method): string
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/' . $relativePath);
         $this->assertIsString($source);
 
         preg_match(

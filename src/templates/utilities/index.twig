@@ -181,16 +181,13 @@
 
                 <p class="light" style="margin-bottom: 12px;">{{ "Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting."|t('search-manager') }}</p>
 
-                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                {% if storageOptions is not empty %}
+                <div id="storage-clear-controls" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     {{ forms.select({
                         id: 'storage-type-select',
                         name: 'storageType',
-                        options: [
-                            {label: 'Database'|t('search-manager') ~ ' (' ~ 'Loading...'|t('search-manager') ~ ')', value: 'database'},
-                            {label: 'Redis (' ~ 'Loading...'|t('search-manager') ~ ')', value: 'redis'},
-                            {label: 'File'|t('search-manager') ~ ' (' ~ 'Loading...'|t('search-manager') ~ ')', value: 'file'},
-                        ],
-                        value: 'database',
+                        options: storageOptions,
+                        value: storageOptions[0].value,
                     }) }}
 
                     <button type="button" class="btn secondary" id="clear-storage-by-type">
@@ -198,7 +195,9 @@
                         <span class="spinner clear-storage-spinner hidden" aria-hidden="true"></span>
                     </button>
                 </div>
+                {% endif %}
 
+                <p id="storage-clear-empty" class="light{% if storageOptions is not empty %} hidden{% endif %}">{{ "No data available"|t('search-manager') }}</p>
                 <p id="clear-storage-status" class="light hidden" aria-live="polite" style="margin-top: 12px;"></p>
 
                 {% include 'lindemannrock-base/_components/info-box' with {
@@ -287,20 +286,27 @@
 {% block scripts %}
 {% js %}
 {% if hasIndexManagement %}
-// Load storage stats and update dropdown options
-// Pre-translated storage-stat strings (counts use explicit singular/plural keys).
-var storageStrings = {
-    database: {{ 'Database'|t('search-manager')|json_encode|raw }},
-    file: {{ 'File'|t('search-manager')|json_encode|raw }},
-    notConfigured: {{ 'Not configured'|t('search-manager')|json_encode|raw }},
-    notAvailable: {{ 'N/A'|t('search-manager')|json_encode|raw }},
-    rowsSingular: {{ '{count} row'|t('search-manager')|json_encode|raw }},
-    rowsPlural: {{ '{count} rows'|t('search-manager')|json_encode|raw }},
-    keysSingular: {{ '{count} key'|t('search-manager')|json_encode|raw }},
-    keysPlural: {{ '{count} keys'|t('search-manager')|json_encode|raw }},
-    filesSingular: {{ '{count} file'|t('search-manager')|json_encode|raw }},
-    filesPlural: {{ '{count} files'|t('search-manager')|json_encode|raw }},
-};
+function applyStorageOptions(options) {
+    var $select = $('#storage-type-select');
+    var currentValue = $select.val();
+    $select.empty();
+
+    options.forEach(function(option) {
+        $('<option>').val(option.value).text(option.label).appendTo($select);
+    });
+
+    var hasOptions = options.length > 0;
+    $('#storage-clear-controls').toggleClass('hidden', !hasOptions);
+    $('#storage-clear-empty').toggleClass('hidden', hasOptions);
+    $('#clear-storage-by-type').prop('disabled', !hasOptions);
+
+    if (hasOptions) {
+        var valueStillExists = options.some(function(option) {
+            return option.value === currentValue;
+        });
+        $select.val(valueStillExists ? currentValue : options[0].value);
+    }
+}
 
 function loadStorageStats() {
     $.ajax({
@@ -309,51 +315,12 @@ function loadStorageStats() {
         dataType: 'json',
         data: { [{{ craft.app.config.general.csrfTokenName|json_encode|raw }}]: {{ craft.app.request.csrfToken|json_encode|raw }} },
         success: function(response) {
-            if (response.success && response.stats) {
-                var $select = $('#storage-type-select');
-                var currentVal = $select.val();
-
-                // Database (MySQL or PostgreSQL)
-                var dbLabel = storageStrings.database;
-                if (response.stats.database && response.stats.database.driverLabel) {
-                    dbLabel = response.stats.database.driverLabel;
-                }
-                var dbText = dbLabel;
-                if (response.stats.database && response.stats.database.available) {
-                    var dbRows = response.stats.database.totalRows;
-                    dbText += ' (' + (dbRows === 1 ? storageStrings.rowsSingular : storageStrings.rowsPlural).replace('{count}', dbRows.toLocaleString()) + ')';
-                }
-                $select.find('option[value="database"]').text(dbText);
-
-                // Redis
-                var redisText = 'Redis';
-                if (response.stats.redis && response.stats.redis.available) {
-                    var redisKeys = response.stats.redis.keyCount;
-                    redisText += ' (' + (redisKeys === 1 ? storageStrings.keysSingular : storageStrings.keysPlural).replace('{count}', redisKeys.toLocaleString()) + ')';
-                } else if (response.stats.redis && response.stats.redis.status === 'not_configured') {
-                    redisText += ' (' + storageStrings.notConfigured + ')';
-                } else if (response.stats.redis && response.stats.redis.status === 'extension_not_installed') {
-                    redisText += ' (' + storageStrings.notAvailable + ')';
-                }
-                $select.find('option[value="redis"]').text(redisText);
-
-                // File
-                var fileText = storageStrings.file;
-                if (response.stats.file && response.stats.file.available) {
-                    var fileCount = response.stats.file.fileCount;
-                    fileText += ' (' + (fileCount === 1 ? storageStrings.filesSingular : storageStrings.filesPlural).replace('{count}', fileCount.toLocaleString()) + ')';
-                }
-                $select.find('option[value="file"]').text(fileText);
-
-                $select.val(currentVal);
+            if (response.success && Array.isArray(response.storageOptions)) {
+                applyStorageOptions(response.storageOptions);
             }
         }
     });
 }
-
-$(document).ready(function() {
-    loadStorageStats();
-});
 
 // Clear storage by type handler
 $('#clear-storage-by-type').on('click', function() {
