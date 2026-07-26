@@ -247,14 +247,14 @@
 {% block rowActions %}
     {% set isDefault = defaultBackendHandle == item.handle %}
     {% set itemId = item.id ?: item.handle %}
+    {% set canEditItem = canEdit and item.canEdit() %}
 
     {% set actionItems = [] %}
 
-    {% if item.canEdit() %}
+    {% if canEditItem %}
         {% set actionItems = actionItems|merge([{
             label: 'Edit'|t('search-manager'),
             url: url('search-manager/backends/' ~ item.id),
-            permission: 'searchManager:editBackends',
         }]) %}
     {% else %}
         {% set actionItems = actionItems|merge([{
@@ -310,9 +310,11 @@
    ============================================================================ #}
 
 {% block tableRow %}
+    {% set canEditItem = canEdit and item.canEdit() %}
+
     {# Name #}
     <td>
-        {% if item.canEdit() %}
+        {% if canEditItem %}
             <a class="label-link" href="{{ url('search-manager/backends/' ~ item.id) }}">
                 <span>{{ item.name }}</span>
             </a>
@@ -320,6 +322,8 @@
             <a class="label-link" href="{{ url('search-manager/backends/view/' ~ item.handle) }}">
                 <span>{{ item.name }}</span>
             </a>
+        {% endif %}
+        {% if item.isFromConfig() %}
             <span class="lr-config-info-icon" data-config="{{ item.rawConfigDisplay|e('html_attr') }}" data-config-source="config/search-manager.php"></span>
         {% endif %}
     </td>

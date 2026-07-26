@@ -241,7 +241,6 @@ return [
     'Could not retrieve document count from backend (permission issue)' => 'تعذر استرداد عدد المستندات من الواجهة الخلفية (مشكلة إذن)',
     'Settings saved' => 'تم حفظ الإعدادات',
     'Could not save settings' => 'تعذّر حفظ الإعدادات',
-    'Failed to save settings' => 'فشل في حفظ الإعدادات',
     'Index saved' => 'تم حفظ الفهرس',
     'Could not save index' => 'تعذر حفظ الفهرس',
     'Index deleted' => 'تم حذف الفهرس',

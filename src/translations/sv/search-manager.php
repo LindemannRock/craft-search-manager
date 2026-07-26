@@ -241,7 +241,6 @@ return [
     'Could not retrieve document count from backend (permission issue)' => 'Kunde inte hämta dokumentantal från backend (behörighetsproblem)',
     'Settings saved' => 'Inställningar sparade',
     'Could not save settings' => 'Det gick inte att spara inställningarna',
-    'Failed to save settings' => 'Misslyckades att spara inställningar',
     'Index saved' => 'Index sparat',
     'Could not save index' => 'Kunde inte spara index',
     'Index deleted' => 'Index raderat',

@@ -67,7 +67,7 @@ Widget behavior can be controlled in three ways:
 2. **Config file** — define widget configs in `config/search-manager.php`
 3. **Twig parameters** — override per-include
 
-A widget config referenced without a `configHandle` falls back to the **default widget**, set via `defaultWidgetHandle` in config or CP settings. If the default widget is deleted, another enabled widget is automatically assigned.
+A widget config referenced without a `configHandle` falls back to the **default widget**, set via `defaultWidgetHandle` in config or CP settings. The active default cannot be deleted; select another default first. When a database-managed default is empty, missing, or disabled, creating or saving a widget assigns the first enabled widget. Config-file defaults remain authoritative.
 
 See [Widget Configuration](configuration.md) for all parameters.
 

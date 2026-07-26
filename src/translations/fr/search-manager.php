@@ -241,7 +241,6 @@ return [
     'Could not retrieve document count from backend (permission issue)' => 'Impossible de récupérer le nombre de documents depuis le backend (problème de permission)',
     'Settings saved' => 'Paramètres sauvegardés',
     'Could not save settings' => 'Impossible d\'enregistrer les paramètres',
-    'Failed to save settings' => 'Échec de la sauvegarde des paramètres',
     'Index saved' => 'Index sauvegardé',
     'Could not save index' => 'Impossible de sauvegarder l\'index',
     'Index deleted' => 'Index supprimé',

@@ -460,38 +460,7 @@ class WidgetConfigService extends Component
             return false;
         }
 
-        // Check if this is the default widget
-        $plugin = \lindemannrock\searchmanager\SearchManager::getInstance();
-        $settings = $plugin?->getSettings();
-        $isDefault = $settings?->defaultWidgetHandle === $config->handle;
-
-        // Do not remove the last enabled effective widget. Config-file widgets
-        // count as alternatives, but are never deleted by this DB path.
-        if ($config->enabled && !$this->hasEnabledConfigAfterDelete($config)) {
-            $this->logWarning('Cannot delete the only widget config');
-            return false;
-        }
-
-        Craft::$app->db->createCommand()
-            ->delete(self::TABLE, ['id' => $config->id])
-            ->execute();
-
-        // If we deleted the default, set another widget as the default
-        if ($isDefault && $settings !== null) {
-            $first = $this->getFirstEnabledHandle();
-            if ($first !== null) {
-                $settings->defaultWidgetHandle = $first;
-                $settings->saveToDatabase();
-                $this->logInfo('Set new default widget after deletion', ['handle' => $first]);
-            }
-        }
-
-        // Clear cache
-        $this->_defaultConfig = null;
-
-        $this->logInfo('Widget config deleted', ['handle' => $config->handle]);
-
-        return true;
+        return $this->deleteById($config->id);
     }
 
     /**
@@ -505,7 +474,30 @@ class WidgetConfigService extends Component
             return false;
         }
 
-        return $this->delete($config);
+        $plugin = \lindemannrock\searchmanager\SearchManager::getInstance();
+        $settings = $plugin?->getSettings();
+        if ($settings?->defaultWidgetHandle === $config->handle) {
+            $this->logWarning('Cannot delete the default widget', ['handle' => $config->handle]);
+            return false;
+        }
+
+        // Do not remove the last enabled effective widget. Config-file widgets
+        // count as alternatives, but are never deleted by this DB path.
+        if ($config->enabled && !$this->hasEnabledConfigAfterDelete($config)) {
+            $this->logWarning('Cannot delete the only widget config');
+            return false;
+        }
+
+        Craft::$app->db->createCommand()
+            ->delete(self::TABLE, ['id' => $config->id])
+            ->execute();
+
+        // Clear cache
+        $this->_defaultConfig = null;
+
+        $this->logInfo('Widget config deleted', ['handle' => $config->handle]);
+
+        return true;
     }
 
     /**
@@ -522,15 +514,6 @@ class WidgetConfigService extends Component
         }
 
         return false;
-    }
-
-    /**
-     * Get the first enabled effective widget handle after a delete.
-     */
-    private function getFirstEnabledHandle(): ?string
-    {
-        $first = $this->getAll(true)[0] ?? null;
-        return $first?->handle;
     }
 
     // =========================================================================

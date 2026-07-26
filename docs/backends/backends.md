@@ -110,7 +110,7 @@ Set your default backend via `defaultBackendHandle`:
 ],
 ```
 
-If the default backend is deleted, another enabled backend is automatically assigned. The Control Panel prevents disabling the default backend — assign a different default first. Disabling a config-defined default directly in `config/search-manager.php` bypasses that check and leaves the plugin without an active backend, so switch `defaultBackendHandle` first.
+The active default backend cannot be deleted or disabled — select another default first. This guard also applies to direct model deletion, so code cannot bypass the Control Panel check. When you create or save a backend while the database-managed default is empty, missing, or disabled, Search Manager assigns the first enabled backend deterministically. A `defaultBackendHandle` set in `config/search-manager.php` remains authoritative and cannot be changed in the Control Panel.
 
 ## Multiple backends
 

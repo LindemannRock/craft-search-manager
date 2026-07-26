@@ -241,7 +241,6 @@ return [
     'Could not retrieve document count from backend (permission issue)' => 'Kunne ikke hente dokumentantal fra backend (tilladelsesproblem)',
     'Settings saved' => 'Indstillinger gemt',
     'Could not save settings' => 'Kunne ikke gemme indstillingerne',
-    'Failed to save settings' => 'Kunne ikke gemme indstillinger',
     'Index saved' => 'Indeks gemt',
     'Could not save index' => 'Kunne ikke gemme indeks',
     'Index deleted' => 'Indeks slettet',

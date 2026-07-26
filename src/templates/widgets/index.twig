@@ -200,10 +200,11 @@
 
 {% block tableRow %}
 	{% set isDefault = defaultWidgetHandle == item.handle %}
+	{% set canEditItem = canEdit and item.canEdit() %}
 
 	{# Name #}
 	<td data-column="name">
-		{% if item.canEdit() %}
+		{% if canEditItem %}
 			<a class="label-link" href="{{ url('search-manager/widgets/edit/' ~ item.id) }}">
 				<span>{{ item.name }}</span>
 			</a>
@@ -211,6 +212,8 @@
 			<a class="label-link" href="{{ url('search-manager/widgets/view/' ~ item.handle) }}">
 				<span>{{ item.name }}</span>
 			</a>
+		{% endif %}
+		{% if item.isFromConfig() %}
 			<span class="lr-config-info-icon" data-config="{{ item.rawConfigDisplay|e('html_attr') }}" data-config-source="config/search-manager.php"></span>
 		{% endif %}
 	</td>
@@ -264,27 +267,26 @@
 
 {% block rowActions %}
 	{% set isDefault = defaultWidgetHandle == item.handle %}
+	{% set canEditItem = canEdit and item.canEdit() %}
 	{% set actionItems = [] %}
 
-	{% if item.canEdit() %}
-		{% if canEdit %}
+	{% if canEditItem %}
+		{% set actionItems = actionItems|merge([{
+			label: 'Edit'|t('search-manager'),
+			url: url('search-manager/widgets/edit/' ~ item.id),
+		}]) %}
+		{% if canCreate %}
 			{% set actionItems = actionItems|merge([{
-				label: 'Edit'|t('search-manager'),
-				url: url('search-manager/widgets/edit/' ~ item.id),
+				label: 'Duplicate'|t('search-manager'),
+				jsAction: 'duplicate',
 			}]) %}
-			{% if canCreate %}
-				{% set actionItems = actionItems|merge([{
-					label: 'Duplicate'|t('search-manager'),
-					jsAction: 'duplicate',
-				}]) %}
-			{% endif %}
-			{% if not isDefault and not isDefaultFromConfig %}
-				{% set actionItems = actionItems|merge([{
-					label: 'Set as Default'|t('search-manager'),
-					jsAction: 'set-default',
-					data: {name: item.name},
-				}]) %}
-			{% endif %}
+		{% endif %}
+		{% if not isDefault and not isDefaultFromConfig %}
+			{% set actionItems = actionItems|merge([{
+				label: 'Set as Default'|t('search-manager'),
+				jsAction: 'set-default',
+				data: {name: item.name},
+			}]) %}
 		{% endif %}
 		{% if canDelete and not isDefault %}
 			{% set actionItems = actionItems|merge([

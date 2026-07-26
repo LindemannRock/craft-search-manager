@@ -241,7 +241,6 @@ return [
     'Could not retrieve document count from backend (permission issue)' => 'Kunne ikke hente dokumentantall fra backend (tillatelsesproblem)',
     'Settings saved' => 'Innstillinger lagret',
     'Could not save settings' => 'Kunne ikke lagre innstillingene',
-    'Failed to save settings' => 'Mislyktes å lagre innstillinger',
     'Index saved' => 'Indeks lagret',
     'Could not save index' => 'Kunne ikke lagre indeks',
     'Index deleted' => 'Indeks slettet',

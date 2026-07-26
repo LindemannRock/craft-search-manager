@@ -86,37 +86,6 @@ class WidgetsController extends Controller
             }
         }
 
-        // Auto-assign default if needed (only if not set via config file).
-        // Runs against the unfiltered list, not the filtered subset.
-        if (!$this->isDefaultWidgetFromConfig()) {
-            $defaultHandle = $settings->defaultWidgetHandle;
-            $needsReassign = false;
-
-            if (empty($defaultHandle)) {
-                $needsReassign = true;
-            } else {
-                $existingDefault = SearchManager::$plugin->widgetConfigs->getByHandle($defaultHandle);
-                if (!$existingDefault || !$existingDefault->enabled) {
-                    $needsReassign = true;
-                }
-            }
-
-            if ($needsReassign && $hasAnyWidgets) {
-                foreach ($widgetConfigs as $widget) {
-                    if ($widget->enabled) {
-                        $settings->defaultWidgetHandle = $widget->handle;
-                        $settings->saveToDatabase();
-
-                        $this->logInfo('Auto-assigned default widget', [
-                            'handle' => $widget->handle,
-                            'reason' => empty($defaultHandle) ? 'no default set' : 'previous default invalid',
-                        ]);
-                        break;
-                    }
-                }
-            }
-        }
-
         // ---- Param parsing + allowlist validation -------------------------
 
         $statusFilter = (string) $request->getQueryParam('status', 'all');
@@ -244,7 +213,7 @@ class WidgetsController extends Controller
     }
 
     /**
-     * View a widget configuration (read-only, for config widgets)
+     * View a widget configuration (read-only, for config and database widgets)
      *
      * @param string|null $handle Widget handle
      */
@@ -450,33 +419,22 @@ class WidgetsController extends Controller
         // Handle "Set as Default" toggle (only if not set via config)
         $isDefault = BooleanHelper::normalize($request->getBodyParam('isDefault'), false);
         if ($isDefault && !$this->isDefaultWidgetFromConfig()) {
-            if ($pluginSettings->defaultWidgetHandle !== $widgetConfig->handle) {
-                $pluginSettings->defaultWidgetHandle = $widgetConfig->handle;
-                $pluginSettings->saveToDatabase();
-
-                $this->logInfo('Default widget changed', [
-                    'handle' => $widgetConfig->handle,
-                    'name' => $widgetConfig->name,
-                ]);
+            if (!$this->assignDefaultWidget($widgetConfig, 'Default widget changed')) {
+                return $this->widgetSaveResponse(
+                    $widgetConfig,
+                    Craft::t('search-manager', 'Failed to update default widget'),
+                );
             }
         }
 
-        // Auto-set as default if no default is set and this widget is enabled
-        if (!$this->isDefaultWidgetFromConfig()) {
-            if (empty($pluginSettings->defaultWidgetHandle) && $widgetConfig->enabled) {
-                $pluginSettings->defaultWidgetHandle = $widgetConfig->handle;
-                $pluginSettings->saveToDatabase();
-
-                $this->logInfo('Auto-set default widget (first enabled widget)', [
-                    'handle' => $widgetConfig->handle,
-                    'name' => $widgetConfig->name,
-                ]);
-            }
+        if (!$this->ensureDefaultWidget()) {
+            return $this->widgetSaveResponse(
+                $widgetConfig,
+                Craft::t('search-manager', 'Failed to update default widget'),
+            );
         }
 
-        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Widget config saved'));
-
-        return $this->redirectToPostedUrl($widgetConfig);
+        return $this->widgetSaveResponse($widgetConfig);
     }
 
     /**
@@ -604,21 +562,12 @@ class WidgetsController extends Controller
             return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Widget config not found')]);
         }
 
-        // Update the default widget handle in plugin settings
-        $settings = SearchManager::$plugin->getSettings();
-        $settings->defaultWidgetHandle = $widgetConfig->handle;
-
-        if (!$settings->saveToDatabase()) {
+        if (!$this->assignDefaultWidget($widgetConfig, 'Default widget changed')) {
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to save settings'),
+                'error' => Craft::t('search-manager', 'Failed to update default widget'),
             ]);
         }
-
-        $this->logInfo('Default widget changed', [
-            'handle' => $widgetConfig->handle,
-            'name' => $widgetConfig->name,
-        ]);
 
         return $this->asJson([
             'success' => true,
@@ -1263,6 +1212,79 @@ class WidgetsController extends Controller
     private function isDefaultWidgetFromConfig(): bool
     {
         return SearchManager::$plugin->getSettings()->isOverriddenByConfig('defaultWidgetHandle');
+    }
+
+    /**
+     * Persist one widget as the default and log only after a successful write.
+     */
+    protected function assignDefaultWidget(WidgetConfig $widget, string $logMessage): bool
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        if ($settings->defaultWidgetHandle === $widget->handle) {
+            return true;
+        }
+
+        $previousHandle = $settings->defaultWidgetHandle;
+        $settings->defaultWidgetHandle = $widget->handle;
+
+        if (!$settings->saveToDatabase(['defaultWidgetHandle'])) {
+            $settings->defaultWidgetHandle = $previousHandle;
+            return false;
+        }
+
+        $this->logInfo($logMessage, [
+            'handle' => $widget->handle,
+            'name' => $widget->name,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Assign the deterministic first enabled widget when the saved state has
+     * no usable default.
+     */
+    protected function ensureDefaultWidget(): bool
+    {
+        if ($this->isDefaultWidgetFromConfig()) {
+            return true;
+        }
+
+        $settings = SearchManager::$plugin->getSettings();
+        $default = $settings->defaultWidgetHandle !== null
+            ? SearchManager::$plugin->widgetConfigs->getByHandle($settings->defaultWidgetHandle)
+            : null;
+        if ($default?->enabled) {
+            return true;
+        }
+
+        foreach (SearchManager::$plugin->widgetConfigs->getAll() as $widget) {
+            if ($widget->enabled) {
+                return $this->assignDefaultWidget(
+                    $widget,
+                    'Auto-set default widget (first enabled widget)',
+                );
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Return the post-save response without reporting success after a failed
+     * default-settings write.
+     */
+    protected function widgetSaveResponse(WidgetConfig $widget, ?string $error = null): Response
+    {
+        if ($error !== null) {
+            Craft::$app->getSession()->setError($error);
+        } else {
+            Craft::$app->getSession()->setNotice(
+                Craft::t('search-manager', 'Widget config saved')
+            );
+        }
+
+        return $this->redirectToPostedUrl($widget);
     }
 
     /**

@@ -45,7 +45,7 @@
 			{% set backendOptions = [{ label: 'Select a default backend...'|t('search-manager'), value: '' }] %}
 			{% for backend in enabledBackends %}
 				{% set backendOptions = backendOptions|merge([{
-					label: backend.name ~ ' (' ~ backend.getTypeLabel() ~ ')',
+					label: backend.getChoiceLabel(),
 					value: backend.handle
 				}]) %}
 			{% endfor %}

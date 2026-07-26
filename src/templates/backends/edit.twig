@@ -2,7 +2,8 @@
 {% import "_includes/forms" as forms %}
 {% do view.registerAssetBundle('lindemannrock\\base\\web\\assets\\components\\ComponentsAsset') %}
 
-{% set canEdit = backend.canEdit() ?? true %}
+{% set readOnlyView = readOnly ?? false %}
+{% set canEdit = not readOnlyView and (backend.canEdit() ?? true) %}
 {% set title = isNew ? 'New Backend'|t('search-manager') : backend.name %}
 {% set selectedSubnavItem = 'backends' %}
 {% set fullPageForm = canEdit %}
@@ -27,7 +28,7 @@
         } %}
 		{% set selectedTab = 'settings' %}
 	{% else %}
-		{# Config backends only show diagnostics #}
+		{# Read-only views only show diagnostics #}
 		{% set tabs = {
             diagnostics: { label: "Diagnostics"|t('search-manager'), url: '#diagnostics' }
         } %}
@@ -418,10 +419,10 @@ setTimeout(updateActionButton, 10);
                 }) }}
 				{% endif %}
 			{% else %}
-				{# Config backend - show as read-only #}
+				{# Read-only view #}
 				{{ forms.lightswitchField({
 					label: 'Enabled'|t('search-manager'),
-					instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+					instructions: backend.isFromConfig() ? 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager') : null,
 					id: 'enabled',
 					on: backend.enabled ?? true,
 					disabled: true
@@ -449,7 +450,7 @@ setTimeout(updateActionButton, 10);
                     disabled: true
                 }) }}
 					<input type="hidden" name="isDefault" value="1">
-				{% elseif canEdit or currentUser.can('searchManager:editBackends') %}
+				{% elseif canEdit or (backend.isFromConfig() and currentUser.can('searchManager:editBackends')) %}
 					{# Can toggle default: form submission for database, AJAX for config #}
 					{{ forms.lightswitchField({
                     label: 'Default'|t('search-manager'),
@@ -581,7 +582,7 @@ setTimeout(updateActionButton, 10);
 		        saveShortcut.textContent = isMac ? '⌘S' : 'Ctrl+S';
 		    }
 
-	{% if not isNew and not canEdit and not isDefaultFromConfig and defaultBackendHandle != backend.handle and currentUser.can('searchManager:editBackends') %}
+	{% if not isNew and backend.isFromConfig() and not isDefaultFromConfig and defaultBackendHandle != backend.handle and currentUser.can('searchManager:editBackends') %}
 		// Config backend: Toggle with AJAX (no form available)
 				    (function() {
 				        const $lightswitch = $('#isDefault').closest('.lightswitch');

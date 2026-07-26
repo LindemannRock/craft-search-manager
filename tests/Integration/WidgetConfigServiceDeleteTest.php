@@ -16,6 +16,7 @@ use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\WidgetConfigService;
+use lindemannrock\searchmanager\tests\Stubs\SearchManagerConfigServiceStub;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -27,6 +28,7 @@ final class WidgetConfigServiceDeleteTest extends TestCase
 {
     private string $prefix = 'sm-widget-delete-guard';
     private ?object $originalWidgetConfigService = null;
+    private ?object $originalConfigService = null;
     /**
      * @var array<int, bool>
      */
@@ -35,6 +37,7 @@ final class WidgetConfigServiceDeleteTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->installDatabaseManagedDefaults();
         $this->disableExistingWidgets();
         $this->deleteTestRows();
     }
@@ -44,11 +47,12 @@ final class WidgetConfigServiceDeleteTest extends TestCase
         $this->deleteTestRows();
         $this->restoreWidgetConfigService();
         $this->restoreExistingWidgets();
+        $this->restoreConfigService();
 
         parent::tearDown();
     }
 
-    public function testDeletingDefaultDbWidgetIsAllowedWhenConfigWidgetRemainsAvailable(): void
+    public function testDeletingDefaultDbWidgetIsRejectedWhenConfigWidgetRemainsAvailable(): void
     {
         $service = $this->makeService([
             $this->makeConfigWidget($this->prefix . '-config', 'Config Widget'),
@@ -60,9 +64,9 @@ final class WidgetConfigServiceDeleteTest extends TestCase
         $dbWidget = $service->getById($dbId);
 
         self::assertNotNull($dbWidget);
-        self::assertTrue($service->delete($dbWidget));
-        self::assertSame(0, $this->countWidgetConfigs($this->prefix . '-db'));
-        self::assertNotSame($this->prefix . '-db', $settings->defaultWidgetHandle);
+        self::assertFalse($service->delete($dbWidget));
+        self::assertSame(1, $this->countWidgetConfigs($this->prefix . '-db'));
+        self::assertSame($this->prefix . '-db', $settings->defaultWidgetHandle);
         self::assertNotNull($service->getByHandle($this->prefix . '-config'));
     }
 
@@ -71,12 +75,34 @@ final class WidgetConfigServiceDeleteTest extends TestCase
         $service = $this->makeService();
         $this->installWidgetConfigService($service);
         $dbId = $this->insertWidgetConfig($this->prefix . '-only');
-        SearchManager::$plugin->getSettings()->defaultWidgetHandle = $this->prefix . '-only';
+        SearchManager::$plugin->getSettings()->defaultWidgetHandle = $this->prefix . '-missing-default';
         $dbWidget = $service->getById($dbId);
 
         self::assertNotNull($dbWidget);
         self::assertFalse($service->delete($dbWidget));
         self::assertSame(1, $this->countWidgetConfigs($this->prefix . '-only'));
+    }
+
+    public function testMutatedWidgetCannotBypassPersistedDefaultAndLastEnabledGuards(): void
+    {
+        $service = $this->makeService();
+        $this->installWidgetConfigService($service);
+        $storedHandle = $this->prefix . '-mutated-default';
+        $dbId = $this->insertWidgetConfig($storedHandle);
+        $settings = SearchManager::$plugin->getSettings();
+        $settings->defaultWidgetHandle = $storedHandle;
+        $dbWidget = $service->getById($dbId);
+
+        self::assertNotNull($dbWidget);
+        $dbWidget->handle = $this->prefix . '-caller-mutated';
+        $dbWidget->enabled = false;
+
+        self::assertFalse($service->delete($dbWidget));
+        $persisted = $service->getById($dbId);
+        self::assertNotNull($persisted);
+        self::assertSame($storedHandle, $persisted->handle);
+        self::assertTrue($persisted->enabled);
+        self::assertSame($storedHandle, $settings->defaultWidgetHandle);
     }
 
     public function testConfigWidgetsAreCountedForGuardButNotDeletedByDbDeletePath(): void
@@ -98,6 +124,24 @@ final class WidgetConfigServiceDeleteTest extends TestCase
         self::assertNotNull($configWidget);
         self::assertFalse($service->delete($configWidget));
         self::assertNotNull($service->getByHandle($configHandle));
+    }
+
+    public function testDeletingNonDefaultDbWidgetSucceedsAndLeavesDefaultUnchanged(): void
+    {
+        $service = $this->makeService();
+        $this->installWidgetConfigService($service);
+        $defaultId = $this->insertWidgetConfig($this->prefix . '-default');
+        $targetId = $this->insertWidgetConfig($this->prefix . '-target');
+        $settings = SearchManager::$plugin->getSettings();
+        $settings->defaultWidgetHandle = $this->prefix . '-default';
+        $target = $service->getById($targetId);
+
+        self::assertNotNull($target);
+        self::assertTrue($service->delete($target));
+        self::assertSame(1, $this->countWidgetConfigs($this->prefix . '-default'));
+        self::assertSame(0, $this->countWidgetConfigs($this->prefix . '-target'));
+        self::assertSame($this->prefix . '-default', $settings->defaultWidgetHandle);
+        self::assertNotNull($service->getById($defaultId));
     }
 
     /**
@@ -172,6 +216,23 @@ final class WidgetConfigServiceDeleteTest extends TestCase
 
         SearchManager::$plugin->set('widgetConfigs', $this->originalWidgetConfigService);
         $this->originalWidgetConfigService = null;
+    }
+
+    private function installDatabaseManagedDefaults(): void
+    {
+        $this->originalConfigService = Craft::$app->getConfig();
+        Craft::$app->set(
+            'config',
+            new SearchManagerConfigServiceStub($this->originalConfigService),
+        );
+    }
+
+    private function restoreConfigService(): void
+    {
+        if ($this->originalConfigService !== null) {
+            Craft::$app->set('config', $this->originalConfigService);
+            $this->originalConfigService = null;
+        }
     }
 
     private function countWidgetConfigs(string $handle): int

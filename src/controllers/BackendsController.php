@@ -67,38 +67,6 @@ class BackendsController extends Controller
             ->column();
         $collisionHandles = array_values(array_intersect($configHandles, $databaseHandles));
 
-        // Auto-assign default if needed (only if not set via config file).
-        // Runs against the full backend list, not the filtered subset, so a
-        // narrowed status/type filter never accidentally promotes a default.
-        if (!$this->isDefaultBackendFromConfig()) {
-            $defaultHandle = $settings->defaultBackendHandle;
-            $needsReassign = false;
-
-            if (empty($defaultHandle)) {
-                $needsReassign = true;
-            } else {
-                $defaultBackend = ConfiguredBackend::findByHandle($defaultHandle);
-                if (!$defaultBackend || !$defaultBackend->enabled) {
-                    $needsReassign = true;
-                }
-            }
-
-            if ($needsReassign && !empty($backends)) {
-                foreach ($backends as $backend) {
-                    if ($backend->enabled) {
-                        $settings->defaultBackendHandle = $backend->handle;
-                        $settings->saveToDatabase();
-
-                        $this->logInfo('Auto-assigned default backend', [
-                            'handle' => $backend->handle,
-                            'reason' => empty($defaultHandle) ? 'no default set' : 'previous default invalid',
-                        ]);
-                        break;
-                    }
-                }
-            }
-        }
-
         // ---- Param parsing + allowlist validation -------------------------
 
         $statusFilter = (string) $request->getQueryParam('status', 'all');
@@ -258,10 +226,13 @@ class BackendsController extends Controller
         $dbDriver = Craft::$app->getDb()->getDriverName();
         $settings = SearchManager::$plugin->getSettings();
 
-        // Render edit.twig - it handles both editable and config backends via tabs
+        // The manage-level view boundary is always read-only, including for
+        // database backends that are editable through the separately gated
+        // actionEdit() route.
         return $this->renderTemplate('search-manager/backends/edit', [
             'backend' => $backend,
             'isNew' => false,
+            'readOnly' => true,
             'backendTypes' => ConfiguredBackend::BACKEND_TYPES,
             'settingsSchemas' => ConfiguredBackend::BACKEND_SETTINGS_SCHEMA,
             'dbDriver' => $dbDriver,
@@ -365,37 +336,22 @@ class BackendsController extends Controller
         // Handle "Set as Default" toggle (only if not set via config)
         $isDefault = (bool)$request->getBodyParam('isDefault');
         if ($isDefault && !$this->isDefaultBackendFromConfig()) {
-            $pluginSettings = SearchManager::$plugin->getSettings();
-            if ($pluginSettings->defaultBackendHandle !== $backend->handle) {
-                $pluginSettings->defaultBackendHandle = $backend->handle;
-                $pluginSettings->saveToDatabase();
-
-                $this->logInfo('Default backend changed', [
-                    'handle' => $backend->handle,
-                    'name' => $backend->name,
-                ]);
+            if (!$this->assignDefaultBackend($backend, 'Default backend changed')) {
+                return $this->backendSaveResponse(
+                    $backend,
+                    Craft::t('search-manager', 'Failed to update default backend'),
+                );
             }
         }
 
-        // Auto-set as default if no default is set and this backend is enabled
-        if (!$this->isDefaultBackendFromConfig()) {
-            $pluginSettings = SearchManager::$plugin->getSettings();
-            if (empty($pluginSettings->defaultBackendHandle) && $backend->enabled) {
-                $pluginSettings->defaultBackendHandle = $backend->handle;
-                $pluginSettings->saveToDatabase();
-
-                $this->logInfo('Auto-set default backend (first enabled backend)', [
-                    'handle' => $backend->handle,
-                    'name' => $backend->name,
-                ]);
-            }
+        if (!$this->ensureDefaultBackend()) {
+            return $this->backendSaveResponse(
+                $backend,
+                Craft::t('search-manager', 'Failed to update default backend'),
+            );
         }
 
-        Craft::$app->getSession()->setNotice(
-            Craft::t('search-manager', 'Backend saved')
-        );
-
-        return $this->redirectToPostedUrl($backend);
+        return $this->backendSaveResponse($backend);
     }
 
     /**
@@ -473,61 +429,34 @@ class BackendsController extends Controller
         $backendId = $request->getBodyParam('backendId');
 
         try {
-            if ($backendId) {
-                $configuredBackend = ConfiguredBackend::findByIdOrHandle($backendId);
-
-                if (!$configuredBackend) {
-                    return $this->asJson([
-                        'success' => false,
-                        'error' => Craft::t('search-manager', 'Backend not found'),
-                    ]);
-                }
-
-                // Get the backend adapter and apply configured settings
-                $backendAdapter = SearchManager::$plugin->backend->getBackend($configuredBackend->backendType);
-                if (!$backendAdapter) {
-                    return $this->asJson([
-                        'success' => false,
-                        'error' => Craft::t('search-manager', 'Unknown backend type: {backendType}', [
-                            'backendType' => $configuredBackend->backendType,
-                        ]),
-                    ]);
-                }
-
-                // Apply configured settings
-                $backendAdapter->setConfiguredSettings($configuredBackend->settings);
-
-                // Test availability
-                if ($backendAdapter->isAvailable()) {
-                    return $this->asJson([
-                        'success' => true,
-                        'message' => Craft::t('search-manager', 'Connection successful'),
-                    ]);
-                }
-
+            if ((!is_int($backendId) && !is_string($backendId)) || $backendId === '') {
                 return $this->asJson([
                     'success' => false,
-                    'error' => Craft::t('search-manager', 'Backend is not available. Check your settings.'),
+                    'error' => Craft::t('search-manager', 'Backend not found'),
                 ]);
             }
 
-            // Test with provided settings (for new backends)
-            $backendType = $request->getBodyParam('backendType');
-            $settings = $request->getBodyParam('settings', []);
+            $configuredBackend = ConfiguredBackend::findByIdOrHandle($backendId);
 
-            $backendAdapter = SearchManager::$plugin->backend->getBackend($backendType);
+            if (!$configuredBackend) {
+                return $this->asJson([
+                    'success' => false,
+                    'error' => Craft::t('search-manager', 'Backend not found'),
+                ]);
+            }
+
+            // Get the backend adapter and apply stored configured settings
+            $backendAdapter = SearchManager::$plugin->backend->getBackend($configuredBackend->backendType);
             if (!$backendAdapter) {
                 return $this->asJson([
                     'success' => false,
                     'error' => Craft::t('search-manager', 'Unknown backend type: {backendType}', [
-                        'backendType' => $backendType,
+                        'backendType' => $configuredBackend->backendType,
                     ]),
                 ]);
             }
 
-            if (!empty($settings)) {
-                $backendAdapter->setConfiguredSettings($settings);
-            }
+            $backendAdapter->setConfiguredSettings($configuredBackend->settings);
 
             if ($backendAdapter->isAvailable()) {
                 return $this->asJson([
@@ -763,26 +692,90 @@ class BackendsController extends Controller
             ]);
         }
 
-        // Update the default backend handle in plugin settings
-        $settings = SearchManager::$plugin->getSettings();
-        $settings->defaultBackendHandle = $backend->handle;
-
-        if (!$settings->saveToDatabase()) {
+        if (!$this->assignDefaultBackend($backend, 'Default backend changed')) {
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to save settings'),
+                'error' => Craft::t('search-manager', 'Failed to update default backend'),
             ]);
         }
-
-        $this->logInfo('Default backend changed', [
-            'handle' => $backend->handle,
-            'name' => $backend->name,
-        ]);
 
         return $this->asJson([
             'success' => true,
             'message' => Craft::t('search-manager', 'Default backend updated'),
         ]);
+    }
+
+    /**
+     * Persist one backend as the default and log only after a successful write.
+     */
+    protected function assignDefaultBackend(ConfiguredBackend $backend, string $logMessage): bool
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        if ($settings->defaultBackendHandle === $backend->handle) {
+            return true;
+        }
+
+        $previousHandle = $settings->defaultBackendHandle;
+        $settings->defaultBackendHandle = $backend->handle;
+
+        if (!$settings->saveToDatabase(['defaultBackendHandle'])) {
+            $settings->defaultBackendHandle = $previousHandle;
+            return false;
+        }
+
+        $this->logInfo($logMessage, [
+            'handle' => $backend->handle,
+            'name' => $backend->name,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Assign the deterministic first enabled backend when the saved state has
+     * no usable default.
+     */
+    protected function ensureDefaultBackend(): bool
+    {
+        if ($this->isDefaultBackendFromConfig()) {
+            return true;
+        }
+
+        $settings = SearchManager::$plugin->getSettings();
+        $default = $settings->defaultBackendHandle !== null
+            ? ConfiguredBackend::findByHandle($settings->defaultBackendHandle)
+            : null;
+        if ($default?->enabled) {
+            return true;
+        }
+
+        foreach (ConfiguredBackend::findAll() as $backend) {
+            if ($backend->enabled) {
+                return $this->assignDefaultBackend(
+                    $backend,
+                    'Auto-set default backend (first enabled backend)',
+                );
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Return the post-save response without reporting success after a failed
+     * default-settings write.
+     */
+    protected function backendSaveResponse(ConfiguredBackend $backend, ?string $error = null): Response
+    {
+        if ($error !== null) {
+            Craft::$app->getSession()->setError($error);
+        } else {
+            Craft::$app->getSession()->setNotice(
+                Craft::t('search-manager', 'Backend saved')
+            );
+        }
+
+        return $this->redirectToPostedUrl($backend);
     }
 
     /**

@@ -729,23 +729,28 @@ class ConfiguredBackend extends Model
         }
 
         try {
-            // Check if this is the default backend
-            $plugin = \lindemannrock\searchmanager\SearchManager::$plugin;
-            $settings = $plugin->getSettings();
-            $isDefault = ($settings->defaultBackendHandle ?? null) === $this->handle;
+            $backend = self::findById($this->id);
+            if ($backend === null) {
+                return false;
+            }
+
+            $settings = \lindemannrock\searchmanager\SearchManager::$plugin->getSettings();
+            if (($settings->defaultBackendHandle ?? null) === $backend->handle) {
+                $this->addError(
+                    'handle',
+                    Craft::t('search-manager', 'Cannot delete the default backend. Set another backend as default first.'),
+                );
+                $this->logWarning('Cannot delete the default backend', ['handle' => $backend->handle]);
+                return false;
+            }
 
             $result = Craft::$app->getDb()
                 ->createCommand()
-                ->delete('{{%searchmanager_backends}}', ['id' => $this->id])
+                ->delete('{{%searchmanager_backends}}', ['id' => $backend->id])
                 ->execute();
 
             if ($result > 0) {
-                $this->logInfo('Backend deleted', ['handle' => $this->handle]);
-
-                // If we deleted the default, auto-assign another backend as default
-                if ($isDefault) {
-                    $this->_reassignDefaultBackend($plugin, $settings);
-                }
+                $this->logInfo('Backend deleted', ['handle' => $backend->handle]);
             }
 
             return $result > 0;
@@ -755,42 +760,6 @@ class ConfiguredBackend extends Model
                 'error' => $e->getMessage(),
             ]);
             return false;
-        }
-    }
-
-    /**
-     * Reassign default backend after deletion
-     */
-    private function _reassignDefaultBackend($plugin, $settings): void
-    {
-        // First, check for enabled config file backends
-        $configBackends = self::findAllFromConfig();
-        foreach ($configBackends as $backend) {
-            if ($backend->enabled) {
-                $settings->defaultBackendHandle = $backend->handle;
-                $settings->saveToDatabase();
-                $this->logInfo('Auto-assigned new default backend after deletion', ['handle' => $backend->handle]);
-                return;
-            }
-        }
-
-        // Then, check for enabled database backends
-        $row = (new Query())
-            ->select('handle')
-            ->from('{{%searchmanager_backends}}')
-            ->where(['enabled' => 1])
-            ->orderBy(['name' => SORT_ASC, 'id' => SORT_ASC])
-            ->one();
-
-        if ($row) {
-            $settings->defaultBackendHandle = $row['handle'];
-            $settings->saveToDatabase();
-            $this->logInfo('Auto-assigned new default backend after deletion', ['handle' => $row['handle']]);
-        } else {
-            // No enabled backends left - clear the default
-            $settings->defaultBackendHandle = null;
-            $settings->saveToDatabase();
-            $this->logWarning('No enabled backends available to set as default');
         }
     }
 
@@ -806,6 +775,16 @@ class ConfiguredBackend extends Model
     public function getTypeLabel(): string
     {
         return self::BACKEND_TYPES[$this->backendType] ?? $this->backendType;
+    }
+
+    /**
+     * Get the canonical configured-choice identity.
+     *
+     * @since 5.54.0
+     */
+    public function getChoiceLabel(): string
+    {
+        return $this->name . ' (' . $this->handle . ')';
     }
 
     /**
@@ -867,7 +846,7 @@ class ConfiguredBackend extends Model
                 // untranslated; it is only interpolated into the translated default label).
                 $defaultBackend = self::findByHandle($defaultBackendHandle);
                 if ($defaultBackend) {
-                    $defaultLabel = $defaultBackend->name;
+                    $defaultLabel = $defaultBackend->getChoiceLabel();
                 } else {
                     // Fallback to handle if backend not found
                     $defaultLabel = $defaultBackendHandle;
@@ -878,7 +857,7 @@ class ConfiguredBackend extends Model
         }
 
         foreach (self::findAllEnabled() as $backend) {
-            $options[$backend->handle] = $backend->name . ' (' . $backend->getTypeLabel() . ')';
+            $options[$backend->handle] = $backend->getChoiceLabel();
         }
 
         return $options;

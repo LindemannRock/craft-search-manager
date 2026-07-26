@@ -241,7 +241,6 @@ return [
     'Could not retrieve document count from backend (permission issue)' => 'バックエンドからドキュメント数を取得できませんでした（権限の問題）',
     'Settings saved' => '設定を保存しました',
     'Could not save settings' => '設定を保存できませんでした',
-    'Failed to save settings' => '設定の保存に失敗しました',
     'Index saved' => 'インデックスを保存しました',
     'Could not save index' => 'インデックスを保存できませんでした',
     'Index deleted' => 'インデックスを削除しました',

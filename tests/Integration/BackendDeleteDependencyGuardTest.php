@@ -18,8 +18,10 @@ use craft\helpers\StringHelper;
 use craft\web\Request;
 use craft\web\Response;
 use lindemannrock\searchmanager\controllers\BackendsController;
+use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\DependencyService;
+use lindemannrock\searchmanager\tests\Stubs\SearchManagerConfigServiceStub;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -35,10 +37,16 @@ final class BackendDeleteDependencyGuardTest extends TestCase
     private ?object $originalRequest = null;
     private ?object $originalResponse = null;
     private ?string $originalRequestMethod = null;
+    private ?object $originalConfigService = null;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->originalConfigService = Craft::$app->getConfig();
+        Craft::$app->set(
+            'config',
+            new SearchManagerConfigServiceStub($this->originalConfigService),
+        );
         $this->purgeMarkedRows();
     }
 
@@ -46,6 +54,10 @@ final class BackendDeleteDependencyGuardTest extends TestCase
     {
         $this->restoreRequestResponse();
         $this->purgeMarkedRows();
+        if ($this->originalConfigService !== null) {
+            Craft::$app->set('config', $this->originalConfigService);
+            $this->originalConfigService = null;
+        }
         parent::tearDown();
     }
 
@@ -82,6 +94,65 @@ final class BackendDeleteDependencyGuardTest extends TestCase
 
         self::assertSame(true, $data['success'] ?? false, json_encode($data));
         self::assertSame(0, $this->countRows('{{%searchmanager_backends}}', ['id' => $targetBackendId]));
+    }
+
+    public function testDirectModelDeleteRejectsActiveDefault(): void
+    {
+        $targetBackendId = $this->insertBackend('direct-default', 'Direct Default Backend');
+        $this->setDefaultBackend(self::PREFIX . '-direct-default');
+        $backend = ConfiguredBackend::findById($targetBackendId);
+
+        self::assertNotNull($backend);
+        self::assertFalse($backend->delete());
+        self::assertSame(
+            'Cannot delete the default backend. Set another backend as default first.',
+            $backend->getFirstError('handle'),
+        );
+        self::assertSame(1, $this->countRows('{{%searchmanager_backends}}', ['id' => $targetBackendId]));
+    }
+
+    public function testMutatedModelHandleCannotBypassActiveDefaultGuard(): void
+    {
+        $storedHandle = self::PREFIX . '-mutated-default';
+        $targetBackendId = $this->insertBackend('mutated-default', 'Mutated Default Backend');
+        $this->setDefaultBackend($storedHandle);
+        $settings = SearchManager::$plugin->getSettings();
+        $backend = ConfiguredBackend::findById($targetBackendId);
+
+        self::assertNotNull($backend);
+        $backend->handle = self::PREFIX . '-caller-mutated';
+
+        self::assertFalse($backend->delete());
+        self::assertSame(
+            'Cannot delete the default backend. Set another backend as default first.',
+            $backend->getFirstError('handle'),
+        );
+        self::assertSame(
+            $storedHandle,
+            (new Query())
+                ->select('handle')
+                ->from('{{%searchmanager_backends}}')
+                ->where(['id' => $targetBackendId])
+                ->scalar(),
+        );
+        self::assertSame($storedHandle, $settings->defaultBackendHandle);
+    }
+
+    public function testDirectModelDeleteAllowsNonDefaultBackend(): void
+    {
+        $defaultBackendId = $this->insertBackend('direct-kept-default', 'Direct Kept Default');
+        $targetBackendId = $this->insertBackend('direct-target', 'Direct Target');
+        $this->setDefaultBackend(self::PREFIX . '-direct-kept-default');
+        $target = ConfiguredBackend::findById($targetBackendId);
+
+        self::assertNotNull($target);
+        self::assertTrue($target->delete(), print_r($target->getErrors(), true));
+        self::assertSame(1, $this->countRows('{{%searchmanager_backends}}', ['id' => $defaultBackendId]));
+        self::assertSame(0, $this->countRows('{{%searchmanager_backends}}', ['id' => $targetBackendId]));
+        self::assertSame(
+            self::PREFIX . '-direct-kept-default',
+            SearchManager::$plugin->getSettings()->defaultBackendHandle,
+        );
     }
 
     public function testBulkBackendDeleteIsBlockedWhenResolvedIndexUsesBackend(): void

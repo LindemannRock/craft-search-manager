@@ -241,7 +241,6 @@ return [
     'Could not retrieve document count from backend (permission issue)' => 'Kon het aantal documenten niet ophalen van de backend (machtigingsprobleem)',
     'Settings saved' => 'Instellingen opgeslagen',
     'Could not save settings' => 'Instellingen konden niet worden opgeslagen',
-    'Failed to save settings' => 'Opslaan van instellingen mislukt',
     'Index saved' => 'Index opgeslagen',
     'Could not save index' => 'Kon index niet opslaan',
     'Index deleted' => 'Index verwijderd',

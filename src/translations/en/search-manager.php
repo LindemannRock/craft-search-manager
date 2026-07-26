@@ -241,7 +241,6 @@ return [
     'Could not retrieve document count from backend (permission issue)' => 'Could not retrieve document count from backend (permission issue)',
     'Settings saved' => 'Settings saved',
     'Could not save settings' => 'Could not save settings',
-    'Failed to save settings' => 'Failed to save settings',
     'Index saved' => 'Index saved',
     'Could not save index' => 'Could not save index',
     'Index deleted' => 'Index deleted',

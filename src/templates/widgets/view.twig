@@ -21,7 +21,9 @@
 {% block content %}
 	<div class="pane">
 		<h2>{{ 'Configuration'|t('search-manager') }}</h2>
-		<p class="light">{{ 'This widget is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
+		{% if widgetConfig.isFromConfig() %}
+			<p class="light">{{ 'This widget is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
+		{% endif %}
 		<pre style="background: #f3f7fc; padding: 14px; border-radius: 4px; overflow-x: auto; font-size: 12px;"><code>{{ widgetConfig.settings|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
 	</div>
 
@@ -33,7 +35,7 @@
 		{# Enabled toggle (disabled, showing current state) #}
 		{{ forms.lightswitchField({
 			label: 'Enabled'|t('search-manager'),
-			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			instructions: widgetConfig.isFromConfig() ? 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager') : null,
 			id: 'enabled',
 			on: widgetConfig.enabled,
 			disabled: true
@@ -41,7 +43,7 @@
 
 		{{ forms.lightswitchField({
 			label: 'Require URL for Results'|t('search-manager'),
-			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			instructions: widgetConfig.isFromConfig() ? 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager') : null,
 			id: 'resultsRequireUrl',
 			on: widgetConfig.isResultsRequireUrlEnabled(),
 			disabled: true

@@ -241,7 +241,6 @@ return [
     'Could not retrieve document count from backend (permission issue)' => 'Não foi possível obter a contagem de documentos do backend (problema de permissão)',
     'Settings saved' => 'Definições guardadas',
     'Could not save settings' => 'Não foi possível guardar as definições',
-    'Failed to save settings' => 'Falha ao guardar as definições',
     'Index saved' => 'Índice guardado',
     'Could not save index' => 'Não foi possível guardar o índice',
     'Index deleted' => 'Índice eliminado',
