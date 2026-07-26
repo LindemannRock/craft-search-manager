@@ -103,13 +103,17 @@
 {% block tableRow %}
     {# Title #}
     <td data-column="title">
-        <a class="label-link" href="{{ url('search-manager/promotions/edit/' ~ item.id) }}">
-            {% if item.title %}
-                {{ item.title }}
-            {% else %}
-                <span class="light">{{ 'Untitled'|t('search-manager') }}</span>
-            {% endif %}
-        </a>
+        {% if canEdit %}
+            <a class="label-link" href="{{ url('search-manager/promotions/edit/' ~ item.id) }}">
+        {% endif %}
+        {% if item.title %}
+            {{ item.title }}
+        {% else %}
+            <span class="light">{{ 'Untitled'|t('search-manager') }}</span>
+        {% endif %}
+        {% if canEdit %}
+            </a>
+        {% endif %}
     </td>
 
     {# Query Pattern #}

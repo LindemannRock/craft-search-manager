@@ -5,7 +5,9 @@
         </div>
         <h2 class="lr-section-heading lr-heading-tight">{{ "No Promotions Created"|t('search-manager') }}</h2>
         <p class="light lr-paragraph">{{ "Create promotions to pin specific results to the top of search results for certain queries."|t('search-manager') }}</p>
-        <a href="{{ url('search-manager/promotions/create') }}" class="btn submit">{{ "Create Promotion"|t('search-manager') }}</a>
+        {% if canCreatePromotions %}
+            <a href="{{ url('search-manager/promotions/create') }}" class="btn submit">{{ "Create Promotion"|t('search-manager') }}</a>
+        {% endif %}
     </div>
 {% else %}
     <div class="lr-analytics-charts two-columns">

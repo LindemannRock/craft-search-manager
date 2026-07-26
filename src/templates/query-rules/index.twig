@@ -126,9 +126,13 @@
 {% block tableRow %}
     {# Name #}
     <td data-column="name">
-        <a class="label-link" href="{{ url('search-manager/query-rules/edit/' ~ item.id) }}">
+        {% if canEdit %}
+            <a class="label-link" href="{{ url('search-manager/query-rules/edit/' ~ item.id) }}">
+        {% endif %}
             <span>{{ item.name }}</span>
-        </a>
+        {% if canEdit %}
+            </a>
+        {% endif %}
     </td>
 
     {# Query Pattern #}

@@ -181,6 +181,7 @@ class WidgetsController extends Controller
             'canCreate' => Craft::$app->getUser()->checkPermission('searchManager:createWidgetConfigs'),
             'canEdit' => Craft::$app->getUser()->checkPermission('searchManager:editWidgetConfigs'),
             'canDelete' => Craft::$app->getUser()->checkPermission('searchManager:deleteWidgetConfigs'),
+            'widgetWorkspace' => SearchManager::$plugin->getWidgetWorkspaceNavigation(),
         ]);
     }
 
@@ -240,6 +241,7 @@ class WidgetsController extends Controller
             'indices' => $indices,
             'defaultWidgetHandle' => $settings->defaultWidgetHandle,
             'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
+            'widgetWorkspace' => SearchManager::$plugin->getWidgetWorkspaceNavigation(),
         ]);
     }
 
@@ -284,6 +286,7 @@ class WidgetsController extends Controller
             'widgetTypeOptions' => $this->getWidgetTypeOptions(),
             'defaultWidgetHandle' => $settings->defaultWidgetHandle,
             'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
+            'widgetWorkspace' => SearchManager::$plugin->getWidgetWorkspaceNavigation(),
         ]);
     }
 
@@ -800,6 +803,7 @@ class WidgetsController extends Controller
             'canCreate' => Craft::$app->getUser()->checkPermission('searchManager:createWidgetStyles'),
             'canEdit' => Craft::$app->getUser()->checkPermission('searchManager:editWidgetStyles'),
             'canDelete' => Craft::$app->getUser()->checkPermission('searchManager:deleteWidgetStyles'),
+            'widgetWorkspace' => SearchManager::$plugin->getWidgetWorkspaceNavigation(),
         ]);
     }
 
@@ -862,6 +866,7 @@ class WidgetsController extends Controller
             'defaultStyles' => $defaultStyles,
             'styles' => array_merge($defaultStyles, $widgetStyle->getStyles()),
             'usageCount' => (int)($styleUsageCounts[$widgetStyle->handle] ?? 0),
+            'widgetWorkspace' => SearchManager::$plugin->getWidgetWorkspaceNavigation(),
         ]);
     }
 
@@ -901,6 +906,7 @@ class WidgetsController extends Controller
             'defaultStyles' => $defaultStyles,
             'usageCount' => $styleId ? (int)($styleUsageCounts[$widgetStyle->handle] ?? 0) : null,
             'widgetTypeOptions' => $this->getWidgetTypeOptions(),
+            'widgetWorkspace' => SearchManager::$plugin->getWidgetWorkspaceNavigation(),
         ]);
     }
 

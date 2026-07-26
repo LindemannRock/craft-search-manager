@@ -13,7 +13,7 @@
 
 {% set crumbs = [
 	{ label: searchHelper.fullName, url: url('search-manager') },
-	{ label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') },
+	{ label: 'Widgets'|t('search-manager'), url: widgetWorkspace.landingUrl },
 	{ label: 'Styles'|t('search-manager'), url: url('search-manager/widgets/styles') },
 	{ label: isNew ? 'New Widget Style'|t('search-manager') : widgetStyle.name }
 ] %}

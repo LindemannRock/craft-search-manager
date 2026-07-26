@@ -1177,12 +1177,15 @@ class SearchManager extends Plugin
             'permissionsAll' => ['searchManager:manageApiKeys'],
         ];
 
-        $sections[] = [
-            'key' => 'widgets',
-            'label' => Craft::t('search-manager', 'Widgets'),
-            'url' => 'search-manager/widgets',
-            'permissionsAny' => ['searchManager:manageWidgetConfigs', 'searchManager:manageWidgetStyles'],
-        ];
+        $widgetWorkspace = $this->getWidgetWorkspaceNavigation();
+        if ($widgetWorkspace !== null) {
+            $sections[] = [
+                'key' => 'widgets',
+                'label' => Craft::t('search-manager', 'Widgets'),
+                'url' => $widgetWorkspace['landingRoute'],
+                'permissionsAll' => [$widgetWorkspace['landingPermission']],
+            ];
+        }
 
         $sections[] = [
             'key' => 'analytics',
@@ -1217,6 +1220,56 @@ class SearchManager extends Plugin
         ];
 
         return $sections;
+    }
+
+    /**
+     * Get the current user's canonical Widget workspace navigation.
+     *
+     * @return array{
+     *     landingRoute: string,
+     *     landingUrl: string,
+     *     landingPermission: string,
+     *     tabs: array<string, array{label: string, url: string}>
+     * }|null
+     * @since 5.54.0
+     */
+    public function getWidgetWorkspaceNavigation(): ?array
+    {
+        $user = Craft::$app->getUser();
+        $canManageConfigs = $user->checkPermission('searchManager:manageWidgetConfigs');
+        $canManageStyles = $this->isPro()
+            && $user->checkPermission('searchManager:manageWidgetStyles');
+
+        if (!$canManageConfigs && !$canManageStyles) {
+            return null;
+        }
+
+        $tabs = [];
+        if ($canManageConfigs) {
+            $tabs['configurations'] = [
+                'label' => Craft::t('search-manager', 'Configurations'),
+                'url' => UrlHelper::cpUrl('search-manager/widgets'),
+            ];
+        }
+        if ($canManageStyles) {
+            $tabs['styles'] = [
+                'label' => Craft::t('search-manager', 'Styles'),
+                'url' => UrlHelper::cpUrl('search-manager/widgets/styles'),
+            ];
+        }
+
+        $landingRoute = $canManageConfigs
+            ? 'search-manager/widgets'
+            : 'search-manager/widgets/styles';
+
+        return [
+            'landingRoute' => $landingRoute,
+            'landingUrl' => UrlHelper::cpUrl($landingRoute),
+            'landingPermission' => $canManageConfigs
+                ? 'searchManager:manageWidgetConfigs'
+                : 'searchManager:manageWidgetStyles',
+            'tabs' => $tabs,
+        ];
     }
 
     // =========================================================================

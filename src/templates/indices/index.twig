@@ -146,10 +146,11 @@
     {% set indexReference = indexCatalogue[item.handle] %}
     {% set indexBackendType = item.effectiveBackendType %}
     {% set configuredBackend = item.configuredBackend %}
+    {% set canEditItem = canEdit and item.canEdit() %}
 
     {# Name #}
     <td data-column="name">
-        {% if item.canEdit() %}
+        {% if canEditItem %}
             <a class="label-link" href="{{ url('search-manager/indices/edit/' ~ item.id) }}">
                 <span>{{ indexReference.displayName }}</span>
             </a>
@@ -157,6 +158,8 @@
             <a class="label-link" href="{{ url('search-manager/indices/view/' ~ item.handle) }}">
                 <span>{{ indexReference.displayName }}</span>
             </a>
+        {% endif %}
+        {% if item.isFromConfig() %}
             <span class="lr-config-info-icon" data-config="{{ item.rawConfigDisplay|e('html_attr') }}" data-config-source="config/search-manager.php"></span>
         {% endif %}
     </td>
@@ -174,10 +177,10 @@
     {# Backend #}
     <td data-column="backend">
         {% if configuredBackend %}
-            {% if configuredBackend.source == 'config' %}
+            {% if canManageBackends %}
                 <a href="{{ url('search-manager/backends/view/' ~ configuredBackend.handle) }}">{{ configuredBackend.name }}</a>
             {% else %}
-                <a href="{{ url('search-manager/backends/' ~ configuredBackend.id) }}">{{ configuredBackend.name }}</a>
+                {{ configuredBackend.name }}
             {% endif %}
         {% elseif indexBackendType %}
             <span class="light">{{ indexBackendType|capitalize }}</span>
@@ -259,14 +262,14 @@
     {% set indexReference = indexCatalogue[item.handle] %}
     {% set indexBackendType = item.effectiveBackendType %}
     {% set itemId = item.id ?: item.handle %}
+    {% set canEditItem = canEdit and item.canEdit() %}
 
     {% set actionItems = [] %}
 
-    {% if item.canEdit() %}
+    {% if canEditItem %}
         {% set actionItems = actionItems|merge([{
             label: 'Edit'|t('search-manager'),
             url: url('search-manager/indices/edit/' ~ item.id),
-            permission: 'searchManager:editIndices',
         }]) %}
     {% else %}
         {% set actionItems = actionItems|merge([{
@@ -316,6 +319,7 @@
 
     {% include 'lindemannrock-base/_components/row-actions' with {
         item: {id: itemId},
+        currentUser: currentUser,
         actions: {
             type: 'menu',
             icon: 'settings',

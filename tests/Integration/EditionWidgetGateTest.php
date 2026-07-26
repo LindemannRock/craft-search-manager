@@ -188,20 +188,19 @@ final class EditionWidgetGateTest extends TestCase
     public function testWidgetStylesSidebarItemIsAddedOnlyForPro(): void
     {
         $pluginRoot = dirname(__DIR__, 2);
+        $pluginSource = file_get_contents($pluginRoot . '/src/SearchManager.php');
+        self::assertIsString($pluginSource);
+        self::assertStringContainsString(
+            "\$canManageStyles = \$this->isPro()\n            && \$user->checkPermission('searchManager:manageWidgetStyles');",
+            $pluginSource,
+        );
 
         foreach (['src/templates/widgets/index.twig', 'src/templates/widgets/styles/index.twig'] as $path) {
             $source = file_get_contents($pluginRoot . '/' . $path);
             self::assertIsString($source);
-
-            $itemsStart = strpos($source, '{% set sidebarItems = {');
-            $proStart = strpos($source, '{% if isPro %}', $itemsStart);
-            self::assertIsInt($itemsStart);
-            self::assertIsInt($proStart);
-
-            $standardItems = substr($source, $itemsStart, $proStart - $itemsStart);
-            self::assertStringContainsString('configurations:', $standardItems);
-            self::assertStringNotContainsString('styles:', $standardItems);
-            self::assertStringContainsString("styles: { label: 'Styles'", substr($source, $proStart));
+            self::assertStringContainsString('items: widgetWorkspace.tabs,', $source);
+            self::assertStringNotContainsString('items: {', $source);
+            self::assertStringNotContainsString('{% if isPro %}', $source);
         }
     }
 

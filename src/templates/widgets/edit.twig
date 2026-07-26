@@ -15,7 +15,7 @@
 
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
-    { label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') },
+    { label: 'Widgets'|t('search-manager'), url: widgetWorkspace.landingUrl },
     { label: 'Configurations'|t('search-manager'), url: url('search-manager/widgets') },
     { label: isNew ? 'New Widget Config'|t('search-manager') : widgetConfig.name }
 ] %}

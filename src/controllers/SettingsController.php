@@ -91,7 +91,10 @@ class SettingsController extends Controller
 
         return $this->renderTemplate(
             'search-manager/settings/general',
-            $this->_settingsTemplateVariables('general', $settings),
+            array_merge($this->_settingsTemplateVariables('general', $settings), [
+                'canCreateBackends' => Craft::$app->getUser()->checkPermission('searchManager:createBackends'),
+                'canCreateWidgetConfigs' => Craft::$app->getUser()->checkPermission('searchManager:createWidgetConfigs'),
+            ]),
         );
     }
 

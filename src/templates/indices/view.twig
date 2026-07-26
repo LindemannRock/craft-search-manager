@@ -13,9 +13,10 @@
 })|trim %}
 {% set errorSummary = [setupIncompleteSummary, indexFindingsSummary]|filter(summary => summary)|join("\n") %}
 
-{% set canRebuild = currentUser.can('searchManager:rebuildIndices') %}
-{% set canClear = currentUser.can('searchManager:clearIndices') %}
-{% set canClearCache = currentUser.can('searchManager:clearCache') %}
+{% set canRebuild = canRebuild ?? false %}
+{% set canClear = canClear ?? false %}
+{% set canClearCache = canClearCache ?? false %}
+{% set canManageBackends = canManageBackends ?? false %}
 {% set globalSettings = craft.searchManager.getSettings() %}
 
 {% set crumbs = [
@@ -27,8 +28,13 @@
 {% block content %}
 	<div class="pane">
 		<h2>{{ 'Configuration'|t('search-manager') }}</h2>
-		<p class="light">{{ 'This index is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
-		<pre style="background: #f3f7fc; padding: 14px; border-radius: 4px; overflow-x: auto; font-size: 12px;"><code>{{ index.rawConfigDisplay }}</code></pre>
+		{% if index.isFromConfig() %}
+			<p class="light">{{ 'This index is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
+			{% set configurationDisplay = index.rawConfigDisplay %}
+		{% else %}
+			{% set configurationDisplay = index.toConfigArray()|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) %}
+		{% endif %}
+		<pre style="background: #f3f7fc; padding: 14px; border-radius: 4px; overflow-x: auto; font-size: 12px;"><code>{{ configurationDisplay }}</code></pre>
 	</div>
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
@@ -39,7 +45,7 @@
 	<div class="meta">
 		{{ forms.lightswitchField({
 			label: 'Enabled'|t('search-manager'),
-			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			instructions: index.isFromConfig() ? 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager') : null,
 			id: 'enabled',
 			on: index.enabled,
 			disabled: true
@@ -47,7 +53,7 @@
 
 		{{ forms.lightswitchField({
 			label: 'Skip Entries Without URL'|t('search-manager'),
-			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			instructions: index.isFromConfig() ? 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager') : null,
 			id: 'skipEntriesWithoutUrl',
 			on: index.skipEntriesWithoutUrl,
 			disabled: true
@@ -56,7 +62,7 @@
 		{% if index.supportsSplitSections() %}
 			{{ forms.lightswitchField({
 				label: 'Split Sections'|t('search-manager'),
-				instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+				instructions: index.isFromConfig() ? 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager') : null,
 				id: 'splitSections',
 				on: index.splitSections ?? false,
 				disabled: true
@@ -65,7 +71,7 @@
 
 		{{ forms.lightswitchField({
 			label: 'Disable Stop Words'|t('search-manager'),
-			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			instructions: index.isFromConfig() ? 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager') : null,
 			id: 'disableStopWords',
 			on: index.disableStopWords ?? false,
 			disabled: true
@@ -172,10 +178,10 @@
 				<dt class="heading">{{ 'Backend'|t('search-manager') }}</dt>
 				<dd class="value">
 					{% if configuredBackend %}
-						{% if configuredBackend.source == 'config' %}
+						{% if canManageBackends %}
 							<a href="{{ url('search-manager/backends/view/' ~ configuredBackend.handle) }}">{{ configuredBackend.name }}</a>
 						{% else %}
-							<a href="{{ url('search-manager/backends/' ~ configuredBackend.id) }}">{{ configuredBackend.name }}</a>
+							{{ configuredBackend.name }}
 						{% endif %}
 					{% elseif not index.effectiveBackendType %}
 						<span class="light">{{ 'Default'|t('search-manager') }}</span>

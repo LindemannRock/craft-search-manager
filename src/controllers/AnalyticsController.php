@@ -163,6 +163,9 @@ class AnalyticsController extends Controller
             'settings' => $settings,
             'queryRulesExist' => $queryRulesExist,
             'promotionsExist' => $promotionsExist,
+            'canCreatePromotions' => Craft::$app->getUser()->checkPermission('searchManager:createPromotions'),
+            'canCreateQueryRules' => Craft::$app->getUser()->checkPermission('searchManager:createQueryRules'),
+            'canManageSettings' => Craft::$app->getUser()->checkPermission('searchManager:manageSettings'),
         ]);
     }
 

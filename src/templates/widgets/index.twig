@@ -4,16 +4,6 @@
     selectedSubnavItem: 'widgets',
 })|trim %}
 {% set errorSummary = setupIncompleteSummary %}
-{% set isPro = craft.searchManager.plugin.isPro() %}
-{% set sidebarItems = {
-	configurations: { label: 'Configurations'|t('search-manager'), url: url('search-manager/widgets') },
-} %}
-{% if isPro %}
-	{% set sidebarItems = sidebarItems|merge({
-		styles: { label: 'Styles'|t('search-manager'), url: url('search-manager/widgets/styles') },
-	}) %}
-{% endif %}
-
 {# Follows the canonical CP table index-page pattern (in-memory variant) —
    see plugins/base/docs/template-guides/cp-table-index-pattern.md.
    WidgetsController::actionIndex() owns query-param parsing, allowlist
@@ -30,13 +20,13 @@
 		subnav: 'widgets',
 		crumbs: [
 			{ label: searchHelper.fullName, url: url('search-manager') },
-			{ label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') },
+			{ label: 'Widgets'|t('search-manager'), url: widgetWorkspace.landingUrl },
 			{ label: 'Configurations'|t('search-manager') }
 		],
 	},
 	sidebarMenu: {
 		label: 'Widgets'|t('search-manager'),
-		items: sidebarItems,
+		items: widgetWorkspace.tabs,
 		selected: 'configurations',
 	},
 	filters: [

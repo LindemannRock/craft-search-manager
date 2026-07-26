@@ -159,6 +159,7 @@ class IndicesController extends Controller
             'canRebuild' => Craft::$app->getUser()->checkPermission('searchManager:rebuildIndices'),
             'canClear' => Craft::$app->getUser()->checkPermission('searchManager:clearIndices'),
             'canClearCache' => Craft::$app->getUser()->checkPermission('searchManager:clearCache'),
+            'canManageBackends' => Craft::$app->getUser()->checkPermission('searchManager:manageBackends'),
             'elementTypeLabels' => $this->getElementTypeLabels(),
         ]);
     }
@@ -216,15 +217,14 @@ class IndicesController extends Controller
             throw new NotFoundHttpException(Craft::t('search-manager', 'Index not found'));
         }
 
-        // If the index is editable (database), redirect to edit page
-        if ($index->canEdit()) {
-            return $this->redirect('search-manager/indices/edit/' . $index->id);
-        }
-
         return $this->renderTemplate('search-manager/indices/view', [
             'index' => $index,
             'indexReference' => SearchManager::$plugin->dependencies->getIndexCatalogue([$index->handle])[$index->handle],
             'elementTypeLabels' => $this->getElementTypeLabels(),
+            'canRebuild' => Craft::$app->getUser()->checkPermission('searchManager:rebuildIndices'),
+            'canClear' => Craft::$app->getUser()->checkPermission('searchManager:clearIndices'),
+            'canClearCache' => Craft::$app->getUser()->checkPermission('searchManager:clearCache'),
+            'canManageBackends' => Craft::$app->getUser()->checkPermission('searchManager:manageBackends'),
         ]);
     }
 
@@ -270,6 +270,8 @@ class IndicesController extends Controller
             'defaultTransformerPlaceholder' => $this->getDefaultTransformerPlaceholder(),
             'transformerPlaceholders' => $this->getTransformerPlaceholders(),
             'splitSectionsByElementType' => $this->getSplitSectionsByElementType(),
+            'canCreateBackends' => Craft::$app->getUser()->checkPermission('searchManager:createBackends'),
+            'canManageSettings' => Craft::$app->getUser()->checkPermission('searchManager:manageSettings'),
         ]);
     }
 

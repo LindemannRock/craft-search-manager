@@ -49,6 +49,8 @@
 {% else %}
     <div class="lr-analytics-empty">
         <p class="light">{{ "Geographic detection is disabled."|t('search-manager') }}</p>
-        <p><a href="{{ url('search-manager/settings') }}" class="btn">{{ "Enable in Settings"|t('search-manager') }}</a></p>
+        {% if canManageSettings %}
+            <p><a href="{{ url('search-manager/settings') }}" class="btn">{{ "Enable in Settings"|t('search-manager') }}</a></p>
+        {% endif %}
     </div>
 {% endif %}

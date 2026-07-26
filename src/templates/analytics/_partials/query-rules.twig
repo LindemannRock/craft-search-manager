@@ -5,7 +5,9 @@
         </div>
         <h2 class="lr-section-heading lr-heading-tight">{{ "No Query Rules Created"|t('search-manager') }}</h2>
         <p class="light lr-paragraph">{{ "Create query rules to add synonyms, boost results, or redirect users."|t('search-manager') }}</p>
-        <a href="{{ url('search-manager/query-rules/create') }}" class="btn submit">{{ "Create Query Rule"|t('search-manager') }}</a>
+        {% if canCreateQueryRules %}
+            <a href="{{ url('search-manager/query-rules/create') }}" class="btn submit">{{ "Create Query Rule"|t('search-manager') }}</a>
+        {% endif %}
     </div>
 {% else %}
     <div class="lr-analytics-charts two-columns">

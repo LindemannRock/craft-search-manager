@@ -11,7 +11,7 @@
 
 {% set crumbs = [
 	{ label: searchHelper.fullName, url: url('search-manager') },
-	{ label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') },
+	{ label: 'Widgets'|t('search-manager'), url: widgetWorkspace.landingUrl },
 	{ label: 'Styles'|t('search-manager'), url: url('search-manager/widgets/styles') },
 	{ label: widgetStyle.name }
 ] %}
@@ -19,7 +19,9 @@
 {% block content %}
 	<div class="pane">
 		<h2>{{ 'Configuration'|t('search-manager') }}</h2>
-		<p class="light">{{ 'This style is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
+		{% if widgetStyle.isFromConfig() %}
+			<p class="light">{{ 'This style is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
+		{% endif %}
 		<pre style="background: #f3f7fc; padding: 14px; border-radius: 4px; overflow-x: auto; font-size: 12px;"><code>{{ widgetStyle.getStyles()|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
 	</div>
 
@@ -30,7 +32,7 @@
 	<div class="meta">
 		{{ forms.lightswitchField({
 			label: 'Enabled'|t('search-manager'),
-			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			instructions: widgetStyle.isFromConfig() ? 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager') : null,
 			id: 'enabled',
 			on: widgetStyle.enabled,
 			disabled: true

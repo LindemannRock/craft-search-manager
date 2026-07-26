@@ -4,16 +4,6 @@
     selectedSubnavItem: 'widgets',
 })|trim %}
 {% set errorSummary = setupIncompleteSummary %}
-{% set isPro = craft.searchManager.plugin.isPro() %}
-{% set sidebarItems = {
-	configurations: { label: 'Configurations'|t('search-manager'), url: url('search-manager/widgets') },
-} %}
-{% if isPro %}
-	{% set sidebarItems = sidebarItems|merge({
-		styles: { label: 'Styles'|t('search-manager'), url: url('search-manager/widgets/styles') },
-	}) %}
-{% endif %}
-
 {# Follows the canonical CP table index-page pattern (in-memory variant) —
    see plugins/base/docs/template-guides/cp-table-index-pattern.md.
    WidgetsController::actionStylesIndex() owns query-param parsing, allowlist
@@ -30,13 +20,13 @@
 		subnav: 'widgets',
 		crumbs: [
 			{ label: searchHelper.fullName, url: url('search-manager') },
-			{ label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') },
+			{ label: 'Widgets'|t('search-manager'), url: widgetWorkspace.landingUrl },
 			{ label: 'Styles'|t('search-manager') }
 		],
 	},
 	sidebarMenu: {
 		label: 'Widgets'|t('search-manager'),
-		items: sidebarItems,
+		items: widgetWorkspace.tabs,
 		selected: 'styles',
 	},
 	filters: [
@@ -140,9 +130,11 @@
 {% endblock %}
 
 {% block tableRow %}
+	{% set canEditItem = canEdit and item.canEdit() %}
+
 	{# Name #}
 	<td data-column="name">
-		{% if item.canEdit() %}
+		{% if canEditItem %}
 			<a class="label-link" href="{{ url('search-manager/widgets/styles/edit/' ~ item.id) }}">
 				<span>{{ item.name }}</span>
 			</a>
@@ -150,6 +142,8 @@
 			<a class="label-link" href="{{ url('search-manager/widgets/styles/view/' ~ item.handle) }}">
 				<span>{{ item.name }}</span>
 			</a>
+		{% endif %}
+		{% if item.isFromConfig() %}
 			<span class="lr-config-info-icon" data-config="{{ item.rawConfigDisplay|e('html_attr') }}" data-config-source="config/search-manager.php"></span>
 		{% endif %}
 	</td>
@@ -199,15 +193,14 @@
 {% endblock %}
 
 {% block rowActions %}
+	{% set canEditItem = canEdit and item.canEdit() %}
 	{% set actionItems = [] %}
 
-	{% if item.canEdit() %}
-		{% if canEdit %}
-			{% set actionItems = actionItems|merge([{
-				label: 'Edit'|t('search-manager'),
-				url: url('search-manager/widgets/styles/edit/' ~ item.id),
-			}]) %}
-		{% endif %}
+	{% if canEditItem %}
+		{% set actionItems = actionItems|merge([{
+			label: 'Edit'|t('search-manager'),
+			url: url('search-manager/widgets/styles/edit/' ~ item.id),
+		}]) %}
 		{% if canCreate %}
 			{% set actionItems = actionItems|merge([{
 				label: 'Duplicate'|t('search-manager'),
