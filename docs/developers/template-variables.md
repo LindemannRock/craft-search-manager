@@ -44,6 +44,8 @@ Twig search supports the same display options as the REST search endpoint:
 | `debugEnabled` | Request top-level backend/cache `meta`; requires `devMode` or the **View debug information** permission |
 | `raw` | Set to `true` to return unpresented backend hits for debugging or custom migration code; it does not grant access to `meta` |
 
+Search analytics from both Twig methods defaults to source `twig`. A non-empty `analyticsSource` option overrides that default after shared normalization; missing, empty, or whitespace-only values keep `twig`.
+
 ### `searchMultiple(indexNames, query, options)`
 
 Search across multiple indices at once. Results are merged using the backend relevance signal when available. Scores are backend-specific, so do not compare them across different backend types.
@@ -58,7 +60,7 @@ Search across multiple indices at once. Results are merged using the backend rel
 | `query` | `string` | Search query |
 | `options` | `array` | Search options |
 
-**Returns:** `array` with presented `hits` (each tagged with `index`), `total`, and `indices` count breakdown. Snippet options, `retrievableFields`, `debugEnabled`, and `raw: true` behave the same as `search()`.
+**Returns:** `array` with presented `hits` (each tagged with `index`), `total`, and `indices` count breakdown. Snippet options, `retrievableFields`, `analyticsSource`, `debugEnabled`, and `raw: true` behave the same as `search()`.
 
 ### `getIndices()`
 

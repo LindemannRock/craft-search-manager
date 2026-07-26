@@ -292,7 +292,7 @@ final class SearchCacheReuseTest extends TestCase
             'offset' => 0,
             'page' => 0,
             'type' => null,
-            'source' => 'frontend-widget',
+            'source' => 'header-search',
         ];
 
         $first = $this->search($handle, $query, $widgetOptions);
@@ -321,7 +321,7 @@ final class SearchCacheReuseTest extends TestCase
         $this->assertFalse($first['meta']['cached']);
 
         $withAttribution = $this->search($handle, $query, $base + [
-            'source' => 'frontend-widget',
+            'source' => 'header-search',
             'platform' => 'Android 14',
             'appVersion' => '3.0.1',
             'sessionId' => StringHelper::UUID(),

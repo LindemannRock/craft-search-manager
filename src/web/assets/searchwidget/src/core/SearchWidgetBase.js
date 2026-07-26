@@ -1209,6 +1209,7 @@ class SearchWidgetBase extends HTMLElement {
             indexHandles: this.config.indexHandles,
             resultsCount,
             trigger,
+            widgetType: this.widgetType,
             analyticsSource: this.config.analyticsSource,
             siteId: this.config.siteId,
             cached: this.lastSearchCacheState?.cached,

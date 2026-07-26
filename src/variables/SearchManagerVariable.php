@@ -12,6 +12,7 @@ use Craft;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
+use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\helpers\TwigSearchOptionsHelper;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\web\assets\highlighter\SearchHighlighterAsset;
@@ -100,6 +101,7 @@ class SearchManagerVariable
         $raw = ($options['raw'] ?? false) === true;
         $debugEnabled = (bool)($options['debugEnabled'] ?? false);
         unset($options['debugEnabled'], $options['raw']);
+        $options = $this->withAnalyticsAttribution($options);
         $presentOptions = TwigSearchOptionsHelper::presentHitOptions([$indexName], $options);
         $options['retrievableFieldsByIndex'] = $presentOptions['retrievableFieldsByIndex'];
 
@@ -136,6 +138,7 @@ class SearchManagerVariable
         $raw = ($options['raw'] ?? false) === true;
         $debugEnabled = (bool)($options['debugEnabled'] ?? false);
         unset($options['debugEnabled'], $options['raw']);
+        $options = $this->withAnalyticsAttribution($options);
         $presentOptions = TwigSearchOptionsHelper::presentHitOptions($indexNames, $options);
         $options['retrievableFieldsByIndex'] = $presentOptions['retrievableFieldsByIndex'];
 
@@ -146,6 +149,21 @@ class SearchManagerVariable
         }
 
         return SearchDebugAccessHelper::filterDebugMeta($results, $debugEnabled);
+    }
+
+    /**
+     * Map the public Twig option to the shared analytics-source contract.
+     */
+    private function withAnalyticsAttribution(array $options): array
+    {
+        if (array_key_exists('analyticsSource', $options)) {
+            $options['source'] = $options['analyticsSource'];
+            unset($options['analyticsSource']);
+        }
+
+        $options['sourceDefault'] = TrackingMetadataHelper::SOURCE_TWIG;
+
+        return $options;
     }
 
     /**

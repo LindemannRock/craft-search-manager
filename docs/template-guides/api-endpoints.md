@@ -59,7 +59,7 @@ GET /actions/search-manager/api/search
 | `siteId` | (all sites) | Filter to a specific site. Omit to search all sites. |
 | `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`) |
 | `retrievableFields` | index setting | Optional comma-separated custom field handles to return under each hit's `fields` object. This can narrow the index's `retrievableFields` setting but cannot widen it. Use `*,-wysiwyg` to return all fields except `wysiwyg`, or an empty value to return no custom fields. |
-| `analyticsSource` | (auto-detected) | Analytics source identifier (e.g., `ios-app`) |
+| `analyticsSource` | `rest` | Optional custom analytics source (e.g., `ios-app`). A missing, empty, or whitespace-only value keeps the `rest` default. |
 | `platform` | (none) | Platform info for analytics (e.g., `iOS 17.2`) |
 | `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |
 | `skipAnalytics` | `0` | Skip analytics tracking for this search |
@@ -469,7 +469,8 @@ Records a search query when the user shows intent (clicking a result, pressing E
 | `indexHandles` | (all) | Comma-separated index handles. Only enabled indices are accepted. Passing more than 5 explicit handles is rejected; omit the parameter to record all-indices searches. |
 | `resultsCount` | `0` | Number of results shown (capped at 1000) |
 | `trigger` | `unknown` | What triggered tracking: `click`, `enter`, `idle`, or `unknown` |
-| `analyticsSource` | `frontend-widget` | Source identifier (alphanumeric, dash, underscore; max 64 chars) |
+| `widgetType` | `modal` | Widget boundary used for the default source: `modal`, `page`, or `inline`. The bundled widget sends this automatically. |
+| `analyticsSource` | Widget type | Optional custom source identifier (letters, numbers, dash, underscore; max 50 characters). Missing, empty, or whitespace-only values use `widget-modal`, `widget-page`, or `widget-inline`. |
 | `siteId` | (none) | Site ID |
 | `cached` @since(5.46.0) | (none) | Boolean-like (`1`/`0`, `true`/`false`, `on`/`off`, `yes`/`no`). Carry forward from the final search response's `meta.cached`. When truthy, the analytics row records `executionTime = 0` (cache hit). |
 | `took` @since(5.46.0) | (none) | Backend execution time in ms from `meta.took`. Used only when `cached` is falsy. Clamped to `[0, 60000]`; negative or non-numeric values are ignored. Recorded as the row's `executionTime` for cache-miss accounting. |

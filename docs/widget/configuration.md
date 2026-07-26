@@ -243,7 +243,7 @@ These parameters require Pro. Standard omits them from rendered widget HTML even
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `analyticsSource` | `string` | — | Custom analytics source identifier |
+| `analyticsSource` | `string` | `widget-modal` | Optional custom analytics source identifier. Missing, empty, or whitespace-only values keep the modal widget default. |
 | `analyticsIdleTimeoutMs` | `int` | `1500` | Track search after idle (ms), 0 to disable |
 
 ### Developer

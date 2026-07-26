@@ -403,11 +403,8 @@ class ApiController extends Controller
         $skipAnalytics = (bool) $request->getParam('skipAnalytics', false);
 
         // Analytics options (for mobile apps and custom integrations).
-        // This is an anonymous endpoint, so cap each value to its analytics column
-        // width and strip unexpected characters — otherwise an oversized/garbage
-        // value silently truncates (non-strict MySQL) or trips a caught insert error
-        // (strict MySQL/PostgreSQL), losing the analytics row and adding log noise.
-        $source = TrackingMetadataHelper::source($request->getParam('analyticsSource', null));
+        // Source normalization is resolved once at the final analytics writer.
+        $source = $request->getParam('analyticsSource', null);
         $platform = TrackingMetadataHelper::platform($request->getParam('platform', null));
         $appVersion = TrackingMetadataHelper::appVersion($request->getParam('appVersion', null));
 
@@ -470,6 +467,8 @@ class ApiController extends Controller
             'page' => $page,
             'type' => $typeFilter,
             'skipAnalytics' => $skipAnalytics,
+            'source' => $source,
+            'sourceDefault' => TrackingMetadataHelper::SOURCE_REST,
         ];
 
         // Add siteId if provided (scope search to a specific site)
@@ -482,10 +481,7 @@ class ApiController extends Controller
             $options['language'] = $language;
         }
 
-        // Add analytics options if provided
-        if ($source !== null) {
-            $options['source'] = $source;
-        }
+        // Add optional analytics metadata.
         if ($platform !== null) {
             $options['platform'] = $platform;
         }

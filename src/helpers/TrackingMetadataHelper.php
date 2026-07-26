@@ -16,11 +16,77 @@ namespace lindemannrock\searchmanager\helpers;
 class TrackingMetadataHelper
 {
     /**
+     * @since 5.54.0
+     */
+    public const SOURCE_WIDGET_MODAL = 'widget-modal';
+
+    /**
+     * @since 5.54.0
+     */
+    public const SOURCE_WIDGET_PAGE = 'widget-page';
+
+    /**
+     * @since 5.54.0
+     */
+    public const SOURCE_WIDGET_INLINE = 'widget-inline';
+
+    /**
+     * @since 5.54.0
+     */
+    public const SOURCE_TWIG = 'twig';
+
+    /**
+     * @since 5.54.0
+     */
+    public const SOURCE_REST = 'rest';
+
+    /**
+     * @since 5.54.0
+     */
+    public const SOURCE_GRAPHQL = 'graphql';
+
+    /**
+     * @since 5.54.0
+     */
+    public const SOURCE_CP_TEST = 'cp-test';
+
+    /**
+     * @since 5.54.0
+     */
+    public const SOURCE_UNKNOWN = 'unknown';
+
+    /**
      * Normalize an analytics source identifier for the `source` column.
      */
     public static function source(mixed $value): ?string
     {
         return self::normalize($value, 50, false);
+    }
+
+    /**
+     * Resolve an optional custom source against a deterministic boundary default.
+     *
+     * @since 5.54.0
+     */
+    public static function resolveSource(mixed $explicitSource, mixed $defaultSource = null): string
+    {
+        return self::source($explicitSource)
+            ?? self::source($defaultSource)
+            ?? self::SOURCE_UNKNOWN;
+    }
+
+    /**
+     * Resolve a widget type to its deterministic analytics source.
+     *
+     * @since 5.54.0
+     */
+    public static function widgetSourceDefault(mixed $widgetType): string
+    {
+        return match (strtolower(trim((string)$widgetType))) {
+            'page' => self::SOURCE_WIDGET_PAGE,
+            'inline' => self::SOURCE_WIDGET_INLINE,
+            default => self::SOURCE_WIDGET_MODAL,
+        };
     }
 
     /**
@@ -47,6 +113,6 @@ class TrackingMetadataHelper
 
         $pattern = $allowSpaceDot ? '/[^a-zA-Z0-9 ._-]/' : '/[^a-zA-Z0-9_-]/';
 
-        return substr(preg_replace($pattern, '', (string)$value), 0, $maxLength) ?: null;
+        return substr(preg_replace($pattern, '', trim((string)$value)), 0, $maxLength) ?: null;
     }
 }

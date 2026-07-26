@@ -142,7 +142,8 @@ final class GraphqlSearchTest extends TestCase
         $this->assertSame(10, $calls[0]['items'][0]['options']['offset']);
         $this->assertSame((int)($index->getSiteIds()[0] ?? 1), $calls[0]['items'][0]['options']['siteId']);
         $this->assertTrue($calls[0]['items'][0]['options']['skipAnalytics']);
-        $this->assertSame('graphql', $calls[0]['items'][0]['options']['source']);
+        $this->assertNull($calls[0]['items'][0]['options']['source']);
+        $this->assertSame('graphql', $calls[0]['items'][0]['options']['sourceDefault']);
     }
 
     public function testGraphqlSearchSchemaDoesNotExposeEnrichArgument(): void

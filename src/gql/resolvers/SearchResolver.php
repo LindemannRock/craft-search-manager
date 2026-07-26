@@ -121,7 +121,8 @@ class SearchResolver extends Resolver
             'page' => $page,
             'type' => self::trimmedString($arguments['type'] ?? null),
             'skipAnalytics' => (bool)($arguments['skipAnalytics'] ?? false),
-            'source' => TrackingMetadataHelper::source(self::trimmedString($arguments['analyticsSource'] ?? null)) ?? 'graphql',
+            'source' => $arguments['analyticsSource'] ?? null,
+            'sourceDefault' => TrackingMetadataHelper::SOURCE_GRAPHQL,
         ];
 
         if ($filters !== null && count($indexHandles) === 1) {

@@ -518,16 +518,7 @@ class BackendService extends Component
         $sessionId = $options['sessionId'] ?? null;
 
         // Extract analytics options from search options (API callers can pass these)
-        $analyticsOptions = [
-            'source' => $options['source'] ?? null,
-            'platform' => $options['platform'] ?? null,
-            'appVersion' => $options['appVersion'] ?? null,
-            // API key attribution (slice 5) — set by ApiController for keyed
-            // requests, absent for anonymous traffic.
-            'apiKeyId' => $options['apiKeyId'] ?? null,
-            'apiKeyPrefix' => $options['apiKeyPrefix'] ?? null,
-            'apiKeyType' => $options['apiKeyType'] ?? null,
-        ];
+        $analyticsOptions = $this->analyticsOptionsFromSearchOptions($options);
 
         // =====================================================================
         // QUERY RULES: Get all matching rules for analytics
@@ -1011,6 +1002,7 @@ class BackendService extends Component
 
             // Track analytics per index with shared session ID
             if (!$skipAnalytics) {
+                $analyticsOptions = $this->analyticsOptionsFromSearchOptions($options);
                 foreach ($indexNames as $indexName) {
                     SearchManager::$plugin->analytics->trackSearch(
                         $indexName,
@@ -1019,14 +1011,14 @@ class BackendService extends Component
                         0,
                         $backend->getName(),
                         $siteId,
-                        [
+                        array_merge($analyticsOptions, [
                             'synonymsExpanded' => false,
                             'rulesMatched' => 1,
                             'promotionsShown' => 0,
                             'wasRedirected' => true,
                             'matchedRules' => [],
                             'matchedPromotions' => [],
-                        ],
+                        ]),
                         $sessionId,
                     );
                 }
@@ -1269,7 +1261,7 @@ class BackendService extends Component
 
         // Remove analytics-only options that don't affect results
         $cacheOptions = $options;
-        foreach (['source', 'platform', 'appVersion', 'skipAnalytics', 'sessionId', 'apiKeyId', 'apiKeyPrefix', 'apiKeyType'] as $key) {
+        foreach (['source', 'sourceDefault', 'platform', 'appVersion', 'skipAnalytics', 'sessionId', 'apiKeyId', 'apiKeyPrefix', 'apiKeyType'] as $key) {
             unset($cacheOptions[$key]);
         }
         if (array_key_exists('siteId', $cacheOptions)) {
@@ -1285,6 +1277,24 @@ class BackendService extends Component
         ];
 
         return CacheKeyHelper::generate($keyData);
+    }
+
+    /**
+     * Extract analytics-only metadata without resolving or reconstructing it.
+     */
+    private function analyticsOptionsFromSearchOptions(array $options): array
+    {
+        return [
+            'source' => $options['source'] ?? null,
+            'sourceDefault' => $options['sourceDefault'] ?? null,
+            'platform' => $options['platform'] ?? null,
+            'appVersion' => $options['appVersion'] ?? null,
+            // API key attribution (slice 5) — set by ApiController for keyed
+            // requests, absent for anonymous traffic.
+            'apiKeyId' => $options['apiKeyId'] ?? null,
+            'apiKeyPrefix' => $options['apiKeyPrefix'] ?? null,
+            'apiKeyType' => $options['apiKeyType'] ?? null,
+        ];
     }
 
     /**

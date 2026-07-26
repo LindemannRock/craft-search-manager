@@ -14,6 +14,7 @@ use craft\helpers\Db;
 use lindemannrock\base\helpers\AnalyticsIpHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\QueryNormalizer;
+use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -47,7 +48,8 @@ class AnalyticsTrackingService
      * @param string $backend The search backend used (algolia, mysql, etc.)
      * @param int|null $siteId The site ID
      * @param array $analyticsOptions Optional analytics options:
-     *   - source: The source of the search (frontend, cp, api, ios-app, android-app, etc.)
+     *   - source: Optional custom source supplied by an entry point
+     *   - sourceDefault: Deterministic source supplied by the entry point
      *   - trigger: What triggered the tracking (click, enter, idle, unknown)
      *   - platform: The platform info (iOS 17, Android 14, Windows 11, etc.)
      *   - appVersion: The app version (1.0.0, 2.3.1, etc.)
@@ -138,7 +140,10 @@ class AnalyticsTrackingService
         }
 
         // Extract analytics options
-        $source = $analyticsOptions['source'] ?? null;
+        $source = TrackingMetadataHelper::resolveSource(
+            $analyticsOptions['source'] ?? null,
+            $analyticsOptions['sourceDefault'] ?? null,
+        );
         $trigger = $analyticsOptions['trigger'] ?? null;
         $platform = $analyticsOptions['platform'] ?? null;
         $appVersion = $analyticsOptions['appVersion'] ?? null;
@@ -161,11 +166,6 @@ class AnalyticsTrackingService
         $request = Craft::$app->getRequest();
         $referer = $request->getReferrer();
         $userAgent = $request->getUserAgent();
-
-        // Auto-detect source if not provided
-        if ($source === null) {
-            $source = $this->_detectSource($request, $referer);
-        }
 
         // Detect device information using Matomo DeviceDetector
         $deviceInfo = SearchManager::$plugin->deviceDetection->detectDevice($userAgent);
@@ -433,41 +433,6 @@ class AnalyticsTrackingService
                 ]);
             }
         }
-    }
-
-    /**
-     * Detect the source of the search request
-     *
-     * Detection logic:
-     * - CP request: Craft::$app->getRequest()->getIsCpRequest() returns true
-     * - Frontend: Referrer is from same site (same host as current request)
-     * - API: No referrer or referrer is from different host
-     *
-     * @param \craft\web\Request $request
-     * @param string|null $referer
-     * @return string The detected source (frontend, cp, or api)
-     */
-    private function _detectSource(\craft\web\Request $request, ?string $referer): string
-    {
-        // Check if this is a CP request
-        if ($request->getIsCpRequest()) {
-            return 'cp';
-        }
-
-        // Check referrer to determine frontend vs API
-        if ($referer) {
-            // Parse the referrer URL
-            $referrerHost = parse_url($referer, PHP_URL_HOST);
-            $currentHost = $request->getHostName();
-
-            // If referrer is from same host, it's a frontend search
-            if ($referrerHost && $currentHost && strcasecmp($referrerHost, $currentHost) === 0) {
-                return 'frontend';
-            }
-        }
-
-        // No referrer or external referrer = likely API call
-        return 'api';
     }
 
     /**

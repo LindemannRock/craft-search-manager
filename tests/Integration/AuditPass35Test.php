@@ -117,7 +117,8 @@ final class AuditPass35Test extends TestCase
         $source = $this->readPluginFile('src/controllers/SearchController.php');
 
         self::assertStringContainsString('use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;', $source);
-        self::assertStringContainsString("\$source = TrackingMetadataHelper::source(\$source) ?? 'frontend-widget';", $source);
+        self::assertStringContainsString("\$sourceDefault = TrackingMetadataHelper::widgetSourceDefault(\$request->getParam('widgetType'));", $source);
+        self::assertStringNotContainsString('frontend-widget', $source);
         self::assertStringNotContainsString('substr($source, 0, 64)', $source);
     }
 

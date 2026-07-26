@@ -87,6 +87,7 @@ if (fs.existsSync(widgetBaseFile)) {
     test('Stale search failures are discarded before error state', (source.match(/requestId !== this\.searchSequence/g) || []).length >= 2);
     test('Source does not abort in-flight searches', !source.includes('new AbortController'));
     test('Destination page highlighter can mark code/pre text nodes', !source.includes("parent.closest('script, style, noscript, textarea, code, pre, mark"));
+    test('Widget forwards its runtime type to analytics tracking', source.includes('widgetType: this.widgetType'));
 }
 
 const urlUtilsFile = path.join(SRC_DIR, 'modules', 'UrlUtils.js');
@@ -157,11 +158,15 @@ function loadSearchServiceModule() {
 }
 
 try {
-    const { performSearch } = loadSearchServiceModule();
+    const { performSearch, trackSearch } = loadSearchServiceModule();
     const originalFetch = global.fetch;
     const requestedUrls = [];
-    global.fetch = async function(url) {
+    const trackingBodies = [];
+    global.fetch = async function(url, options = {}) {
         requestedUrls.push(String(url));
+        if (options.body instanceof FormData) {
+            trackingBodies.push(options.body);
+        }
 
         return {
             ok: true,
@@ -182,15 +187,29 @@ try {
             endpoint: '/actions/search-manager/api/search',
             snippetCleanMarkdown: false,
         });
+        trackSearch({
+            endpoint: '/actions/search-manager/search/track-search',
+            query: 'widget default',
+            widgetType: 'modal',
+        });
+        trackSearch({
+            endpoint: '/actions/search-manager/search/track-search',
+            query: 'widget custom',
+            widgetType: 'inline',
+            analyticsSource: 'header-search',
+        });
     } finally {
         global.fetch = originalFetch;
     }
 
     test('Widget forwards snippetCleanMarkdown when enabled', requestedUrls[0] && requestedUrls[0].includes('snippetCleanMarkdown=1'));
     test('Widget omits snippetCleanMarkdown when disabled', requestedUrls[1] && !requestedUrls[1].includes('snippetCleanMarkdown=1'));
+    test('Widget sends its deterministic type boundary', trackingBodies[0]?.get('widgetType') === 'modal');
+    test('Widget leaves an omitted custom source for the server default', !trackingBodies[0]?.has('analyticsSource'));
+    test('Widget sends an explicit custom source unchanged', trackingBodies[1]?.get('widgetType') === 'inline' && trackingBodies[1]?.get('analyticsSource') === 'header-search');
 } catch (error) {
     console.error(error);
-    test('Widget snippetCleanMarkdown forwarding tests execute', false);
+    test('Widget request metadata tests execute', false);
 }
 
 try {

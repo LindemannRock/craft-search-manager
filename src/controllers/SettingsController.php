@@ -25,6 +25,7 @@ use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
+use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\Settings;
@@ -272,7 +273,9 @@ class SettingsController extends Controller
             $originalQuery = $query;
 
             // Respect the index's resolved site scope for scoping.
-            $searchOptions = [];
+            $searchOptions = [
+                'sourceDefault' => TrackingMetadataHelper::SOURCE_CP_TEST,
+            ];
             $indexSiteIds = $index->getSiteIds();
             if ($indexSiteIds !== null) {
                 $searchOptions['siteId'] = count($indexSiteIds) === 1 ? $indexSiteIds[0] : $indexSiteIds;

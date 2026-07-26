@@ -208,13 +208,14 @@ export function trackClick({ endpoint, elementId, query, index, apiKey = '' }) {
  * @param {Array} options.indexHandles - Search indices
  * @param {number} options.resultsCount - Number of results
  * @param {string} options.trigger - What triggered tracking ('click', 'enter', 'idle')
+ * @param {string} options.widgetType - Widget boundary ('modal', 'page', or 'inline')
  * @param {string} options.analyticsSource - Source identifier (e.g., 'header-search')
  * @param {string} options.siteId - Optional site ID
  * @param {boolean} [options.cached] - Whether the final search response was served from cache
  * @param {number} [options.took] - Backend execution time in ms (from response meta.took)
  * @param {string} [options.apiKey] - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  */
-export function trackSearch({ endpoint, query, indexHandles = [], resultsCount = 0, trigger = 'unknown', analyticsSource = '', siteId = '', cached, took, apiKey = '' }) {
+export function trackSearch({ endpoint, query, indexHandles = [], resultsCount = 0, trigger = 'unknown', widgetType = 'modal', analyticsSource = '', siteId = '', cached, took, apiKey = '' }) {
     if (!query || !endpoint) return;
 
     try {
@@ -223,7 +224,10 @@ export function trackSearch({ endpoint, query, indexHandles = [], resultsCount =
         formData.append('indexHandles', indexHandles.join(','));
         formData.append('resultsCount', resultsCount.toString());
         formData.append('trigger', trigger);
-        formData.append('analyticsSource', analyticsSource || 'frontend-widget');
+        formData.append('widgetType', widgetType);
+        if (analyticsSource) {
+            formData.append('analyticsSource', analyticsSource);
+        }
         if (siteId) {
             formData.append('siteId', siteId);
         }

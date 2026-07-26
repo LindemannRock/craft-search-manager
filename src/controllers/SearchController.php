@@ -228,7 +228,8 @@ class SearchController extends Controller
         $indexHandlesParam = $request->getParam('indexHandles', '');
         $resultsCount = (int) $request->getParam('resultsCount', 0);
         $trigger = $request->getParam('trigger', 'unknown');
-        $source = $request->getParam('analyticsSource', 'frontend-widget');
+        $source = $request->getParam('analyticsSource');
+        $sourceDefault = TrackingMetadataHelper::widgetSourceDefault($request->getParam('widgetType'));
         $siteId = self::normalizeTrackingSiteId($request->getParam('siteId'));
 
         // Validate and sanitize inputs to prevent analytics pollution
@@ -246,9 +247,6 @@ class SearchController extends Controller
         if (!in_array($trigger, $validTriggers, true)) {
             $trigger = 'unknown';
         }
-
-        // Source: sanitize and limit length to the analytics source column.
-        $source = TrackingMetadataHelper::source($source) ?? 'frontend-widget';
 
         // Widget cache telemetry: the widget knows from the final search response
         // whether the result was cache-hit (meta.cached) and the backend's reported
@@ -302,6 +300,7 @@ class SearchController extends Controller
         $analyticsOptions = array_merge(
             [
                 'source' => $source,
+                'sourceDefault' => $sourceDefault,
                 'trigger' => $trigger,
             ],
             SearchManager::$plugin->apiKeys->attributionOptions($this->authenticatedKey),
@@ -330,6 +329,7 @@ class SearchController extends Controller
                 'indices' => implode(',', $handlesToTrack),
                 'trigger' => $trigger,
                 'source' => $source,
+                'sourceDefault' => $sourceDefault,
                 'resultsCount' => $resultsCount,
                 'executionTime' => $executionTime,
             ]);

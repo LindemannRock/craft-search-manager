@@ -75,7 +75,7 @@ export const BASE_DEFAULTS = {
     trackSearchEndpoint: '/actions/search-manager/search/track-search',
     // Analytics settings (user-configurable)
     analyticsIdleTimeoutMs: 1500, // Track search after 1.5s idle (0 = disabled)
-    analyticsSource: '', // Custom source identifier (empty = 'frontend-widget')
+    analyticsSource: '', // Custom source identifier (empty = deterministic widget-type default)
     highlightResultsEnabled: true,
     highlightTag: 'mark',
     highlightClass: '',

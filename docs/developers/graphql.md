@@ -102,7 +102,7 @@ Search arguments:
 | `retrievableFields` | `[String]` | Optional custom field handles to return under `fields`. This can narrow each index's `retrievableFields` setting but cannot widen it. Pass `["*", "-wysiwyg"]` to return all fields except `wysiwyg`, or an empty list to return no custom fields. |
 | `language` | `String` | Optional language code for localized operators. |
 | `lang` | `String` | Alias for `language`. |
-| `analyticsSource` | `String` | Analytics source. Defaults to `graphql`. |
+| `analyticsSource` | `String` | Optional custom analytics source. Missing, empty, or whitespace-only values default to `graphql`; custom values are normalized to 50 characters. |
 | `platform` | `String` | Optional analytics platform label. |
 | `appVersion` | `String` | Optional analytics app version label. |
 | `skipAnalytics` | `Boolean` | Set to `true` to avoid recording a search analytics row. |

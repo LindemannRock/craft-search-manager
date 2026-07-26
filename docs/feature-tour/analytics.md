@@ -85,7 +85,7 @@ Every search records:
 | Query | The search terms |
 | Hits | Number of results returned |
 | Execution time | How long the search took |
-| Source | Where the search came from (frontend, CP, API, custom) |
+| Source | Deterministic entry point (`widget-modal`, `twig`, `rest`, `graphql`, `cp-test`, etc.) or a custom override |
 | Device, browser, OS | Parsed from user-agent (via Matomo DeviceDetector) |
 | Country, city | Geographic location (when geo-detection enabled) |
 | IP hash | Anonymized visitor identifier |
@@ -136,25 +136,34 @@ Analytics can be enabled or disabled per index. This is useful for excluding int
 ],
 ```
 
-## Source detection
+## Source attribution
 
-Search Manager automatically detects where a search came from:
+Search Manager assigns the source at the entry point that started the search. It does not infer source from the request's `Referer` header.
 
-| Source | How It's Detected |
-|--------|-------------------|
-| `cp` | Craft CP request |
-| `frontend` | Referrer from same host |
-| `api` | No referrer or external referrer |
+| Entry point | Default source |
+|-------------|----------------|
+| Modal widget | `widget-modal` |
+| Search-page widget | `widget-page` |
+| Inline widget | `widget-inline` |
+| Twig `craft.searchManager.search()` / `searchMultiple()` | `twig` |
+| REST search | `rest` |
+| GraphQL search | `graphql` |
+| Control Panel Test search | `cp-test` |
+| Direct/internal tracking without an entry-point default | `unknown` |
+
+The referrer is still captured as separate analytics metadata when the request supplies one. Existing historical source values such as `frontend`, `cp`, and `api` remain visible in breakdowns and exports.
 
 You can also pass a custom source for mobile apps or integrations:
 
 ```twig
 {% set results = craft.searchManager.search('products', 'shoes', {
-    source: 'android-app',
+    analyticsSource: 'android-app',
     platform: 'Android 14',
     appVersion: '1.5.2',
 }) %}
 ```
+
+A non-empty custom source overrides the entry-point default. Search Manager trims and normalizes it to letters, numbers, dashes, and underscores, with a 50-character limit. Missing, empty, or whitespace-only values use the entry-point default.
 
 Or via the REST API:
 

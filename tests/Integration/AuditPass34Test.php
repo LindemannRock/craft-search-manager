@@ -27,10 +27,12 @@ final class AuditPass34Test extends TestCase
         $api = $this->readPluginFile('src/controllers/ApiController.php');
 
         self::assertStringContainsString('use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;', $resolver);
-        self::assertStringContainsString("TrackingMetadataHelper::source(self::trimmedString(\$arguments['analyticsSource'] ?? null)) ?? 'graphql'", $resolver);
+        self::assertStringContainsString("'source' => \$arguments['analyticsSource'] ?? null,", $resolver);
+        self::assertStringContainsString("'sourceDefault' => TrackingMetadataHelper::SOURCE_GRAPHQL,", $resolver);
         self::assertStringContainsString("TrackingMetadataHelper::platform(self::trimmedString(\$arguments['platform'] ?? null))", $resolver);
         self::assertStringContainsString("TrackingMetadataHelper::appVersion(self::trimmedString(\$arguments['appVersion'] ?? null))", $resolver);
         self::assertStringContainsString('use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;', $api);
+        self::assertStringContainsString("'sourceDefault' => TrackingMetadataHelper::SOURCE_REST,", $api);
 
         // The pre-fix path passed platform/appVersion through trimmedString() only (no cap).
         self::assertStringNotContainsString("foreach (['language', 'platform', 'appVersion'] as \$option)", $resolver);

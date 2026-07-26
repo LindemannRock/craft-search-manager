@@ -109,8 +109,8 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         $handle = $this->resolveAnalyticsIndexHandle();
         $this->swapStubRequest();
         $key = $this->seedKey(ApiKey::TYPE_PUBLIC);
-        // 'source' set so trackSearch skips the web-only _detectSource() branch;
-        // both controllers always pass a source in production.
+        // Keep this fixture focused on API-key attribution rather than the
+        // direct/internal `unknown` source fallback.
         $options = array_merge(
             ['source' => 'test'],
             SearchManager::$plugin->apiKeys->attributionOptions($key),
@@ -143,8 +143,8 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         $handle = $this->resolveAnalyticsIndexHandle();
         $this->swapStubRequest();
 
-        // No attribution keys — the anonymous / requireApiKey=false path. 'source'
-        // set so trackSearch skips the web-only _detectSource() branch.
+        // No attribution keys — the anonymous / requireApiKey=false path. Keep
+        // an explicit source so the fixture stays focused on key attribution.
         SearchManager::$plugin->analytics->trackSearch(
             $handle,
             '__sm_attr_probe_anon',
