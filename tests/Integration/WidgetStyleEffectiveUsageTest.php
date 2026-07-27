@@ -152,7 +152,10 @@ final class WidgetStyleEffectiveUsageTest extends TestCase
             static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionBulkDeleteStyle(),
         );
         self::assertSame(false, $bulkResponse->data['success'] ?? true);
-        self::assertStringContainsString('Bulk Config Widget', (string)($bulkResponse->data['error'] ?? ''));
+        self::assertStringContainsString(
+            'Bulk Config Widget',
+            implode(' ', $bulkResponse->data['errors'] ?? []),
+        );
         self::assertSame(1, $this->countStyle($bulkUsedStyleId));
         self::assertSame(1, $this->countStyle($bulkUnusedStyleId));
     }

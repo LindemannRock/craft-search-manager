@@ -132,8 +132,8 @@ final class ControllerMessageI18nTest extends TestCase
     {
         $this->assertControllerMethodContains(
             'BackendsController.php',
-            'actionBulkDisable',
-            "Craft::t('search-manager', 'Unknown error')",
+            'bulkSetEnabled',
+            "Craft::t('search-manager', 'Could not save backend')",
         );
         $this->assertControllerMethodContains(
             'BulkDeleteTrait.php',
@@ -142,8 +142,8 @@ final class ControllerMessageI18nTest extends TestCase
         );
         $this->assertControllerMethodNotContains(
             'BackendsController.php',
-            'actionBulkDisable',
-            ": 'Unknown error'",
+            'bulkSetEnabled',
+            ": 'Could not save backend'",
         );
         $this->assertControllerMethodNotContains(
             'BulkDeleteTrait.php',

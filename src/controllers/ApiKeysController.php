@@ -13,6 +13,7 @@ use craft\web\Controller;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\ApiKey;
+use lindemannrock\searchmanager\models\BulkMutationResult;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -41,7 +42,6 @@ use yii\web\Response;
  */
 class ApiKeysController extends Controller
 {
-    use BulkDeleteTrait;
     use LoggingTrait;
 
     /**
@@ -368,25 +368,66 @@ class ApiKeysController extends Controller
         $this->requirePostRequest();
         $this->requirePermission('searchManager:revokeApiKeys');
 
-        $ids = $this->parseBulkIds(Craft::$app->getRequest()->getBodyParam('ids', []));
-
-        return $this->bulkDeleteAllOrNothing(
-            $ids,
-            static fn(mixed $id): ?object => ApiKey::findById((int)$id),
-            static function(object $apiKey): ?string {
-                if (!$apiKey instanceof ApiKey) {
-                    return null;
-                }
-
-                $usages = SearchManager::$plugin->dependencies->getApiKeyUsages($apiKey->handle);
-                if ($usages !== []) {
-                    return SearchManager::$plugin->dependencies->formatInUseError($apiKey->name, $usages);
-                }
-
-                return null;
-            },
-            static fn(object $apiKey): bool => $apiKey instanceof ApiKey && $apiKey->delete(),
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('ids', []),
         );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
+
+        $apiKeys = [];
+        foreach ($result->identifiers() as $id) {
+            $apiKey = ApiKey::findById($id);
+            if ($apiKey === null) {
+                $result->addSkip();
+                continue;
+            }
+
+            $usages = SearchManager::$plugin->dependencies->getApiKeyUsages($apiKey->handle);
+            if ($usages !== []) {
+                $result->addError(SearchManager::$plugin->dependencies->formatInUseError($apiKey->name, $usages));
+                continue;
+            }
+            $apiKeys[] = $apiKey;
+        }
+
+        if ($result->errors() === [] && $apiKeys !== []) {
+            $transaction = Craft::$app->getDb()->beginTransaction();
+            try {
+                foreach ($apiKeys as $apiKey) {
+                    if (!$apiKey->delete()) {
+                        $result->addModelErrors(
+                            $apiKey->name,
+                            $apiKey,
+                            Craft::t('search-manager', 'Couldn’t revoke API key'),
+                        );
+                        $transaction->rollBack();
+                        return $this->asJson($result->toArray());
+                    }
+                }
+                $transaction->commit();
+                $result->addSuccess(count($apiKeys));
+            } catch (\Throwable $e) {
+                if ($transaction->getIsActive()) {
+                    $transaction->rollBack();
+                }
+                $result->addNamedError($apiKey->name, Craft::t('search-manager', 'Couldn’t revoke API key'));
+                $this->logError('Bulk API key revocation failed', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $data = $result->toArray();
+        if ($result->count() > 0) {
+            $data['message'] = Craft::t(
+                'search-manager',
+                '{count, plural, =1{1 API key revoked} other{# API keys revoked}}',
+                ['count' => $result->count()],
+            );
+        }
+
+        return $this->asJson($data);
     }
 
     private function runBulkSetEnabled(bool $enabled): Response
@@ -394,28 +435,82 @@ class ApiKeysController extends Controller
         $this->requirePostRequest();
         $this->requirePermission('searchManager:editApiKeys');
 
-        $ids = $this->parseBulkIds(Craft::$app->getRequest()->getBodyParam('ids', []));
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('ids', []),
+        );
+        if (!$result->canMutate()) {
+            return $this->respondToBulkResult(
+                $result,
+                '',
+                $enabled
+                    ? Craft::t('search-manager', 'Couldn’t enable API keys')
+                    : Craft::t('search-manager', 'Couldn’t disable API keys'),
+            );
+        }
+
+        $apiKeys = [];
+        foreach ($result->identifiers() as $id) {
+            $apiKey = ApiKey::findById($id);
+            if ($apiKey === null) {
+                $result->addSkip();
+                continue;
+            }
+            if ($apiKey->enabled === $enabled) {
+                $result->addSkip();
+                continue;
+            }
+            $apiKeys[$id] = $apiKey;
+        }
+
         if (!$enabled) {
-            $usedConfigs = $this->findWidgetConfigsUsingApiKeyIds($ids, true);
+            $usedConfigs = $this->findWidgetConfigsUsingApiKeyIds(array_keys($apiKeys), true);
             if ($usedConfigs !== []) {
-                return $this->respondToBulkResult(
-                    0,
-                    '',
+                $result->addError(
                     Craft::t('search-manager', 'Some selected API keys are used by widget configs ({widgets}). Reassign or remove them from those widgets before disabling them.', [
                         'widgets' => SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($usedConfigs),
                     ]),
                 );
+                return $this->respondToBulkResult(
+                    $result,
+                    '',
+                    Craft::t('search-manager', 'Couldn’t disable API keys'),
+                );
             }
         }
 
-        $affected = SearchManager::$plugin->apiKeys->bulkSetEnabled($ids, $enabled);
+        foreach ($apiKeys as $id => $apiKey) {
+            try {
+                $affected = SearchManager::$plugin->apiKeys->bulkSetEnabled([$id], $enabled);
+                if ($affected === 1) {
+                    $result->addSuccess();
+                } else {
+                    $result->addNamedError(
+                        $apiKey->name,
+                        $enabled
+                            ? Craft::t('search-manager', 'Couldn’t enable API keys')
+                            : Craft::t('search-manager', 'Couldn’t disable API keys'),
+                    );
+                }
+            } catch (\Throwable $e) {
+                $result->addNamedError(
+                    $apiKey->name,
+                    $enabled
+                        ? Craft::t('search-manager', 'Couldn’t enable API keys')
+                        : Craft::t('search-manager', 'Couldn’t disable API keys'),
+                );
+                $this->logError('Bulk API key status update failed', [
+                    'apiKeyId' => $id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         $message = $enabled
-            ? Craft::t('search-manager', '{count, plural, =1{1 API key enabled} other{# API keys enabled}}', ['count' => $affected])
-            : Craft::t('search-manager', '{count, plural, =1{1 API key disabled} other{# API keys disabled}}', ['count' => $affected]);
+            ? Craft::t('search-manager', '{count, plural, =1{1 API key enabled} other{# API keys enabled}}', ['count' => $result->count()])
+            : Craft::t('search-manager', '{count, plural, =1{1 API key disabled} other{# API keys disabled}}', ['count' => $result->count()]);
 
         return $this->respondToBulkResult(
-            $affected,
+            $result,
             $message,
             $enabled
                 ? Craft::t('search-manager', 'Couldn’t enable API keys')
@@ -423,40 +518,35 @@ class ApiKeysController extends Controller
         );
     }
 
-    /**
-     * @param array<mixed>|mixed $raw
-     * @return int[]
-     */
-    private function parseBulkIds(mixed $raw): array
-    {
-        if (!is_array($raw)) {
-            return [];
-        }
-        $ids = [];
-        foreach ($raw as $value) {
-            if (is_numeric($value) && (int) $value > 0) {
-                $ids[] = (int) $value;
-            }
-        }
-        return array_values(array_unique($ids));
-    }
-
-    private function respondToBulkResult(int $count, string $successMessage, string $emptyMessage): Response
-    {
+    private function respondToBulkResult(
+        BulkMutationResult $result,
+        string $successMessage,
+        string $emptyMessage,
+    ): Response {
         $acceptsJson = Craft::$app->getRequest()->getAcceptsJson();
+        $data = $result->toArray();
 
-        if ($count > 0) {
+        if ($result->count() > 0) {
             if ($acceptsJson) {
-                return $this->asJson(['success' => true, 'count' => $count, 'message' => $successMessage]);
+                $data['message'] = $successMessage;
+                return $this->asJson($data);
             }
             Craft::$app->getSession()->setNotice($successMessage);
+            if ($result->errors() !== []) {
+                Craft::$app->getSession()->setError(implode(' ', $result->errors()));
+            }
             return $this->redirect('search-manager/api-keys');
         }
 
         if ($acceptsJson) {
-            return $this->asJson(['success' => false, 'count' => 0, 'error' => $emptyMessage]);
+            if ($data['errors'] === []) {
+                $data['errors'][] = $emptyMessage;
+            }
+            return $this->asJson($data);
         }
-        Craft::$app->getSession()->setError($emptyMessage);
+        Craft::$app->getSession()->setError(
+            $result->errors() !== [] ? implode(' ', $result->errors()) : $emptyMessage,
+        );
         return $this->redirect('search-manager/api-keys');
     }
 

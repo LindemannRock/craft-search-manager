@@ -14,6 +14,7 @@ use craft\web\Controller;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\models\BulkMutationResult;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
@@ -28,7 +29,6 @@ use yii\web\Response;
  */
 class BackendsController extends Controller
 {
-    use BulkDeleteTrait;
     use LoggingTrait;
 
     private const PLUGIN_HANDLE = 'search-manager';
@@ -564,23 +564,7 @@ class BackendsController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $backendIds = Craft::$app->getRequest()->getBodyParam('backendIds', []);
-        $count = 0;
-
-        foreach ($backendIds as $id) {
-            $backend = ConfiguredBackend::findById((int)$id);
-            if ($backend) {
-                $backend->enabled = true;
-                if ($backend->save()) {
-                    $count++;
-                }
-            }
-        }
-
-        return $this->asJson([
-            'success' => true,
-            'count' => $count,
-        ]);
+        return $this->bulkSetEnabled(true);
     }
 
     /**
@@ -592,41 +576,7 @@ class BackendsController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $backendIds = Craft::$app->getRequest()->getBodyParam('backendIds', []);
-        $settings = SearchManager::$plugin->getSettings();
-        $count = 0;
-        $errors = [];
-
-        foreach ($backendIds as $id) {
-            $backend = ConfiguredBackend::findById((int)$id);
-            if ($backend) {
-                // Cannot disable default backend
-                if ($settings->defaultBackendHandle === $backend->handle) {
-                    $errors[] = Craft::t('search-manager', 'Cannot disable default backend "{name}"', ['name' => $backend->name]);
-                    continue;
-                }
-                $backend->enabled = false;
-                if ($backend->save()) {
-                    $count++;
-                } else {
-                    $backendErrors = $backend->getErrors();
-                    $errorMessage = !empty($backendErrors['enabled'])
-                        ? $backendErrors['enabled'][0]
-                        : Craft::t('search-manager', 'Unknown error');
-                    $errors[] = "{$backend->name}: {$errorMessage}";
-                }
-            }
-        }
-
-        if ($count > 0 && empty($errors)) {
-            return $this->asJson(['success' => true, 'count' => $count]);
-        }
-
-        if ($count > 0) {
-            return $this->asJson(['success' => true, 'count' => $count, 'errors' => $errors]);
-        }
-
-        return $this->asJson(['success' => false, 'errors' => $errors]);
+        return $this->bulkSetEnabled(false);
     }
 
     /**
@@ -638,30 +588,119 @@ class BackendsController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $backendIds = Craft::$app->getRequest()->getBodyParam('backendIds', []);
-        $settings = SearchManager::$plugin->getSettings();
-
-        return $this->bulkDeleteAllOrNothing(
-            $backendIds,
-            static fn(mixed $id): ?object => ConfiguredBackend::findById((int)$id),
-            static function(object $backend) use ($settings): ?string {
-                if (!$backend instanceof ConfiguredBackend) {
-                    return null;
-                }
-
-                if ($settings->defaultBackendHandle === $backend->handle) {
-                    return Craft::t('search-manager', 'Cannot delete the default backend. Set another backend as default first.');
-                }
-
-                $usages = SearchManager::$plugin->dependencies->getBackendUsages($backend->handle);
-                if ($usages !== []) {
-                    return SearchManager::$plugin->dependencies->formatInUseError($backend->name, $usages);
-                }
-
-                return null;
-            },
-            static fn(object $backend): bool => $backend instanceof ConfiguredBackend && $backend->delete(),
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('backendIds', []),
         );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
+
+        $settings = SearchManager::$plugin->getSettings();
+        $backends = [];
+
+        foreach ($result->identifiers() as $id) {
+            $backend = ConfiguredBackend::findById($id);
+            if ($backend === null) {
+                $result->addSkip();
+                continue;
+            }
+
+            if ($settings->defaultBackendHandle === $backend->handle) {
+                $result->addError(
+                    Craft::t('search-manager', 'Cannot delete the default backend. Set another backend as default first.'),
+                );
+                continue;
+            }
+
+            $usages = SearchManager::$plugin->dependencies->getBackendUsages($backend->handle);
+            if ($usages !== []) {
+                $result->addError(SearchManager::$plugin->dependencies->formatInUseError($backend->name, $usages));
+                continue;
+            }
+
+            $backends[] = $backend;
+        }
+
+        if ($result->errors() !== [] || $backends === []) {
+            return $this->asJson($result->toArray());
+        }
+
+        $transaction = Craft::$app->getDb()->beginTransaction();
+        try {
+            foreach ($backends as $backend) {
+                if (!$backend->delete()) {
+                    $result->addModelErrors(
+                        $backend->name,
+                        $backend,
+                        Craft::t('search-manager', 'Could not delete backend'),
+                    );
+                    $transaction->rollBack();
+                    return $this->asJson($result->toArray());
+                }
+            }
+            $transaction->commit();
+            $result->addSuccess(count($backends));
+        } catch (\Throwable $e) {
+            if ($transaction->getIsActive()) {
+                $transaction->rollBack();
+            }
+            $result->addNamedError($backend->name, Craft::t('search-manager', 'Could not delete backend'));
+            $this->logError('Bulk backend deletion failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $this->asJson($result->toArray());
+    }
+
+    private function bulkSetEnabled(bool $enabled): Response
+    {
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('backendIds', []),
+        );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
+
+        $settings = SearchManager::$plugin->getSettings();
+        foreach ($result->identifiers() as $id) {
+            $backend = ConfiguredBackend::findById($id);
+            if ($backend === null) {
+                $result->addSkip();
+                continue;
+            }
+            if ($backend->enabled === $enabled) {
+                $result->addSkip();
+                continue;
+            }
+            if (!$enabled && $settings->defaultBackendHandle === $backend->handle) {
+                $result->addError(Craft::t('search-manager', 'Cannot disable default backend "{name}"', [
+                    'name' => $backend->name,
+                ]));
+                continue;
+            }
+
+            try {
+                $backend->enabled = $enabled;
+                if ($backend->save()) {
+                    $result->addSuccess();
+                } else {
+                    $result->addModelErrors(
+                        $backend->name,
+                        $backend,
+                        Craft::t('search-manager', 'Could not save backend'),
+                    );
+                }
+            } catch (\Throwable $e) {
+                $result->addNamedError($backend->name, Craft::t('search-manager', 'Could not save backend'));
+                $this->logError('Bulk backend status update failed', [
+                    'backendId' => $id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $this->asJson($result->toArray());
     }
 
     /**

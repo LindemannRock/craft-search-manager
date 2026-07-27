@@ -188,10 +188,13 @@ final class AuditHousekeepingRegressionTest extends TestCase
 
     public function testBulkEnableUsesIndexSavePathForAutoRebuilds(): void
     {
-        $body = $this->methodBody($this->readPluginFile('src/controllers/IndicesController.php'), 'actionBulkEnable');
+        $source = $this->readPluginFile('src/controllers/IndicesController.php');
+        $actionBody = $this->methodBody($source, 'actionBulkEnable');
+        $helperBody = $this->methodBody($source, 'bulkSetEnabled', 'private');
 
-        self::assertStringContainsString('$index->enabled = true;', $body);
-        self::assertStringContainsString('if ($index->save()) {', $body);
+        self::assertStringContainsString('return $this->bulkSetEnabled(true);', $actionBody);
+        self::assertStringContainsString('$index->enabled = $enabled;', $helperBody);
+        self::assertStringContainsString('if ($index->save()) {', $helperBody);
     }
 
     public function testNewEnabledIndexQueuesInitialRebuildJob(): void

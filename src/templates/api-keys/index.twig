@@ -300,45 +300,28 @@
         return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
     }
 
-    // Bulk handlers share this helper: same POST shape (`ids: [...]`), same
-    // success behaviour (reload), same failure UX (Craft.cp.displayError).
-    // The errorFallback is the only per-action variant. Mirrors backends'
-    // `runBulkStatus()` shape.
-    function runBulkStatus(endpoint, errorFallback) {
-        const ids = selectedIds();
-        if (!ids.length) return;
-        Craft.sendActionRequest('POST', endpoint, {data: {ids: ids}})
-            .then(function(response) {
-                if (response.data.success === false) {
-                    if (Array.isArray(response.data.errors)) {
-                        response.data.errors.forEach(function(err) { Craft.cp.displayError(err); });
-                    } else {
-                        Craft.cp.displayError(response.data.error || errorFallback);
-                    }
-                    return;
-                }
-
-                const count = response.data.count || 0;
-                if (count <= 0) {
-                    Craft.cp.displayError(response.data.error || errorFallback);
-                    return;
-                }
-
-                window.location.reload();
-            })
-            .catch(function(response) {
-                Craft.cp.displayError(response?.response?.data?.error || errorFallback);
-            });
-    }
+    {% include 'search-manager/_components/_bulk-response-handler' %}
 
     document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
-        runBulkStatus('search-manager/api-keys/bulk-enable', T.bulkEnableFailed);
+        runSearchManagerBulkAction({
+            endpoint: 'search-manager/api-keys/bulk-enable',
+            identifierParam: 'ids',
+            ids: selectedIds(),
+            successTemplate: '',
+            errorFallback: T.bulkEnableFailed,
+        });
     });
 
     document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
-        runBulkStatus('search-manager/api-keys/bulk-disable', T.bulkDisableFailed);
+        runSearchManagerBulkAction({
+            endpoint: 'search-manager/api-keys/bulk-disable',
+            identifierParam: 'ids',
+            ids: selectedIds(),
+            successTemplate: '',
+            errorFallback: T.bulkDisableFailed,
+        });
     });
 
     document.getElementById('lr-bulk-revoke-btn')?.addEventListener('click', function() {
@@ -348,7 +331,13 @@
             ? T.bulkRevokeConfirmSingular
             : T.bulkRevokeConfirmPlural.replace('{count}', String(ids.length));
         if (!confirm(confirmMessage)) return;
-        runBulkStatus('search-manager/api-keys/bulk-delete', T.bulkRevokeFailed);
+        runSearchManagerBulkAction({
+            endpoint: 'search-manager/api-keys/bulk-delete',
+            identifierParam: 'ids',
+            ids: ids,
+            successTemplate: '',
+            errorFallback: T.bulkRevokeFailed,
+        });
     });
 })();
 </script>

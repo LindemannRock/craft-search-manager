@@ -170,7 +170,8 @@ final class BackendDeleteDependencyGuardTest extends TestCase
         self::assertSame([
             'Cannot delete “Bulk Target Backend” — it is in use by: Index: Bulk Blog Search (sm-backend-delete-guard-bulk-referencing-index).',
         ], $data['errors'] ?? null);
-        self::assertSame('Cannot delete “Bulk Target Backend” — it is in use by: Index: Bulk Blog Search (sm-backend-delete-guard-bulk-referencing-index).', $data['error'] ?? null);
+        self::assertSame('failure', $data['status'] ?? null);
+        self::assertSame(0, $data['count'] ?? null);
         self::assertSame(1, $this->countRows('{{%searchmanager_backends}}', ['id' => $targetBackendId]));
     }
 
@@ -190,7 +191,8 @@ final class BackendDeleteDependencyGuardTest extends TestCase
         self::assertSame([
             'Cannot delete “Bulk Mixed Used Backend” — it is in use by: Index: Bulk Mixed Blog Search (sm-backend-delete-guard-bulk-mixed-referencing-index).',
         ], $data['errors'] ?? null);
-        self::assertSame('Cannot delete “Bulk Mixed Used Backend” — it is in use by: Index: Bulk Mixed Blog Search (sm-backend-delete-guard-bulk-mixed-referencing-index).', $data['error'] ?? null);
+        self::assertSame('failure', $data['status'] ?? null);
+        self::assertSame(0, $data['count'] ?? null);
         self::assertSame(1, $this->countRows('{{%searchmanager_backends}}', ['id' => $usedBackendId]));
         self::assertSame(1, $this->countRows('{{%searchmanager_backends}}', ['id' => $unusedBackendId]));
     }

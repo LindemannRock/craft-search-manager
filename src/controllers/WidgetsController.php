@@ -17,6 +17,7 @@ use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\models\ApiKey;
+use lindemannrock\searchmanager\models\BulkMutationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\models\WidgetStyle;
@@ -34,7 +35,6 @@ use yii\web\Response;
  */
 class WidgetsController extends Controller
 {
-    use BulkDeleteTrait;
     use LoggingTrait;
 
     private const PLUGIN_HANDLE = 'search-manager';
@@ -587,20 +587,7 @@ class WidgetsController extends Controller
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:editWidgetConfigs');
 
-        $configIds = Craft::$app->getRequest()->getRequiredBodyParam('configIds');
-        $count = 0;
-
-        foreach ($configIds as $configId) {
-            $widgetConfig = SearchManager::$plugin->widgetConfigs->getById((int)$configId);
-            if ($widgetConfig) {
-                $widgetConfig->enabled = true;
-                if (SearchManager::$plugin->widgetConfigs->save($widgetConfig)) {
-                    $count++;
-                }
-            }
-        }
-
-        return $this->asJson(['success' => true, 'count' => $count]);
+        return $this->bulkSetWidgetConfigsEnabled(true);
     }
 
     /**
@@ -612,28 +599,7 @@ class WidgetsController extends Controller
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:editWidgetConfigs');
 
-        $configIds = Craft::$app->getRequest()->getRequiredBodyParam('configIds');
-        $settings = SearchManager::$plugin->getSettings();
-        $count = 0;
-        $errors = [];
-
-        foreach ($configIds as $configId) {
-            $widgetConfig = SearchManager::$plugin->widgetConfigs->getById((int)$configId);
-            if ($widgetConfig) {
-                // Skip the default widget
-                if ($settings->defaultWidgetHandle === $widgetConfig->handle) {
-                    $errors[] = Craft::t('search-manager', 'Cannot disable "{name}" because it is the default widget.', ['name' => $widgetConfig->name]);
-                    continue;
-                }
-
-                $widgetConfig->enabled = false;
-                if (SearchManager::$plugin->widgetConfigs->save($widgetConfig)) {
-                    $count++;
-                }
-            }
-        }
-
-        return $this->asJson(['success' => count($errors) === 0, 'count' => $count, 'errors' => $errors]);
+        return $this->bulkSetWidgetConfigsEnabled(false);
     }
 
     /**
@@ -645,27 +611,113 @@ class WidgetsController extends Controller
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:deleteWidgetConfigs');
 
-        $configIds = Craft::$app->getRequest()->getRequiredBodyParam('configIds');
-        $settings = SearchManager::$plugin->getSettings();
-
-        return $this->bulkDeleteAllOrNothing(
-            $configIds,
-            static fn(mixed $id): ?object => SearchManager::$plugin->widgetConfigs->getById((int)$id),
-            static function(object $widgetConfig) use ($settings): ?string {
-                if (!$widgetConfig instanceof WidgetConfig) {
-                    return null;
-                }
-
-                if ($settings->defaultWidgetHandle === $widgetConfig->handle) {
-                    return Craft::t('search-manager', 'Cannot delete the default widget. Set another widget as default first.');
-                }
-
-                return null;
-            },
-            static fn(object $widgetConfig): bool => $widgetConfig instanceof WidgetConfig
-                && $widgetConfig->id !== null
-                && SearchManager::$plugin->widgetConfigs->deleteById($widgetConfig->id),
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('configIds', []),
         );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
+
+        $settings = SearchManager::$plugin->getSettings();
+        $widgetConfigs = [];
+
+        foreach ($result->identifiers() as $id) {
+            $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($id);
+            if ($widgetConfig === null) {
+                $result->addSkip();
+                continue;
+            }
+            if ($settings->defaultWidgetHandle === $widgetConfig->handle) {
+                $result->addError(
+                    Craft::t('search-manager', 'Cannot delete the default widget. Set another widget as default first.'),
+                );
+                continue;
+            }
+            $widgetConfigs[] = $widgetConfig;
+        }
+
+        if ($result->errors() !== [] || $widgetConfigs === []) {
+            return $this->asJson($result->toArray());
+        }
+
+        $transaction = Craft::$app->getDb()->beginTransaction();
+        try {
+            foreach ($widgetConfigs as $widgetConfig) {
+                if ($widgetConfig->id === null || !SearchManager::$plugin->widgetConfigs->deleteById($widgetConfig->id)) {
+                    $result->addNamedError(
+                        $widgetConfig->name,
+                        Craft::t('search-manager', 'Could not delete widget config'),
+                    );
+                    $transaction->rollBack();
+                    return $this->asJson($result->toArray());
+                }
+            }
+            $transaction->commit();
+            $result->addSuccess(count($widgetConfigs));
+        } catch (\Throwable $e) {
+            if ($transaction->getIsActive()) {
+                $transaction->rollBack();
+            }
+            $result->addNamedError($widgetConfig->name, Craft::t('search-manager', 'Could not delete widget config'));
+            $this->logError('Bulk widget config deletion failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $this->asJson($result->toArray());
+    }
+
+    private function bulkSetWidgetConfigsEnabled(bool $enabled): Response
+    {
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('configIds', []),
+        );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
+
+        $settings = SearchManager::$plugin->getSettings();
+        foreach ($result->identifiers() as $id) {
+            $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($id);
+            if ($widgetConfig === null) {
+                $result->addSkip();
+                continue;
+            }
+            if ($widgetConfig->enabled === $enabled) {
+                $result->addSkip();
+                continue;
+            }
+            if (!$enabled && $settings->defaultWidgetHandle === $widgetConfig->handle) {
+                $result->addError(Craft::t('search-manager', 'Cannot disable "{name}" because it is the default widget.', [
+                    'name' => $widgetConfig->name,
+                ]));
+                continue;
+            }
+
+            try {
+                $widgetConfig->enabled = $enabled;
+                if (SearchManager::$plugin->widgetConfigs->save($widgetConfig)) {
+                    $result->addSuccess();
+                } else {
+                    $result->addModelErrors(
+                        $widgetConfig->name,
+                        $widgetConfig,
+                        Craft::t('search-manager', 'Could not save widget config'),
+                    );
+                }
+            } catch (\Throwable $e) {
+                $result->addNamedError(
+                    $widgetConfig->name,
+                    Craft::t('search-manager', 'Could not save widget config'),
+                );
+                $this->logError('Bulk widget config status update failed', [
+                    'widgetConfigId' => $id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $this->asJson($result->toArray());
     }
 
     // =========================================================================
@@ -1038,31 +1090,64 @@ class WidgetsController extends Controller
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:deleteWidgetStyles');
 
-        $styleIds = Craft::$app->getRequest()->getRequiredBodyParam('styleIds');
-
-        return $this->bulkDeleteAllOrNothing(
-            $styleIds,
-            static fn(mixed $id): ?object => SearchManager::$plugin->widgetStyles->getById((int)$id),
-            static function(object $widgetStyle): ?string {
-                if (!$widgetStyle instanceof WidgetStyle) {
-                    return null;
-                }
-
-                if (!$widgetStyle->canEdit()) {
-                    return Craft::t('search-manager', 'Could not delete widget style');
-                }
-
-                $usages = SearchManager::$plugin->dependencies->getStyleUsages($widgetStyle->handle);
-                if ($usages !== []) {
-                    return SearchManager::$plugin->dependencies->formatInUseError($widgetStyle->name, $usages);
-                }
-
-                return null;
-            },
-            static fn(object $widgetStyle): bool => $widgetStyle instanceof WidgetStyle
-                && $widgetStyle->id !== null
-                && SearchManager::$plugin->widgetStyles->delete($widgetStyle->id),
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('styleIds', []),
         );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
+
+        $widgetStyles = [];
+        foreach ($result->identifiers() as $id) {
+            $widgetStyle = SearchManager::$plugin->widgetStyles->getById($id);
+            if ($widgetStyle === null) {
+                $result->addSkip();
+                continue;
+            }
+            if (!$widgetStyle->canEdit()) {
+                $result->addError(Craft::t('search-manager', 'Could not delete widget style'));
+                continue;
+            }
+
+            $usages = SearchManager::$plugin->dependencies->getStyleUsages($widgetStyle->handle);
+            if ($usages !== []) {
+                $result->addError(
+                    SearchManager::$plugin->dependencies->formatInUseError($widgetStyle->name, $usages),
+                );
+                continue;
+            }
+            $widgetStyles[] = $widgetStyle;
+        }
+
+        if ($result->errors() !== [] || $widgetStyles === []) {
+            return $this->asJson($result->toArray());
+        }
+
+        $transaction = Craft::$app->getDb()->beginTransaction();
+        try {
+            foreach ($widgetStyles as $widgetStyle) {
+                if ($widgetStyle->id === null || !SearchManager::$plugin->widgetStyles->delete($widgetStyle->id)) {
+                    $result->addNamedError(
+                        $widgetStyle->name,
+                        Craft::t('search-manager', 'Could not delete widget style'),
+                    );
+                    $transaction->rollBack();
+                    return $this->asJson($result->toArray());
+                }
+            }
+            $transaction->commit();
+            $result->addSuccess(count($widgetStyles));
+        } catch (\Throwable $e) {
+            if ($transaction->getIsActive()) {
+                $transaction->rollBack();
+            }
+            $result->addNamedError($widgetStyle->name, Craft::t('search-manager', 'Could not delete widget style'));
+            $this->logError('Bulk widget style deletion failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $this->asJson($result->toArray());
     }
 
     /**
@@ -1128,20 +1213,7 @@ class WidgetsController extends Controller
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:editWidgetStyles');
 
-        $styleIds = Craft::$app->getRequest()->getRequiredBodyParam('styleIds');
-        $count = 0;
-
-        foreach ($styleIds as $styleId) {
-            $widgetStyle = SearchManager::$plugin->widgetStyles->getById((int) $styleId);
-            if ($widgetStyle) {
-                $widgetStyle->enabled = true;
-                if (SearchManager::$plugin->widgetStyles->save($widgetStyle)) {
-                    $count++;
-                }
-            }
-        }
-
-        return $this->asJson(['success' => true, 'count' => $count]);
+        return $this->bulkSetWidgetStylesEnabled(true);
     }
 
     /**
@@ -1156,20 +1228,60 @@ class WidgetsController extends Controller
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:editWidgetStyles');
 
-        $styleIds = Craft::$app->getRequest()->getRequiredBodyParam('styleIds');
-        $count = 0;
+        return $this->bulkSetWidgetStylesEnabled(false);
+    }
 
-        foreach ($styleIds as $styleId) {
-            $widgetStyle = SearchManager::$plugin->widgetStyles->getById((int) $styleId);
-            if ($widgetStyle) {
-                $widgetStyle->enabled = false;
+    private function bulkSetWidgetStylesEnabled(bool $enabled): Response
+    {
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('styleIds', []),
+        );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
+
+        foreach ($result->identifiers() as $id) {
+            $widgetStyle = SearchManager::$plugin->widgetStyles->getById($id);
+            if ($widgetStyle === null) {
+                $result->addSkip();
+                continue;
+            }
+            if (!$widgetStyle->canEdit()) {
+                $result->addNamedError(
+                    $widgetStyle->name,
+                    Craft::t('search-manager', 'Could not save widget style'),
+                );
+                continue;
+            }
+            if ($widgetStyle->enabled === $enabled) {
+                $result->addSkip();
+                continue;
+            }
+
+            try {
+                $widgetStyle->enabled = $enabled;
                 if (SearchManager::$plugin->widgetStyles->save($widgetStyle)) {
-                    $count++;
+                    $result->addSuccess();
+                } else {
+                    $result->addModelErrors(
+                        $widgetStyle->name,
+                        $widgetStyle,
+                        Craft::t('search-manager', 'Could not save widget style'),
+                    );
                 }
+            } catch (\Throwable $e) {
+                $result->addNamedError(
+                    $widgetStyle->name,
+                    Craft::t('search-manager', 'Could not save widget style'),
+                );
+                $this->logError('Bulk widget style status update failed', [
+                    'widgetStyleId' => $id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
-        return $this->asJson(['success' => true, 'count' => $count]);
+        return $this->asJson($result->toArray());
     }
 
     private function duplicateFailure(string $error, string $fallbackUrl): Response

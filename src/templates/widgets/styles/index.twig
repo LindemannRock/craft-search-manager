@@ -294,33 +294,7 @@
 		});
 	}
 
-	function runBulkStatus(endpoint, successTemplate, errorFallback) {
-		const ids = selectedIds();
-		if (!ids.length) return;
-		Craft.sendActionRequest('POST', endpoint, {
-			data: { styleIds: ids },
-		}).then(function(response) {
-			if (response.data.success === false) {
-				if (Array.isArray(response.data.errors)) {
-					response.data.errors.forEach(function(err) { Craft.cp.displayError(err); });
-				} else {
-					Craft.cp.displayError(response.data.error || errorFallback);
-				}
-				return;
-			}
-
-			const count = response.data.count || 0;
-			if (count > 0) {
-				Craft.cp.displayNotice(successTemplate.replace('{count}', count));
-				setTimeout(function() { window.location.reload(); }, 500);
-				return;
-			}
-
-			Craft.cp.displayError(response.data.error || errorFallback);
-		}).catch(function() {
-			Craft.cp.displayError(errorFallback);
-		});
-	}
+	{% include 'search-manager/_components/_bulk-response-handler' %}
 
 	document.addEventListener('click', function(e) {
 		const trigger = e.target.closest('a[data-action]');
@@ -360,12 +334,26 @@
 
 	document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
 		e.preventDefault();
-		runBulkStatus('search-manager/widgets/bulk-enable-style', T.bulkEnabledTemplate, T.bulkEnableFailed);
+		runSearchManagerBulkAction({
+			endpoint: 'search-manager/widgets/bulk-enable-style',
+			identifierParam: 'styleIds',
+			ids: selectedIds(),
+			successTemplate: T.bulkEnabledTemplate,
+			errorFallback: T.bulkEnableFailed,
+			reloadDelay: 500,
+		});
 	});
 
 	document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
 		e.preventDefault();
-		runBulkStatus('search-manager/widgets/bulk-disable-style', T.bulkDisabledTemplate, T.bulkDisableFailed);
+		runSearchManagerBulkAction({
+			endpoint: 'search-manager/widgets/bulk-disable-style',
+			identifierParam: 'styleIds',
+			ids: selectedIds(),
+			successTemplate: T.bulkDisabledTemplate,
+			errorFallback: T.bulkDisableFailed,
+			reloadDelay: 500,
+		});
 	});
 
 	document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
@@ -374,7 +362,14 @@
 		const confirmTemplate = ids.length === 1 ? T.bulkDeleteConfirmSingular : T.bulkDeleteConfirmPlural;
 		if (!confirm(confirmTemplate.replace('{count}', ids.length))) return;
 
-		runBulkStatus('search-manager/widgets/bulk-delete-style', T.bulkDeletedTemplate, T.deleteFailed);
+		runSearchManagerBulkAction({
+			endpoint: 'search-manager/widgets/bulk-delete-style',
+			identifierParam: 'styleIds',
+			ids: ids,
+			successTemplate: T.bulkDeletedTemplate,
+			errorFallback: T.deleteFailed,
+			reloadDelay: 500,
+		});
 	});
 
 	const collisionHandles = {{ collisionHandles is defined ? collisionHandles|json_encode|raw : '[]' }};

@@ -471,10 +471,13 @@
         }
     });
 
-    function runBulk(endpoint, successTemplate, errorFallback) {
+    {% include 'search-manager/_components/_bulk-response-handler' %}
+
+    // Index deletion remains on its pre-PR1.32 contract until PR1.29.
+    function runIndexBulkDelete(successTemplate, errorFallback) {
         const ids = selectedIds();
         if (!ids.length) return;
-        Craft.sendActionRequest('POST', endpoint, {
+        Craft.sendActionRequest('POST', 'search-manager/indices/bulk-delete', {
             data: { indexIds: ids },
         }).then(function(response) {
             if (response.data.success === false) {
@@ -501,12 +504,24 @@
 
     document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
-        runBulk('search-manager/indices/bulk-enable', T.bulkEnabledTemplate, T.bulkEnableFailed);
+        runSearchManagerBulkAction({
+            endpoint: 'search-manager/indices/bulk-enable',
+            identifierParam: 'indexIds',
+            ids: selectedIds(),
+            successTemplate: T.bulkEnabledTemplate,
+            errorFallback: T.bulkEnableFailed,
+        });
     });
 
     document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
-        runBulk('search-manager/indices/bulk-disable', T.bulkDisabledTemplate, T.bulkDisableFailed);
+        runSearchManagerBulkAction({
+            endpoint: 'search-manager/indices/bulk-disable',
+            identifierParam: 'indexIds',
+            ids: selectedIds(),
+            successTemplate: T.bulkDisabledTemplate,
+            errorFallback: T.bulkDisableFailed,
+        });
     });
 
     document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
@@ -514,7 +529,7 @@
         if (!ids.length) return;
         const confirmTemplate = ids.length === 1 ? T.bulkDeleteConfirmSingular : T.bulkDeleteConfirmPlural;
         if (!confirm(confirmTemplate.replace('{count}', ids.length))) return;
-        runBulk('search-manager/indices/bulk-delete', T.bulkDeletedTemplate, T.bulkDeleteFailed);
+        runIndexBulkDelete(T.bulkDeletedTemplate, T.bulkDeleteFailed);
     });
 
     const collisionHandles = {{ collisionHandles is defined ? collisionHandles|json_encode|raw : '[]' }};

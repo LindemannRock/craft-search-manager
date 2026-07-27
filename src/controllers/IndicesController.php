@@ -18,6 +18,7 @@ use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchHeadingHelper;
+use lindemannrock\searchmanager\models\BulkMutationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
@@ -891,24 +892,7 @@ class IndicesController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $indexIds = Craft::$app->getRequest()->getRequiredBodyParam('indexIds');
-        $count = 0;
-
-        foreach ($indexIds as $id) {
-            $index = SearchIndex::findByIdOrHandle($id);
-
-            if ($index && $index->canEdit()) {
-                $index->enabled = true;
-                if ($index->save()) {
-                    $count++;
-                }
-            }
-        }
-
-        return $this->asJson([
-            'success' => true,
-            'count' => $count,
-        ]);
+        return $this->bulkSetEnabled(true);
     }
 
     /**
@@ -920,24 +904,7 @@ class IndicesController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $indexIds = Craft::$app->getRequest()->getRequiredBodyParam('indexIds');
-        $count = 0;
-
-        foreach ($indexIds as $id) {
-            $index = SearchIndex::findByIdOrHandle($id);
-
-            if ($index && $index->canEdit()) {
-                $index->enabled = false;
-                if ($index->save()) {
-                    $count++;
-                }
-            }
-        }
-
-        return $this->asJson([
-            'success' => true,
-            'count' => $count,
-        ]);
+        return $this->bulkSetEnabled(false);
     }
 
     /**
@@ -972,5 +939,55 @@ class IndicesController extends Controller
             },
             static fn(object $index): bool => $index instanceof SearchIndex && $index->delete(),
         );
+    }
+
+    private function bulkSetEnabled(bool $enabled): Response
+    {
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('indexIds', []),
+        );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
+
+        foreach ($result->identifiers() as $id) {
+            $index = SearchIndex::findByIdOrHandle($id);
+            if ($index === null) {
+                $result->addSkip();
+                continue;
+            }
+            if (!$index->canEdit()) {
+                $result->addNamedError(
+                    $index->name,
+                    Craft::t('search-manager', 'This index is defined in config and cannot be edited.'),
+                );
+                continue;
+            }
+            if ($index->enabled === $enabled) {
+                $result->addSkip();
+                continue;
+            }
+
+            try {
+                $index->enabled = $enabled;
+                if ($index->save()) {
+                    $result->addSuccess();
+                } else {
+                    $result->addModelErrors(
+                        $index->name,
+                        $index,
+                        Craft::t('search-manager', 'Could not save index'),
+                    );
+                }
+            } catch (\Throwable $e) {
+                $result->addNamedError($index->name, Craft::t('search-manager', 'Could not save index'));
+                $this->logError('Bulk index status update failed', [
+                    'indexId' => $id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $this->asJson($result->toArray());
     }
 }

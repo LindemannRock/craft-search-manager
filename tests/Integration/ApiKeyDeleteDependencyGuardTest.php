@@ -96,7 +96,8 @@ final class ApiKeyDeleteDependencyGuardTest extends TestCase
         self::assertSame([
             'Cannot delete “Bulk Used API Key” — it is in use by: Widget: Bulk Widget.',
         ], $data['errors'] ?? null);
-        self::assertSame('Cannot delete “Bulk Used API Key” — it is in use by: Widget: Bulk Widget.', $data['error'] ?? null);
+        self::assertSame('failure', $data['status'] ?? null);
+        self::assertSame(0, $data['count'] ?? null);
         self::assertSame(1, $this->countMarkedRows('{{%searchmanager_api_keys}}', ['id' => $usedKeyId]));
         self::assertSame(1, $this->countMarkedRows('{{%searchmanager_api_keys}}', ['id' => $unusedKeyId]));
     }

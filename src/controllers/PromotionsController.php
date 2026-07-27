@@ -14,6 +14,7 @@ use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
+use lindemannrock\searchmanager\models\BulkMutationResult;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
@@ -470,23 +471,7 @@ class PromotionsController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $promotionIds = Craft::$app->getRequest()->getRequiredBodyParam('promotionIds');
-        $count = 0;
-
-        foreach ($promotionIds as $id) {
-            $promotion = Promotion::findById((int)$id);
-            if ($promotion) {
-                $promotion->enabled = true;
-                if (SearchManager::$plugin->promotions->save($promotion)) {
-                    $count++;
-                }
-            }
-        }
-
-        return $this->asJson([
-            'success' => true,
-            'count' => $count,
-        ]);
+        return $this->bulkSetEnabled(true);
     }
 
     /**
@@ -498,23 +483,7 @@ class PromotionsController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $promotionIds = Craft::$app->getRequest()->getRequiredBodyParam('promotionIds');
-        $count = 0;
-
-        foreach ($promotionIds as $id) {
-            $promotion = Promotion::findById((int)$id);
-            if ($promotion) {
-                $promotion->enabled = false;
-                if (SearchManager::$plugin->promotions->save($promotion)) {
-                    $count++;
-                }
-            }
-        }
-
-        return $this->asJson([
-            'success' => true,
-            'count' => $count,
-        ]);
+        return $this->bulkSetEnabled(false);
     }
 
     /**
@@ -526,22 +495,85 @@ class PromotionsController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $promotionIds = Craft::$app->getRequest()->getRequiredBodyParam('promotionIds');
-        $count = 0;
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('promotionIds', []),
+        );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
 
-        foreach ($promotionIds as $id) {
-            $promotion = Promotion::findById((int)$id);
-            if ($promotion) {
+        foreach ($result->identifiers() as $id) {
+            $promotion = Promotion::findById($id);
+            if ($promotion === null) {
+                $result->addSkip();
+                continue;
+            }
+            $promotionName = $promotion->title ?: (string) $id;
+
+            try {
                 if (SearchManager::$plugin->promotions->delete($promotion)) {
-                    $count++;
+                    $result->addSuccess();
+                } else {
+                    $result->addModelErrors(
+                        $promotionName,
+                        $promotion,
+                        Craft::t('search-manager', 'Could not delete promotion'),
+                    );
                 }
+            } catch (\Throwable $e) {
+                $result->addNamedError($promotionName, Craft::t('search-manager', 'Could not delete promotion'));
+                $this->logError('Bulk promotion deletion failed', [
+                    'promotionId' => $id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
-        return $this->asJson([
-            'success' => true,
-            'count' => $count,
-        ]);
+        return $this->asJson($result->toArray());
+    }
+
+    private function bulkSetEnabled(bool $enabled): Response
+    {
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('promotionIds', []),
+        );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
+
+        foreach ($result->identifiers() as $id) {
+            $promotion = Promotion::findById($id);
+            if ($promotion === null) {
+                $result->addSkip();
+                continue;
+            }
+            if ($promotion->enabled === $enabled) {
+                $result->addSkip();
+                continue;
+            }
+            $promotionName = $promotion->title ?: (string) $id;
+
+            try {
+                $promotion->enabled = $enabled;
+                if (SearchManager::$plugin->promotions->save($promotion)) {
+                    $result->addSuccess();
+                } else {
+                    $result->addModelErrors(
+                        $promotionName,
+                        $promotion,
+                        Craft::t('search-manager', 'Could not save promotion'),
+                    );
+                }
+            } catch (\Throwable $e) {
+                $result->addNamedError($promotionName, Craft::t('search-manager', 'Could not save promotion'));
+                $this->logError('Bulk promotion status update failed', [
+                    'promotionId' => $id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $this->asJson($result->toArray());
     }
 
     private function uniqueCopyLabel(string $table, string $column, string $label): string

@@ -96,7 +96,8 @@ final class WidgetStyleDeleteDependencyGuardTest extends TestCase
         self::assertSame([
             'Cannot delete “Bulk Used Style” — it is in use by: Widget: Bulk Widget.',
         ], $data['errors'] ?? null);
-        self::assertSame('Cannot delete “Bulk Used Style” — it is in use by: Widget: Bulk Widget.', $data['error'] ?? null);
+        self::assertSame('failure', $data['status'] ?? null);
+        self::assertSame(0, $data['count'] ?? null);
         self::assertSame(1, $this->countMarkedRows('{{%searchmanager_widget_styles}}', ['id' => $usedStyleId]));
         self::assertSame(1, $this->countMarkedRows('{{%searchmanager_widget_styles}}', ['id' => $unusedStyleId]));
     }

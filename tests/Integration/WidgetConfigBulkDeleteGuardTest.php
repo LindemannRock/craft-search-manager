@@ -66,7 +66,8 @@ final class WidgetConfigBulkDeleteGuardTest extends TestCase
         self::assertSame([
             'Cannot delete the default widget. Set another widget as default first.',
         ], $data['errors'] ?? null);
-        self::assertSame('Cannot delete the default widget. Set another widget as default first.', $data['error'] ?? null);
+        self::assertSame('failure', $data['status'] ?? null);
+        self::assertSame(0, $data['count'] ?? null);
         self::assertSame(1, $this->countMarkedRows(['id' => $defaultConfig->id]));
         self::assertSame(1, $this->countMarkedRows(['id' => $unusedConfigId]));
     }

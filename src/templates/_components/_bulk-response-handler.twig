@@ -1,0 +1,49 @@
+{# Shared CP-table interpreter for the bulk mutation response contract. #}
+function runSearchManagerBulkAction(options) {
+    if (!Array.isArray(options.ids) || options.ids.length === 0) {
+        return Promise.resolve();
+    }
+
+    const payload = {};
+    payload[options.identifierParam] = options.ids;
+
+    return Craft.sendActionRequest('POST', options.endpoint, {data: payload})
+        .then(function(response) {
+            const data = response.data || {};
+            const count = Number.isInteger(data.count) && data.count > 0 ? data.count : 0;
+            const errors = Array.isArray(data.errors)
+                ? data.errors.filter(function(error) { return typeof error === 'string' && error.length > 0; })
+                : [];
+
+            if (count > 0) {
+                const notice = data.message
+                    || options.successTemplate.replace('{count}', String(count));
+                Craft.cp.displayNotice(notice);
+            }
+
+            errors.forEach(function(error) {
+                Craft.cp.displayError(error);
+            });
+
+            if (count === 0 && errors.length === 0) {
+                Craft.cp.displayError(options.errorFallback);
+            }
+
+            if (count > 0) {
+                setTimeout(function() {
+                    window.location.reload();
+                }, options.reloadDelay || 1000);
+            }
+        })
+        .catch(function(response) {
+            const errors = response?.response?.data?.errors;
+            if (Array.isArray(errors) && errors.length > 0) {
+                errors.forEach(function(error) {
+                    Craft.cp.displayError(error);
+                });
+                return;
+            }
+
+            Craft.cp.displayError(response?.response?.data?.error || options.errorFallback);
+        });
+}

@@ -14,6 +14,7 @@ use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
+use lindemannrock\searchmanager\models\BulkMutationResult;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
@@ -511,23 +512,7 @@ class QueryRulesController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $ruleIds = Craft::$app->getRequest()->getRequiredBodyParam('ruleIds');
-        $count = 0;
-
-        foreach ($ruleIds as $id) {
-            $rule = QueryRule::findById((int)$id);
-            if ($rule) {
-                $rule->enabled = true;
-                if (SearchManager::$plugin->queryRules->save($rule)) {
-                    $count++;
-                }
-            }
-        }
-
-        return $this->asJson([
-            'success' => true,
-            'count' => $count,
-        ]);
+        return $this->bulkSetEnabled(true);
     }
 
     /**
@@ -539,23 +524,7 @@ class QueryRulesController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $ruleIds = Craft::$app->getRequest()->getRequiredBodyParam('ruleIds');
-        $count = 0;
-
-        foreach ($ruleIds as $id) {
-            $rule = QueryRule::findById((int)$id);
-            if ($rule) {
-                $rule->enabled = false;
-                if (SearchManager::$plugin->queryRules->save($rule)) {
-                    $count++;
-                }
-            }
-        }
-
-        return $this->asJson([
-            'success' => true,
-            'count' => $count,
-        ]);
+        return $this->bulkSetEnabled(false);
     }
 
     /**
@@ -567,20 +536,83 @@ class QueryRulesController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $ruleIds = Craft::$app->getRequest()->getRequiredBodyParam('ruleIds');
-        $count = 0;
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('ruleIds', []),
+        );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
 
-        foreach ($ruleIds as $id) {
-            $rule = QueryRule::findById((int)$id);
-            if ($rule && SearchManager::$plugin->queryRules->delete($rule)) {
-                $count++;
+        foreach ($result->identifiers() as $id) {
+            $rule = QueryRule::findById($id);
+            if ($rule === null) {
+                $result->addSkip();
+                continue;
+            }
+
+            try {
+                if (SearchManager::$plugin->queryRules->delete($rule)) {
+                    $result->addSuccess();
+                } else {
+                    $result->addModelErrors(
+                        $rule->name,
+                        $rule,
+                        Craft::t('search-manager', 'Could not delete query rule'),
+                    );
+                }
+            } catch (\Throwable $e) {
+                $result->addNamedError($rule->name, Craft::t('search-manager', 'Could not delete query rule'));
+                $this->logError('Bulk query rule deletion failed', [
+                    'ruleId' => $id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
-        return $this->asJson([
-            'success' => true,
-            'count' => $count,
-        ]);
+        return $this->asJson($result->toArray());
+    }
+
+    private function bulkSetEnabled(bool $enabled): Response
+    {
+        $result = BulkMutationResult::fromIdentifiers(
+            Craft::$app->getRequest()->getBodyParam('ruleIds', []),
+        );
+        if (!$result->canMutate()) {
+            return $this->asJson($result->toArray());
+        }
+
+        foreach ($result->identifiers() as $id) {
+            $rule = QueryRule::findById($id);
+            if ($rule === null) {
+                $result->addSkip();
+                continue;
+            }
+            if ($rule->enabled === $enabled) {
+                $result->addSkip();
+                continue;
+            }
+
+            try {
+                $rule->enabled = $enabled;
+                if (SearchManager::$plugin->queryRules->save($rule)) {
+                    $result->addSuccess();
+                } else {
+                    $result->addModelErrors(
+                        $rule->name,
+                        $rule,
+                        Craft::t('search-manager', 'Could not save query rule'),
+                    );
+                }
+            } catch (\Throwable $e) {
+                $result->addNamedError($rule->name, Craft::t('search-manager', 'Could not save query rule'));
+                $this->logError('Bulk query rule status update failed', [
+                    'ruleId' => $id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $this->asJson($result->toArray());
     }
 
     private function uniqueCopyLabel(string $table, string $column, string $label): string
