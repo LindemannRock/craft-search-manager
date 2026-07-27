@@ -29,6 +29,7 @@ final class UtilitiesAnalyticsClearTest extends TestCase
     private const PREFIX = '__sm_utilities_clear_all_';
     private const PRIMARY_ROW_COUNT = 2;
 
+    private int $siteId;
     private ?object $originalRequest = null;
     private ?object $originalResponse = null;
     private ?string $originalRequestMethod = null;
@@ -40,11 +41,21 @@ final class UtilitiesAnalyticsClearTest extends TestCase
         $this->restoreRequestResponse();
         $this->restoreDatabase();
 
-        parent::tearDown();
+        try {
+            parent::tearDown();
+        } finally {
+            Craft::$app->getSites()->refreshSites();
+        }
     }
 
     public function testClearAllAnalyticsPurgesPrimaryAndDetailTables(): void
     {
+        $this->siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        $admin = $this->createTestUser(self::PREFIX . 'admin_');
+        $admin->admin = true;
+        $this->actingAs($admin);
+        Craft::$app->getSites()->refreshSites();
+        self::assertContains($this->siteId, Craft::$app->getSites()->getEditableSiteIds());
         $this->installIsolatedAnalyticsDatabase();
         $this->seedAnalyticsRows();
         $this->withPostJson();
@@ -76,7 +87,11 @@ final class UtilitiesAnalyticsClearTest extends TestCase
             'searchmanager_promotion_analytics',
         ] as $table) {
             $this->isolatedDatabase->createCommand(
-                "CREATE TABLE {$table} (id INTEGER PRIMARY KEY AUTOINCREMENT, query VARCHAR(500) NOT NULL)",
+                "CREATE TABLE {$table} (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    query VARCHAR(500) NOT NULL,
+                    siteId INTEGER NULL
+                )",
             )->execute();
         }
 
@@ -101,14 +116,17 @@ final class UtilitiesAnalyticsClearTest extends TestCase
         foreach (range(1, self::PRIMARY_ROW_COUNT) as $row) {
             Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
                 'query' => self::PREFIX . "primary_{$row}",
+                'siteId' => $this->siteId,
             ])->execute();
         }
 
         Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_rule_analytics}}', [
             'query' => self::PREFIX . 'rule',
+            'siteId' => $this->siteId,
         ])->execute();
         Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_promotion_analytics}}', [
             'query' => self::PREFIX . 'promotion',
+            'siteId' => $this->siteId,
         ])->execute();
     }
 

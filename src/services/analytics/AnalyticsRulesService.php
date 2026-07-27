@@ -50,9 +50,7 @@ class AnalyticsRulesService
 
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $results = $query->all();
 
@@ -84,9 +82,7 @@ class AnalyticsRulesService
 
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $results = $query->all();
 
@@ -120,9 +116,7 @@ class AnalyticsRulesService
 
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $results = $query->all();
 
@@ -225,9 +219,7 @@ class AnalyticsRulesService
 
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $results = $query->all();
 
@@ -260,9 +252,7 @@ class AnalyticsRulesService
 
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $results = $query->all();
 
@@ -296,9 +286,7 @@ class AnalyticsRulesService
 
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $results = $query->all();
 

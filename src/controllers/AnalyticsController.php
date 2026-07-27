@@ -181,8 +181,9 @@ class AnalyticsController extends Controller
         $this->requirePermission('searchManager:clearAnalytics');
 
         $analyticId = Craft::$app->getRequest()->getRequiredBodyParam('analyticId');
+        $effectiveSiteId = $this->resolveEffectiveSiteId(null);
 
-        if (SearchManager::$plugin->analytics->deleteAnalytic($analyticId)) {
+        if (SearchManager::$plugin->analytics->deleteAnalytic($analyticId, $effectiveSiteId)) {
             return $this->asJson(['success' => true]);
         }
 
@@ -882,6 +883,13 @@ class AnalyticsController extends Controller
                 'data' => $data,
             ]);
         } catch (\Throwable $e) {
+            $this->logError('Failed to load analytics data', [
+                'type' => $type,
+                'siteScope' => $effectiveSiteId,
+                'dateRange' => $dateRange,
+                'error' => $e->getMessage(),
+            ]);
+
             return $this->asJson([
                 'success' => false,
                 'error' => Craft::$app->getConfig()->getGeneral()->devMode

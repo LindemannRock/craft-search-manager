@@ -273,6 +273,14 @@ ddev craft search-manager/security/generate-salt
 
 4. **Check queue**: Geo-location runs as a queue job. If your queue isn't processing, geo data won't be recorded.
 
+## Analytics reports or cleanup show an unexpected site scope
+
+Interactive analytics reports, exports, row deletion, and the Utilities purge follow the current user's editable Craft sites. Administrators receive all-site access. A user with no editable sites sees no analytics rows, a zero Utility count, and deletes nothing.
+
+If the visible scope is unexpected, check the user's Craft site permissions and sign in again after changing them. The count shown under **Utilities → Search Manager → Analytics Data Management** is the same scope the purge will delete.
+
+Retention is intentionally different: the daily cleanup job and **Settings → Analytics → Clean Up Now** apply the global age policy across all sites. Both remove old primary search, query-rule, and promotion analytics while retaining recent rows.
+
 ## Geo-location shows wrong location
 
 **In local development:** Private IPs (127.0.0.1, 192.168.x.x) can't be geolocated. Set defaults:

@@ -56,9 +56,7 @@ class AnalyticsQueryInsightsService
             $this->applyDateRangeFilter($perAction, $dateRange);
         }
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         // Outer: count actions per query — multi-index repeats of the same query
         // collapse to one. totalResults still sums across all backends seen for
@@ -117,9 +115,7 @@ class AnalyticsQueryInsightsService
             ->orderBy(['dateCreated' => SORT_DESC])
             ->limit($limit);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         if ($hasResults !== null) {
             if ($hasResults) {
@@ -161,9 +157,7 @@ class AnalyticsQueryInsightsService
     {
         $query = (new Query())->from('{{%searchmanager_analytics}}');
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         if ($hasResults !== null) {
             if ($hasResults) {
@@ -209,9 +203,7 @@ class AnalyticsQueryInsightsService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         // Outer: count actions per bucket.
         $query = (new Query())
@@ -274,9 +266,7 @@ class AnalyticsQueryInsightsService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         // Only fetch the top 500 most frequent queries — the long tail contributes
         // negligible weight and isn't worth loading into memory for tokenization.
@@ -360,9 +350,7 @@ class AnalyticsQueryInsightsService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         // 2. Cluster candidates: count zero-result actions per query.
         $query = (new Query())
@@ -450,9 +438,7 @@ class AnalyticsQueryInsightsService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         // Outer: count actions per intent.
         $query = (new Query())
@@ -546,9 +532,7 @@ class AnalyticsQueryInsightsService
             ->andWhere(['<=', 'dateCreated', Db::prepareDateForDb($now)])
             ->groupBy(['normalizedQuery', new Expression($identityExpr)]);
 
-        if ($siteId) {
-            $currentInner->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($currentInner, $siteId);
 
         $currentResults = self::foldNormalizedQueryRows(array_map(
             static fn(array $row): array => $row + ['count' => 1],
@@ -576,9 +560,7 @@ class AnalyticsQueryInsightsService
             ->andWhere(['normalizedQuery' => $currentQueryKeys])
             ->groupBy(['normalizedQuery', new Expression($identityExpr)]);
 
-        if ($siteId) {
-            $previousInner->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($previousInner, $siteId);
 
         $previousResults = self::foldNormalizedQueryRows(array_map(
             static fn(array $row): array => $row + ['count' => 1],
@@ -683,9 +665,7 @@ class AnalyticsQueryInsightsService
             ->from('{{%searchmanager_analytics}}')
             ->where(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         return (int)$query->scalar();
     }

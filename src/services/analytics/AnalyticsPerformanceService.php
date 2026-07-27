@@ -51,9 +51,7 @@ class AnalyticsPerformanceService
 
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $results = $query->all();
 
@@ -92,9 +90,7 @@ class AnalyticsPerformanceService
 
         $this->applyDateRangeFilter($totalQuery, $dateRange);
 
-        if ($siteId) {
-            $totalQuery->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($totalQuery, $siteId);
 
         $total = (int)$totalQuery->count();
 
@@ -104,9 +100,7 @@ class AnalyticsPerformanceService
 
         $this->applyDateRangeFilter($cacheHitQuery, $dateRange);
 
-        if ($siteId) {
-            $cacheHitQuery->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($cacheHitQuery, $siteId);
 
         $cacheHits = (int)$cacheHitQuery->count();
         $cacheMisses = $total - $cacheHits;
@@ -151,9 +145,7 @@ class AnalyticsPerformanceService
 
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $results = $query->all();
 
@@ -206,9 +198,7 @@ class AnalyticsPerformanceService
 
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $results = $query->all();
 
@@ -247,9 +237,7 @@ class AnalyticsPerformanceService
             ->andWhere(['source' => 'frontend'])
             ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $result = $query->scalar();
         return round((float)$result, 2);

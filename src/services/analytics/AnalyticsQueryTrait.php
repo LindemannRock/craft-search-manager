@@ -46,6 +46,21 @@ trait AnalyticsQueryTrait
     }
 
     /**
+     * Apply an explicit analytics site scope.
+     *
+     * Null is the only global scope. An empty list intentionally produces no
+     * rows through Yii's array-condition builder.
+     *
+     * @param int|array<int>|null $siteId
+     */
+    protected function applySiteScope(Query $query, int|array|null $siteId): void
+    {
+        if ($siteId !== null) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+    }
+
+    /**
      * Build the action-identity expression for deduping search-action counts.
      *
      * Multi-index searches write one row per (search, index) sharing a common

@@ -83,7 +83,7 @@ See [Caching](caching.md) for configuration details.
 
 ## Analytics data management
 
-Permanently deletes all search analytics tracking data (queries, performance metrics). This cannot be undone.
+Permanently deletes search, query-rule, and promotion analytics for sites the current user can edit. The displayed count and the deletion use that same site scope. Administrators retain all-site behavior; a user with no editable sites sees a zero count and deletes nothing. This cannot be undone.
 
 Use this when:
 - Resetting analytics after testing

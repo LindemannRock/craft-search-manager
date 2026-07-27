@@ -53,9 +53,7 @@ class AnalyticsExportService
         $query = (new Query())->from('{{%searchmanager_analytics}}');
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         // Search actions: multi-index searches fan out to one row per index sharing a
         // sessionId; dedupe via COUNT(DISTINCT COALESCE(sessionId, id)) so an N-index
@@ -108,9 +106,7 @@ class AnalyticsExportService
 
         $this->applyDateRangeFilter($perActionPerDay, $dateRange);
 
-        if ($siteId) {
-            $perActionPerDay->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perActionPerDay, $siteId);
 
         // Outer query: aggregate actions per day. total = action count;
         // withResults = action had any success outcome; zeroResults = action
@@ -185,9 +181,7 @@ class AnalyticsExportService
         // Apply date range filter
         $this->applyDateRangeFilter($query, $dateRange);
 
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($query, $siteId);
 
         $results = $query
             ->limit(self::EXPORT_ROW_LIMIT + 1)
@@ -322,15 +316,22 @@ class AnalyticsExportService
      * Delete an analytic record
      *
      * @param int $id
+     * @param int|array<int>|null $siteId
      * @return bool
      */
-    public function deleteAnalytic(int $id): bool
+    public function deleteAnalytic(int $id, int|array|null $siteId = null): bool
     {
         try {
-            Craft::$app->getDb()->createCommand()
-                ->delete('{{%searchmanager_analytics}}', ['id' => $id])
+            $condition = ['id' => $id];
+            if ($siteId !== null) {
+                $condition['siteId'] = $siteId;
+            }
+
+            $deleted = Craft::$app->getDb()->createCommand()
+                ->delete('{{%searchmanager_analytics}}', $condition)
                 ->execute();
-            return true;
+
+            return $deleted === 1;
         } catch (\Throwable $e) {
             $this->logError('Failed to delete analytic', ['id' => $id, 'error' => $e->getMessage()]);
             return false;
@@ -346,7 +347,7 @@ class AnalyticsExportService
     public function clearAnalytics(int|array|null $siteId = null): int
     {
         $condition = [];
-        if ($siteId) {
+        if ($siteId !== null) {
             $condition = ['siteId' => $siteId];
         }
 

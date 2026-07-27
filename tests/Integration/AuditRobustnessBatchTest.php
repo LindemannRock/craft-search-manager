@@ -39,7 +39,10 @@ final class AuditRobustnessBatchTest extends TestCase
 
         self::assertSame(3, substr_count($tracking, 'catch (\Throwable $e)'));
         self::assertStringNotContainsString('catch (\Exception $e)', $tracking);
-        self::assertStringContainsString('public function deleteAnalytic(int $id): bool', $export);
+        self::assertStringContainsString(
+            'public function deleteAnalytic(int $id, int|array|null $siteId = null): bool',
+            $export,
+        );
         self::assertStringContainsString('catch (\Throwable $e)', $export);
         self::assertStringNotContainsString('catch (\Exception $e)', $export);
         self::assertStringContainsString('public function getLocationFromIp(string $ip): ?array', $breakdown);

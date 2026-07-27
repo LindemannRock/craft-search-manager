@@ -11,7 +11,6 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\base\ElementInterface;
 use craft\base\Field;
-use craft\helpers\Db;
 use craft\web\Controller;
 use lindemannrock\base\helpers\ExportHelper;
 use lindemannrock\base\helpers\PluginHelper;
@@ -1615,10 +1614,7 @@ class SettingsController extends Controller
         }
 
         try {
-            $cutoffDate = new \DateTime("-{$retention} days");
-            $deleted = Craft::$app->getDb()->createCommand()
-                ->delete('{{%searchmanager_analytics}}', ['<', 'dateCreated', Db::prepareDateForDb($cutoffDate)])
-                ->execute();
+            $deleted = SearchManager::$plugin->analytics->cleanupOldAnalytics();
 
             $this->logInfo('Analytics cleanup completed', [
                 'retention_days' => $retention,

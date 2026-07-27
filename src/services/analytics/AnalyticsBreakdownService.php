@@ -54,9 +54,7 @@ class AnalyticsBreakdownService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         return (new Query())
             ->select(['deviceType', 'COUNT(*) as count'])
@@ -85,9 +83,7 @@ class AnalyticsBreakdownService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         return (new Query())
             ->select(['browser', 'COUNT(*) as count'])
@@ -117,9 +113,7 @@ class AnalyticsBreakdownService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         return (new Query())
             ->select(['osName', 'COUNT(*) as count'])
@@ -162,9 +156,7 @@ class AnalyticsBreakdownService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         // Outer: total = action count. Bot/system counts are deduped to search
         // actions, not raw index fan-out rows.
@@ -227,9 +219,7 @@ class AnalyticsBreakdownService
 
         $this->applyDateRangeFilter($topAgentsQuery, $dateRange);
 
-        if ($siteId) {
-            $topAgentsQuery->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($topAgentsQuery, $siteId);
 
         $topAgents = array_map(static function(array $row) use ($hasTrafficType, $hasBotCategory, $hasBotProducerName): array {
             return [
@@ -276,9 +266,7 @@ class AnalyticsBreakdownService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         $results = (new Query())
             ->select(['source', 'COUNT(*) as count'])
@@ -335,9 +323,7 @@ class AnalyticsBreakdownService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         $results = (new Query())
             ->select(['apiKeyPrefix', 'apiKeyType', 'COUNT(*) as count'])
@@ -388,9 +374,7 @@ class AnalyticsBreakdownService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         $results = (new Query())
             ->select(['hour', 'COUNT(*) as count'])
@@ -438,9 +422,7 @@ class AnalyticsBreakdownService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         $results = (new Query())
             ->select(['country', 'COUNT(*) as count'])
@@ -488,9 +470,7 @@ class AnalyticsBreakdownService
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
-        if ($siteId) {
-            $perAction->andWhere(['siteId' => $siteId]);
-        }
+        $this->applySiteScope($perAction, $siteId);
 
         $results = (new Query())
             ->select(['city', 'country', 'COUNT(*) as count'])

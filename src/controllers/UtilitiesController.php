@@ -355,7 +355,8 @@ class UtilitiesController extends Controller
         $this->requireAcceptsJson();
 
         try {
-            $rowCount = SearchManager::$plugin->analytics->clearAnalytics();
+            $effectiveSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+            $rowCount = SearchManager::$plugin->analytics->clearAnalytics($effectiveSiteIds);
 
             $this->logInfo('All analytics data cleared via utility', [
                 'rowsDeleted' => $rowCount,

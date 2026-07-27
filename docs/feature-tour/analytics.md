@@ -16,6 +16,8 @@ The eight-tab analytics workspace, analytics collection, and dashboard widgets r
 
 Go to **Search Manager > Analytics**. Analytics is on by default — toggle it in the CP under Search Manager > Settings > Analytics, or set `enableAnalytics` in config. The dashboard is organized into tabs:
 
+Every report, count, export, and row action is limited to sites the current user can edit. Administrators retain all-site access; a user with no editable sites sees no analytics rows and cannot delete any.
+
 ### Overview
 
 Summary statistics and trends:
@@ -200,7 +202,7 @@ Configure how long analytics data is kept, in the CP under Search Manager > Sett
 'analyticsRetention' => 90,  // Days (0 = keep forever)
 ```
 
-An automatic cleanup job removes old records based on this setting.
+An automatic cleanup job removes old records based on this setting. **Clean Up Now** on the same settings screen runs that lifecycle immediately. Both operations apply the global retention policy to primary search, query-rule, and promotion analytics together, while keeping recent rows.
 
 ## Bot filtering
 

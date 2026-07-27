@@ -361,10 +361,11 @@ class AnalyticsService extends Component
     }
 
     /**
+     * @param int|array<int>|null $siteId
      */
-    public function deleteAnalytic(int $id): bool
+    public function deleteAnalytic(int $id, int|array|null $siteId = null): bool
     {
-        return $this->_export->deleteAnalytic($id);
+        return $this->_export->deleteAnalytic($id, $siteId);
     }
 
     /**

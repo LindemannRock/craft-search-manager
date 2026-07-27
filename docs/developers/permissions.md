@@ -96,7 +96,7 @@ These are three independent permissions (not a parent/child group). `viewAnalyti
 |------------|-------------|
 | `searchManager:viewAnalytics` | View the analytics dashboard (Pro only) |
 | `searchManager:exportAnalytics` | Export analytics data |
-| `searchManager:clearAnalytics` | Clear analytics data |
+| `searchManager:clearAnalytics` | Clear analytics data for sites the user can edit (administrators retain all-site access) |
 
 ### Cache
 

@@ -187,15 +187,32 @@ SearchManager::$plugin->autocomplete->clearCache(); // All indices
 
 ## AnalyticsService
 
-Use this for maintenance or data-retention scripts — for example, a scheduled job that clears analytics on a rolling window, per site.
+Use this for maintenance or data-retention scripts — for example, an explicitly site-scoped purge or the plugin's global rolling-retention lifecycle.
 
-### `clearAnalytics(siteId)`
+### `deleteAnalytic(int $id, int|array|null $siteScope = null): bool`
 
-Clear analytics data, optionally filtered by site.
+Delete one primary analytics row. Omitting the scope or passing `null` preserves the intentional global service behavior for existing integrations. Pass one site ID to limit the match to that site, a list of IDs to limit it to those sites, or an empty list to match nothing.
+
+The method returns `true` only when exactly one row matches both the analytics ID and the supplied scope. It returns `false` for a missing ID, an out-of-scope ID, or an empty scope.
 
 ```php
-$deleted = SearchManager::$plugin->analytics->clearAnalytics();
-$deleted = SearchManager::$plugin->analytics->clearAnalytics(1); // Specific site
+$deleted = SearchManager::$plugin->analytics->deleteAnalytic(42);         // Any site
+$deleted = SearchManager::$plugin->analytics->deleteAnalytic(42, 1);      // One site
+$deleted = SearchManager::$plugin->analytics->deleteAnalytic(42, [1, 2]); // Named sites
+$deleted = SearchManager::$plugin->analytics->deleteAnalytic(42, []);     // No sites
+```
+
+Interactive deletion does not use the global compatibility path. The Analytics controller supplies the acting user's editable-site scope, so a row outside that scope cannot be deleted.
+
+### `clearAnalytics(siteScope = null)`
+
+Clear primary search, query-rule, and promotion analytics in one transaction. `null` is the intentional global scope; an integer or integer list limits the operation to those sites; an empty list deletes nothing. The returned count is the number of deleted primary search analytics rows.
+
+```php
+$deleted = SearchManager::$plugin->analytics->clearAnalytics();       // All sites
+$deleted = SearchManager::$plugin->analytics->clearAnalytics(1);      // One site
+$deleted = SearchManager::$plugin->analytics->clearAnalytics([1, 2]); // Named sites
+$deleted = SearchManager::$plugin->analytics->clearAnalytics([]);     // No sites
 ```
 
 ## WidgetConfigService
