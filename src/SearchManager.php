@@ -36,6 +36,13 @@ use craft\utilities\ClearCaches;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
 use craft\web\View;
+use GraphQL\Language\AST\FieldNode;
+use GraphQL\Language\AST\FragmentDefinitionNode;
+use GraphQL\Language\AST\FragmentSpreadNode;
+use GraphQL\Language\AST\InlineFragmentNode;
+use GraphQL\Language\AST\OperationDefinitionNode;
+use GraphQL\Language\AST\SelectionSetNode;
+use GraphQL\Language\Parser;
 use lindemannrock\base\helpers\ColorHelper;
 use lindemannrock\base\helpers\CpNavHelper;
 use lindemannrock\base\helpers\DateFormatHelper;
@@ -412,6 +419,7 @@ class SearchManager extends Plugin
     private function registerGraphql(): void
     {
         $graphqlCacheSetting = null;
+        $graphqlCacheDepth = 0;
 
         Event::on(
             Gql::class,
@@ -459,17 +467,16 @@ class SearchManager extends Plugin
         Event::on(
             Gql::class,
             Gql::EVENT_BEFORE_EXECUTE_GQL_QUERY,
-            static function(ExecuteGqlQueryEvent $event) use (&$graphqlCacheSetting) {
-                if (!self::queryRunsSearch($event->query)) {
-                    self::restoreGraphqlCacheSetting($graphqlCacheSetting);
-
+            static function(ExecuteGqlQueryEvent $event) use (&$graphqlCacheSetting, &$graphqlCacheDepth) {
+                if (!self::queryRunsSearchManagerField($event->query, $event->operationName)) {
                     return;
                 }
 
                 $generalConfig = Craft::$app->getConfig()->getGeneral();
-                if ($graphqlCacheSetting === null) {
+                if ($graphqlCacheDepth === 0) {
                     $graphqlCacheSetting = $generalConfig->enableGraphqlCaching;
                 }
+                $graphqlCacheDepth++;
                 $generalConfig->enableGraphqlCaching = false;
             }
         );
@@ -477,33 +484,137 @@ class SearchManager extends Plugin
         Event::on(
             Gql::class,
             Gql::EVENT_AFTER_EXECUTE_GQL_QUERY,
-            static function(ExecuteGqlQueryEvent $event) use (&$graphqlCacheSetting) {
-                if ($graphqlCacheSetting === null || !self::queryRunsSearch($event->query)) {
+            static function(ExecuteGqlQueryEvent $event) use (&$graphqlCacheSetting, &$graphqlCacheDepth) {
+                if (
+                    $graphqlCacheDepth === 0
+                    || !self::queryRunsSearchManagerField($event->query, $event->operationName)
+                ) {
                     return;
                 }
 
-                self::restoreGraphqlCacheSetting($graphqlCacheSetting);
+                $graphqlCacheDepth--;
+                if ($graphqlCacheDepth === 0) {
+                    self::restoreGraphqlCacheSetting($graphqlCacheSetting);
+                }
             }
         );
 
         Event::on(
             YiiApplication::class,
             YiiApplication::EVENT_AFTER_REQUEST,
-            static function() use (&$graphqlCacheSetting) {
+            static function() use (&$graphqlCacheSetting, &$graphqlCacheDepth) {
                 self::restoreGraphqlCacheSetting($graphqlCacheSetting);
+                $graphqlCacheDepth = 0;
             }
         );
     }
 
     /**
-     * Return whether a GraphQL operation includes the side-effecting search resolver.
-     *
-     * @param string $query
-     * @return bool
+     * Return whether the selected GraphQL operation executes a Search Manager
+     * root field.
      */
-    private static function queryRunsSearch(string $query): bool
+    private static function queryRunsSearchManagerField(string $query, ?string $operationName): bool
     {
-        return str_contains($query, 'searchManagerSearch');
+        try {
+            $document = Parser::parse($query);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        $operations = [];
+        $fragments = [];
+        foreach ($document->definitions as $definition) {
+            if ($definition instanceof OperationDefinitionNode) {
+                $operations[] = $definition;
+            } elseif ($definition instanceof FragmentDefinitionNode) {
+                $fragments[$definition->name->value] = $definition;
+            }
+        }
+
+        $selectedOperation = null;
+        if ($operationName !== null && $operationName !== '') {
+            foreach ($operations as $operation) {
+                if ($operation->name?->value === $operationName) {
+                    $selectedOperation = $operation;
+                    break;
+                }
+            }
+        } elseif (count($operations) === 1) {
+            $selectedOperation = $operations[0];
+        }
+
+        if ($selectedOperation === null || $selectedOperation->operation !== 'query') {
+            return false;
+        }
+
+        $visitedFragments = [];
+
+        return self::selectionSetRunsSearchManagerField(
+            $selectedOperation->selectionSet,
+            $fragments,
+            $visitedFragments,
+        );
+    }
+
+    /**
+     * Inspect root-level selections, following fragments without treating
+     * aliases or nested response fields as Search Manager operations.
+     *
+     * @param array<string, FragmentDefinitionNode> $fragments
+     * @param array<string, true> $visitedFragments
+     */
+    private static function selectionSetRunsSearchManagerField(
+        SelectionSetNode $selectionSet,
+        array $fragments,
+        array &$visitedFragments,
+    ): bool {
+        foreach ($selectionSet->selections as $selection) {
+            if ($selection instanceof FieldNode) {
+                if (in_array($selection->name->value, [
+                    'searchManagerSearch',
+                    'searchManagerAutocomplete',
+                ], true)) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if ($selection instanceof InlineFragmentNode) {
+                if (self::selectionSetRunsSearchManagerField(
+                    $selection->selectionSet,
+                    $fragments,
+                    $visitedFragments,
+                )) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if (!$selection instanceof FragmentSpreadNode) {
+                continue;
+            }
+
+            $fragmentName = $selection->name->value;
+            if (isset($visitedFragments[$fragmentName], $fragments[$fragmentName])) {
+                continue;
+            }
+            if (!isset($fragments[$fragmentName])) {
+                continue;
+            }
+
+            $visitedFragments[$fragmentName] = true;
+            if (self::selectionSetRunsSearchManagerField(
+                $fragments[$fragmentName]->selectionSet,
+                $fragments,
+                $visitedFragments,
+            )) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

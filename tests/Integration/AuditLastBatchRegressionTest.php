@@ -10,8 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use lindemannrock\searchmanager\controllers\ApiController;
-use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
+use lindemannrock\searchmanager\helpers\AutocompleteResponseHelper;
 use lindemannrock\searchmanager\tests\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -32,11 +31,7 @@ final class AuditLastBatchRegressionTest extends TestCase
 
         self::assertSame(
             [$results[0], $results[2], $results[3]],
-            $this->callApiDedupe($results),
-        );
-        self::assertSame(
-            [$results[0], $results[2], $results[3]],
-            $this->callGqlDedupe($results),
+            AutocompleteResponseHelper::results([$results], 10),
         );
     }
 
@@ -70,31 +65,6 @@ final class AuditLastBatchRegressionTest extends TestCase
         self::assertStringContainsString('use lindemannrock\\searchmanager\\jobs\\BatchSyncJob;', $source);
         self::assertStringContainsString('push(new BatchSyncJob())', $body);
         self::assertStringNotContainsString('IndexBatchJob', $body);
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $results
-     * @return array<int, array<string, mixed>>
-     */
-    private function callApiDedupe(array $results): array
-    {
-        $controller = (new \ReflectionClass(ApiController::class))->newInstanceWithoutConstructor();
-        $method = new \ReflectionMethod(ApiController::class, 'dedupeAutocompleteResults');
-        $method->setAccessible(true);
-
-        return $method->invoke($controller, $results);
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $results
-     * @return array<int, array<string, mixed>>
-     */
-    private function callGqlDedupe(array $results): array
-    {
-        $method = new \ReflectionMethod(SearchResolver::class, 'dedupeAutocompleteResults');
-        $method->setAccessible(true);
-
-        return $method->invoke(null, $results);
     }
 
     private function readPluginFile(string $path): string

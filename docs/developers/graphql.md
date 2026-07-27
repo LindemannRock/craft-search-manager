@@ -478,14 +478,15 @@ Autocomplete arguments:
 | `indexHandles` | `[String]` | Up to 5 explicit index handles to query. Passing more than 5 handles returns an `error`. Omit to query all enabled indices. |
 | `site` | `String` | Site handle filter. |
 | `siteId` | `Int` | Site ID filter. `site` wins when both are provided. |
-| `resultsLimit` | `Int` | Defaults to `10`, capped at `100`. |
+| `resultsLimit` | `Int` | Defaults to `10`, capped at `100`. The resolved limit applies separately to each final merged `suggestions` and `results` list across all selected indices and sites in the active schema. |
 | `only` | `String` | Use `suggestions` or `results` to limit the response. |
 | `type` | `String` | Optional element type filter for result suggestions. |
 | `language` | `String` | Optional language code. |
 | `lang` | `String` | Alias for `language`. |
 
 Autocomplete does not record search analytics.
-When multiple indices return the same element suggestion, Search Manager keeps the first result per `siteId`, element `id`, and `type`.
+Search Manager merges sources in index and active-schema site order, removes duplicates while keeping the first-ranked occurrence, then applies `resultsLimit` to each final list.
+When multiple sources return the same element suggestion, identity is the combination of `siteId`, element `id`, and `type`.
 If more than 5 explicit `indexHandles` are passed, `suggestions` and `results` are empty and `error` contains the validation message.
 
 ## Multi-index counts

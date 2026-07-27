@@ -12,6 +12,7 @@ use Craft;
 use craft\gql\base\Resolver;
 use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\base\helpers\GqlHelper;
+use lindemannrock\searchmanager\helpers\AutocompleteResponseHelper;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\SearchFilterExpressionHelper;
@@ -242,8 +243,8 @@ class SearchResolver extends Resolver
             $options['language'] = $language;
         }
 
-        $suggestions = [];
-        $results = [];
+        $suggestionSources = [];
+        $resultSources = [];
         foreach ($indexHandles as $handle) {
             foreach ($siteIds ?? [null] as $scopedSiteId) {
                 $siteOptions = $options;
@@ -252,52 +253,22 @@ class SearchResolver extends Resolver
                 }
 
                 if ($only !== 'results') {
-                    $suggestions = array_merge($suggestions, SearchManager::$plugin->autocomplete->suggest($query, $handle, $siteOptions));
+                    $suggestionSources[] = SearchManager::$plugin->autocomplete->suggest($query, $handle, $siteOptions);
                 }
                 if ($only !== 'suggestions') {
-                    $results = array_merge(
-                        $results,
-                        SearchManager::$plugin->autocomplete->suggestElements(
-                            $query,
-                            $handle,
-                            array_merge($siteOptions, ['type' => self::trimmedString($arguments['type'] ?? null)]),
-                        ),
+                    $resultSources[] = SearchManager::$plugin->autocomplete->suggestElements(
+                        $query,
+                        $handle,
+                        array_merge($siteOptions, ['type' => self::trimmedString($arguments['type'] ?? null)]),
                     );
                 }
             }
         }
 
         return [
-            'suggestions' => $only === 'results' ? [] : array_values(array_unique($suggestions)),
-            'results' => $only === 'suggestions' ? [] : self::dedupeAutocompleteResults($results),
+            'suggestions' => $only === 'results' ? [] : AutocompleteResponseHelper::suggestions($suggestionSources, $limit),
+            'results' => $only === 'suggestions' ? [] : AutocompleteResponseHelper::results($resultSources, $limit),
         ];
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $results
-     * @return array<int, array<string, mixed>>
-     */
-    private static function dedupeAutocompleteResults(array $results): array
-    {
-        $seen = [];
-        $deduped = [];
-
-        foreach ($results as $result) {
-            $key = implode(':', [
-                (string)($result['siteId'] ?? ''),
-                (string)($result['id'] ?? ''),
-                (string)($result['type'] ?? ''),
-            ]);
-
-            if (isset($seen[$key])) {
-                continue;
-            }
-
-            $seen[$key] = true;
-            $deduped[] = $result;
-        }
-
-        return $deduped;
     }
 
     public static function normalizePublicLanguage(mixed $language): ?string

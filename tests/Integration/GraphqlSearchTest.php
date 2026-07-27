@@ -11,14 +11,19 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
+use craft\elements\Entry;
 use craft\events\ExecuteGqlQueryEvent;
+use craft\helpers\StringHelper;
 use craft\models\GqlSchema;
 use craft\services\Gql;
 use lindemannrock\searchmanager\gql\queries\SearchQuery;
 use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use yii\base\Application as YiiApplication;
+use yii\caching\ArrayCache;
 use yii\web\ForbiddenHttpException;
 
 /**
@@ -66,6 +71,33 @@ final class GraphqlSearchTest extends TestCase
         }
     }
 
+    #[DataProvider('searchManagerOperationProvider')]
+    public function testGraphqlOuterCacheDetectionHonorsSelectedFields(
+        string $query,
+        ?string $operationName,
+        bool $shouldBypass,
+    ): void {
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $original = $generalConfig->enableGraphqlCaching;
+        $generalConfig->enableGraphqlCaching = true;
+        $event = new ExecuteGqlQueryEvent([
+            'query' => $query,
+            'operationName' => $operationName,
+        ]);
+
+        try {
+            Craft::$app->getGql()->trigger(Gql::EVENT_BEFORE_EXECUTE_GQL_QUERY, $event);
+
+            self::assertSame(!$shouldBypass, $generalConfig->enableGraphqlCaching);
+
+            Craft::$app->getGql()->trigger(Gql::EVENT_AFTER_EXECUTE_GQL_QUERY, $event);
+            self::assertTrue($generalConfig->enableGraphqlCaching);
+        } finally {
+            Craft::$app->trigger(YiiApplication::EVENT_AFTER_REQUEST);
+            $generalConfig->enableGraphqlCaching = $original;
+        }
+    }
+
     public function testGraphqlSearchCacheToggleDoesNotOverwriteOriginalBeforeRestore(): void
     {
         $generalConfig = Craft::$app->getConfig()->getGeneral();
@@ -89,7 +121,179 @@ final class GraphqlSearchTest extends TestCase
                 new ExecuteGqlQueryEvent(['query' => $this->searchQuery()]),
             );
 
+            $this->assertFalse($generalConfig->enableGraphqlCaching);
+
+            Craft::$app->getGql()->trigger(
+                Gql::EVENT_AFTER_EXECUTE_GQL_QUERY,
+                new ExecuteGqlQueryEvent(['query' => $this->searchQuery()]),
+            );
+
             $this->assertTrue($generalConfig->enableGraphqlCaching);
+        } finally {
+            Craft::$app->trigger(YiiApplication::EVENT_AFTER_REQUEST);
+            $generalConfig->enableGraphqlCaching = $original;
+        }
+    }
+
+    public function testGraphqlCacheToggleIgnoresNestedUnrelatedOperation(): void
+    {
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $original = $generalConfig->enableGraphqlCaching;
+        $searchEvent = new ExecuteGqlQueryEvent(['query' => $this->searchQuery()]);
+        $unrelatedEvent = new ExecuteGqlQueryEvent(['query' => 'query { entries { id } }']);
+        $generalConfig->enableGraphqlCaching = true;
+
+        try {
+            Craft::$app->getGql()->trigger(Gql::EVENT_BEFORE_EXECUTE_GQL_QUERY, $searchEvent);
+            Craft::$app->getGql()->trigger(Gql::EVENT_BEFORE_EXECUTE_GQL_QUERY, $unrelatedEvent);
+            self::assertFalse($generalConfig->enableGraphqlCaching);
+
+            Craft::$app->getGql()->trigger(Gql::EVENT_AFTER_EXECUTE_GQL_QUERY, $unrelatedEvent);
+            self::assertFalse($generalConfig->enableGraphqlCaching);
+
+            Craft::$app->getGql()->trigger(Gql::EVENT_AFTER_EXECUTE_GQL_QUERY, $searchEvent);
+            self::assertTrue($generalConfig->enableGraphqlCaching);
+        } finally {
+            Craft::$app->trigger(YiiApplication::EVENT_AFTER_REQUEST);
+            $generalConfig->enableGraphqlCaching = $original;
+        }
+    }
+
+    public function testGraphqlCacheTogglePreservesInitiallyDisabledSetting(): void
+    {
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $original = $generalConfig->enableGraphqlCaching;
+        $generalConfig->enableGraphqlCaching = false;
+        $event = new ExecuteGqlQueryEvent(['query' => $this->autocompleteQuery()]);
+
+        try {
+            Craft::$app->getGql()->trigger(Gql::EVENT_BEFORE_EXECUTE_GQL_QUERY, $event);
+            self::assertFalse($generalConfig->enableGraphqlCaching);
+
+            Craft::$app->getGql()->trigger(Gql::EVENT_AFTER_EXECUTE_GQL_QUERY, $event);
+            self::assertFalse($generalConfig->enableGraphqlCaching);
+        } finally {
+            Craft::$app->trigger(YiiApplication::EVENT_AFTER_REQUEST);
+            $generalConfig->enableGraphqlCaching = $original;
+        }
+    }
+
+    public function testGraphqlAutocompleteBypassesStaleOuterResultCache(): void
+    {
+        $site = Craft::$app->getSites()->getAllSites()[0] ?? null;
+        if ($site === null) {
+            $this->markTestSkipped('No site available.');
+        }
+        $index = $this->recordingIndex((int)$site->id);
+
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $originalGraphqlCaching = $generalConfig->enableGraphqlCaching;
+        $originalCache = Craft::$app->getCache();
+        $autocomplete = new GraphqlSearchRecordingAutocompleteService();
+        $autocomplete->suggestResponses = [['first-state'], ['updated-state']];
+        $this->swapPluginComponent('search-manager', 'autocomplete', $autocomplete);
+        $schema = $this->schemaForSites([$site->uid]);
+        $query = sprintf(
+            'query AutocompleteCache { searchManagerAutocomplete(query: "pr144-cache", indexHandles: ["%s"], siteId: %d, only: "suggestions") { suggestions } }',
+            $index->handle,
+            $site->id,
+        );
+
+        try {
+            $cache = new ArrayCache();
+            Craft::$app->set('cache', $cache);
+            $generalConfig->enableGraphqlCaching = true;
+            $cacheKey = $this->graphqlCacheKey($schema, $query, 'AutocompleteCache');
+            $staleResult = [
+                'data' => [
+                    'searchManagerAutocomplete' => [
+                        'suggestions' => ['stale-outer-state'],
+                    ],
+                ],
+            ];
+            Craft::$app->getGql()->setCachedResult($cacheKey, $staleResult);
+
+            [$first, $second] = $this->withOnlySearchIndices(
+                [$index],
+                static fn(): array => [
+                    Craft::$app->getGql()->executeQuery($schema, $query, operationName: 'AutocompleteCache'),
+                    Craft::$app->getGql()->executeQuery($schema, $query, operationName: 'AutocompleteCache'),
+                ],
+            );
+
+            self::assertSame(['first-state'], $first['data']['searchManagerAutocomplete']['suggestions'] ?? null);
+            self::assertSame(['updated-state'], $second['data']['searchManagerAutocomplete']['suggestions'] ?? null);
+            self::assertCount(2, $autocomplete->suggestCalls);
+            self::assertTrue($generalConfig->enableGraphqlCaching);
+            self::assertSame($staleResult, Craft::$app->getGql()->getCachedResult($cacheKey));
+        } finally {
+            Craft::$app->trigger(YiiApplication::EVENT_AFTER_REQUEST);
+            Craft::$app->set('cache', $originalCache);
+            $generalConfig->enableGraphqlCaching = $originalGraphqlCaching;
+        }
+    }
+
+    public function testUnrelatedGraphqlOperationRemainsOuterCacheable(): void
+    {
+        $site = Craft::$app->getSites()->getAllSites()[0] ?? null;
+        if ($site === null) {
+            $this->markTestSkipped('No site available.');
+        }
+
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $originalGraphqlCaching = $generalConfig->enableGraphqlCaching;
+        $originalCache = Craft::$app->getCache();
+        $schema = $this->schemaForSites([$site->uid]);
+        $query = 'query Unrelated { __typename }';
+        $cacheKey = $this->graphqlCacheKey($schema, $query, 'Unrelated');
+
+        try {
+            Craft::$app->set('cache', new ArrayCache());
+            $generalConfig->enableGraphqlCaching = true;
+
+            $response = Craft::$app->getGql()->executeQuery($schema, $query, operationName: 'Unrelated');
+
+            self::assertSame($response, Craft::$app->getGql()->getCachedResult($cacheKey));
+            self::assertTrue($generalConfig->enableGraphqlCaching);
+        } finally {
+            Craft::$app->trigger(YiiApplication::EVENT_AFTER_REQUEST);
+            Craft::$app->set('cache', $originalCache);
+            $generalConfig->enableGraphqlCaching = $originalGraphqlCaching;
+        }
+    }
+
+    public function testGraphqlAutocompleteResolverExceptionRestoresOuterCacheSetting(): void
+    {
+        $site = Craft::$app->getSites()->getAllSites()[0] ?? null;
+        if ($site === null) {
+            $this->markTestSkipped('No site available.');
+        }
+        $index = $this->recordingIndex((int)$site->id);
+
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $original = $generalConfig->enableGraphqlCaching;
+        $autocomplete = new GraphqlSearchRecordingAutocompleteService();
+        $autocomplete->throwOnSuggest = true;
+        $this->swapPluginComponent('search-manager', 'autocomplete', $autocomplete);
+        $query = sprintf(
+            'query AutocompleteFailure { searchManagerAutocomplete(query: "pr144-error", indexHandles: ["%s"], siteId: %d, only: "suggestions") { suggestions } }',
+            $index->handle,
+            $site->id,
+        );
+
+        try {
+            $generalConfig->enableGraphqlCaching = true;
+            $response = $this->withOnlySearchIndices(
+                [$index],
+                fn(): array => Craft::$app->getGql()->executeQuery(
+                    $this->schemaForSites([$site->uid]),
+                    $query,
+                    operationName: 'AutocompleteFailure',
+                ),
+            );
+
+            self::assertArrayHasKey('errors', $response);
+            self::assertTrue($generalConfig->enableGraphqlCaching);
         } finally {
             Craft::$app->trigger(YiiApplication::EVENT_AFTER_REQUEST);
             $generalConfig->enableGraphqlCaching = $original;
@@ -419,6 +623,7 @@ final class GraphqlSearchTest extends TestCase
     {
         return new GqlSchema([
             'name' => 'Search Manager test schema',
+            'uid' => StringHelper::UUID(),
             'scope' => array_merge(
                 ['searchManager.all:read'],
                 array_map(static fn(string $uid): string => 'sites.' . $uid . ':read', $siteUids),
@@ -429,6 +634,91 @@ final class GraphqlSearchTest extends TestCase
     private function searchQuery(): string
     {
         return 'query { searchManagerSearch(query: "coffee") { total } }';
+    }
+
+    private function autocompleteQuery(): string
+    {
+        return 'query { searchManagerAutocomplete(query: "cof") { suggestions } }';
+    }
+
+    private function recordingIndex(int $siteId): SearchIndex
+    {
+        return new SearchIndex([
+            'name' => 'PR1.44 recording index',
+            'handle' => '__sm_pr144_recording__',
+            'elementType' => Entry::class,
+            'siteId' => $siteId,
+            'enabled' => true,
+        ]);
+    }
+
+    private function graphqlCacheKey(GqlSchema $schema, string $query, string $operationName): string
+    {
+        return Gql::CACHE_TAG
+            . '::' . Craft::$app->getSites()->getCurrentSite()->id
+            . '::' . $schema->uid
+            . '::' . md5($query)
+            . '::' . serialize(null)
+            . '::' . Craft::$app->getInfo()->configVersion
+            . '::' . serialize(null)
+            . '::' . $operationName;
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: string|null, 2: bool}>
+     */
+    public static function searchManagerOperationProvider(): iterable
+    {
+        yield 'direct search' => [
+            'query { searchManagerSearch(query: "coffee") { total } }',
+            null,
+            true,
+        ];
+        yield 'direct autocomplete' => [
+            'query { searchManagerAutocomplete(query: "cof") { suggestions } }',
+            null,
+            true,
+        ];
+        yield 'aliased autocomplete' => [
+            'query { completions: searchManagerAutocomplete(query: "cof") { suggestions } }',
+            null,
+            true,
+        ];
+        yield 'named fragment' => [
+            'query Lookup { ...AutocompleteFields } fragment AutocompleteFields on Query { searchManagerAutocomplete(query: "cof") { suggestions } }',
+            'Lookup',
+            true,
+        ];
+        yield 'inline fragment' => [
+            'query Lookup { ... on Query { searchManagerAutocomplete(query: "cof") { suggestions } } }',
+            'Lookup',
+            true,
+        ];
+        yield 'combined search-manager and unrelated fields' => [
+            'query { searchManagerAutocomplete(query: "cof") { suggestions } entries { id } }',
+            null,
+            true,
+        ];
+        yield 'unrelated only' => [
+            'query { entries { id } }',
+            null,
+            false,
+        ];
+        yield 'alias named like autocomplete is unrelated' => [
+            'query { searchManagerAutocomplete: entries { id } }',
+            null,
+            false,
+        ];
+        yield 'selected autocomplete operation' => [
+            'query Unrelated { entries { id } } query Autocomplete { searchManagerAutocomplete(query: "cof") { suggestions } }',
+            'Autocomplete',
+            true,
+        ];
+        yield 'selected unrelated operation' => [
+            'query Unrelated { entries { id } } query Autocomplete { searchManagerAutocomplete(query: "cof") { suggestions } }',
+            'Unrelated',
+            false,
+        ];
     }
 
     private function readPluginFile(string $path): string
@@ -445,6 +735,11 @@ final class GraphqlSearchRecordingAutocompleteService extends AutocompleteServic
     /** @var list<array{query: string, indexHandle: string, options: array<string, mixed>}> */
     public array $suggestCalls = [];
 
+    /** @var list<list<string>> */
+    public array $suggestResponses = [['coffee']];
+
+    public bool $throwOnSuggest = false;
+
     /**
      * @param array<string, mixed> $options
      * @return array<int, string>
@@ -457,6 +752,10 @@ final class GraphqlSearchRecordingAutocompleteService extends AutocompleteServic
             'options' => $options,
         ];
 
-        return ['coffee'];
+        if ($this->throwOnSuggest) {
+            throw new \RuntimeException('Recording autocomplete resolver failure.');
+        }
+
+        return array_shift($this->suggestResponses) ?? [];
     }
 }

@@ -365,7 +365,7 @@ GET /actions/search-manager/api/autocomplete
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
 | `indexHandles` | (all indices) | One index handle or a comma-separated list of up to 5 explicit handles. Passing more than 5 handles returns an error. Omit to search all enabled indices. |
-| `resultsLimit` | `10` | Maximum suggestions/results (capped at 100) |
+| `resultsLimit` | `10` | Maximum items in each final `suggestions` and `results` list after selected-index results are merged and deduplicated (capped at 100; an authenticated API key may impose a lower cap) |
 | `siteId` | (all sites) | Filter to a specific site |
 | `language` | (auto) | Language code (alias: `lang`) |
 | `only` | (none) | Return only `suggestions` or `results` |
@@ -399,6 +399,8 @@ GET /actions/search-manager/api/autocomplete
     {"text": "Test Category", "type": "category", "id": 45, "siteId": 1}
 ]
 ```
+
+When several indices are selected, Search Manager preserves index order, keeps the first occurrence of each duplicate, and then applies `resultsLimit` separately to the final suggestions and rich-results lists.
 
 ### Examples
 

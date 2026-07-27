@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use lindemannrock\searchmanager\helpers\AutocompleteResponseHelper;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\PublicRequestScalarHelper;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
@@ -252,119 +253,40 @@ class ApiController extends Controller
             $options['language'] = $language;
         }
 
-        // Only suggestions: return plain strings
+        if (empty($indexHandles)) {
+            $allIndices = SearchIndex::findAll();
+            $indexHandles = array_map(
+                fn($idx) => $idx->handle,
+                array_filter($allIndices, fn($idx) => $idx->enabled)
+            );
+        }
+
+        $suggestionSources = [];
+        $resultSources = [];
+        foreach ($indexHandles as $handle) {
+            if ($only !== 'results') {
+                $suggestionSources[] = $autocomplete->suggest($query, $handle, $options);
+            }
+            if ($only !== 'suggestions') {
+                $resultSources[] = $autocomplete->suggestElements(
+                    $query,
+                    $handle,
+                    array_merge($options, ['type' => $typeFilter]),
+                );
+            }
+        }
+
         if ($only === 'suggestions') {
-            if (count($indexHandles) === 1) {
-                return $this->asJson($autocomplete->suggest($query, $indexHandles[0], $options));
-            }
-            if (count($indexHandles) > 1) {
-                $allSuggestions = [];
-                foreach ($indexHandles as $handle) {
-                    $allSuggestions = array_merge($allSuggestions, $autocomplete->suggest($query, $handle, $options));
-                }
-                return $this->asJson(array_values(array_unique($allSuggestions)));
-            }
-            $allIndices = SearchIndex::findAll();
-            $allIndexHandles = array_map(
-                fn($idx) => $idx->handle,
-                array_filter($allIndices, fn($idx) => $idx->enabled)
-            );
-            $allSuggestions = [];
-            foreach ($allIndexHandles as $handle) {
-                $allSuggestions = array_merge($allSuggestions, $autocomplete->suggest($query, $handle, $options));
-            }
-            return $this->asJson(array_values(array_unique($allSuggestions)));
+            return $this->asJson(AutocompleteResponseHelper::suggestions($suggestionSources, $limit));
         }
-
-        // Only results: return element objects with type info
         if ($only === 'results') {
-            $options['type'] = $typeFilter;
-            if (count($indexHandles) === 1) {
-                return $this->asJson($autocomplete->suggestElements($query, $indexHandles[0], $options));
-            }
-            if (count($indexHandles) > 1) {
-                $allResults = [];
-                foreach ($indexHandles as $handle) {
-                    $allResults = array_merge($allResults, $autocomplete->suggestElements($query, $handle, $options));
-                }
-                return $this->asJson($this->dedupeAutocompleteResults($allResults));
-            }
-            $allIndices = SearchIndex::findAll();
-            $allIndexHandles = array_map(
-                fn($idx) => $idx->handle,
-                array_filter($allIndices, fn($idx) => $idx->enabled)
-            );
-            $allResults = [];
-            foreach ($allIndexHandles as $handle) {
-                $allResults = array_merge($allResults, $autocomplete->suggestElements($query, $handle, $options));
-            }
-            return $this->asJson($this->dedupeAutocompleteResults($allResults));
+            return $this->asJson(AutocompleteResponseHelper::results($resultSources, $limit));
         }
 
-        // Default: return both
-        if (count($indexHandles) === 1) {
-            return $this->asJson([
-                'suggestions' => $autocomplete->suggest($query, $indexHandles[0], $options),
-                'results' => $autocomplete->suggestElements($query, $indexHandles[0], array_merge($options, ['type' => $typeFilter])),
-            ]);
-        }
-        if (count($indexHandles) > 1) {
-            $allSuggestions = [];
-            $allResults = [];
-            foreach ($indexHandles as $handle) {
-                $allSuggestions = array_merge($allSuggestions, $autocomplete->suggest($query, $handle, $options));
-                $allResults = array_merge($allResults, $autocomplete->suggestElements($query, $handle, array_merge($options, ['type' => $typeFilter])));
-            }
-            return $this->asJson([
-                'suggestions' => array_values(array_unique($allSuggestions)),
-                'results' => $this->dedupeAutocompleteResults($allResults),
-            ]);
-        }
-
-        $allIndices = SearchIndex::findAll();
-        $allIndexHandles = array_map(
-            fn($idx) => $idx->handle,
-            array_filter($allIndices, fn($idx) => $idx->enabled)
-        );
-        $allSuggestions = [];
-        $allResults = [];
-        foreach ($allIndexHandles as $handle) {
-            $allSuggestions = array_merge($allSuggestions, $autocomplete->suggest($query, $handle, $options));
-            $allResults = array_merge($allResults, $autocomplete->suggestElements($query, $handle, array_merge($options, ['type' => $typeFilter])));
-        }
         return $this->asJson([
-            'suggestions' => array_values(array_unique($allSuggestions)),
-            'results' => $this->dedupeAutocompleteResults($allResults),
+            'suggestions' => AutocompleteResponseHelper::suggestions($suggestionSources, $limit),
+            'results' => AutocompleteResponseHelper::results($resultSources, $limit),
         ]);
-    }
-
-    /**
-     * Dedupe element autocomplete results after merging multiple indices.
-     *
-     * @param array<int, array<string, mixed>> $results
-     * @return array<int, array<string, mixed>>
-     */
-    private function dedupeAutocompleteResults(array $results): array
-    {
-        $seen = [];
-        $deduped = [];
-
-        foreach ($results as $result) {
-            $key = implode(':', [
-                (string)($result['siteId'] ?? ''),
-                (string)($result['id'] ?? ''),
-                (string)($result['type'] ?? ''),
-            ]);
-
-            if (isset($seen[$key])) {
-                continue;
-            }
-
-            $seen[$key] = true;
-            $deduped[] = $result;
-        }
-
-        return $deduped;
     }
 
     public static function normalizePublicLanguage(mixed $language): ?string

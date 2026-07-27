@@ -151,13 +151,15 @@ input.addEventListener('input', (e) => {
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
 | `indexHandles` | (all indices) | One index handle or a comma-separated list of up to 5 explicit handles. Passing more than 5 handles returns an error. Omit to search all enabled indices. |
-| `resultsLimit` | `10` | Maximum suggestions/results |
+| `resultsLimit` | `10` | Maximum items in each final suggestions and rich-results list after selected indices are merged and duplicates are removed |
 | `siteId` | (all sites) | Filter to a specific site |
 | `language` | (auto) | Language code |
 | `only` | (none) | Return only `suggestions` or `results` |
 | `type` | (none) | Filter results by element type |
 
 See [API endpoints](api-endpoints.md) for full documentation.
+
+For multi-index requests, source order is stable: the first occurrence wins when suggestions or element identities collide, and the limit is applied only after that deduplication.
 
 ## Styling
 
