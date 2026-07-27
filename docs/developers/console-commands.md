@@ -82,6 +82,8 @@ After rebuilding, cache warming runs automatically if enabled (see [Caching](../
 Clear all indices or a specific index without re-indexing. The index configuration remains — only the data is removed.
 The command also resets each cleared index's stored document count and clears its search-results and autocomplete caches, matching the Control Panel action.
 
+If a backend rejects the clear before changing storage, Search Manager leaves that index's definition, stored count, site metadata, and caches unchanged. When clearing all indices, it continues after those safe failures. If storage was cleared but the count or cache reconciliation could not finish, the command reports an irreversible partial result, stops to limit further changes, marks later indices unattempted, and exits non-zero.
+
 Clear all indices:
 
 ```bash title="PHP"
@@ -127,7 +129,9 @@ ddev craft search-manager/maintenance/status
 ### `search-manager/maintenance/clear-storage`
 
 Clear backend storage data. Use this for cleanup or troubleshooting. The `--type` option is **required**.
-After storage is cleared, Search Manager resets the stored document counts for every index using that storage type. Search-results and autocomplete caches are unchanged.
+The status display, pre-clear counts, and clear operation use the same server-owned target inventory. Database clearing covers all eight Search Manager index tables in one transaction. Redis clearing discovers and deduplicates every effective Redis target; when no stored Redis backend exists, a resolvable Craft Redis connection contributes the Search Manager database target. File clearing includes the default runtime path and every valid configured File path.
+
+After each target is cleared successfully, Search Manager resets the stored document counts for the indices mapped to that target and clears their search-results and autocomplete caches. A safe failure before mutation does not prevent another target from being attempted. An irreversible partial result stops the operation, marks later targets unattempted, prints the per-target outcome, and returns a non-zero exit code.
 
 ```bash title="PHP"
 php craft search-manager/maintenance/clear-storage --type=database
@@ -177,6 +181,8 @@ ddev craft search-manager/maintenance/purge-orphaned-storage --type=database
 > This command only inspects local storage: database, Redis, and file. External search backends run on shared provider accounts, and a matching index-name prefix does not prove Search Manager ownership. Clean up old Algolia, Meilisearch, or Typesense indices via your provider's dashboard.
 
 Use this after removing an index from `config/search-manager.php`, renaming an index handle, or finding old prefixed handles in storage. Storage under a different `indexPrefix` is ignored so shared services can hold data for multiple environments.
+
+The command attempts every planned orphan handle even when one fails. Its summary distinguishes complete success, partial success, and complete failure; any failed handle makes the command exit non-zero. Dry runs, cancellation, and a plan with no candidates remain successful no-op outcomes.
 
 ## Security commands
 

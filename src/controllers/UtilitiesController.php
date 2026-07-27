@@ -13,7 +13,6 @@ use craft\helpers\FileHelper;
 use craft\web\Controller;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\Response;
 
@@ -400,24 +399,8 @@ class UtilitiesController extends Controller
             ]);
         }
 
-        // Check for handle collisions before proceeding
-        $collisions = $this->getHandleCollisions();
-        if (!empty($collisions)) {
-            $handleList = implode(', ', $collisions);
-            return $this->asJson([
-                'success' => false,
-                'error' => Craft::t('search-manager', 'Cannot clear storage: Handle collision detected. The following handles exist in both config and database: {handles}. Please resolve these conflicts first by removing duplicates from either config or database.', [
-                    'handles' => $handleList,
-                ]),
-            ]);
-        }
-
         try {
-            $result = match ($type) {
-                'database' => $this->clearDatabaseStorage(),
-                'redis' => $this->clearRedisStorage(),
-                'file' => $this->clearFileStorage(),
-            };
+            $result = SearchManager::$plugin->storageMaintenance->clearStorageByType($type);
 
             if ($result['success']) {
                 $this->logInfo('Storage cleared by type via utility', [
@@ -425,16 +408,10 @@ class UtilitiesController extends Controller
                     'details' => $result,
                 ]);
 
-                return $this->asJson([
-                    'success' => true,
-                    'message' => $result['message'],
-                ]);
+                return $this->asJson($result);
             }
 
-            return $this->asJson([
-                'success' => false,
-                'error' => $result['error'],
-            ]);
+            return $this->asJson($result);
         } catch (\Throwable $e) {
             $this->logError('Failed to clear storage by type', [
                 'type' => $type,
@@ -474,184 +451,6 @@ class UtilitiesController extends Controller
                 'error' => Craft::t('search-manager', 'Failed to get storage statistics'),
             ]);
         }
-    }
-
-    /**
-     * Clear ALL database storage (MySQL or PostgreSQL)
-     */
-    private function clearDatabaseStorage(): array
-    {
-        $tables = SearchManager::$plugin->storageMaintenance->databaseStorageTables();
-        $db = Craft::$app->getDb();
-        $driverName = $db->getDriverName();
-        $driverLabel = $driverName === 'pgsql' ? 'PostgreSQL' : 'MySQL';
-        $deletedRows = 0;
-
-        foreach ($tables as $table) {
-            $tableName = $db->getSchema()->getRawTableName($table);
-            if ($db->getTableSchema($tableName) === null) {
-                continue;
-            }
-
-            $count = $db->createCommand()->delete($table)->execute();
-            $deletedRows += $count;
-        }
-
-        // Reset documentCount for all database-backed indices (mysql or pgsql)
-        $this->resetIndexDocumentCounts('database');
-
-        return [
-            'success' => true,
-            'message' => Craft::t('search-manager', '{driver} storage cleared successfully ({count} rows deleted). Rebuild affected indices to re-index your content.', [
-                'driver' => $driverLabel,
-                'count' => number_format($deletedRows),
-            ]),
-            'deletedRows' => $deletedRows,
-        ];
-    }
-
-    /**
-     * Clear ALL Redis storage
-     */
-    private function clearRedisStorage(): array
-    {
-        if (!class_exists('\Redis')) {
-            return [
-                'success' => false,
-                'error' => Craft::t('search-manager', 'Redis extension is not installed.'),
-            ];
-        }
-
-        $storageMaintenance = SearchManager::$plugin->storageMaintenance;
-        $config = $storageMaintenance->getRedisConfig();
-
-        if (empty($config['host'])) {
-            return [
-                'success' => false,
-                'error' => Craft::t('search-manager', 'Redis is not configured.'),
-            ];
-        }
-
-        try {
-            $redis = $storageMaintenance->connectRedis($config);
-
-            // Find all Search Manager keys without blocking Redis like KEYS does.
-            $keys = $storageMaintenance->scanRedisKeys($redis, 'sm:idx:*');
-            $deletedKeys = 0;
-
-            if (!empty($keys)) {
-                $deletedKeys = count($keys);
-                $redis->del($keys);
-            }
-
-            // Reset documentCount for all Redis-backed indices
-            $this->resetIndexDocumentCounts('redis');
-
-            return [
-                'success' => true,
-                'message' => Craft::t('search-manager', 'Redis storage cleared successfully ({count} keys deleted). Rebuild affected indices to re-index your content.', [
-                    'count' => number_format($deletedKeys),
-                ]),
-                'deletedKeys' => $deletedKeys,
-            ];
-        } catch (\Throwable $e) {
-            $this->logError('Failed to clear Redis storage', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return [
-                'success' => false,
-                'error' => Craft::$app->getConfig()->getGeneral()->devMode
-                    ? $e->getMessage()
-                    : Craft::t('search-manager', 'Failed to clear {type} storage', ['type' => 'Redis']),
-            ];
-        }
-    }
-
-    /**
-     * Clear ALL file storage
-     */
-    private function clearFileStorage(): array
-    {
-        $deletedFilesTotal = 0;
-
-        foreach (FileBackendStoragePathHelper::configuredBasePaths() as $indicesPath) {
-            if (!is_dir($indicesPath)) {
-                continue;
-            }
-
-            $fileCount = SearchManager::$plugin->storageMaintenance->countFilesInDirectory($indicesPath);
-            FileHelper::removeDirectory($indicesPath);
-
-            $deletedFilesTotal += $fileCount;
-        }
-
-        // Reset documentCount even when storage was already empty: stale
-        // metadata is still part of the clear operation's state.
-        $this->resetIndexDocumentCounts('file');
-
-        if ($deletedFilesTotal === 0) {
-            return [
-                'success' => true,
-                'message' => Craft::t('search-manager', 'File storage is already empty.'),
-                'deletedFiles' => 0,
-            ];
-        }
-
-        return [
-            'success' => true,
-            'message' => Craft::t('search-manager', 'File storage cleared successfully ({count} files deleted). Rebuild affected indices to re-index your content.', [
-                'count' => number_format($deletedFilesTotal),
-            ]),
-            'deletedFiles' => $deletedFilesTotal,
-        ];
-    }
-
-    /**
-     * Reset documentCount to 0 for all indices using a specific backend type
-     *
-     * @param string $backendType Backend type (database, redis, file)
-     */
-    private function resetIndexDocumentCounts(string $backendType): void
-    {
-        $indices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
-        $settings = SearchManager::$plugin->getSettings();
-        $defaultBackendHandle = $settings->defaultBackendHandle ?? '';
-
-        // For 'database', match both mysql and pgsql backend types
-        $typesToMatch = $backendType === 'database' ? ['mysql', 'pgsql'] : [$backendType];
-
-        foreach ($indices as $index) {
-            $indexBackendType = $index->effectiveBackendType ?? $this->getBackendTypeFromHandle($defaultBackendHandle);
-
-            if (in_array($indexBackendType, $typesToMatch, true)) {
-                $index->updateStats(0);
-                $this->logDebug('Reset documentCount for index', [
-                    'index' => $index->handle,
-                    'backendType' => $indexBackendType,
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Get backend type from a configured backend handle
-     *
-     * @param string $handle Backend handle
-     * @return string Backend type (mysql, redis, file, etc.)
-     */
-    private function getBackendTypeFromHandle(string $handle): string
-    {
-        if (empty($handle)) {
-            return 'mysql';
-        }
-
-        $configuredBackend = SearchManager::$plugin->getConfiguredBackend($handle);
-        if ($configuredBackend) {
-            return $configuredBackend->backendType ?: 'mysql';
-        }
-
-        return 'mysql';
     }
 
     /**

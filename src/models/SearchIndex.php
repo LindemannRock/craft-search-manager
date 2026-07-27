@@ -1700,47 +1700,7 @@ class SearchIndex extends Model
      */
     public function delete(): bool
     {
-        if (!$this->id) {
-            return false;
-        }
-
-        // Prevent deleting config index metadata - remove from config file instead
-        if ($this->source === 'config') {
-            $this->logError('Cannot delete config index - remove from config file instead', [
-                'handle' => $this->handle,
-                'source' => $this->source,
-            ]);
-            return false;
-        }
-
-        try {
-            // Clear backend storage first (MySQL tables, Redis keys, files, etc.)
-            \lindemannrock\searchmanager\SearchManager::$plugin->backend->clearIndex($this->handle);
-
-            // Then delete the database record
-            $result = Craft::$app->getDb()
-                ->createCommand()
-                ->delete('{{%searchmanager_indices}}', ['id' => $this->id])
-                ->execute();
-
-            if ($result > 0) {
-                $this->clearIndexSites();
-                self::clearCache();
-                $this->logInfo('Index deleted successfully', [
-                    'handle' => $this->handle,
-                    'name' => $this->name,
-                ]);
-            }
-
-            return $result > 0;
-        } catch (\Throwable $e) {
-            $this->logError('Failed to delete index', [
-                'id' => $this->id,
-                'handle' => $this->handle,
-                'error' => $e->getMessage(),
-            ]);
-            return false;
-        }
+        return SearchManager::$plugin->indexMaintenance->deleteIndex($this)['status'] === 'success';
     }
 
     /**

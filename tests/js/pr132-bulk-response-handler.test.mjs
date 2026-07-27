@@ -81,6 +81,25 @@ test('partial results show successful work and every error before reloading', as
     }]);
 });
 
+test('irreversible partial work reloads even when no item completed', async () => {
+    const {run, observed} = await loadHandler(() => Promise.resolve({
+        data: {
+            status: 'partial',
+            success: false,
+            count: 0,
+            changed: true,
+            skipped: 0,
+            errors: ['Storage cleared but metadata deletion failed'],
+        },
+    }));
+
+    await run(options);
+
+    assert.deepEqual(observed.notices, []);
+    assert.deepEqual(observed.errors, ['Storage cleared but metadata deletion failed']);
+    assert.equal(observed.reloads, 1);
+});
+
 test('zero-success failure remains on the page and shows returned errors', async () => {
     const {run, observed} = await loadHandler(() => Promise.resolve({
         data: {
@@ -153,16 +172,14 @@ test('all affected tables include the one shared handler', async () => {
     }
 });
 
-test('index deletion remains explicitly isolated on the legacy response path', async () => {
+test('index deletion uses the shared truthful result path', async () => {
     const source = await readFile(
         path.join(pluginRoot, 'src/templates/indices/index.twig'),
         'utf8',
     );
 
-    assert.match(source, /function runIndexBulkDelete\(/);
-    assert.match(source, /runIndexBulkDelete\(T\.bulkDeletedTemplate/);
-    assert.doesNotMatch(
-        source,
-        /endpoint:\s*'search-manager\/indices\/bulk-delete'/,
-    );
+    assert.match(source, /_components\/_bulk-response-handler/);
+    assert.match(source, /endpoint:\s*'search-manager\/indices\/bulk-delete'/);
+    assert.match(source, /runSearchManagerBulkAction\(\{/);
+    assert.doesNotMatch(source, /function runIndexBulkDelete\(/);
 });

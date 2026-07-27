@@ -34,7 +34,6 @@ use yii\web\Response;
  */
 class IndicesController extends Controller
 {
-    use BulkDeleteTrait;
     use LoggingTrait;
 
     private const PLUGIN_HANDLE = 'search-manager';
@@ -614,26 +613,26 @@ class IndicesController extends Controller
             return $this->redirect('search-manager/indices');
         }
 
-        $usages = SearchManager::$plugin->dependencies->getIndexUsages($index->handle);
-        if ($usages !== []) {
-            $error = SearchManager::$plugin->dependencies->formatInUseError($index->name, $usages);
+        $preflightError = SearchManager::$plugin->indexMaintenance->preflightDelete($index);
+        if ($preflightError !== null) {
             if ($acceptsJson) {
-                return $this->asJson(['success' => false, 'error' => $error]);
+                return $this->asJson(['success' => false, 'error' => $preflightError]);
             }
-            Craft::$app->getSession()->setError($error);
+            Craft::$app->getSession()->setError($preflightError);
             return $this->redirect('search-manager/indices');
         }
 
-        if ($index->delete()) {
+        $result = SearchManager::$plugin->indexMaintenance->deleteIndex($index);
+        if ($result['status'] === 'success') {
             $message = Craft::t('search-manager', 'Index deleted');
             if ($acceptsJson) {
-                return $this->asJson(['success' => true, 'message' => $message]);
+                return $this->asJson(array_merge($result, ['message' => $message]));
             }
             Craft::$app->getSession()->setNotice($message);
         } else {
             $error = Craft::t('search-manager', 'Could not delete index');
             if ($acceptsJson) {
-                return $this->asJson(['success' => false, 'error' => $error]);
+                return $this->asJson(array_merge($result, ['error' => $error]));
             }
             Craft::$app->getSession()->setError($error);
         }
@@ -662,19 +661,19 @@ class IndicesController extends Controller
             throw new NotFoundHttpException(Craft::t('search-manager', 'Index not found'));
         }
 
-        // Clear backend storage
-        SearchManager::$plugin->backend->clearIndex($index->handle);
-
-        // Update stats to 0
-        $index->updateStats(0);
-
-        // Clear caches
-        SearchManager::$plugin->backend->clearSearchCache($index->handle);
-        SearchManager::$plugin->autocomplete->clearCache($index->handle);
+        $result = SearchManager::$plugin->indexMaintenance->clearIndex($index);
+        if ($result['status'] !== 'success') {
+            $error = Craft::t('search-manager', 'Failed to clear index data');
+            if ($acceptsJson) {
+                return $this->asJson(array_merge($result, ['error' => $error]));
+            }
+            Craft::$app->getSession()->setError($error);
+            return $this->redirectToPostedUrl(null, 'search-manager/indices');
+        }
 
         $message = Craft::t('search-manager', 'Index data cleared');
         if ($acceptsJson) {
-            return $this->asJson(['success' => true, 'message' => $message]);
+            return $this->asJson(array_merge($result, ['message' => $message]));
         }
         Craft::$app->getSession()->setNotice($message);
 
@@ -916,28 +915,10 @@ class IndicesController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $indexIds = Craft::$app->getRequest()->getRequiredBodyParam('indexIds');
-
-        return $this->bulkDeleteAllOrNothing(
-            $indexIds,
-            static fn(mixed $id): ?object => SearchIndex::findByIdOrHandle($id),
-            static function(object $index): ?string {
-                if (!$index instanceof SearchIndex) {
-                    return null;
-                }
-
-                if (!$index->canEdit()) {
-                    return Craft::t('search-manager', 'This index is defined in config and cannot be deleted.');
-                }
-
-                $usages = SearchManager::$plugin->dependencies->getIndexUsages($index->handle);
-                if ($usages !== []) {
-                    return SearchManager::$plugin->dependencies->formatInUseError($index->name, $usages);
-                }
-
-                return null;
-            },
-            static fn(object $index): bool => $index instanceof SearchIndex && $index->delete(),
+        return $this->asJson(
+            SearchManager::$plugin->indexMaintenance->deleteIndices(
+                Craft::$app->getRequest()->getBodyParam('indexIds', []),
+            ),
         );
     }
 

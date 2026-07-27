@@ -779,20 +779,28 @@ final class RedisStorageRegressionTest extends TestCase
 
     public function testRedisMaintenanceSurfacesDoNotContainBlockingKeysCalls(): void
     {
+        $serviceSource = file_get_contents(dirname(__DIR__, 2) . '/src/services/StorageMaintenanceService.php');
+        self::assertIsString($serviceSource);
+        self::assertStringNotContainsString('->keys(', $serviceSource);
+
+        foreach (['getRedisStats', 'clearRedisTarget', 'getRedisStorageHandles'] as $method) {
+            preg_match(
+                '/(?:public|protected|private) function ' . $method . '\(.*?^    }$/ms',
+                $serviceSource,
+                $matches,
+            );
+            self::assertNotEmpty($matches, $method . ' source should be found in StorageMaintenanceService');
+            self::assertStringContainsString('scanRedisKeys(', $matches[0], $method . ' should use SCAN iteration');
+        }
+
         foreach ([
-            'src/controllers/UtilitiesController.php' => ['clearRedisStorage'],
-            'src/services/StorageMaintenanceService.php' => ['getRedisStats'],
-            'src/console/controllers/MaintenanceController.php' => ['clearRedisStorage', 'getRedisStats'],
-        ] as $file => $methods) {
+            'src/controllers/UtilitiesController.php',
+            'src/console/controllers/MaintenanceController.php',
+        ] as $file) {
             $source = file_get_contents(dirname(__DIR__, 2) . '/' . $file);
             self::assertIsString($source);
-
-            foreach ($methods as $method) {
-                preg_match('/private function ' . $method . '\(.*?^    }$/ms', $source, $matches);
-                self::assertNotEmpty($matches, $method . ' source should be found in ' . $file);
-                self::assertStringNotContainsString('->keys(', $matches[0], $method . ' must not use blocking KEYS');
-                self::assertStringContainsString('scanRedisKeys(', $matches[0], $method . ' should use SCAN iteration');
-            }
+            self::assertStringNotContainsString('->keys(', $source);
+            self::assertStringNotContainsString('scanRedisKeys(', $source);
         }
     }
 

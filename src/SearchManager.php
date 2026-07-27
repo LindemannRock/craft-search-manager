@@ -68,6 +68,7 @@ use lindemannrock\searchmanager\services\DependencyService;
 use lindemannrock\searchmanager\services\DeviceDetectionService;
 use lindemannrock\searchmanager\services\IndexedSnippetService;
 use lindemannrock\searchmanager\services\IndexingService;
+use lindemannrock\searchmanager\services\IndexMaintenanceService;
 use lindemannrock\searchmanager\services\LiveComparisonService;
 use lindemannrock\searchmanager\services\NativeSearchCoverageService;
 use lindemannrock\searchmanager\services\PromotionService;
@@ -102,6 +103,7 @@ use yii\base\Event;
  * @property-read AutocompleteService $autocomplete
  * @property-read DeviceDetectionService $deviceDetection
  * @property-read IndexedSnippetService $indexedSnippets
+ * @property-read IndexMaintenanceService $indexMaintenance
  * @property-read LiveComparisonService $liveComparison
  * @property-read NativeSearchCoverageService $nativeSearchCoverage
  * @property-read PromotionService $promotions
@@ -343,6 +345,7 @@ class SearchManager extends Plugin
             'dependencies' => DependencyService::class,
             'deviceDetection' => DeviceDetectionService::class,
             'indexedSnippets' => IndexedSnippetService::class,
+            'indexMaintenance' => IndexMaintenanceService::class,
             'indexing' => IndexingService::class,
             'liveComparison' => LiveComparisonService::class,
             'nativeSearchCoverage' => NativeSearchCoverageService::class,

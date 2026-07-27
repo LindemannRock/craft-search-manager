@@ -40,6 +40,10 @@ Clear ALL search index data from a specific local storage type. The dropdown onl
 
 Each visible option shows its final storage name and current row, key, or file count when the page loads. A configured local backend remains visible when it is empty, including a disabled backend that still establishes storage ownership. An unconfigured type also remains visible when orphaned data can be cleared. Available but unconfigured and empty types are hidden, as are unavailable types that cannot be cleared safely.
 
+Those displayed counts and the later clear use the same target inventory. Database storage is removed from all eight Search Manager index tables in one transaction. Redis targets are resolved and deduplicated from effective backend configuration, with the Craft Redis Search Manager database retained as the fallback when no stored Redis backend exists. File maintenance covers both the default runtime path and valid configured File paths.
+
+After a target clears successfully, Search Manager resets the stored document counts for the indices mapped to it and clears their search-results and autocomplete caches. A failure before mutation leaves that target's counts and caches unchanged. For storage types with several targets, safe failures do not prevent later targets from being attempted; an irreversible partial result stops the operation and leaves later targets unattempted.
+
 > [!NOTE]
 > Clear Storage only covers local storage types: Database, Redis, and File. External search backends run on shared provider accounts, and a matching index-name prefix does not prove Search Manager ownership. For Algolia, Meilisearch, and Typesense, rebuild or clear configured indices individually; delete old or renamed provider indices in the provider dashboard.
 
@@ -63,6 +67,8 @@ php craft search-manager/maintenance/purge-orphaned-storage --dry-run
 ```
 
 This is useful after removing a config-file index or renaming an index handle. The command only considers stored handles that carry the current environment's `indexPrefix`, and it compares them against both database-backed and config-file indices before deleting anything.
+
+Every planned handle is attempted. The command reports successful and failed handles separately and exits non-zero if any handle fails, while dry runs, cancellation, and a plan with no candidates remain successful no-op outcomes.
 
 ## Cache management
 

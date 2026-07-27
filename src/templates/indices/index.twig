@@ -473,35 +473,6 @@
 
     {% include 'search-manager/_components/_bulk-response-handler' %}
 
-    // Index deletion remains on its pre-PR1.32 contract until PR1.29.
-    function runIndexBulkDelete(successTemplate, errorFallback) {
-        const ids = selectedIds();
-        if (!ids.length) return;
-        Craft.sendActionRequest('POST', 'search-manager/indices/bulk-delete', {
-            data: { indexIds: ids },
-        }).then(function(response) {
-            if (response.data.success === false) {
-                if (Array.isArray(response.data.errors)) {
-                    response.data.errors.forEach(function(err) { Craft.cp.displayError(err); });
-                } else {
-                    Craft.cp.displayError(response.data.error || errorFallback);
-                }
-                return;
-            }
-
-            const count = response.data.count || 0;
-            if (count > 0) {
-                Craft.cp.displayNotice(successTemplate.replace('{count}', count));
-                setTimeout(function() { window.location.reload(); }, 1000);
-                return;
-            }
-
-            Craft.cp.displayError(response.data.error || errorFallback);
-        }).catch(function() {
-            Craft.cp.displayError(errorFallback);
-        });
-    }
-
     document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
         runSearchManagerBulkAction({
@@ -529,7 +500,13 @@
         if (!ids.length) return;
         const confirmTemplate = ids.length === 1 ? T.bulkDeleteConfirmSingular : T.bulkDeleteConfirmPlural;
         if (!confirm(confirmTemplate.replace('{count}', ids.length))) return;
-        runIndexBulkDelete(T.bulkDeletedTemplate, T.bulkDeleteFailed);
+        runSearchManagerBulkAction({
+            endpoint: 'search-manager/indices/bulk-delete',
+            identifierParam: 'indexIds',
+            ids: ids,
+            successTemplate: T.bulkDeletedTemplate,
+            errorFallback: T.bulkDeleteFailed,
+        });
     });
 
     const collisionHandles = {{ collisionHandles is defined ? collisionHandles|json_encode|raw : '[]' }};

@@ -113,7 +113,7 @@ final class IndexDeleteDependencyGuardTest extends TestCase
         self::assertSame(0, $this->countMarkedRows('{{%searchmanager_indices}}', ['id' => $indexId]));
     }
 
-    public function testBulkIndexDeleteDoesNotDeleteAnySelectedIndexWhenOneIsInUse(): void
+    public function testBulkIndexDeletePreflightsAllAndContinuesAfterSafeFailure(): void
     {
         $usedIndexId = $this->insertIndex('bulk-mixed-used', 'Bulk Mixed Used Index');
         $unusedIndexId = $this->insertIndex('bulk-mixed-unused', 'Bulk Mixed Unused Index');
@@ -125,12 +125,13 @@ final class IndexDeleteDependencyGuardTest extends TestCase
         $data = $response->data;
 
         self::assertSame(false, $data['success'] ?? true);
+        self::assertSame('partial', $data['status'] ?? null);
+        self::assertSame(1, $data['count'] ?? null);
         self::assertSame([
             'Cannot delete “Bulk Mixed Used Index” — it is in use by: Widget: Bulk Widget.',
         ], $data['errors'] ?? null);
-        self::assertSame('Cannot delete “Bulk Mixed Used Index” — it is in use by: Widget: Bulk Widget.', $data['error'] ?? null);
         self::assertSame(1, $this->countMarkedRows('{{%searchmanager_indices}}', ['id' => $usedIndexId]));
-        self::assertSame(1, $this->countMarkedRows('{{%searchmanager_indices}}', ['id' => $unusedIndexId]));
+        self::assertSame(0, $this->countMarkedRows('{{%searchmanager_indices}}', ['id' => $unusedIndexId]));
     }
 
     public function testBulkIndexDeleteSucceedsWhenNoResolvedDependencyUsesSelectedIndices(): void

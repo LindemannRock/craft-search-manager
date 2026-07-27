@@ -52,12 +52,13 @@ final class AuditRobustnessBatchTest extends TestCase
 
     public function testUtilitiesControllerUsesStrictInArrayChecks(): void
     {
-        $source = $this->readPluginFile('src/controllers/UtilitiesController.php');
+        $controller = $this->readPluginFile('src/controllers/UtilitiesController.php');
+        $service = $this->readPluginFile('src/services/StorageMaintenanceService.php');
 
-        self::assertStringContainsString('in_array($type, $validTypes, true)', $source);
-        self::assertStringContainsString('in_array($indexBackendType, $typesToMatch, true)', $source);
-        self::assertStringNotContainsString('in_array($type, $validTypes))', $source);
-        self::assertStringNotContainsString('in_array($indexBackendType, $typesToMatch))', $source);
+        self::assertStringContainsString('in_array($type, $validTypes, true)', $controller);
+        self::assertStringContainsString('in_array($backendType, $types, true)', $service);
+        self::assertStringNotContainsString('in_array($type, $validTypes))', $controller);
+        self::assertStringNotContainsString('in_array($backendType, $types))', $service);
     }
 
     public function testSourceAndTestFilesHaveStandardFileHeaders(): void

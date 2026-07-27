@@ -141,10 +141,9 @@ final class AuditFindings447452RegressionTest extends TestCase
         $autocomplete = new AuditFindings447452RecordingAutocompleteService();
         $this->swapPluginComponent('search-manager', 'autocomplete', $autocomplete);
 
-        $method = new \ReflectionMethod(IndexController::class, 'clearIndex');
-        $method->setAccessible(true);
-        $method->invoke(new IndexController('index', SearchManager::$plugin), $index);
+        $result = SearchManager::$plugin->indexMaintenance->clearIndex($index);
 
+        self::assertSame('success', $result['status']);
         self::assertCount(1, $backend->callsFor('clearIndex'));
         self::assertCount(1, $backend->callsFor('clearSearchCache'));
         self::assertSame([self::DATABASE_INDEX_HANDLE], $autocomplete->clearCacheCalls);
@@ -155,11 +154,11 @@ final class AuditFindings447452RegressionTest extends TestCase
 
     public function testConsoleStorageResetMatchesControlPanelCountReset(): void
     {
-        $controller = new MaintenanceController('maintenance', SearchManager::$plugin);
-        $method = new \ReflectionMethod($controller, 'resetIndexDocumentCounts');
+        $method = new \ReflectionMethod(SearchManager::$plugin->storageMaintenance, 'reconcileClearedIndices');
         $method->setAccessible(true);
-        $method->invoke($controller, 'database');
+        $result = $method->invoke(SearchManager::$plugin->storageMaintenance, [self::DATABASE_INDEX_HANDLE]);
 
+        self::assertTrue($result['success']);
         self::assertSame(0, (int)$this->fetchRow('{{%searchmanager_indices}}', [
             'handle' => self::DATABASE_INDEX_HANDLE,
         ])['documentCount']);

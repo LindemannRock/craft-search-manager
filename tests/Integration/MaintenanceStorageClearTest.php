@@ -65,21 +65,22 @@ final class MaintenanceStorageClearTest extends TestCase
         self::assertIsString($mysqlSource);
         self::assertIsString($postgresSource);
 
-        $maintenanceTables = self::tablesInMethod($maintenanceSource, 'databaseStorageTables');
         $utilitiesTables = self::tablesInMethod($utilitiesSource, 'databaseStorageTables');
         $mysqlTables = self::tablesInMethod($mysqlSource, 'clearAll');
         $postgresTables = self::tablesInMethod($postgresSource, 'clearAll');
 
-        self::assertContains('{{%searchmanager_search_compounds}}', $maintenanceTables);
         self::assertContains('{{%searchmanager_search_compounds}}', $utilitiesTables);
-        self::assertSame($mysqlTables, $maintenanceTables);
         self::assertSame($mysqlTables, $utilitiesTables);
-        self::assertSame($postgresTables, $maintenanceTables);
         self::assertSame($postgresTables, $utilitiesTables);
         self::assertStringContainsString(
-            'storageMaintenance->databaseStorageTables()',
-            self::methodSource($utilitiesControllerSource, 'clearDatabaseStorage'),
+            'storageMaintenance->clearStorageByType($type)',
+            self::methodSource($utilitiesControllerSource, 'actionClearStorageByType'),
         );
+        self::assertStringContainsString(
+            'storageMaintenance->clearStorageByType($type)',
+            self::methodSource($maintenanceSource, 'actionClearStorage'),
+        );
+        self::assertStringNotContainsString('databaseStorageTables', $maintenanceSource);
     }
 
     public function testTypeOptionDocblockMatchesAcceptedStorageTypes(): void
@@ -93,23 +94,12 @@ final class MaintenanceStorageClearTest extends TestCase
 
     public function testDatabaseStatsSurfacesCountCompounds(): void
     {
-        $maintenanceSource = file_get_contents(dirname(__DIR__, 2) . '/src/console/controllers/MaintenanceController.php');
         $utilitiesSource = file_get_contents(dirname(__DIR__, 2) . '/src/services/StorageMaintenanceService.php');
-        self::assertIsString($maintenanceSource);
         self::assertIsString($utilitiesSource);
 
-        foreach ([
-            'console maintenance' => $maintenanceSource,
-            'CP Utilities projection' => $utilitiesSource,
-        ] as $label => $source) {
-            $methodSource = self::methodSource($source, 'getDatabaseStats');
-
-            self::assertStringContainsString("'compoundRows' => \$compoundRows", $methodSource, $label);
-            // [[...]]-bracketed so the identifier keeps its case on PostgreSQL.
-            self::assertStringContainsString('SELECT [[indexHandle]] FROM {{%searchmanager_search_compounds}}', $methodSource, $label);
-        }
-
         $utilitiesStats = self::methodSource($utilitiesSource, 'getDatabaseStats');
+        self::assertStringContainsString("'compoundRows' => \$compoundRows", $utilitiesStats);
+        self::assertStringContainsString('SELECT [[indexHandle]] FROM {{%searchmanager_search_compounds}}', $utilitiesStats);
         self::assertStringContainsString('foreach ($this->databaseStorageTables() as $table)', $utilitiesStats);
         self::assertStringContainsString("'totalRows' => array_sum(\$tableRows)", $utilitiesStats);
     }
@@ -133,16 +123,18 @@ final class MaintenanceStorageClearTest extends TestCase
             $this->insertDocumentRow($handle);
         }
 
-        $controller = new MaintenanceController('maintenance', SearchManager::$plugin);
-        $orphans = $this->invokePrivate($controller, 'getOrphanedStorageHandlesByType', ['database']);
+        $orphans = SearchManager::$plugin->storageMaintenance
+            ->getOrphanedStoragePlan(['database'])['database'];
 
         self::assertContains($orphanFullHandle, $orphans);
         self::assertNotContains(self::OTHER_FULL_HANDLE, $orphans, 'Rows under a different environment prefix must never be candidates.');
         self::assertNotContains($liveDbFullHandle, $orphans, 'Live database-source index storage must survive.');
         self::assertNotContains($liveConfigFullHandle, $orphans, 'Live config-source index storage must survive.');
 
-        $this->invokePrivate($controller, 'clearOrphanedStorageHandle', ['database', $orphanFullHandle]);
+        $result = SearchManager::$plugin->storageMaintenance
+            ->purgeOrphanedStorageHandle('database', $orphanFullHandle);
 
+        self::assertSame('success', $result['status']);
         self::assertSame(0, $this->documentRowsForHandle($orphanFullHandle));
         self::assertSame(1, $this->documentRowsForHandle(self::OTHER_FULL_HANDLE));
         self::assertSame(1, $this->documentRowsForHandle($liveDbFullHandle));
@@ -164,17 +156,19 @@ final class MaintenanceStorageClearTest extends TestCase
 
     public function testOrphanedStorageCommandUsesStorageClearSurfacesForAllDrivers(): void
     {
-        $maintenanceSource = file_get_contents(dirname(__DIR__, 2) . '/src/console/controllers/MaintenanceController.php');
-        self::assertIsString($maintenanceSource);
+        $serviceSource = file_get_contents(dirname(__DIR__, 2) . '/src/services/StorageMaintenanceService.php');
+        self::assertIsString($serviceSource);
 
-        $clearBody = self::methodSource($maintenanceSource, 'clearOrphanedStorageHandle');
+        $clearBody = self::methodSource($serviceSource, 'purgeOrphanedStorageHandle');
         self::assertStringContainsString('createDatabaseStorage($fullIndexHandle)->clearAll()', $clearBody);
-        self::assertStringContainsString('new RedisStorage($fullIndexHandle, $target[\'settings\'])', $clearBody);
-        self::assertStringContainsString('new FileStorage($fullIndexHandle, $target[\'configuredPath\'])', $clearBody);
-        self::assertSame(3, substr_count($clearBody, '->clearAll();'));
+        self::assertStringContainsString('new RedisStorage(', $clearBody);
+        self::assertStringContainsString("\$target['settings']", $clearBody);
+        self::assertStringContainsString('new FileStorage(', $clearBody);
+        self::assertStringContainsString("\$target['configuredPath']", $clearBody);
+        self::assertSame(3, substr_count($clearBody, '->clearAll()'));
         self::assertStringNotContainsString('createCommand()->delete', $clearBody);
 
-        $databaseStorageBody = self::methodSource($maintenanceSource, 'createDatabaseStorage');
+        $databaseStorageBody = self::methodSource($serviceSource, 'createDatabaseStorage');
         self::assertStringContainsString('new PostgreSqlStorage($fullIndexHandle)', $databaseStorageBody);
         self::assertStringContainsString('new MySqlStorage($fullIndexHandle)', $databaseStorageBody);
     }

@@ -189,11 +189,20 @@ final class ControllerMessageI18nTest extends TestCase
             "Craft::t('search-manager', 'Failed to sync count: {error}'",
         );
 
-        $clearRedisStorage = $this->controllerMethodBody('UtilitiesController.php', 'clearRedisStorage');
-        self::assertStringContainsString("\$this->logError('Failed to clear Redis storage'", $clearRedisStorage);
-        self::assertStringContainsString("'error' => Craft::\$app->getConfig()->getGeneral()->devMode", $clearRedisStorage);
-        self::assertStringContainsString(": Craft::t('search-manager', 'Failed to clear {type} storage'", $clearRedisStorage);
-        self::assertStringNotContainsString("Craft::t('search-manager', 'Redis connection failed: {error}'", $clearRedisStorage);
+        $clearStorage = $this->controllerMethodBody('UtilitiesController.php', 'actionClearStorageByType');
+        self::assertStringContainsString('storageMaintenance->clearStorageByType($type)', $clearStorage);
+        self::assertStringContainsString("Craft::t('search-manager', 'Failed to clear {type} storage'", $clearStorage);
+        self::assertStringNotContainsString("'error' => \$e->getMessage(),\n            ]);", substr(
+            $clearStorage,
+            (int)strrpos($clearStorage, 'return $this->asJson(['),
+        ));
+
+        $storageCompletion = $this->sourceMethodBody(
+            'src/services/StorageMaintenanceService.php',
+            'storageCompletion',
+        );
+        self::assertStringContainsString("Craft::t('search-manager', 'Failed to clear {type} storage'", $storageCompletion);
+        self::assertStringNotContainsString('Redis connection failed: {error}', $storageCompletion);
 
         foreach (['getDatabaseStats' => 'database', 'getRedisStats' => 'Redis'] as $method => $label) {
             $methodBody = $this->sourceMethodBody('src/services/StorageMaintenanceService.php', $method);

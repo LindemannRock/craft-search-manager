@@ -26,6 +26,7 @@ use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\DependencyService;
+use lindemannrock\searchmanager\services\IndexMaintenanceService;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -231,7 +232,7 @@ final class IndexReferenceLifecycleTest extends TestCase
         self::assertSame(1, $this->countTableRows('{{%searchmanager_indices}}', ['id' => $indexId]));
     }
 
-    public function testBulkIndexDeleteIsBlockedByPromotionWithoutPartialDeletion(): void
+    public function testBulkIndexDeleteContinuesAfterPromotionPreflightFailure(): void
     {
         $usedHandle = self::PREFIX . '-bulk-promotion';
         $usedIndexId = $this->insertIndex($usedHandle, 'Promotion Index');
@@ -244,14 +245,33 @@ final class IndexReferenceLifecycleTest extends TestCase
         ]);
         $this->withPostJson(['indexIds' => [$usedIndexId, $unusedIndexId]]);
 
-        $response = (new IndicesController('indices', SearchManager::$plugin))->actionBulkDelete();
+        $originalMaintenance = SearchManager::$plugin->indexMaintenance;
+        SearchManager::$plugin->set('indexMaintenance', new class extends IndexMaintenanceService {
+            protected function clearBackendStorage(SearchIndex $index): bool
+            {
+                return true;
+            }
+
+            protected function invalidateIndexCaches(SearchIndex $index): array
+            {
+                return [];
+            }
+        });
+
+        try {
+            $response = (new IndicesController('indices', SearchManager::$plugin))->actionBulkDelete();
+        } finally {
+            SearchManager::$plugin->set('indexMaintenance', $originalMaintenance);
+        }
 
         self::assertSame(false, $response->data['success'] ?? true);
+        self::assertSame('partial', $response->data['status'] ?? null);
+        self::assertSame(1, $response->data['count'] ?? null);
         self::assertSame([
             'Cannot delete “Promotion Index” — it is in use by: Promotions: Deletion Promotion.',
         ], $response->data['errors'] ?? null);
         self::assertSame(1, $this->countTableRows('{{%searchmanager_indices}}', ['id' => $usedIndexId]));
-        self::assertSame(1, $this->countTableRows('{{%searchmanager_indices}}', ['id' => $unusedIndexId]));
+        self::assertSame(0, $this->countTableRows('{{%searchmanager_indices}}', ['id' => $unusedIndexId]));
     }
 
     public function testHandleChangeIsBlockedBeforePersistenceButUnchangedHandleSaveIsAllowed(): void

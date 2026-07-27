@@ -124,7 +124,11 @@ class IndexController extends Controller
                 return ExitCode::OK;
             }
 
-            $this->clearIndex($index);
+            $result = SearchManager::$plugin->indexMaintenance->clearIndex($index);
+            if ($result['status'] !== 'success') {
+                $this->stderr("\n✗ Index was not fully cleared: {$index->name}\n", Console::FG_RED);
+                return ExitCode::UNSPECIFIED_ERROR;
+            }
             $this->stdout("\n✓ Index cleared: {$index->name}\n", Console::FG_GREEN);
         } else {
             if (!$this->confirm('This will clear all indices. Continue?')) {
@@ -132,9 +136,14 @@ class IndexController extends Controller
                 return ExitCode::OK;
             }
 
-            $indices = SearchIndex::findAll();
-            foreach ($indices as $index) {
-                $this->clearIndex($index);
+            $result = SearchManager::$plugin->indexMaintenance->clearIndices(SearchIndex::findAll());
+            foreach ($result['results'] as $item) {
+                $this->formatClearResult($item);
+            }
+
+            if ($result['status'] !== 'success') {
+                $this->stderr("\n✗ One or more indices were not fully cleared.\n", Console::FG_RED);
+                return ExitCode::UNSPECIFIED_ERROR;
             }
 
             $this->stdout("\n✓ All indices cleared\n", Console::FG_GREEN);
@@ -143,11 +152,18 @@ class IndexController extends Controller
         return ExitCode::OK;
     }
 
-    private function clearIndex(SearchIndex $index): void
+    /**
+     * @param array<string, mixed> $result
+     */
+    private function formatClearResult(array $result): void
     {
-        SearchManager::$plugin->backend->clearIndex($index->handle);
-        $index->updateStats(0);
-        SearchManager::$plugin->backend->clearSearchCache($index->handle);
-        SearchManager::$plugin->autocomplete->clearCache($index->handle);
+        $label = "{$result['name']} ({$result['handle']})";
+        match ($result['status']) {
+            'success' => $this->stdout("  ✓ {$label}\n", Console::FG_GREEN),
+            'failure' => $this->stderr("  ✗ {$label}\n", Console::FG_RED),
+            'partial' => $this->stderr("  ! {$label} (storage changed; rebuild or retry required)\n", Console::FG_YELLOW),
+            'unattempted' => $this->stdout("  - {$label} (unattempted)\n", Console::FG_YELLOW),
+            default => null,
+        };
     }
 }
