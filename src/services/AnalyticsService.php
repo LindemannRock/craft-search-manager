@@ -300,7 +300,17 @@ class AnalyticsService extends Component
      */
     public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
     {
-        return $this->_rules->getRuleAnalytics($ruleId, $dateRange);
+        return $this->readProDetailAnalytics(
+            [
+                'totalTriggers' => 0,
+                'uniqueQueries' => 0,
+                'avgResultsAfter' => 0.0,
+                'topQueries' => [],
+                'dailyTriggers' => [],
+                'recentTriggers' => [],
+            ],
+            fn(): array => $this->_rules->getRuleAnalytics($ruleId, $dateRange),
+        );
     }
 
     /**
@@ -332,7 +342,27 @@ class AnalyticsService extends Component
      */
     public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
     {
-        return $this->_rules->getPromotionAnalytics($promotionId, $dateRange);
+        return $this->readProDetailAnalytics(
+            [
+                'totalImpressions' => 0,
+                'uniqueQueries' => 0,
+                'avgPosition' => 0.0,
+                'topQueries' => [],
+                'dailyImpressions' => [],
+                'recentImpressions' => [],
+            ],
+            fn(): array => $this->_rules->getPromotionAnalytics($promotionId, $dateRange),
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $standardResponse
+     * @param callable(): array<string, mixed> $proRead
+     * @return array<string, mixed>
+     */
+    private function readProDetailAnalytics(array $standardResponse, callable $proRead): array
+    {
+        return SearchManager::$plugin->isPro() ? $proRead() : $standardResponse;
     }
 
     // =========================================================================

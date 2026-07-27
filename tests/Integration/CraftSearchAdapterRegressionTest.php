@@ -31,6 +31,36 @@ use lindemannrock\searchmanager\tests\TestCase;
  */
 final class CraftSearchAdapterRegressionTest extends TestCase
 {
+    public function testPublicAdapterContractMatchesCraftAndOmitsDeadFieldMethod(): void
+    {
+        $adapter = new \ReflectionClass(CraftSearchAdapter::class);
+        $craftSearch = new \ReflectionClass(CraftSearchService::class);
+
+        self::assertFalse($adapter->hasMethod('indexElementFields'));
+
+        foreach (['searchElements', 'indexElementAttributes'] as $methodName) {
+            $adapterMethod = $adapter->getMethod($methodName);
+            $craftMethod = $craftSearch->getMethod($methodName);
+
+            self::assertSame(CraftSearchAdapter::class, $adapterMethod->getDeclaringClass()->getName());
+            self::assertSame((string)$craftMethod->getReturnType(), (string)$adapterMethod->getReturnType());
+            self::assertSame(
+                array_map(static fn(\ReflectionParameter $parameter): string => (string)$parameter->getType(), $craftMethod->getParameters()),
+                array_map(static fn(\ReflectionParameter $parameter): string => (string)$parameter->getType(), $adapterMethod->getParameters()),
+            );
+        }
+
+        $declaredPublicMethods = array_values(array_map(
+            static fn(\ReflectionMethod $method): string => $method->getName(),
+            array_filter(
+                $adapter->getMethods(\ReflectionMethod::IS_PUBLIC),
+                static fn(\ReflectionMethod $method): bool => $method->getDeclaringClass()->getName() === CraftSearchAdapter::class,
+            ),
+        ));
+        sort($declaredPublicMethods);
+        self::assertSame(['indexElementAttributes', 'init', 'searchElements'], $declaredPublicMethods);
+    }
+
     public function testCpRequestFallsBackToNativeSearchWithoutResolvingSearchManagerIndex(): void
     {
         $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [

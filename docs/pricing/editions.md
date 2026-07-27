@@ -48,7 +48,7 @@ Pro includes everything in Standard, plus:
 
 Downgrading never deletes Pro-created data or breaks a live widget. Existing query rules, promotions, analytics rows, and Widget Style presets remain stored.
 
-In Standard, a widget that references a preset renders with the built-in default style, promotion markers are omitted, and built-in widget tracking silently stops. Its search, results, snippets, hierarchy, recently viewed history, destination highlighting, Twig inline styles, and public JavaScript events continue working. Re-upgrading restores the stored Pro configuration.
+In Standard, a widget that references a preset renders with the built-in default style, promotion markers are omitted, and built-in widget tracking silently stops. Its search, results, snippets, hierarchy, recently viewed history, destination highlighting, Twig inline styles, and public JavaScript events continue working. Twig rule/promotion detail analytics return their documented neutral zero-shaped arrays without reading the retained Pro rows. Re-upgrading restores the stored Pro configuration and detail analytics access.
 
 Two behaviors to be aware of after a downgrade:
 

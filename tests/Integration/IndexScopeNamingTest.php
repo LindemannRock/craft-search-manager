@@ -48,7 +48,8 @@ final class IndexScopeNamingTest extends TestCase
 
         self::assertStringNotContainsString("getParam('index'", $apiController);
         self::assertStringNotContainsString('getParam("index"', $apiController);
-        self::assertStringContainsString("getParam('indexHandles'", $apiController);
+        self::assertStringContainsString("'indexHandles' => '',", $apiController);
+        self::assertStringContainsString("(string)\$parameters['indexHandles']", $apiController);
     }
 
     public function testGraphqlSearchScopeExposesOnlyIndexHandlesArgument(): void

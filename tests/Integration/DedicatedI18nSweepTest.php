@@ -166,10 +166,10 @@ final class DedicatedI18nSweepTest extends TestCase
         // #180: anonymous endpoint caps analyticsSource/platform/appVersion through the shared helper.
         $api = $this->readPluginFile('src/controllers/ApiController.php');
         self::assertStringContainsString('use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;', $api);
-        self::assertStringContainsString("\$source = \$request->getParam('analyticsSource', null);", $api);
+        self::assertStringContainsString("\$source = \$parameters['analyticsSource'];", $api);
         self::assertStringContainsString("'sourceDefault' => TrackingMetadataHelper::SOURCE_REST,", $api);
-        self::assertStringContainsString("\$platform = TrackingMetadataHelper::platform(\$request->getParam('platform', null));", $api);
-        self::assertStringContainsString("\$appVersion = TrackingMetadataHelper::appVersion(\$request->getParam('appVersion', null));", $api);
+        self::assertStringContainsString("\$platform = TrackingMetadataHelper::platform(\$parameters['platform']);", $api);
+        self::assertStringContainsString("\$appVersion = TrackingMetadataHelper::appVersion(\$parameters['appVersion']);", $api);
         self::assertStringNotContainsString("preg_replace('/[^a-zA-Z0-9_-]/', '', (string) \$source)", $api);
     }
 

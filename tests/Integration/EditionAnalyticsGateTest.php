@@ -22,6 +22,8 @@ use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\AnalyticsService;
+use lindemannrock\searchmanager\services\analytics\AnalyticsRulesService;
 use lindemannrock\searchmanager\services\analytics\AnalyticsTrackingService;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\widgets\AnalyticsSummaryWidget;
@@ -213,6 +215,43 @@ final class EditionAnalyticsGateTest extends TestCase
         self::assertStringNotContainsString('requireProAnalytics', $this->methodSource(AnalyticsController::class, 'actionExport'));
         self::assertStringNotContainsString('requireProAnalytics', $this->methodSource(AnalyticsController::class, 'actionClearAll'));
         self::assertStringNotContainsString('requireProAnalytics', $this->methodSource(AnalyticsController::class, 'actionDelete'));
+    }
+
+    public function testDetailAnalyticsFacadeReturnsExactStandardShapesWithoutReadingDetails(): void
+    {
+        $rules = new EditionAnalyticsRecordingRulesService();
+        $analytics = new AnalyticsService();
+        $rulesProperty = new \ReflectionProperty(AnalyticsService::class, '_rules');
+        $rulesProperty->setValue($analytics, $rules);
+
+        $this->forcePluginEdition(SearchManager::EDITION_STANDARD);
+
+        self::assertSame([
+            'totalTriggers' => 0,
+            'uniqueQueries' => 0,
+            'avgResultsAfter' => 0.0,
+            'topQueries' => [],
+            'dailyTriggers' => [],
+            'recentTriggers' => [],
+        ], $analytics->getRuleAnalytics(42, 'today'));
+        self::assertSame([
+            'totalImpressions' => 0,
+            'uniqueQueries' => 0,
+            'avgPosition' => 0.0,
+            'topQueries' => [],
+            'dailyImpressions' => [],
+            'recentImpressions' => [],
+        ], $analytics->getPromotionAnalytics(84, 'last7days'));
+        self::assertSame([], $rules->calls);
+
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+
+        self::assertSame($rules->ruleResponse, $analytics->getRuleAnalytics(42, 'today'));
+        self::assertSame($rules->promotionResponse, $analytics->getPromotionAnalytics(84, 'last7days'));
+        self::assertSame([
+            ['method' => 'rule', 'id' => 42, 'dateRange' => 'today'],
+            ['method' => 'promotion', 'id' => 84, 'dateRange' => 'last7days'],
+        ], $rules->calls);
     }
 
     public function testStandardRejectsEveryReportingAction(): void
@@ -577,5 +616,45 @@ final class EditionAnalyticsGateTest extends TestCase
             $reflection->getStartLine() - 1,
             $reflection->getEndLine() - $reflection->getStartLine() + 1,
         ));
+    }
+}
+
+final class EditionAnalyticsRecordingRulesService extends AnalyticsRulesService
+{
+    /** @var list<array{method: string, id: int, dateRange: string}> */
+    public array $calls = [];
+
+    /** @var array<string, mixed> */
+    public array $ruleResponse = [
+        'totalTriggers' => 2,
+        'uniqueQueries' => 1,
+        'avgResultsAfter' => 4.5,
+        'topQueries' => [['query' => 'seeded rule', 'count' => 2]],
+        'dailyTriggers' => [['date' => '2026-07-27', 'count' => 2]],
+        'recentTriggers' => [['query' => 'seeded rule']],
+    ];
+
+    /** @var array<string, mixed> */
+    public array $promotionResponse = [
+        'totalImpressions' => 3,
+        'uniqueQueries' => 2,
+        'avgPosition' => 1.5,
+        'topQueries' => [['query' => 'seeded promotion', 'count' => 3]],
+        'dailyImpressions' => [['date' => '2026-07-27', 'count' => 3]],
+        'recentImpressions' => [['query' => 'seeded promotion']],
+    ];
+
+    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
+    {
+        $this->calls[] = ['method' => 'rule', 'id' => $ruleId, 'dateRange' => $dateRange];
+
+        return $this->ruleResponse;
+    }
+
+    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
+    {
+        $this->calls[] = ['method' => 'promotion', 'id' => $promotionId, 'dateRange' => $dateRange];
+
+        return $this->promotionResponse;
     }
 }

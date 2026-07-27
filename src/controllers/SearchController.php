@@ -12,6 +12,7 @@ use Craft;
 use craft\web\Controller;
 use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\PublicRequestScalarHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -49,6 +50,27 @@ class SearchController extends Controller
      */
     private const MAX_WIDGET_TOOK_MS = 60000;
 
+    /** @var array<string, scalar|null> */
+    private const TRACK_CLICK_PARAMETERS = [
+        'elementId' => null,
+        'query' => '',
+        'index' => '',
+        'position' => null,
+    ];
+
+    /** @var array<string, scalar|null> */
+    private const TRACK_SEARCH_PARAMETERS = [
+        'q' => '',
+        'indexHandles' => '',
+        'resultsCount' => 0,
+        'trigger' => 'unknown',
+        'analyticsSource' => null,
+        'widgetType' => null,
+        'siteId' => null,
+        'cached' => null,
+        'took' => null,
+    ];
+
     /**
      * The API key authenticated for a tracking request, or null when enforcement
      * is off / the request is anonymous. Set in {@see beforeAction()}; consumed by
@@ -56,6 +78,9 @@ class SearchController extends Controller
      *
      */
     private ?ApiKey $authenticatedKey = null;
+
+    /** @var array<string, array<string, string|null>> */
+    private array $normalizedParameters = [];
 
     /**
      * @inheritdoc
@@ -94,36 +119,43 @@ class SearchController extends Controller
             return false;
         }
 
-        if ($isTracking && SearchManager::$plugin->isPro() && SearchManager::$plugin->getSettings()->requireApiKey) {
+        if ($isTracking && SearchManager::$plugin->isPro()) {
             $request = Craft::$app->getRequest();
-            $headers = $request->getHeaders();
-            $header = $headers->get(ApiKeyService::REQUEST_HEADER);
-            $referer = $headers->get('Referer');
-            $origin = $headers->get('Origin');
-            $referrerCandidate = SearchManager::$plugin->apiKeys->referrerCandidate($referer, $origin);
+            $key = null;
+            if (SearchManager::$plugin->getSettings()->requireApiKey) {
+                $headers = $request->getHeaders();
+                $header = $headers->get(ApiKeyService::REQUEST_HEADER);
+                $referer = $headers->get('Referer');
+                $origin = $headers->get('Origin');
+                $referrerCandidate = SearchManager::$plugin->apiKeys->referrerCandidate($referer, $origin);
 
-            $key = SearchManager::$plugin->apiKeys->authenticateRequest(
-                is_string($header) ? $header : null,
-                $referrerCandidate,
-            );
+                $key = SearchManager::$plugin->apiKeys->authenticateRequest(
+                    is_string($header) ? $header : null,
+                    $referrerCandidate,
+                );
 
-            // Retain for analytics attribution (slice 5) on track-search.
-            $this->authenticatedKey = $key;
+                // Retain for analytics attribution (slice 5) on track-search.
+                $this->authenticatedKey = $key;
+            }
+
+            $parameters = $this->parametersForAction($action->id);
 
             // Enforce the key's allowed indices only when the ping names them.
             // track-click sends a single result `index`; track-search sends
             // `indexHandles`. Tracking is deliberately not rate-limited.
-            $trackingIndices = $action->id === 'track-click'
-                ? (string) $request->getParam('index', '')
-                : (string) $request->getParam('indexHandles', '');
-            [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
-                $trackingIndices,
-            );
-            if ($exceededMax) {
-                throw new ForbiddenHttpException(Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES]));
-            }
-            if ($indicesProvided) {
-                SearchManager::$plugin->apiKeys->scopeIndices($key, $indexHandles, true);
+            if ($key !== null) {
+                $trackingIndices = $action->id === 'track-click'
+                    ? (string)$parameters['index']
+                    : (string)$parameters['indexHandles'];
+                [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
+                    $trackingIndices,
+                );
+                if ($exceededMax) {
+                    throw new ForbiddenHttpException(Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES]));
+                }
+                if ($indicesProvided) {
+                    SearchManager::$plugin->apiKeys->scopeIndices($key, $indexHandles, true);
+                }
             }
         }
 
@@ -159,11 +191,11 @@ class SearchController extends Controller
             return Craft::$app->getResponse()->setStatusCode(204);
         }
 
-        $request = Craft::$app->getRequest();
-        $elementId = self::normalizeTrackingElementId($request->getParam('elementId'));
-        $query = $request->getParam('query', '');
-        $indexHandle = $request->getParam('index', '');
-        $position = self::normalizeTrackingPosition($request->getParam('position'));
+        $parameters = $this->parametersForAction('track-click');
+        $elementId = self::normalizeTrackingElementId($parameters['elementId']);
+        $query = (string)$parameters['query'];
+        $indexHandle = (string)$parameters['index'];
+        $position = self::normalizeTrackingPosition($parameters['position']);
 
         if ($elementId === null) {
             return $this->asJson(['success' => false]);
@@ -223,14 +255,14 @@ class SearchController extends Controller
             return Craft::$app->getResponse()->setStatusCode(204);
         }
 
-        $request = Craft::$app->getRequest();
-        $query = $request->getParam('q', '');
-        $indexHandlesParam = $request->getParam('indexHandles', '');
-        $resultsCount = (int) $request->getParam('resultsCount', 0);
-        $trigger = $request->getParam('trigger', 'unknown');
-        $source = $request->getParam('analyticsSource');
-        $sourceDefault = TrackingMetadataHelper::widgetSourceDefault($request->getParam('widgetType'));
-        $siteId = self::normalizeTrackingSiteId($request->getParam('siteId'));
+        $parameters = $this->parametersForAction('track-search');
+        $query = (string)$parameters['q'];
+        $indexHandlesParam = (string)$parameters['indexHandles'];
+        $resultsCount = (int)$parameters['resultsCount'];
+        $trigger = (string)$parameters['trigger'];
+        $source = $parameters['analyticsSource'];
+        $sourceDefault = TrackingMetadataHelper::widgetSourceDefault($parameters['widgetType']);
+        $siteId = self::normalizeTrackingSiteId($parameters['siteId']);
 
         // Validate and sanitize inputs to prevent analytics pollution
 
@@ -254,11 +286,11 @@ class SearchController extends Controller
         // dashboard cache stats reflect widget usage. Absent or malformed values
         // fall back to null so legacy / non-widget callers keep working unchanged.
         $executionTime = self::parseWidgetCacheTelemetry(
-            $request->getParam('cached'),
-            $request->getParam('took'),
+            $parameters['cached'],
+            $parameters['took'],
         );
 
-        if (empty(trim($query))) {
+        if (trim($query) === '') {
             return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Query is required.')]);
         }
 
@@ -562,5 +594,26 @@ class SearchController extends Controller
         }
 
         return SearchManager::$plugin->dependencies->isIndexAvailable(trim($indexHandle));
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    private function parametersForAction(string $actionId): array
+    {
+        if (isset($this->normalizedParameters[$actionId])) {
+            return $this->normalizedParameters[$actionId];
+        }
+
+        $defaults = match ($actionId) {
+            'track-click' => self::TRACK_CLICK_PARAMETERS,
+            'track-search' => self::TRACK_SEARCH_PARAMETERS,
+            default => [],
+        };
+
+        return $this->normalizedParameters[$actionId] = PublicRequestScalarHelper::normalize(
+            Craft::$app->getRequest(),
+            $defaults,
+        );
     }
 }

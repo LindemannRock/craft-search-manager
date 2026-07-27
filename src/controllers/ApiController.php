@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\web\Controller;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
+use lindemannrock\searchmanager\helpers\PublicRequestScalarHelper;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
@@ -35,6 +36,41 @@ class ApiController extends Controller
      */
     private const MAX_QUERY_LENGTH = 256;
 
+    /** @var array<string, scalar|null> */
+    private const AUTOCOMPLETE_PARAMETERS = [
+        'q' => '',
+        'indexHandles' => '',
+        'resultsLimit' => 10,
+        'only' => null,
+        'type' => null,
+        'siteId' => null,
+        'language' => null,
+        'lang' => null,
+    ];
+
+    /** @var array<string, scalar|null> */
+    private const SEARCH_PARAMETERS = [
+        'q' => '',
+        'indexHandles' => '',
+        'resultsLimit' => 20,
+        'page' => 0,
+        'type' => null,
+        'siteId' => null,
+        'language' => null,
+        'lang' => null,
+        'retrievableFields' => null,
+        'skipAnalytics' => false,
+        'analyticsSource' => null,
+        'platform' => null,
+        'appVersion' => null,
+        'debugEnabled' => false,
+        'snippetMode' => SnippetOptionsHelper::DEFAULT_MODE,
+        'snippetMaxLength' => SnippetOptionsHelper::DEFAULT_LENGTH,
+        'snippetIncludeCodeBlocks' => SnippetOptionsHelper::DEFAULT_SHOW_CODE,
+        'snippetCleanMarkdown' => SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN,
+        'resultsRequireUrl' => false,
+    ];
+
     /**
      * @inheritdoc
      */
@@ -46,6 +82,9 @@ class ApiController extends Controller
      * indices and clamp resultsLimit.
      */
     private ?ApiKey $authenticatedKey = null;
+
+    /** @var array<string, array<string, string|null>> */
+    private array $normalizedParameters = [];
 
     /**
      * @inheritdoc
@@ -87,6 +126,8 @@ class ApiController extends Controller
             $this->authenticatedKey = $key;
         }
 
+        $this->parametersForAction($action->id);
+
         return true;
     }
 
@@ -111,7 +152,8 @@ class ApiController extends Controller
      */
     public function actionAutocomplete(): Response
     {
-        $query = Craft::$app->getRequest()->getParam('q', '');
+        $parameters = $this->parametersForAction('autocomplete');
+        $query = (string)$parameters['q'];
 
         // Enforce query length cap to prevent resource exhaustion
         if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
@@ -122,7 +164,7 @@ class ApiController extends Controller
             ]);
         }
 
-        $limit = (int) Craft::$app->getRequest()->getParam('resultsLimit', 10);
+        $limit = (int)$parameters['resultsLimit'];
         // Clamp limit to prevent expensive queries (max 100, 0 or negative = use default)
         if ($limit <= 0) {
             $limit = 10;
@@ -132,16 +174,16 @@ class ApiController extends Controller
         if ($this->authenticatedKey !== null) {
             $limit = SearchManager::$plugin->apiKeys->clampHitsPerPage($this->authenticatedKey, $limit);
         }
-        $only = Craft::$app->getRequest()->getParam('only', null);
-        $typeFilter = Craft::$app->getRequest()->getParam('type', null);
-        $siteId = Craft::$app->getRequest()->getParam('siteId');
+        $only = $parameters['only'];
+        $typeFilter = $parameters['type'];
+        $siteId = $parameters['siteId'];
         $siteId = $siteId ? (int)$siteId : null;
         // Support both 'language' and 'lang' parameters.
         $language = self::normalizePublicLanguage(
-            Craft::$app->getRequest()->getParam('language') ?? Craft::$app->getRequest()->getParam('lang'),
+            $parameters['language'] ?? $parameters['lang'],
         );
 
-        if (empty($query)) {
+        if (trim($query) === '') {
             if ($only === 'suggestions') {
                 return $this->asJson([]);
             }
@@ -158,7 +200,7 @@ class ApiController extends Controller
 
         // Parse and validate requested indices
         [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
-            Craft::$app->getRequest()->getParam('indexHandles', ''),
+            (string)$parameters['indexHandles'],
         );
         if ($exceededMax) {
             return $this->asJson([
@@ -365,8 +407,8 @@ class ApiController extends Controller
      */
     public function actionSearch(): Response
     {
-        $request = Craft::$app->getRequest();
-        $query = $request->getParam('q', '');
+        $parameters = $this->parametersForAction('search');
+        $query = (string)$parameters['q'];
 
         // Enforce query length cap to prevent resource exhaustion
         if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
@@ -379,7 +421,7 @@ class ApiController extends Controller
         }
 
         // resultsLimit: min 1, default 20, max 200
-        $limit = (int) $request->getParam('resultsLimit', 20);
+        $limit = (int)$parameters['resultsLimit'];
         if ($limit < 1) {
             $limit = 20;
         }
@@ -388,27 +430,27 @@ class ApiController extends Controller
         if ($this->authenticatedKey !== null) {
             $limit = SearchManager::$plugin->apiKeys->clampHitsPerPage($this->authenticatedKey, $limit);
         }
-        $page = (int) $request->getParam('page', 0);
+        $page = (int)$parameters['page'];
         if ($page < 0) {
             $page = 0;
         }
         $offset = $page * $limit;
-        $typeFilter = $request->getParam('type', null);
-        $siteId = $request->getParam('siteId');
+        $typeFilter = $parameters['type'];
+        $siteId = $parameters['siteId'];
         $siteId = $siteId ? (int) $siteId : null;
-        $language = self::normalizePublicLanguage($request->getParam('language', null) ?? $request->getParam('lang', null));
-        $requestedRetrievableFields = SearchIndex::requestedRetrievableFields($request->getParam('retrievableFields', null));
+        $language = self::normalizePublicLanguage($parameters['language'] ?? $parameters['lang']);
+        $requestedRetrievableFields = SearchIndex::requestedRetrievableFields($parameters['retrievableFields']);
 
         // Skip analytics if explicitly requested (e.g., widget passes skipAnalytics=1 to prevent keystroke spam)
-        $skipAnalytics = (bool) $request->getParam('skipAnalytics', false);
+        $skipAnalytics = (bool)$parameters['skipAnalytics'];
 
         // Analytics options (for mobile apps and custom integrations).
         // Source normalization is resolved once at the final analytics writer.
-        $source = $request->getParam('analyticsSource', null);
-        $platform = TrackingMetadataHelper::platform($request->getParam('platform', null));
-        $appVersion = TrackingMetadataHelper::appVersion($request->getParam('appVersion', null));
+        $source = $parameters['analyticsSource'];
+        $platform = TrackingMetadataHelper::platform($parameters['platform']);
+        $appVersion = TrackingMetadataHelper::appVersion($parameters['appVersion']);
 
-        if (empty($query)) {
+        if (trim($query) === '') {
             return $this->asJson([
                 'hits' => [],
                 'total' => 0,
@@ -417,7 +459,7 @@ class ApiController extends Controller
 
         // Parse and validate requested indices
         [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
-            $request->getParam('indexHandles', ''),
+            (string)$parameters['indexHandles'],
         );
         if ($exceededMax) {
             return $this->asJson([
@@ -528,16 +570,16 @@ class ApiController extends Controller
         // Keep backend meta only for the existing widget/debug toolbar contract.
         $results = SearchDebugAccessHelper::filterDebugMeta(
             $results,
-            (bool)$request->getParam('debugEnabled', false),
+            (bool)$parameters['debugEnabled'],
         );
 
         if (!empty($results['hits'])) {
             $results['hits'] = CanonicalHitPipeline::presentHits($results['hits'], $query, $searchedIndexHandles, [
-                'snippetMode' => (string) $request->getParam('snippetMode', SnippetOptionsHelper::DEFAULT_MODE),
-                'snippetMaxLength' => (int) $request->getParam('snippetMaxLength', SnippetOptionsHelper::DEFAULT_LENGTH),
-                'snippetIncludeCodeBlocks' => (bool) $request->getParam('snippetIncludeCodeBlocks', SnippetOptionsHelper::DEFAULT_SHOW_CODE),
-                'snippetCleanMarkdown' => (bool) $request->getParam('snippetCleanMarkdown', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN),
-                'resultsRequireUrl' => (bool) $request->getParam('resultsRequireUrl', false),
+                'snippetMode' => (string)$parameters['snippetMode'],
+                'snippetMaxLength' => (int)$parameters['snippetMaxLength'],
+                'snippetIncludeCodeBlocks' => (bool)$parameters['snippetIncludeCodeBlocks'],
+                'snippetCleanMarkdown' => (bool)$parameters['snippetCleanMarkdown'],
+                'resultsRequireUrl' => (bool)$parameters['resultsRequireUrl'],
                 'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex($searchedIndexHandles, $requestedRetrievableFields),
             ]);
         }
@@ -548,5 +590,26 @@ class ApiController extends Controller
         $results['totalPages'] = (int) ceil($total / $limit);
 
         return $this->asJson($results);
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    private function parametersForAction(string $actionId): array
+    {
+        if (isset($this->normalizedParameters[$actionId])) {
+            return $this->normalizedParameters[$actionId];
+        }
+
+        $defaults = match ($actionId) {
+            'autocomplete' => self::AUTOCOMPLETE_PARAMETERS,
+            'search' => self::SEARCH_PARAMETERS,
+            default => [],
+        };
+
+        return $this->normalizedParameters[$actionId] = PublicRequestScalarHelper::normalize(
+            Craft::$app->getRequest(),
+            $defaults,
+        );
     }
 }

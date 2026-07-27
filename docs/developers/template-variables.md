@@ -165,23 +165,57 @@ Generate context snippets with highlighted terms.
 
 ### `getRuleAnalytics(ruleId, dateRange)` @since(5.10.0)
 
-Get analytics for a specific query rule.
+Get analytics for a specific query rule. In Pro, `dateRange` keeps the normal
+analytics date semantics and the method returns `totalTriggers`,
+`uniqueQueries`, `avgResultsAfter`, `topQueries`, `dailyTriggers`, and
+`recentTriggers`.
 
 ```twig
 {% set analytics = craft.searchManager.getRuleAnalytics(5, 'last30days') %}
 ```
 
-**Returns:** `array` with rule analytics data.
+**Returns:** In Pro, the current rule analytics. In Standard, an exact neutral
+shape without reading retained Pro detail rows:
+
+```twig
+{
+    totalTriggers: 0,
+    uniqueQueries: 0,
+    avgResultsAfter: 0.0,
+    topQueries: [],
+    dailyTriggers: [],
+    recentTriggers: [],
+}
+```
 
 ### `getPromotionAnalytics(promotionId, dateRange)` @since(5.10.0)
 
-Get analytics for a specific promotion.
+Get analytics for a specific promotion. In Pro, `dateRange` keeps the normal
+analytics date semantics and the method returns `totalImpressions`,
+`uniqueQueries`, `avgPosition`, `topQueries`, `dailyImpressions`, and
+`recentImpressions`.
 
 ```twig
 {% set analytics = craft.searchManager.getPromotionAnalytics(1, 'last7days') %}
 ```
 
-**Returns:** `array` with promotion analytics data.
+**Returns:** In Pro, the current promotion analytics. In Standard, an exact
+neutral shape without reading retained Pro detail rows:
+
+```twig
+{
+    totalImpressions: 0,
+    uniqueQueries: 0,
+    avgPosition: 0.0,
+    topQueries: [],
+    dailyImpressions: [],
+    recentImpressions: [],
+}
+```
+
+These neutral reads do not delete retained analytics. Standard's independent
+analytics export and permanent-purge tools remain available, and re-upgrading
+restores access to the retained detail data.
 
 ## Backend-specific methods
 

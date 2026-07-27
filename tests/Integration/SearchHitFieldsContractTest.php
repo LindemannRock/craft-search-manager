@@ -1714,10 +1714,14 @@ final class SearchHitFieldsContractTest extends TestCase
         }
 
         foreach ([
-            "'snippetMode' => (string) \$request->getParam('snippetMode', SnippetOptionsHelper::DEFAULT_MODE)",
-            "'snippetMaxLength' => (int) \$request->getParam('snippetMaxLength', SnippetOptionsHelper::DEFAULT_LENGTH)",
-            "'snippetIncludeCodeBlocks' => (bool) \$request->getParam('snippetIncludeCodeBlocks', SnippetOptionsHelper::DEFAULT_SHOW_CODE)",
-            "'snippetCleanMarkdown' => (bool) \$request->getParam('snippetCleanMarkdown', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN)",
+            "'snippetMode' => SnippetOptionsHelper::DEFAULT_MODE,",
+            "'snippetMaxLength' => SnippetOptionsHelper::DEFAULT_LENGTH,",
+            "'snippetIncludeCodeBlocks' => SnippetOptionsHelper::DEFAULT_SHOW_CODE,",
+            "'snippetCleanMarkdown' => SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN,",
+            "'snippetMode' => (string)\$parameters['snippetMode'],",
+            "'snippetMaxLength' => (int)\$parameters['snippetMaxLength'],",
+            "'snippetIncludeCodeBlocks' => (bool)\$parameters['snippetIncludeCodeBlocks'],",
+            "'snippetCleanMarkdown' => (bool)\$parameters['snippetCleanMarkdown'],",
         ] as $needle) {
             self::assertStringContainsString($needle, $api);
         }

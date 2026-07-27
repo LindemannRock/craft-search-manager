@@ -20,7 +20,7 @@ Rejections (returned as the endpoint's JSON error, in English):
 |--------|------|
 | `401` | No key presented, the key is unknown / fails verification, or a server key is presented to a public endpoint |
 | `403` | Key is disabled or expired; the request's `Referer` is outside a public key's allowed referrers; or a requested index is outside the key's allowed indices |
-| `400` | A requested `siteId` is not a real site |
+| `400` | Search/autocomplete, or Pro tracking, receives an array/object-shaped parameter instead of a scalar; or a requested `siteId` is not a real site |
 | `429` | The key's per-minute rate limit was exceeded |
 
 **Rate limit.** A key may set a `rateLimit` (requests per minute). When exceeded, requests are rejected with `429` until the next one-minute window. The cap is per key (counted across search + autocomplete) and applies only to authenticated requests; a key with no `rateLimit` is unlimited.
@@ -32,6 +32,26 @@ Rejections (returned as the endpoint's JSON error, in English):
 **Site scope.** `siteId` is only a filter — site visibility is controlled by each index, not by the key. With no `siteId`, results span all sites the selected indices cover. For a keyed request, a `siteId` outside the scope of a selected index is rejected with `403`; an unknown `siteId` is rejected with `400`. Anonymous requests keep their existing behaviour (the `siteId` is applied as a plain filter).
 
 The `track-search` / `track-click` analytics endpoints are gated the same way when **Require API Key** is on (authenticate + public-key referrer, plus the allowed-indices check when the ping includes `index`/`indexHandles`). They are **not** rate-limited. When the setting is off, they stay anonymous. The bundled widget sends its configured key on these pings automatically.
+
+## Parameter shape
+
+Search and autocomplete require every documented parameter to be a single
+scalar HTTP value. Pro applies the same rule to track-search and track-click
+after their established origin and authentication gates. Arrays, nested arrays,
+repeated-key arrays, and object-shaped values are rejected with `400` before
+index resolution, search providers, result caches, or analytics writers run.
+The literal string `"0"` remains valid, with documented query or numeric
+semantics applied after the shape check.
+
+On Standard, track-search and track-click keep their existing `204 No Content`
+no-op before parameter parsing, so malformed tracking bodies are ignored rather
+than rejected.
+
+Security gates keep their existing order. Cross-origin tracking checks run
+first; when API keys are required, authentication and referrer checks run before
+parameter-shape validation. Search and autocomplete also apply the authenticated
+key's rate limit before shape validation, so malformed input cannot reveal
+whether a key is valid or bypass its request budget.
 
 Tracking pings intentionally remain CSRF-free so they keep working from statically cached pages and the bundled frontend widget. Same-origin browser requests are accepted automatically. If a headless frontend sends tracking pings from another browser origin, add that exact origin in `config/search-manager.php`:
 

@@ -31,6 +31,7 @@ use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\tests\TestCase;
+use lindemannrock\searchmanager\variables\SearchManagerVariable;
 use yii\base\Action;
 use yii\base\Event;
 use yii\web\HeaderCollection;
@@ -141,6 +142,23 @@ final class EditionDowngradeLifecycleTest extends TestCase
         self::assertGreaterThan(0, $this->analyticsCount('{{%searchmanager_analytics}}'));
         self::assertGreaterThan(0, $this->analyticsCount('{{%searchmanager_rule_analytics}}'));
         self::assertGreaterThan(0, $this->analyticsCount('{{%searchmanager_promotion_analytics}}'));
+        $ruleId = (int)(new Query())
+            ->select('queryRuleId')
+            ->from('{{%searchmanager_rule_analytics}}')
+            ->where(['query' => self::SEARCH_QUERY])
+            ->scalar();
+        $promotionId = (int)(new Query())
+            ->select('promotionId')
+            ->from('{{%searchmanager_promotion_analytics}}')
+            ->where(['query' => self::SEARCH_QUERY])
+            ->scalar();
+        $twigVariable = new SearchManagerVariable();
+        $proRuleAnalytics = $twigVariable->getRuleAnalytics($ruleId, 'today');
+        $proPromotionAnalytics = $twigVariable->getPromotionAnalytics($promotionId, 'today');
+        self::assertGreaterThan(0, $proRuleAnalytics['totalTriggers']);
+        self::assertGreaterThan(0, $proPromotionAnalytics['totalImpressions']);
+        self::assertNotSame([], $proRuleAnalytics['dailyTriggers']);
+        self::assertNotSame([], $proPromotionAnalytics['dailyImpressions']);
 
         $proWidget = $this->renderWidget();
         self::assertStringContainsString('promotion-display="badge"', $proWidget);
@@ -163,6 +181,23 @@ final class EditionDowngradeLifecycleTest extends TestCase
         self::assertSame([], $standardCached['meta']['rulesMatched']);
         self::assertSame([], $standardCached['meta']['promotionsMatched']);
         $this->trackLifecycleSearch();
+        self::assertSame($analyticsBeforeDowngrade, $this->analyticsCounts());
+        self::assertSame([
+            'totalTriggers' => 0,
+            'uniqueQueries' => 0,
+            'avgResultsAfter' => 0.0,
+            'topQueries' => [],
+            'dailyTriggers' => [],
+            'recentTriggers' => [],
+        ], $twigVariable->getRuleAnalytics($ruleId, 'today'));
+        self::assertSame([
+            'totalImpressions' => 0,
+            'uniqueQueries' => 0,
+            'avgPosition' => 0.0,
+            'topQueries' => [],
+            'dailyImpressions' => [],
+            'recentImpressions' => [],
+        ], $twigVariable->getPromotionAnalytics($promotionId, 'today'));
         self::assertSame($analyticsBeforeDowngrade, $this->analyticsCounts());
 
         $standardWidget = $this->renderWidget();

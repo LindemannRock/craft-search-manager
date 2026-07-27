@@ -187,25 +187,6 @@ class CraftSearchAdapter extends \craft\services\Search
         return parent::indexElementAttributes($element, $fieldHandles);
     }
 
-    /**
-     * Index element field values (called by Craft)
-     *
-     * @param int $elementId
-     * @param string $fieldHandle
-     * @param string $siteId
-     * @param string|array $value
-     * @return void
-     */
-    public function indexElementFields(int $elementId, string $fieldHandle, string $siteId, string|array $value): void
-    {
-        // Our backends index all fields via transformers
-        // So we don't need to do anything here
-        $this->logDebug('Field indexing skipped (handled by transformers)', [
-            'elementId' => $elementId,
-            'field' => $fieldHandle,
-        ]);
-    }
-
     // =========================================================================
     // HELPER METHODS
     // =========================================================================
