@@ -1,118 +1,132 @@
 # Search Manager — Postman Files
 
-User-facing Postman collection and environment template for the Search Manager API.
+Use these files to exercise Search Manager's public Search, Autocomplete, Track Search, and Track Click endpoints without accepting an ambiguous result.
+
+Authentication and edition are independent. The collection reads `api_mode` and `edition_mode` separately, then one collection-level prerequisite authority decides which requests can execute. A wrong axis, incompatible request, missing variable, or invalid rate-runner setup skips with a visible `SKIP:` reason instead of producing a misleading green assertion.
 
 Plugin source: <https://github.com/LindemannRock/craft-search-manager>
 
 ## Files
 
-- **`Search-Manager.postman_collection.json`** — examples for search, autocomplete, analytics tracking, and API-key enforcement checks.
-- **`Search-Manager.postman_environment.json`** — reusable environment template with placeholders only.
+- **`Search-Manager.postman_collection.json`** — executable public REST examples, tracking contracts, and enforcement checks.
+- **`Search-Manager.postman_environment.json`** — harmless placeholders for the two independent fixture axes and their request variables.
 
-## Setup
+The collection contains no real credentials or provider targets. Positive authenticated examples use public Search Manager keys only.
 
-1. Import both files into Postman.
-2. Duplicate **Search Manager API** once per target environment, for example:
-   - **Search Manager — DDEV**
-   - **Search Manager — Staging**
-   - **Search Manager — UAT**
-   - **Search Manager — Production**
-3. Select the duplicated environment from Postman's environment dropdown.
-4. Set:
-   - `base_url` → your Craft site URL, no trailing slash.
-   - `indexHandles` → one or more enabled Search Manager index handles, comma-separated.
-   - `index_handle` → one enabled index handle, used by `track-click`.
-   - `query` → a query that should return results on your install.
-   - `site_id` → a real Craft site ID, if you want to test site filtering.
-   - `element_id` → a real element ID, if you want `track-click` to represent a real result.
-5. If **Require API Key** is enabled, also set:
-   - `api_key` → a **public** Search Manager key for browser/widget/custom-JS requests.
-   - `referrer` → a URL whose host matches that public key's allowed referrers.
-   - `origin` → a browser origin whose host matches that public key's allowed referrers, used by headless Origin-only examples.
-   - `server_api_key` → a **server** key only for the server-key example request.
-6. If you test cross-origin headless tracking, add the exact `origin` value to `trackingAllowedOrigins` in `config/search-manager.php`. Same-origin tracking does not need `trackingAllowedOrigins`.
+## Choose both fixture axes
 
-The key values are Postman secret variables in the environment template. The shipped file contains no real keys.
+Set both values explicitly before running:
 
-Only `base_url` and the environment values change between DDEV, staging, UAT, and production. The collection requests all use `{{base_url}}` plus explicit Postman path segments, matching Postman's standard import format.
+| Axis | Values | Meaning |
+|---|---|---|
+| `api_mode` | `anonymous`, `keyed`, `rate-limit` | Selects the public API authentication/enforcement fixture. It never selects an edition. |
+| `edition_mode` | `standard`, `pro` | Declares the Search Manager edition that is actually running. It only changes tracking expectations. |
 
-## Which Key Type to Use
+The independent matrix is:
 
-Use a **public** key for browser-side callers:
+| API mode | Standard | Pro |
+|---|---|---|
+| `anonymous` | Anonymous Search/Autocomplete exact `200`; Standard Track Search/Click exact `204`. | Anonymous Search/Autocomplete exact `200`; authenticated Pro tracking examples skip. |
+| `keyed` | Authenticated Search/Autocomplete and edition-independent enforcement checks; Standard Track Search/Click exact `204`. | The same authenticated API/enforcement checks, plus Pro tracking success, origin-security, and preflight contracts. |
+| `rate-limit` | Deterministic rate runner; Standard tracking also retains exact `204` when the full collection runs. | The same deterministic rate runner; keyed Pro tracking examples skip. |
 
-- Search Manager frontend widget
-- Custom JavaScript search templates
-- Search pages rendered in the browser
+Authenticated Search, Autocomplete, API-key enforcement, Referer/Origin fallback, index/site scope, and rate limiting work the same in Standard and Pro. Only tracking behavior differs by edition.
 
-Public keys are visible in HTML, JS, and browser network tools. Scope them narrowly: allowed indices, strict referrer patterns, expiry, max hits, and rate limit.
+## Set up the environment
 
-Use a **server** key for backend-to-backend callers:
+1. Import both JSON files.
+2. Duplicate **Search Manager API** once per disposable test fixture.
+3. Select the duplicate from Postman's environment menu.
+4. Set `api_mode` and `edition_mode`.
+5. Replace the placeholders required by that combination.
 
-- Your app backend calling Search Manager
-- A mobile app calling your own backend, where your backend then calls Search Manager
-- Internal server jobs or integration services
+The variables have one coherent meaning:
 
-Do not embed server keys in HTML, JavaScript, or mobile app binaries.
+| Variable | Contract |
+|---|---|
+| `api_mode` | `anonymous`, `keyed`, or `rate-limit`. |
+| `edition_mode` | `standard` or `pro`; it must match the running plugin edition. |
+| `base_url` | Craft site URL without a trailing slash. |
+| `api_key` | Active **public** key for keyed requests; scope it to `index_handles`. |
+| `rate_limit_api_key` | Fresh dedicated **public** key used only by the rate runner. |
+| `invalid_api_key` | Deliberately invalid public-key-shaped placeholder used for the exact `401` check. |
+| `referrer` | URL whose host is allowed by `api_key`; use the same origin as `base_url` for the isolated fixture. |
+| `blocked_referrer` | URL whose host is absent from the key's allowed-referrer list. |
+| `origin` | Origin allowed by the public key. For Pro tracking without `trackingAllowedOrigins`, use the same origin as `base_url`. |
+| `blocked_origin` | Host rejected by public-key Origin fallback and, in Pro, by the tracking origin gate. |
+| `query` | Harmless query owned by the disposable fixture. |
+| `index_handles` | Enabled fixture index allowed by both public keys. |
+| `index_handle` | One enabled fixture index for Track Click's singular `index` parameter. |
+| `blocked_index_handle` | A second enabled fixture index that exists but is outside `api_key`'s allowlist. |
+| `results_limit` | Positive Search/Autocomplete result cap. |
+| `site_id` | Real Craft site covered by `index_handles`. |
+| `unknown_site_id` | ID that does not resolve to a Craft site. |
+| `element_id` | Harmless fixture element ID for Track Click's log-only payload. |
+| `results_count` | Result count sent to Track Search. |
+| `trigger` | One of `click`, `enter`, `idle`, or `unknown`. |
+| `analytics_source` | Short source label for fixture-owned analytics rows. |
+| `rate_limit_allowed_requests` | Exact per-minute cap configured on `rate_limit_api_key`. |
+| `rate_limit_runner_iterations` | Exact Runner iteration count; it must be greater than the allowed-request cap. |
 
-## Recommended Test Flows
+The shipped axis and credential values are empty so an imported collection cannot silently claim a fixture it has not verified.
 
-### 1. Anonymous Mode
+## Run anonymous Search and Autocomplete
 
-With **Require API Key** off:
+1. Turn **Require API Key** off.
+2. Set `api_mode` to `anonymous`.
+3. Set `edition_mode` to the running edition.
+4. Run the full collection or the Search and Autocomplete folders.
 
-1. Run **Enforcement Checks → Missing key - 200 when off, 401 when on**.
-2. Run **Search API → Search - basic keyed or anonymous** with `api_key` empty.
-3. Run **Autocomplete API → Autocomplete - suggestions and results** with `api_key` empty.
-4. Run both **Analytics Tracking** requests with `api_key` empty.
+The two anonymous requests return exact `200` with their public response shapes in either edition. Keyed requests skip. On Standard, both tracking no-ops also return exact `204` when the full collection runs.
 
-Expected: the normal requests return `200`.
+## Run authenticated APIs and enforcement
 
-### 2. Keyed Mode
+1. Turn **Require API Key** on.
+2. Create an active public key:
+   - allow only `index_handles`;
+   - allow the hosts used by `referrer` and `origin`;
+   - choose a `maxHitsPerPage` at or above the requested fixture limit;
+   - leave its rate limit empty or high enough for the complete collection run.
+3. Create or select a second enabled `blocked_index_handle` that the key does not allow.
+4. Use a real `site_id` covered by `index_handles`.
+5. Set `api_mode` to `keyed`.
+6. Set `edition_mode` to the running edition.
+7. Run the full collection.
 
-With **Require API Key** on:
+In both Standard and Pro, this proves:
 
-1. Create a public API key in Search Manager.
-2. Scope it to the test index in `indexHandles`.
-3. Add an allowed referrer matching `referrer`.
-4. Paste the plaintext key into the `api_key` environment variable.
-5. Run the **Search API**, **Autocomplete API**, and **Analytics Tracking** folders.
+- public-key Search and Autocomplete return exact `200`;
+- Referer and Origin fallback authenticate when allowed;
+- missing or invalid keys return exact `401`;
+- disallowed public-key Referer and Origin return exact `403`;
+- an existing out-of-scope index returns exact `403`;
+- an unknown keyed site returns exact `400`.
 
-Expected: valid keyed requests return `200`. Missing or invalid key checks return `401`.
+With `edition_mode=standard`, Track Search and Track Click independently return exact `204` with empty bodies. With `edition_mode=pro`, authenticated Track Search and Track Click return exact `200`, a disallowed tracking Origin returns exact `403`, and same-origin preflight returns exact `204`.
 
-### 3. Scope Checks
+Tracking is not rate-limited. Search and Autocomplete are.
 
-Use the **Enforcement Checks** folder:
+## Run the deterministic rate-limit contract
 
-- **Public key bad referrer** should return `403` when the key has allowed referrers and `blocked_referrer` does not match.
-- **Out-of-scope index** should return `403` when `blocked_index_handle` is not allowed by the key.
-- **Unknown site** should return `400` for keyed requests when `unknown_site_id` is not a real Craft site ID.
+1. Create a fresh public key used by no other request.
+2. Give it a per-minute limit equal to `rate_limit_allowed_requests`.
+3. Allow `index_handles` and `referrer`.
+4. Clear that key's current rate counter or wait for a fresh minute.
+5. Set `api_mode` to `rate-limit`.
+6. Set `edition_mode` to the running edition.
+7. Select **Enforcement Checks → Rate-limit Runner - deterministic 200 then 429**.
+8. Run exactly `rate_limit_runner_iterations` iterations without crossing a minute boundary.
 
-Wildcard/all-index keys may make the out-of-scope request return `200`; use a narrowly scoped key to test the `403` path.
+For a cap of `3` and `5` iterations, iterations 1–3 return exact `200`; iterations 4–5 return exact `429`. The behavior is identical in Standard and Pro. A different Runner count produces an explicit prerequisite skip.
 
-### 4. Headless Origin Fallback
+## Clean up
 
-Use the headless examples in **Search API**, **Autocomplete API**, and **Analytics Tracking**:
+After an isolated run:
 
-- **Search - headless Origin fallback**
-- **Autocomplete - headless Origin fallback**
-- **Track search intent - headless Origin fallback**
-- **Track search preflight - allowed Origin**
+1. Delete both fixture public keys.
+2. Delete the fixture indices and backend storage they own.
+3. Remove fixture analytics and pending/queue rows.
+4. Restore any temporarily changed Search Manager settings exactly.
+5. Confirm the disposable marker no longer appears in API keys, indices, backends, analytics, storage, pending syncs, queue payloads, or users.
 
-These requests send `Origin` and intentionally omit `Referer`. Public API-key referrer checks prefer `Referer` when it is present, then fall back to `Origin` when `Referer` is absent. This lets Postman simulate browser headless/frontends that suppress `Referer` via Referrer-Policy.
-
-For cross-origin browser tracking pings, `Origin` must also be listed exactly in `trackingAllowedOrigins` in `config/search-manager.php`. Match is scheme + host + effective port. Same-origin tracking does not need that config entry.
-
-### 5. Rate Limit
-
-Set a low per-key rate limit, such as `3` requests per minute, then use Postman Runner on **Enforcement Checks → Rate limit probe - repeat with Runner** with more iterations than the cap.
-
-Expected: the first requests return `200`; later requests return `429` until the next one-minute window. Search and autocomplete count toward this cap. Tracking pings do not.
-
-## Notes
-
-- The collection sends `X-Search-Manager-Key` when the environment variable is set.
-- Public-key referrer checks prefer the request's `Referer` header and fall back to `Origin` when `Referer` is absent. Existing Referer examples are still present because Referer takes precedence when both headers are sent.
-- Browser-based headless tracking from another origin requires that exact origin in `trackingAllowedOrigins`; same-origin tracking does not need `trackingAllowedOrigins`.
-- Postman can test Origin fallback by sending `Origin` with `Referer` omitted.
-- `track-search` records analytics rows when analytics is enabled. `track-click` is gated but currently log-only.
-- The canonical search request mirrors the frontend widget/custom-template request shape.
+Do not run enforcement or rate-limit fixtures against production credentials, hosted providers, private networks, or valuable indices.
