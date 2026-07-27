@@ -273,6 +273,14 @@ ddev craft search-manager/security/generate-salt
 
 4. **Check queue**: Geo-location runs as a queue job. If your queue isn't processing, geo data won't be recorded.
 
+## Salt generator cannot update `.env`
+
+The salt command protects an existing `.env` from partial or direct writes. It builds and verifies a temporary file in the same directory, preserves the existing mode when available, and only then atomically replaces `.env`.
+
+If reading, preparing, writing, verifying, setting the mode, or renaming fails, the command exits non-zero and prints the generated `SEARCH_MANAGER_IP_SALT="..."` assignment. The original `.env` bytes remain unchanged and temporary files are removed. Add the printed assignment manually after resolving the file ownership or deployment restriction.
+
+When `.env` does not exist, the command also prints the manual assignment, but that expected setup path exits successfully.
+
 ## Analytics reports or cleanup show an unexpected site scope
 
 Interactive analytics reports, exports, row deletion, and the Utilities purge follow the current user's editable Craft sites. Administrators receive all-site access. A user with no editable sites sees no analytics rows, a zero Utility count, and deletes nothing.

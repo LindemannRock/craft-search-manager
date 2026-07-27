@@ -24,7 +24,9 @@ php craft search-manager/security/generate-salt
 ddev craft search-manager/security/generate-salt
 ```
 
-The command adds `SEARCH_MANAGER_IP_SALT` to your `.env` file automatically.
+The command safely adds `SEARCH_MANAGER_IP_SALT` to `.env` through a verified same-directory temporary file and atomic replacement. It asks before replacing an existing readable salt and preserves the file's current mode when available.
+
+If `.env` is missing or cannot be safely read or replaced, the generated salt is still printed as a manual assignment. A missing file is a successful manual-setup path; replacement failures exit non-zero and leave the original bytes untouched.
 
 ### How it works
 

@@ -188,7 +188,7 @@ The command attempts every planned orphan handle even when one fails. Its summar
 
 ### `search-manager/security/generate-salt`
 
-Generate a cryptographically secure salt for IP hashing and add it to your `.env` file.
+Generate a cryptographically secure salt for IP hashing and safely add it to your `.env` file.
 
 ```bash title="PHP"
 php craft search-manager/security/generate-salt
@@ -200,10 +200,13 @@ ddev craft search-manager/security/generate-salt
 
 This command:
 1. Generates a random 64-character hex string
-2. Adds `SEARCH_MANAGER_IP_SALT=...` to your `.env` file
-3. Confirms the salt was saved
+2. Asks for confirmation before replacing an existing readable salt
+3. Writes and verifies a temporary file beside `.env`, preserves the existing mode when available, then atomically replaces `.env`
+4. Confirms the salt was saved
 
 Run this once after installation. Copy the salt value to your staging and production `.env` files manually. See [Privacy & Security](../feature-tour/privacy-security.md) for details.
+
+If `.env` does not exist, the command prints the assignment for you to add manually and exits successfully. If it cannot safely read or replace an existing `.env`, it leaves the original bytes untouched, removes its temporary file, prints the same manual assignment, and exits non-zero. It never falls back to writing directly over the existing file.
 
 ## API keys
 

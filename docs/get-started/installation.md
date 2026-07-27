@@ -54,7 +54,9 @@ php craft search-manager/security/generate-salt
 ddev craft search-manager/security/generate-salt
 ```
 
-This writes `SEARCH_MANAGER_IP_SALT` to your `.env` file. Keep the same salt across all environments — changing it resets unique visitor tracking.
+When `.env` can be safely updated, the command writes and verifies a same-directory temporary file before atomically replacing it. If `.env` is missing, it prints the assignment for you to add manually. If a safe replacement fails, the command leaves the original file untouched, prints the manual assignment, and exits non-zero.
+
+Keep the same salt across all environments — changing it resets unique visitor tracking.
 
 ## Next steps
 
