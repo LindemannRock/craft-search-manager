@@ -306,9 +306,11 @@ class WidgetsController extends Controller
             if (!$widgetConfig) {
                 throw new NotFoundHttpException(Craft::t('search-manager', 'Widget config not found'));
             }
+            $storedHandle = $widgetConfig->handle;
         } else {
             $this->requirePermission('searchManager:createWidgetConfigs');
             $widgetConfig = new WidgetConfig();
+            $storedHandle = null;
         }
 
         $storedSettings = $widgetConfig->getSettingsArray();
@@ -412,16 +414,31 @@ class WidgetsController extends Controller
             return null;
         }
 
-        // Save widget config
-        if (!SearchManager::$plugin->widgetConfigs->save($widgetConfig)) {
+        // Save widget config. Renaming the active default is one explicit,
+        // atomic owner transition; ordinary direct service saves never rewrite
+        // default settings.
+        $isDefault = BooleanHelper::normalize($request->getBodyParam('isDefault'), false);
+        $renamesActiveDefault = $storedHandle !== null
+            && $storedHandle !== $widgetConfig->handle
+            && $isDefault
+            && !$this->isDefaultWidgetFromConfig()
+            && SearchManager::$plugin->getSettings()->defaultWidgetHandle === $storedHandle;
+        $saved = $renamesActiveDefault
+            ? SearchManager::$plugin->widgetConfigs->saveWithDefaultHandleTransition($widgetConfig)
+            : SearchManager::$plugin->widgetConfigs->save($widgetConfig);
+        if (!$saved) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config'));
             Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
             return null;
         }
 
         // Handle "Set as Default" toggle (only if not set via config)
-        $isDefault = BooleanHelper::normalize($request->getBodyParam('isDefault'), false);
-        if ($isDefault && !$this->isDefaultWidgetFromConfig()) {
+        if ($renamesActiveDefault) {
+            $this->logInfo('Default widget changed', [
+                'handle' => $widgetConfig->handle,
+                'name' => $widgetConfig->name,
+            ]);
+        } elseif ($isDefault && !$this->isDefaultWidgetFromConfig()) {
             if (!$this->assignDefaultWidget($widgetConfig, 'Default widget changed')) {
                 return $this->widgetSaveResponse(
                     $widgetConfig,

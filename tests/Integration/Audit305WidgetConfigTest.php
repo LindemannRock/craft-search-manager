@@ -437,7 +437,7 @@ final class Audit305WidgetConfigTest extends TestCase
         $this->saveWidgetUsingApiKey($key, 'save-handle-block');
         $oldHandle = $key->handle;
 
-        $this->postApiKeySave($key, ['handle' => 'renamed-widget-key']);
+        $this->postApiKeySave($key, ['handle' => 'renamed-widget-key'], false);
 
         $fresh = ApiKey::findById((int)$key->id);
         self::assertNotNull($fresh);
@@ -776,7 +776,7 @@ final class Audit305WidgetConfigTest extends TestCase
     /**
      * @param array<string, mixed> $overrides
      */
-    private function postApiKeySave(ApiKey $key, array $overrides): void
+    private function postApiKeySave(ApiKey $key, array $overrides, bool $expectCanonicalSave = true): void
     {
         $params = array_merge([
             'keyId' => $key->id,
@@ -802,7 +802,7 @@ final class Audit305WidgetConfigTest extends TestCase
         $guard = new \ReflectionMethod($controller, 'guardApiKeyWidgetDependenciesForSave');
         $guard->setAccessible(true);
         if ($guard->invoke($controller, $key)) {
-            self::assertTrue($key->save(), print_r($key->getErrors(), true));
+            self::assertSame($expectCanonicalSave, $key->save(), print_r($key->getErrors(), true));
         }
     }
 

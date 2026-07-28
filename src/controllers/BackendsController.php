@@ -294,8 +294,10 @@ class BackendsController extends Controller
             if (!$backend) {
                 throw new NotFoundHttpException(Craft::t('search-manager', 'Backend not found'));
             }
+            $storedHandle = $backend->handle;
         } else {
             $backend = new ConfiguredBackend();
+            $storedHandle = null;
         }
 
         // Set attributes
@@ -314,7 +316,17 @@ class BackendsController extends Controller
         $settings = $request->getBodyParam('settings', []);
         $backend->settings = is_array($settings) ? $settings : [];
 
-        if (!$backend->save()) {
+        $isDefault = (bool)$request->getBodyParam('isDefault');
+        $renamesActiveDefault = $storedHandle !== null
+            && $storedHandle !== $backend->handle
+            && $isDefault
+            && !$this->isDefaultBackendFromConfig()
+            && SearchManager::$plugin->getSettings()->defaultBackendHandle === $storedHandle;
+        $saved = $renamesActiveDefault
+            ? $backend->saveWithDefaultHandleTransition()
+            : $backend->save();
+
+        if (!$saved) {
             Craft::$app->getSession()->setError(
                 Craft::t('search-manager', 'Could not save backend')
             );
@@ -334,8 +346,12 @@ class BackendsController extends Controller
         }
 
         // Handle "Set as Default" toggle (only if not set via config)
-        $isDefault = (bool)$request->getBodyParam('isDefault');
-        if ($isDefault && !$this->isDefaultBackendFromConfig()) {
+        if ($renamesActiveDefault) {
+            $this->logInfo('Default backend changed', [
+                'handle' => $backend->handle,
+                'name' => $backend->name,
+            ]);
+        } elseif ($isDefault && !$this->isDefaultBackendFromConfig()) {
             if (!$this->assignDefaultBackend($backend, 'Default backend changed')) {
                 return $this->backendSaveResponse(
                     $backend,

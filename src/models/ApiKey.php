@@ -70,6 +70,8 @@ class ApiKey extends Model
 
     public ?int $id = null;
 
+    private ?int $persistedId = null;
+
     public string $name = '';
 
     public string $handle = '';
@@ -418,6 +420,7 @@ class ApiKey extends Model
     {
         $key = new self();
         $key->id = (int)$row['id'];
+        $key->persistedId = $key->id;
         $key->name = (string)$row['name'];
         $key->handle = (string)($row['handle'] ?? '');
         $key->type = (string)$row['type'];
@@ -470,12 +473,37 @@ class ApiKey extends Model
 
     public function save(): bool
     {
+        if ($this->persistedId !== null && $this->id !== $this->persistedId) {
+            $this->addError('id', Craft::t('search-manager', 'API key not found'));
+            return false;
+        }
+
+        $stored = null;
+        if ($this->id !== null) {
+            $stored = self::findById($this->id);
+            if ($stored === null) {
+                $this->addError('id', Craft::t('search-manager', 'API key not found'));
+                return false;
+            }
+        }
+
         if ($this->handle === '' && trim($this->name) !== '') {
             $this->handle = SlugHandleHelper::makeUnique(
                 '{{%searchmanager_api_keys}}',
                 'handle',
                 SlugHandleHelper::normalizeSlug('', $this->name),
             );
+        }
+
+        if ($stored !== null && $stored->handle !== $this->handle) {
+            $usages = SearchManager::$plugin->dependencies->getApiKeyUsages($stored->handle);
+            if ($usages !== []) {
+                $this->addError(
+                    'handle',
+                    SearchManager::$plugin->dependencies->formatHandleChangeError($stored->name, $usages),
+                );
+                return false;
+            }
         }
 
         if (!$this->validate()) {
@@ -504,10 +532,17 @@ class ApiKey extends Model
             ];
 
             if ($this->id) {
-                Craft::$app->getDb()
+                $affectedRows = Craft::$app->getDb()
                     ->createCommand()
-                    ->update('{{%searchmanager_api_keys}}', $attributes, ['id' => $this->id])
+                    ->update('{{%searchmanager_api_keys}}', $attributes, [
+                        'id' => $this->id,
+                        'handle' => $stored?->handle,
+                    ])
                     ->execute();
+                if ($affectedRows === 0 && !$this->storedUpdateMatches($attributes)) {
+                    $this->addError('id', Craft::t('search-manager', 'API key not found'));
+                    return false;
+                }
             } else {
                 $attributes['dateCreated'] = Db::prepareDateForDb(new \DateTime());
                 $attributes['uid'] = StringHelper::UUID();
@@ -518,6 +553,7 @@ class ApiKey extends Model
                     ->execute();
 
                 $this->id = (int)Craft::$app->getDb()->getLastInsertID();
+                $this->persistedId = $this->id;
                 $this->uid = $attributes['uid'];
             }
 
@@ -531,11 +567,35 @@ class ApiKey extends Model
 
             return true;
         } catch (\Throwable $e) {
+            $this->addError('id', Craft::t('search-manager', 'Couldn’t save API key'));
             $this->logError('Failed to save API key', [
                 'error' => $e->getMessage(),
             ]);
             return false;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    private function storedUpdateMatches(array $attributes): bool
+    {
+        $row = (new Query())
+            ->from('{{%searchmanager_api_keys}}')
+            ->where(['id' => $this->id])
+            ->one();
+        if (!is_array($row)) {
+            return false;
+        }
+
+        unset($attributes['dateUpdated']);
+        foreach ($attributes as $name => $value) {
+            if ($value === null ? $row[$name] !== null : (string)$row[$name] !== (string)$value) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function delete(): bool

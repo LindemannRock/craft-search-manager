@@ -90,6 +90,8 @@ Prefer defining styles in code — for version control or multi-environment setu
 
 Config-defined styles show a "Config" badge in the CP and cannot be edited there. Database-defined styles show a "Database" badge and are fully editable.
 
+A style handle is stable while an effective widget refers to it through `styleHandle`. Reassign every affected widget to another style (or remove its style selection), save those widgets, and then rename the unused style. Search Manager does not rewrite widget references during a style rename. A config-defined widget takes precedence over a database widget with the same handle when Search Manager checks these dependencies.
+
 ## Link a style to a config
 
 Reference a style preset from a widget config:

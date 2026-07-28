@@ -40,10 +40,16 @@ class WidgetStyleService extends Component
      */
     private ?array $_configFileStyles = null;
 
+    /**
+     * @var \WeakMap<WidgetStyle, int>
+     */
+    private \WeakMap $persistedIds;
+
     /** @inheritdoc */
     public function init(): void
     {
         parent::init();
+        $this->persistedIds = new \WeakMap();
         $this->setLoggingHandle('search-manager');
     }
 
@@ -187,9 +193,34 @@ class WidgetStyleService extends Component
     {
         SearchManager::$plugin->requireEdition(SearchManager::EDITION_PRO, 'Widget Styles');
 
-        if ($style->source === 'config') {
+        if (isset($this->persistedIds[$style]) && $style->id !== $this->persistedIds[$style]) {
+            $style->addError('id', Craft::t('search-manager', 'Widget style not found'));
+            return false;
+        }
+
+        $stored = null;
+        if ($style->id !== null) {
+            $stored = $this->getById($style->id);
+            if ($stored === null) {
+                $style->addError('id', Craft::t('search-manager', 'Widget style not found'));
+                return false;
+            }
+        }
+
+        if ($stored === null && $style->source === 'config') {
             $this->logWarning('Cannot save config-file widget style', ['handle' => $style->handle]);
             return false;
+        }
+
+        if ($stored !== null && $stored->handle !== $style->handle) {
+            $usages = SearchManager::$plugin->dependencies->getStyleUsages($stored->handle);
+            if ($usages !== []) {
+                $style->addError(
+                    'handle',
+                    SearchManager::$plugin->dependencies->formatHandleChangeError($stored->name, $usages),
+                );
+                return false;
+            }
         }
 
         if (!$style->id && $style->handle !== '') {
@@ -205,18 +236,55 @@ class WidgetStyleService extends Component
         $now = Db::prepareDateForDb(new \DateTime());
         $data = $style->prepareForDb();
 
-        if ($style->id) {
-            $data['dateUpdated'] = $now;
-            Craft::$app->db->createCommand()
-                ->update(self::TABLE, $data, ['id' => $style->id])
-                ->execute();
-        } else {
-            $data['dateCreated'] = $now;
-            $data['dateUpdated'] = $now;
-            Craft::$app->db->createCommand()
-                ->insert(self::TABLE, $data)
-                ->execute();
-            $style->id = (int) Craft::$app->db->getLastInsertID();
+        try {
+            if ($style->id) {
+                $data['dateUpdated'] = $now;
+                $affectedRows = Craft::$app->db->createCommand()
+                    ->update(self::TABLE, $data, [
+                        'id' => $style->id,
+                        'handle' => $stored?->handle,
+                    ])
+                    ->execute();
+                if ($affectedRows === 0 && !$this->storedUpdateMatches($style->id, $data)) {
+                    $style->addError('id', Craft::t('search-manager', 'Widget style not found'));
+                    return false;
+                }
+            } else {
+                $data['dateCreated'] = $now;
+                $data['dateUpdated'] = $now;
+                Craft::$app->db->createCommand()
+                    ->insert(self::TABLE, $data)
+                    ->execute();
+                $style->id = (int) Craft::$app->db->getLastInsertID();
+                $this->persistedIds[$style] = $style->id;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            $style->addError('id', Craft::t('search-manager', 'Could not save widget style'));
+            $this->logError('Failed to save widget style', [
+                'handle' => $style->handle,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function storedUpdateMatches(int $id, array $data): bool
+    {
+        $row = (new Query())->from(self::TABLE)->where(['id' => $id])->one();
+        if (!is_array($row)) {
+            return false;
+        }
+
+        unset($data['dateUpdated']);
+        foreach ($data as $name => $value) {
+            if ($value === null ? $row[$name] !== null : (string)$row[$name] !== (string)$value) {
+                return false;
+            }
         }
 
         return true;
@@ -275,6 +343,7 @@ class WidgetStyleService extends Component
     {
         $style = new WidgetStyle();
         $style->id = (int) $row['id'];
+        $this->persistedIds[$style] = $style->id;
         $style->handle = $row['handle'];
         $style->name = $row['name'];
         $style->type = $row['type'] ?? 'modal';

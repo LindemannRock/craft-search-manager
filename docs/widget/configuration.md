@@ -278,4 +278,6 @@ Set a default widget via `defaultWidgetHandle` in config or CP settings:
 'defaultWidgetHandle' => 'main-search',
 ```
 
-The active default widget cannot be deleted — select another default first. This guard also applies to direct service deletion, so code cannot bypass the Control Panel check. When you create or save a widget while the database-managed default is empty, missing, or disabled, Search Manager assigns the first enabled widget deterministically. A `defaultWidgetHandle` set in `config/search-manager.php` remains authoritative and cannot be changed in the Control Panel.
+The active default widget cannot be deleted or renamed — select another default first. Search Manager does not rewrite `defaultWidgetHandle` or silently fall back to another widget after a direct rename. Once the default points elsewhere, the unused widget can be renamed normally.
+
+These guards also apply to direct service saves and deletion, so code cannot bypass the Control Panel checks. The CP can keep a database-managed active default selected during a rename because it performs the widget rename and default transition together. Direct service callers must make the default transition explicitly. When you create or save a widget while the database-managed default is empty, missing, or disabled, Search Manager assigns the first enabled widget deterministically. A `defaultWidgetHandle` set in `config/search-manager.php` remains authoritative and cannot be changed in the Control Panel.

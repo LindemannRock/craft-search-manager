@@ -137,7 +137,7 @@ The **Enabled** lightswitch on the edit page. Toggling it off **pauses** the key
 
 Use Disable when you want to temporarily block a caller (e.g. a third-party integration is misbehaving) without losing the configuration or forcing the caller to rotate.
 
-Public keys selected by widget configs are dependency-protected. Search Manager blocks disabling, expiring, deleting, changing the handle, or narrowing a public key's allowed indices in a way that would invalidate those widgets. Remove or reassign the key from the widget configs first.
+Public keys selected by effective widget configs are dependency-protected. Search Manager blocks disabling, expiring, deleting, changing the handle, or narrowing a public key's allowed indices in a way that would invalidate those widgets. Remove or reassign the key from every widget config first, save those owning changes, and then update the now-unused key. Search Manager does not rewrite widget references during a key rename. The same protection applies to Control Panel, direct model, and console-reachable save paths.
 
 ### Revoked (deleted)
 

@@ -574,12 +574,6 @@ class ApiKeysController extends Controller
         }
 
         $widgets = SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($usedConfigs);
-        if ($existingApiKey !== null && $existingApiKey->handle !== $apiKey->handle) {
-            $apiKey->addError('handle', Craft::t('search-manager', 'This API key is used by widget configs ({widgets}). Reassign or remove it from those widgets before changing the handle.', [
-                'widgets' => $widgets,
-            ]));
-        }
-
         if (!$apiKey->enabled) {
             $apiKey->addError('enabled', Craft::t('search-manager', 'This API key is used by widget configs ({widgets}). Reassign or remove it from those widgets before disabling it.', [
                 'widgets' => $widgets,

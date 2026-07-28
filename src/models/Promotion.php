@@ -37,6 +37,8 @@ class Promotion extends Model
 
     public ?int $id = null;
 
+    private ?int $persistedId = null;
+
     public ?string $indexHandle = null; // null = applies to all indices
 
     public ?string $title = null;
@@ -281,6 +283,7 @@ class Promotion extends Model
     {
         $model = new self();
         $model->id = (int)$row['id'];
+        $model->persistedId = $model->id;
         $model->indexHandle = $row['indexHandle'];
         $model->title = $row['title'] ?? null;
         $model->query = $row['query'];
@@ -317,6 +320,16 @@ class Promotion extends Model
      */
     public function save(): bool
     {
+        if ($this->persistedId !== null && $this->id !== $this->persistedId) {
+            $this->addError('id', Craft::t('search-manager', 'Promotion not found'));
+            return false;
+        }
+
+        if ($this->id !== null && self::findById($this->id) === null) {
+            $this->addError('id', Craft::t('search-manager', 'Promotion not found'));
+            return false;
+        }
+
         if (!$this->validate()) {
             $this->logError('Promotion validation failed', [
                 'errors' => $this->getErrors(),
@@ -340,10 +353,14 @@ class Promotion extends Model
 
             if ($this->id) {
                 // Update existing
-                Craft::$app->getDb()
+                $affectedRows = Craft::$app->getDb()
                     ->createCommand()
                     ->update('{{%searchmanager_promotions}}', $attributes, ['id' => $this->id])
                     ->execute();
+                if ($affectedRows === 0 && !$this->storedUpdateMatches($attributes)) {
+                    $this->addError('id', Craft::t('search-manager', 'Promotion not found'));
+                    return false;
+                }
             } else {
                 // Insert new
                 $attributes['dateCreated'] = Db::prepareDateForDb(new \DateTime());
@@ -355,6 +372,7 @@ class Promotion extends Model
                     ->execute();
 
                 $this->id = (int)Craft::$app->getDb()->getLastInsertID();
+                $this->persistedId = $this->id;
             }
 
             $this->logInfo('Promotion saved', [
@@ -365,11 +383,35 @@ class Promotion extends Model
 
             return true;
         } catch (\Throwable $e) {
+            $this->addError('id', Craft::t('search-manager', 'Could not save promotion'));
             $this->logError('Failed to save promotion', [
                 'error' => $e->getMessage(),
             ]);
             return false;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    private function storedUpdateMatches(array $attributes): bool
+    {
+        $row = (new Query())
+            ->from('{{%searchmanager_promotions}}')
+            ->where(['id' => $this->id])
+            ->one();
+        if (!is_array($row)) {
+            return false;
+        }
+
+        unset($attributes['dateUpdated']);
+        foreach ($attributes as $name => $value) {
+            if ($value === null ? $row[$name] !== null : (string)$row[$name] !== (string)$value) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

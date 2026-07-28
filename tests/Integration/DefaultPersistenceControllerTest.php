@@ -308,6 +308,100 @@ final class DefaultPersistenceControllerTest extends TestCase
         self::assertSame([], $this->settings->saveCalls);
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function defaultRenameFamilies(): iterable
+    {
+        yield 'backend' => ['backend'];
+        yield 'widget' => ['widget'];
+    }
+
+    #[DataProvider('defaultRenameFamilies')]
+    public function testControllerRenameAtomicallyKeepsActiveDefaultSelected(string $family): void
+    {
+        $targetId = $family === 'backend'
+            ? $this->insertBackend('rename-owner', true)
+            : $this->insertWidget('rename-owner', true);
+        $oldHandle = self::PREFIX . '-rename-owner';
+        $newHandle = self::PREFIX . '-renamed-owner';
+        $this->setPersistedDefault($family, $oldHandle);
+        $this->actAsEditor($family);
+
+        $payload = $this->createPayload($family, 'renamed-owner', true);
+        $payload[$family === 'backend' ? 'backendId' : 'configId'] = $targetId;
+        $this->withRequest('POST', 'text/html', $payload);
+
+        $controller = $family === 'backend'
+            ? new Pr127BackendsController('backends', SearchManager::$plugin)
+            : new Pr127WidgetsController('widgets', SearchManager::$plugin);
+        $result = $controller->actionSave();
+
+        self::assertInstanceOf(Response::class, $result);
+        self::assertTrue($controller->saveSucceeded);
+        self::assertNull($controller->saveError);
+        self::assertSame($newHandle, $this->persistedDefault($family));
+        self::assertSame($newHandle, $this->effectiveDefault($family));
+        self::assertSame(
+            $newHandle,
+            (new Query())
+                ->select('handle')
+                ->from($family === 'backend'
+                    ? '{{%searchmanager_backends}}'
+                    : '{{%searchmanager_widget_configs}}')
+                ->where(['id' => $targetId])
+                ->scalar(),
+        );
+        self::assertSame(
+            [[$family === 'backend' ? 'defaultBackendHandle' : 'defaultWidgetHandle']],
+            $this->settings->saveCalls,
+        );
+        self::assertCount(1, array_filter(
+            $controller->infoLogs,
+            static fn(array $log): bool => stripos($log['message'], 'default') !== false,
+        ));
+    }
+
+    #[DataProvider('defaultRenameFamilies')]
+    public function testOwnerRenameTransitionRollsBackWhenDefaultPersistenceFails(string $family): void
+    {
+        $targetId = $family === 'backend'
+            ? $this->insertBackend('rename-rollback', true)
+            : $this->insertWidget('rename-rollback', true);
+        $oldHandle = self::PREFIX . '-rename-rollback';
+        $this->setPersistedDefault($family, $oldHandle);
+        $this->settings->failWrites = true;
+        if ($family === 'backend') {
+            $resource = ConfiguredBackend::findById($targetId);
+            self::assertNotNull($resource);
+            $resource->handle = self::PREFIX . '-rename-rollback-new';
+            $saved = $resource->saveWithDefaultHandleTransition();
+        } else {
+            $resource = SearchManager::$plugin->widgetConfigs->getById($targetId);
+            self::assertNotNull($resource);
+            $resource->handle = self::PREFIX . '-rename-rollback-new';
+            $saved = SearchManager::$plugin->widgetConfigs->saveWithDefaultHandleTransition($resource);
+        }
+
+        self::assertFalse($saved);
+        self::assertSame($oldHandle, $this->persistedDefault($family));
+        self::assertSame($oldHandle, $this->effectiveDefault($family));
+        self::assertSame(
+            $oldHandle,
+            (new Query())
+                ->select('handle')
+                ->from($family === 'backend'
+                    ? '{{%searchmanager_backends}}'
+                    : '{{%searchmanager_widget_configs}}')
+                ->where(['id' => $targetId])
+                ->scalar(),
+        );
+        self::assertSame(
+            [[$family === 'backend' ? 'defaultBackendHandle' : 'defaultWidgetHandle']],
+            $this->settings->saveCalls,
+        );
+    }
+
     private function actAsManageOnly(string $family): void
     {
         $permission = $family === 'backend'

@@ -58,6 +58,8 @@ class SearchIndex extends Model
 
     public ?int $id = null;
 
+    private ?int $persistedId = null;
+
     public string $name = '';
 
     public string $handle = '';
@@ -720,6 +722,7 @@ class SearchIndex extends Model
 
                 if ($metadataRow) {
                     $model->id = (int)$metadataRow['id'];
+                    $model->persistedId = $model->id;
                     $model->lastIndexed = self::convertToLocalTime($metadataRow['lastIndexed']);
                     $model->documentCount = (int)$metadataRow['documentCount'];
                 }
@@ -897,6 +900,7 @@ class SearchIndex extends Model
 
                     // Use database metadata for stats
                     $model->id = (int)$metadataRow['id'];
+                    $model->persistedId = $model->id;
                     $model->lastIndexed = self::convertToLocalTime($metadataRow['lastIndexed']);
                     $model->documentCount = (int)$metadataRow['documentCount'];
                 } else {
@@ -1039,6 +1043,7 @@ class SearchIndex extends Model
     {
         $model = new self();
         $model->id = (int)$row['id'];
+        $model->persistedId = $model->id;
         $model->name = $row['name'];
         $model->handle = $row['handle'];
         $model->elementType = $row['elementType'];
@@ -1143,12 +1148,25 @@ class SearchIndex extends Model
     public function save(): bool
     {
         $this->rebuildQueuedOnLastSave = false;
+        if (!$this->persistedIdentityIsUnchanged()) {
+            return false;
+        }
 
-        // Prevent saving config indices - they should only be modified via config file
-        if ($this->source === 'config') {
+        $previousRow = $this->id ? $this->existingPersistenceRow() : null;
+
+        if ($this->id !== null && $previousRow === null) {
+            $this->addError('id', Craft::t('search-manager', 'Index not found'));
+            return false;
+        }
+
+        // Prevent saving config indices - persisted source is authoritative for
+        // updates, even if a caller mutates the model source.
+        $authoritativeSource = $previousRow['source'] ?? $this->source;
+        if ($authoritativeSource === 'config') {
+            $this->addError('source', Craft::t('search-manager', 'Could not save index'));
             $this->logError('Cannot save config index - modify config file instead', [
                 'handle' => $this->handle,
-                'source' => $this->source,
+                'source' => $authoritativeSource,
             ]);
             return false;
         }
@@ -1163,7 +1181,6 @@ class SearchIndex extends Model
 
         $db = Craft::$app->getDb();
         $originalId = $this->id;
-        $previousRow = $this->id ? $this->existingPersistenceRow() : null;
         if ($previousRow !== null && $previousRow['handle'] !== $this->handle) {
             $usages = SearchManager::$plugin->dependencies->getIndexUsages($previousRow['handle']);
             if ($usages !== []) {
@@ -1198,7 +1215,7 @@ class SearchIndex extends Model
                 'skipEntriesWithoutUrl' => (int)$this->skipEntriesWithoutUrl,
                 'splitSections' => (int)$this->splitSections,
                 'retrievableFields' => json_encode(self::normalizeRetrievableFields($this->retrievableFields)),
-                'source' => $this->source,
+                'source' => $authoritativeSource,
                 'lastIndexed' => $this->lastIndexed ? Db::prepareDateForDb($this->lastIndexed) : null,
                 'documentCount' => $this->documentCount,
                 'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
@@ -1208,10 +1225,19 @@ class SearchIndex extends Model
                 $queueRebuild = $this->shouldQueueRebuildAfterSave($previousRow, $attributes);
 
                 // Update existing
-                $db
+                $affectedRows = $db
                     ->createCommand()
-                    ->update('{{%searchmanager_indices}}', $attributes, ['id' => $this->id])
+                    ->update('{{%searchmanager_indices}}', $attributes, [
+                        'id' => $this->id,
+                        'handle' => $previousRow['handle'],
+                        'source' => $previousRow['source'],
+                    ])
                     ->execute();
+                if ($affectedRows === 0 && !$this->storedUpdateMatches($attributes)) {
+                    $transaction->rollBack();
+                    $this->addError('id', Craft::t('search-manager', 'Index not found'));
+                    return false;
+                }
 
                 $this->saveIndexSites($this->getSiteIds());
                 $transaction->commit();
@@ -1234,6 +1260,7 @@ class SearchIndex extends Model
                     ->execute();
 
                 $this->id = (int)$db->getLastInsertID();
+                $this->persistedId = $this->id;
 
                 $this->saveIndexSites($this->getSiteIds());
                 $transaction->commit();
@@ -1249,6 +1276,7 @@ class SearchIndex extends Model
             }
             $this->id = $originalId;
 
+            $this->addError('id', Craft::t('search-manager', 'Could not save index'));
             $this->logError('Failed to save index', [
                 'handle' => $this->handle,
                 'error' => $e->getMessage(),
@@ -1288,16 +1316,18 @@ class SearchIndex extends Model
                 'skipEntriesWithoutUrl',
                 'splitSections',
                 'retrievableFields',
+                'source',
             ])
             ->from('{{%searchmanager_indices}}')
             ->where(['id' => $this->id])
             ->one();
 
-        if ($row === false) {
+        if (!is_array($row)) {
             return null;
         }
 
         return [
+            'id' => (int)$row['id'],
             'name' => (string)$row['name'],
             'handle' => (string)$row['handle'],
             'elementType' => (string)$row['elementType'],
@@ -1314,7 +1344,31 @@ class SearchIndex extends Model
             'skipEntriesWithoutUrl' => $row['skipEntriesWithoutUrl'],
             'splitSections' => $row['splitSections'],
             'retrievableFields' => $row['retrievableFields'],
+            'source' => (string)$row['source'],
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    private function storedUpdateMatches(array $attributes): bool
+    {
+        $row = (new Query())
+            ->from('{{%searchmanager_indices}}')
+            ->where(['id' => $this->id])
+            ->one();
+        if (!is_array($row)) {
+            return false;
+        }
+
+        unset($attributes['dateUpdated']);
+        foreach ($attributes as $name => $value) {
+            if ($value === null ? $row[$name] !== null : (string)$row[$name] !== (string)$value) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -1709,6 +1763,22 @@ class SearchIndex extends Model
      */
     public function syncMetadataFromConfig(): bool
     {
+        if (!$this->persistedIdentityIsUnchanged()) {
+            return false;
+        }
+
+        $previousRow = $this->id ? $this->existingPersistenceRow() : null;
+        if ($this->id !== null && $previousRow === null) {
+            $this->addError('id', Craft::t('search-manager', 'Index not found'));
+            return false;
+        }
+        if ($previousRow !== null
+            && ($previousRow['source'] !== 'config' || $previousRow['handle'] !== $this->handle)
+        ) {
+            $this->addError('source', Craft::t('search-manager', 'Could not save index'));
+            return false;
+        }
+
         if ($this->source !== 'config') {
             $this->logDebug('Sync skipped - not config', [
                 'source' => $this->source,
@@ -1717,6 +1787,8 @@ class SearchIndex extends Model
             ]);
             return false;
         }
+
+        $transaction = null;
 
         try {
             // Load fresh config values efficiently (no database queries, targeted config load)
@@ -1734,7 +1806,6 @@ class SearchIndex extends Model
                 return false;
             }
 
-            $previousRow = $this->id ? $this->existingPersistenceRow() : null;
             $criteriaPersistenceChanged = $previousRow !== null
                 && $attributes['criteria'] === null
                 && $previousRow['criteria'] !== null;
@@ -1759,12 +1830,22 @@ class SearchIndex extends Model
             $siteIds = $attributes['siteIds'];
             unset($attributes['siteIds']);
             $attributes['dateUpdated'] = Db::prepareDateForDb(new \DateTime());
+            $transaction = Craft::$app->getDb()->beginTransaction();
 
             if ($this->id) {
-                Craft::$app->getDb()
+                $affectedRows = Craft::$app->getDb()
                     ->createCommand()
-                    ->update('{{%searchmanager_indices}}', $attributes, ['id' => $this->id])
+                    ->update('{{%searchmanager_indices}}', $attributes, [
+                        'id' => $this->id,
+                        'handle' => $previousRow['handle'],
+                        'source' => 'config',
+                    ])
                     ->execute();
+                if ($affectedRows === 0 && !$this->storedUpdateMatches($attributes)) {
+                    $transaction->rollBack();
+                    $this->addError('id', Craft::t('search-manager', 'Index not found'));
+                    return false;
+                }
             } else {
                 $attributes['lastIndexed'] = $this->lastIndexed ? Db::prepareDateForDb($this->lastIndexed) : null;
                 $attributes['documentCount'] = $this->documentCount;
@@ -1777,9 +1858,11 @@ class SearchIndex extends Model
                     ->execute();
 
                 $this->id = (int)Craft::$app->getDb()->getLastInsertID();
+                $this->persistedId = $this->id;
             }
 
             $this->saveIndexSites($siteIds);
+            $transaction->commit();
             $attributes['siteIds'] = $siteIds;
             $this->applyConfigPersistenceAttributesToModel($attributes);
 
@@ -1790,6 +1873,10 @@ class SearchIndex extends Model
             }
             return true;
         } catch (\Throwable $e) {
+            if ($transaction?->getIsActive()) {
+                $transaction->rollBack();
+            }
+            $this->addError('id', Craft::t('search-manager', 'Could not save index'));
             $this->logError('Failed to sync config metadata', [
                 'handle' => $this->handle,
                 'error' => $e->getMessage(),
@@ -1803,6 +1890,10 @@ class SearchIndex extends Model
      */
     public function updateStats(int $documentCount): bool
     {
+        if (!$this->persistedIdentityIsUnchanged()) {
+            return false;
+        }
+
         // Config indices: create/update database record for stats only
         if (!$this->id && $this->source === 'config') {
             // Load fresh config values to avoid saving stale metadata
@@ -1856,33 +1947,66 @@ class SearchIndex extends Model
         }
 
         // Database indices: save stats to database
+        $stored = $this->id ? $this->existingPersistenceRow() : null;
+        if ($this->id === null || $stored === null) {
+            $this->addError('id', Craft::t('search-manager', 'Index not found'));
+            return false;
+        }
+
+        $previousLastIndexed = $this->lastIndexed;
+        $previousDocumentCount = $this->documentCount;
+
         try {
             $this->lastIndexed = new \DateTime();
             $this->documentCount = $documentCount;
+            $attributes = [
+                'lastIndexed' => Db::prepareDateForDb($this->lastIndexed),
+                'documentCount' => $this->documentCount,
+                'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
+            ];
 
             $result = Craft::$app->getDb()
                 ->createCommand()
                 ->update(
                     '{{%searchmanager_indices}}',
+                    $attributes,
                     [
-                        'lastIndexed' => Db::prepareDateForDb($this->lastIndexed),
-                        'documentCount' => $this->documentCount,
-                        'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
+                        'id' => $this->id,
+                        'handle' => $stored['handle'],
+                        'source' => $stored['source'],
                     ],
-                    ['id' => $this->id]
                 )
                 ->execute();
+            if ($result === 0 && !$this->storedUpdateMatches($attributes)) {
+                $this->lastIndexed = $previousLastIndexed;
+                $this->documentCount = $previousDocumentCount;
+                $this->addError('id', Craft::t('search-manager', 'Index not found'));
+                return false;
+            }
 
             self::clearCache();
 
-            return $result !== false;
+            return true;
         } catch (\Throwable $e) {
+            $this->lastIndexed = $previousLastIndexed;
+            $this->documentCount = $previousDocumentCount;
+            $this->addError('id', Craft::t('search-manager', 'Could not save index'));
             $this->logError('Failed to update index stats', [
                 'id' => $this->id,
                 'error' => $e->getMessage(),
             ]);
             return false;
         }
+    }
+
+    private function persistedIdentityIsUnchanged(): bool
+    {
+        if ($this->persistedId === null || $this->id === $this->persistedId) {
+            return true;
+        }
+
+        $this->addError('id', Craft::t('search-manager', 'Index not found'));
+        return false;
     }
 
     /**

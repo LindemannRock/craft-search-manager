@@ -63,6 +63,8 @@ class QueryRule extends Model
 
     public ?int $id = null;
 
+    private ?int $persistedId = null;
+
     public string $name = '';
 
     public ?string $indexHandle = null; // null = applies to all indices
@@ -436,6 +438,7 @@ class QueryRule extends Model
     {
         $model = new self();
         $model->id = (int)$row['id'];
+        $model->persistedId = $model->id;
         $model->name = $row['name'];
         $model->indexHandle = $row['indexHandle'];
         $model->matchType = $row['matchType'];
@@ -472,6 +475,16 @@ class QueryRule extends Model
      */
     public function save(): bool
     {
+        if ($this->persistedId !== null && $this->id !== $this->persistedId) {
+            $this->addError('id', Craft::t('search-manager', 'Query rule not found'));
+            return false;
+        }
+
+        if ($this->id !== null && self::findById($this->id) === null) {
+            $this->addError('id', Craft::t('search-manager', 'Query rule not found'));
+            return false;
+        }
+
         if (!$this->validate()) {
             $this->logError('Query rule validation failed', [
                 'errors' => $this->getErrors(),
@@ -495,10 +508,14 @@ class QueryRule extends Model
 
             if ($this->id) {
                 // Update existing
-                Craft::$app->getDb()
+                $affectedRows = Craft::$app->getDb()
                     ->createCommand()
                     ->update('{{%searchmanager_query_rules}}', $attributes, ['id' => $this->id])
                     ->execute();
+                if ($affectedRows === 0 && !$this->storedUpdateMatches($attributes)) {
+                    $this->addError('id', Craft::t('search-manager', 'Query rule not found'));
+                    return false;
+                }
             } else {
                 // Insert new
                 $attributes['dateCreated'] = Db::prepareDateForDb(new \DateTime());
@@ -510,6 +527,7 @@ class QueryRule extends Model
                     ->execute();
 
                 $this->id = (int)Craft::$app->getDb()->getLastInsertID();
+                $this->persistedId = $this->id;
             }
 
             $this->logInfo('Query rule saved', [
@@ -520,11 +538,35 @@ class QueryRule extends Model
 
             return true;
         } catch (\Throwable $e) {
+            $this->addError('id', Craft::t('search-manager', 'Could not save query rule'));
             $this->logError('Failed to save query rule', [
                 'error' => $e->getMessage(),
             ]);
             return false;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    private function storedUpdateMatches(array $attributes): bool
+    {
+        $row = (new Query())
+            ->from('{{%searchmanager_query_rules}}')
+            ->where(['id' => $this->id])
+            ->one();
+        if (!is_array($row)) {
+            return false;
+        }
+
+        unset($attributes['dateUpdated']);
+        foreach ($attributes as $name => $value) {
+            if ($value === null ? $row[$name] !== null : (string)$row[$name] !== (string)$value) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

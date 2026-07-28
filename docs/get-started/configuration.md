@@ -250,6 +250,19 @@ Status sync automatically indexes entries that become live (postDate passed) or 
 
 Everything above can be managed from the CP. The sections below define backends, indices, widgets, and widget styles in code instead — useful when you want them version-controlled or duplicated across environments. Each also has its own CP screen for one-off edits: **Search Manager → Backends**, **→ Indices**, **→ Widgets**, and **→ Widgets → Styles**.
 
+## Stable resource handles
+
+Handles are reference keys, not display labels. Search Manager prevents a database-managed handle from changing while another effective resource still refers to it:
+
+- A backend handle is protected while an index or the active default backend uses it.
+- A widget handle is protected while it is the active default widget.
+- A widget style handle is protected while an effective widget uses it.
+- A public API-key handle is protected while an effective widget uses it.
+
+To rename one of these resources, first reassign every dependent resource or select another default, save that owning change, and then rename the now-unused resource. Search Manager does not rewrite consumer references or silently choose another resource after a rename. Resources with no effective references remain renameable.
+
+Config definitions take precedence over database rows with the same handle. Resolve dependencies against the effective config resource, and edit the config definition directly when it owns the resource shown in the Control Panel.
+
 ## Backends configuration
 
 Backends are defined as named instances in the config file. Each backend has a unique handle, a type, and type-specific settings:

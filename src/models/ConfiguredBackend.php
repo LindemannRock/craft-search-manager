@@ -41,6 +41,8 @@ class ConfiguredBackend extends Model
 
     public ?int $id = null;
 
+    private ?int $persistedId = null;
+
     public string $name = '';
 
     public string $handle = '';
@@ -617,6 +619,7 @@ class ConfiguredBackend extends Model
     {
         $model = new self();
         $model->id = (int)$row['id'];
+        $model->persistedId = $model->id;
         $model->name = $row['name'];
         $model->handle = $row['handle'];
         $model->backendType = $row['backendType'];
@@ -665,6 +668,72 @@ class ConfiguredBackend extends Model
      */
     public function save(): bool
     {
+        return $this->saveAuthoritatively(false);
+    }
+
+    /**
+     * Save a renamed active default and atomically keep it selected.
+     *
+     * This is the explicit owner transition used by the control panel. Direct
+     * saves never rewrite the default handle.
+     *
+     * @since 5.54.0
+     */
+    public function saveWithDefaultHandleTransition(): bool
+    {
+        return $this->saveAuthoritatively(true);
+    }
+
+    private function saveAuthoritatively(bool $transitionDefault): bool
+    {
+        if ($this->persistedId !== null && $this->id !== $this->persistedId) {
+            $this->addError('id', Craft::t('search-manager', 'Backend not found'));
+            return false;
+        }
+
+        $stored = null;
+        if ($this->id !== null) {
+            $stored = self::findById($this->id);
+            if ($stored === null) {
+                $this->addError('id', Craft::t('search-manager', 'Backend not found'));
+                return false;
+            }
+
+            if ($stored->handle !== $this->handle) {
+                $usages = \lindemannrock\searchmanager\SearchManager::$plugin->dependencies
+                    ->getBackendUsages($stored->handle);
+                if ($usages !== []) {
+                    $this->addError(
+                        'handle',
+                        \lindemannrock\searchmanager\SearchManager::$plugin->dependencies
+                            ->formatHandleChangeError($stored->name, $usages),
+                    );
+                    return false;
+                }
+
+                $settings = \lindemannrock\searchmanager\SearchManager::$plugin->getSettings();
+                $isActiveDefault = $settings->defaultBackendHandle === $stored->handle;
+                if ($isActiveDefault && !$transitionDefault) {
+                    $this->addError(
+                        'handle',
+                        Craft::t('search-manager', 'Cannot change the handle for the default backend. Set another backend as default first.'),
+                    );
+                    return false;
+                }
+                if ($transitionDefault && (!$isActiveDefault || $settings->isOverriddenByConfig('defaultBackendHandle'))) {
+                    $this->addError(
+                        'handle',
+                        Craft::t('search-manager', 'Cannot change the handle for the default backend. Set another backend as default first.'),
+                    );
+                    return false;
+                }
+            } elseif ($transitionDefault) {
+                $transitionDefault = false;
+            }
+        } elseif ($transitionDefault) {
+            return false;
+        }
+
         if (!$this->validate()) {
             $this->logError('Backend validation failed', [
                 'handle' => $this->handle ?? 'unknown',
@@ -672,6 +741,10 @@ class ConfiguredBackend extends Model
             ]);
             return false;
         }
+
+        $transaction = $transitionDefault ? Craft::$app->getDb()->beginTransaction() : null;
+        $settings = null;
+        $previousDefault = null;
 
         try {
             // Don't json_encode settings - the JSON column handles it,
@@ -690,10 +763,20 @@ class ConfiguredBackend extends Model
             ];
 
             if ($this->id) {
-                Craft::$app->getDb()
+                $affectedRows = Craft::$app->getDb()
                     ->createCommand()
-                    ->update('{{%searchmanager_backends}}', $attributes, ['id' => $this->id])
+                    ->update('{{%searchmanager_backends}}', $attributes, [
+                        'id' => $this->id,
+                        'handle' => $stored?->handle,
+                    ])
                     ->execute();
+                if ($affectedRows === 0 && !$this->storedUpdateMatches($attributes)) {
+                    $this->addError('id', Craft::t('search-manager', 'Backend not found'));
+                    if ($transaction?->getIsActive()) {
+                        $transaction->rollBack();
+                    }
+                    return false;
+                }
             } else {
                 $attributes['dateCreated'] = Db::prepareDateForDb(new \DateTime());
                 $attributes['uid'] = StringHelper::UUID();
@@ -704,17 +787,61 @@ class ConfiguredBackend extends Model
                     ->execute();
 
                 $this->id = (int)Craft::$app->getDb()->getLastInsertID();
+                $this->persistedId = $this->id;
+            }
+
+            if ($transitionDefault) {
+                $settings = \lindemannrock\searchmanager\SearchManager::$plugin->getSettings();
+                $previousDefault = $settings->defaultBackendHandle;
+                $settings->defaultBackendHandle = $this->handle;
+                if (!$settings->saveToDatabase(['defaultBackendHandle'])) {
+                    $settings->defaultBackendHandle = $previousDefault;
+                    $transaction?->rollBack();
+                    $this->addError('handle', Craft::t('search-manager', 'Failed to update default backend'));
+                    return false;
+                }
+                $transaction?->commit();
             }
 
             $this->logInfo('Backend saved', ['handle' => $this->handle]);
             return true;
         } catch (\Throwable $e) {
+            if ($transaction?->getIsActive()) {
+                $transaction->rollBack();
+            }
+            if ($settings !== null) {
+                $settings->defaultBackendHandle = $previousDefault;
+            }
+            $this->addError('id', Craft::t('search-manager', 'Could not save backend'));
             $this->logError('Failed to save backend', [
                 'handle' => $this->handle,
                 'error' => $e->getMessage(),
             ]);
             return false;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    private function storedUpdateMatches(array $attributes): bool
+    {
+        $row = (new Query())
+            ->from('{{%searchmanager_backends}}')
+            ->where(['id' => $this->id])
+            ->one();
+        if (!is_array($row)) {
+            return false;
+        }
+
+        unset($attributes['dateUpdated']);
+        foreach ($attributes as $name => $value) {
+            if ($value === null ? $row[$name] !== null : (string)$row[$name] !== (string)$value) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

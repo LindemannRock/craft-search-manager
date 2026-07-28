@@ -19,6 +19,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\models\WidgetStyle;
+use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 use yii\base\InvalidConfigException;
 
@@ -48,6 +49,11 @@ class WidgetConfigService extends Component
      */
     private ?array $_configFileConfigs = null;
 
+    /**
+     * @var \WeakMap<WidgetConfig, int>
+     */
+    private \WeakMap $persistedIds;
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -56,6 +62,7 @@ class WidgetConfigService extends Component
     public function init(): void
     {
         parent::init();
+        $this->persistedIds = new \WeakMap();
         $this->setLoggingHandle('search-manager');
     }
 
@@ -403,10 +410,61 @@ class WidgetConfigService extends Component
      */
     public function save(WidgetConfig $config): bool
     {
-        // Prevent saving config-file configs
-        if ($config->source === 'config') {
+        return $this->saveAuthoritatively($config, false);
+    }
+
+    /**
+     * Save a renamed active default and atomically keep it selected.
+     *
+     * @since 5.54.0
+     */
+    public function saveWithDefaultHandleTransition(WidgetConfig $config): bool
+    {
+        return $this->saveAuthoritatively($config, true);
+    }
+
+    private function saveAuthoritatively(WidgetConfig $config, bool $transitionDefault): bool
+    {
+        if (isset($this->persistedIds[$config]) && $config->id !== $this->persistedIds[$config]) {
+            $config->addError('id', Craft::t('search-manager', 'Widget config not found'));
+            return false;
+        }
+
+        $stored = null;
+        if ($config->id !== null) {
+            $stored = $this->getById($config->id);
+            if ($stored === null) {
+                $config->addError('id', Craft::t('search-manager', 'Widget config not found'));
+                return false;
+            }
+        }
+
+        // Prevent saving config-file configs. Persisted rows derive their
+        // source from storage, not caller-mutated model state.
+        if ($stored === null && $config->source === 'config') {
             $this->logWarning('Cannot save config-file widget config', ['handle' => $config->handle]);
             return false;
+        }
+
+        if ($stored !== null && $stored->handle !== $config->handle) {
+            $settings = SearchManager::$plugin->getSettings();
+            $isActiveDefault = $settings->defaultWidgetHandle === $stored->handle;
+            if ($isActiveDefault && !$transitionDefault) {
+                $config->addError(
+                    'handle',
+                    Craft::t('search-manager', 'Cannot change the handle for the default widget. Set another widget as default first.'),
+                );
+                return false;
+            }
+            if ($transitionDefault && (!$isActiveDefault || $settings->isOverriddenByConfig('defaultWidgetHandle'))) {
+                $config->addError(
+                    'handle',
+                    Craft::t('search-manager', 'Cannot change the handle for the default widget. Set another widget as default first.'),
+                );
+                return false;
+            }
+        } elseif ($transitionDefault) {
+            $transitionDefault = false;
         }
 
         if (!$config->validate()) {
@@ -415,30 +473,92 @@ class WidgetConfigService extends Component
 
         $now = Db::prepareDateForDb(new \DateTime());
         $data = $config->prepareForDb();
+        $transaction = $transitionDefault ? Craft::$app->getDb()->beginTransaction() : null;
+        $settings = null;
+        $previousDefault = null;
 
-        if ($config->id) {
-            // Update
-            $data['dateUpdated'] = $now;
-            Craft::$app->db->createCommand()
-                ->update(self::TABLE, $data, ['id' => $config->id])
-                ->execute();
-        } else {
-            // Insert
-            $data['dateCreated'] = $now;
-            $data['dateUpdated'] = $now;
-            $data['uid'] = StringHelper::UUID();
+        try {
+            if ($config->id) {
+                // Update
+                $data['dateUpdated'] = $now;
+                $affectedRows = Craft::$app->db->createCommand()
+                    ->update(self::TABLE, $data, [
+                        'id' => $config->id,
+                        'handle' => $stored?->handle,
+                    ])
+                    ->execute();
+                if ($affectedRows === 0 && !$this->storedUpdateMatches($config->id, $data)) {
+                    $config->addError('id', Craft::t('search-manager', 'Widget config not found'));
+                    if ($transaction?->getIsActive()) {
+                        $transaction->rollBack();
+                    }
+                    return false;
+                }
+            } else {
+                // Insert
+                $data['dateCreated'] = $now;
+                $data['dateUpdated'] = $now;
+                $data['uid'] = StringHelper::UUID();
 
-            Craft::$app->db->createCommand()
-                ->insert(self::TABLE, $data)
-                ->execute();
+                Craft::$app->db->createCommand()
+                    ->insert(self::TABLE, $data)
+                    ->execute();
 
-            $config->id = (int) Craft::$app->db->getLastInsertID();
+                $config->id = (int) Craft::$app->db->getLastInsertID();
+                $this->persistedIds[$config] = $config->id;
+            }
+
+            if ($transitionDefault) {
+                $settings = SearchManager::$plugin->getSettings();
+                $previousDefault = $settings->defaultWidgetHandle;
+                $settings->defaultWidgetHandle = $config->handle;
+                if (!$settings->saveToDatabase(['defaultWidgetHandle'])) {
+                    $settings->defaultWidgetHandle = $previousDefault;
+                    $transaction?->rollBack();
+                    $config->addError('handle', Craft::t('search-manager', 'Failed to update default widget'));
+                    return false;
+                }
+                $transaction?->commit();
+            }
+
+            // Clear cache
+            $this->_defaultConfig = null;
+
+            $this->logInfo('Widget config saved', ['handle' => $config->handle]);
+
+            return true;
+        } catch (\Throwable $e) {
+            if ($transaction?->getIsActive()) {
+                $transaction->rollBack();
+            }
+            if ($settings !== null) {
+                $settings->defaultWidgetHandle = $previousDefault;
+            }
+            $config->addError('id', Craft::t('search-manager', 'Could not save widget config'));
+            $this->logError('Failed to save widget config', [
+                'handle' => $config->handle,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function storedUpdateMatches(int $id, array $data): bool
+    {
+        $row = (new Query())->from(self::TABLE)->where(['id' => $id])->one();
+        if (!is_array($row)) {
+            return false;
         }
 
-        // Clear cache
-        $this->_defaultConfig = null;
-
-        $this->logInfo('Widget config saved', ['handle' => $config->handle]);
+        unset($data['dateUpdated']);
+        foreach ($data as $name => $value) {
+            if ($value === null ? $row[$name] !== null : (string)$row[$name] !== (string)$value) {
+                return false;
+            }
+        }
 
         return true;
     }
@@ -527,6 +647,7 @@ class WidgetConfigService extends Component
     {
         $config = new WidgetConfig();
         $config->id = (int) $row['id'];
+        $this->persistedIds[$config] = $config->id;
         $config->handle = $row['handle'];
         $config->name = $row['name'];
         $config->type = $row['type'] ?? 'modal';

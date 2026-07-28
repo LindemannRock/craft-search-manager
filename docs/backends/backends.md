@@ -110,7 +110,9 @@ Set your default backend via `defaultBackendHandle`:
 ],
 ```
 
-The active default backend cannot be deleted or disabled — select another default first. This guard also applies to direct model deletion, so code cannot bypass the Control Panel check. When you create or save a backend while the database-managed default is empty, missing, or disabled, Search Manager assigns the first enabled backend deterministically. A `defaultBackendHandle` set in `config/search-manager.php` remains authoritative and cannot be changed in the Control Panel.
+The active default backend cannot be deleted, disabled, or renamed — select another default first. A backend used by an effective index cannot be renamed either. Reassign the indices and default, save those owning changes, and then rename the unused backend. Search Manager does not rewrite index references or silently fall back to another backend.
+
+These guards also apply to direct model saves and deletion, so code cannot bypass the Control Panel checks. The CP can keep a database-managed active default selected during a rename because it performs the backend rename and default transition together. Direct model callers must make the default transition explicitly. When you create or save a backend while the database-managed default is empty, missing, or disabled, Search Manager assigns the first enabled backend deterministically. A `defaultBackendHandle` set in `config/search-manager.php` remains authoritative and cannot be changed in the Control Panel.
 
 ## Multiple backends
 

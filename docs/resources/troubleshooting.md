@@ -87,6 +87,26 @@ If an index was already removed outside this guarded workflow, or its config def
 
 All index selectors use the same effective catalogue. A config index with an Error is not offered for a new selection, but remains visible when it is already selected so you can correct the record. Warning-only indices remain available. A disabled but otherwise valid index also remains available and is marked **Disabled** because disabled indices are still valid configuration references.
 
+## Backend, widget, style, or API-key handle cannot be changed
+
+**Symptom:** Saving a new handle reports that the resource is in use or is the active default.
+
+**Cause:** Handles are stable reference keys. Search Manager blocks a rename when an effective dependency or active default still stores the old handle:
+
+- Indices can reference backend handles.
+- The active default can reference a backend or widget handle.
+- Widgets can reference widget-style and public API-key handles.
+
+Config-defined resources take precedence over database rows with the same handle, so the dependency shown in the error may come from `config/search-manager.php` even when a same-handle database row exists.
+
+**Fix:**
+
+1. Reassign each listed index or widget to another resource, or select another default.
+2. Save those owning changes and confirm they now resolve to the replacement.
+3. Rename the resource after it is unused.
+
+Search Manager does not cascade a rename, rewrite consumer references, or disable resources as a workaround. If the resource has no effective references, its handle remains editable. For a config-defined resource or dependency, make the owning change in `config/search-manager.php`.
+
 ## Indexing is slow
 
 - **Adjust batch size**: The `batchSize` setting (default: 100) controls how many elements are loaded per batch. Increase to 250–500 for faster indexing on servers with plenty of memory. On shared or memory-constrained hosting, **lower it** to 25–50 to prevent out-of-memory errors — the rebuild takes longer but completes reliably.
