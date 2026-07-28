@@ -569,7 +569,10 @@ class ApiKey extends Model
         } catch (\Throwable $e) {
             $this->addError('id', Craft::t('search-manager', 'Couldn’t save API key'));
             $this->logError('Failed to save API key', [
-                'error' => $e->getMessage(),
+                'operation' => 'save',
+                'resource' => 'api-key',
+                'handle' => $this->handle,
+                'exception' => $e::class,
             ]);
             return false;
         }

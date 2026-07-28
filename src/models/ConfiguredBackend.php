@@ -814,8 +814,10 @@ class ConfiguredBackend extends Model
             }
             $this->addError('id', Craft::t('search-manager', 'Could not save backend'));
             $this->logError('Failed to save backend', [
+                'operation' => 'save',
+                'resource' => 'backend',
                 'handle' => $this->handle,
-                'error' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
             return false;
         }
