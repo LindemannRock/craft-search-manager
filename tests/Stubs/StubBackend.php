@@ -33,6 +33,18 @@ final class StubBackend extends BackendService
     public bool $failIndex = false;
     public bool $failDelete = false;
 
+    /** @var list<string> */
+    public array $failBatchDeleteIndices = [];
+
+    /** @var list<string> */
+    public array $failDeleteIndices = [];
+
+    /** @var list<string> */
+    public array $throwBatchDeleteIndices = [];
+
+    /** @var list<string> */
+    public array $throwDeleteIndices = [];
+
     /** @var array<string, int|null> */
     public array $documentCounts = [];
 
@@ -155,7 +167,11 @@ final class StubBackend extends BackendService
     {
         $this->calls[] = ['method' => 'batchDelete', 'indexName' => $indexName, 'items' => $items];
 
-        return !$this->failBatchDelete;
+        if (in_array($indexName, $this->throwBatchDeleteIndices, true)) {
+            throw new \RuntimeException("Synthetic batch-delete failure for {$indexName}");
+        }
+
+        return !$this->failBatchDelete && !in_array($indexName, $this->failBatchDeleteIndices, true);
     }
 
     public function deleteOrphanDocuments(string $indexName, int $elementId, ?int $siteId, array $keepBackendIds): bool
@@ -170,12 +186,17 @@ final class StubBackend extends BackendService
             ]],
         ];
 
-        if (!$this->failBatchDelete && $keepBackendIds === []) {
+        if (in_array($indexName, $this->throwBatchDeleteIndices, true)) {
+            throw new \RuntimeException("Synthetic orphan-delete failure for {$indexName}");
+        }
+
+        $failed = $this->failBatchDelete || in_array($indexName, $this->failBatchDeleteIndices, true);
+        if (!$failed && $keepBackendIds === []) {
             $this->documentCounts[$indexName] = 0;
             $this->distinctParentCounts[$indexName . ':' . ($siteId ?? 'null')] = 0;
         }
 
-        return !$this->failBatchDelete;
+        return !$failed;
     }
 
     /**
@@ -198,7 +219,11 @@ final class StubBackend extends BackendService
             ],
         ];
 
-        if ($this->failDelete) {
+        if (in_array($indexName, $this->throwDeleteIndices, true)) {
+            throw new \RuntimeException("Synthetic delete failure for {$indexName}");
+        }
+
+        if ($this->failDelete || in_array($indexName, $this->failDeleteIndices, true)) {
             return [
                 'success' => false,
                 'existed' => null,

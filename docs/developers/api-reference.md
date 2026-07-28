@@ -119,10 +119,15 @@ SearchManager::$plugin->indexing->indexElement($entry);
 
 ### `indexElementNow(element)`
 
-Index a single element immediately, bypassing the pending-sync buffer.
+Index a single element immediately, bypassing the pending-sync buffer. The return value covers the whole inline operation: it is `true` only when every matching index writes successfully (or intentionally skips transformation) and every required stale-document cleanup succeeds. A transformer failure, an invalid transformed result, a failed backend write, or a failed criteria/URL cleanup makes the aggregate result `false`; Search Manager still attempts the element's other indices.
+
+Failed transformations and failed cleanups leave existing backend documents in place. That prevents an incomplete replacement from deleting working search data; fix the cause and retry the element or rebuild the affected index.
 
 ```php
-SearchManager::$plugin->indexing->indexElementNow($entry);
+$indexed = SearchManager::$plugin->indexing->indexElementNow($entry);
+if (!$indexed) {
+    Craft::warning("Entry {$entry->id} was not fully indexed.", 'my-module');
+}
 ```
 
 ### `rebuildIndex(indexHandle)`
@@ -131,15 +136,6 @@ Rebuild a specific index. This queues a background `RebuildIndexJob` and returns
 
 ```php
 SearchManager::$plugin->indexing->rebuildIndex('entries-en');
-```
-
-### `batchIndex(elements, indexHandle)`
-
-Batch-index multiple elements at once.
-
-```php
-$entries = \craft\elements\Entry::find()->section('blog')->all();
-SearchManager::$plugin->indexing->batchIndex($entries, 'entries-en');
 ```
 
 ### `rebuildAll()`

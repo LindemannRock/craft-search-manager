@@ -15,7 +15,7 @@ Need to add a field to every indexed document, skip indexing for certain element
 
 ## Index events
 
-Triggered when an element is indexed. These fire from both the direct per-element path (`IndexingService::indexElementNow()`) and the auto-sync batch path (`PendingSyncProcessor` draining the pending-sync buffer). Bulk rebuild paths (`IndexingService::batchIndex()`, `RebuildIndexJob`) do not fire these events — listen to `EVENT_AFTER_TRANSFORM` if you need coverage there.
+Triggered when an element is indexed. These fire from both the direct per-element path (`IndexingService::indexElementNow()`) and the auto-sync path that drains the pending-sync buffer. Full rebuilds use `RebuildIndexJob` and its internal rebuild batching plumbing; they do not fire Index events. Listen to `EVENT_AFTER_TRANSFORM` if your integration also needs to observe rebuild transformations.
 
 ### `EVENT_BEFORE_INDEX`
 
@@ -84,6 +84,8 @@ This is especially useful with AutoTransformer, where you don't control the tran
 
 Fired before the transformer runs. Set `$event->handled = true` to skip transformation entirely — the element won't be indexed for this index.
 
+An intentional handled skip is a successful no-op. It does not retry a pending-sync row, make inline indexing fail, or fail a rebuild. By contrast, a transformer construction error, an exception from the transformer or another transform listener, or an AFTER listener that leaves `document` as `null` is a failure. Pending syncs enter their normal retry/abandon lifecycle, `indexElementNow()` returns `false`, and rebuilds report the failed source elements after continuing with viable siblings.
+
 ```php
 use lindemannrock\searchmanager\events\TransformEvent;
 use lindemannrock\searchmanager\services\TransformerService;
@@ -103,7 +105,7 @@ Event::on(
 
 ### `EVENT_AFTER_TRANSFORM`
 
-Fired after the transformer produces the document data. Modify `$event->document` to add custom fields, remove sensitive content, or enrich the document before it's sent to the backend.
+Fired after the transformer produces the document data. Modify `$event->document` to add custom fields, remove sensitive content, or enrich the document before it's sent to the backend. Leave it as an array; setting it to `null` is treated as a failed transformation rather than an intentional skip.
 
 ```php
 Event::on(

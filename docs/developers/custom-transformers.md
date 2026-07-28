@@ -55,12 +55,14 @@ Choose one of these extension models:
 
 The `supports(ElementInterface $element)` method is required by `TransformerInterface`, but it is not used as a safety gate for an index-specific configured transformer override. If an index points at your class, Search Manager uses that class for that index. Choose the class carefully and keep one transformer focused on the element type it is assigned to.
 
-### Rebuild failures and intentional skips
+### Failures and intentional skips
 
-A full rebuild distinguishes a deliberate event skip from a transformer failure:
+Every indexing path distinguishes a deliberate event skip from a transformer failure:
 
-- A listener that sets `handled = true` on `EVENT_BEFORE_TRANSFORM` intentionally skips that element. The skip does not fail the rebuild and does not increase the index's document count.
-- A transformer that cannot be constructed, throws from `transform()`, or violates the array return contract records a failure. Search Manager continues processing the remaining elements, writes the documents that transformed successfully, updates the index count to the number of source elements whose complete document set the backend accepted, and then marks the queue job failed with the affected element IDs.
+- A listener that sets `handled = true` on `EVENT_BEFORE_TRANSFORM` intentionally skips that element for the current index. The skip is a successful no-op: it does not retry pending syncs, make inline indexing return `false`, fail a rebuild, or increase the rebuild count.
+- A transformer that cannot be constructed, throws from `transform()`, encounters a throwing transform listener, or produces no document data records a failure. Automatic pending syncs retry and eventually abandon the row according to the normal pending-sync settings. Inline `indexElementNow()` returns `false`. In both cases, other viable indices and rows continue.
+- Incremental transformation failures do not overwrite or delete an existing document. After correcting the transformer or listener, retry the pending row, save/index the element again, or rebuild the affected index.
+- During a full rebuild, Search Manager continues processing the remaining elements, writes the documents that transformed successfully, updates the index count to the number of source elements whose complete document set the backend accepted, and then marks the queue job failed with the affected element IDs.
 - If every matching element fails transformation, the cleared backend stays empty, the index count is `0`, and the queue job fails. A criteria query that genuinely matches no elements remains a successful empty rebuild.
 
 This partial-failure contract makes the stored count describe completed source elements rather than the number of elements merely selected by the criteria query. Fix the transformer and run the rebuild again to replace the partial index with a complete one.
@@ -162,6 +164,10 @@ class ProductTransformer extends AutoTransformer
 The array returned by `transform()` is the indexed document. Search Manager sends that document to the selected backend, so custom fields such as `price`, `brand`, `latitude`, `availability`, or `vehicleModel` can be searched, filtered, and sorted depending on backend configuration. Returning those values in public REST and GraphQL hits is controlled separately by the index's `retrievableFields` setting.
 
 For automatic documents, `AutoTransformer` includes Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. Rich-text and body-source fields are still mirrored into `_fields` when searchable, even though they also feed snippets, headings, and Split Sections. Fields with that setting disabled are excluded from the searchable content and from the internal `_fields` map.
+
+Automatic extraction is intentionally best-effort. If one searchable attribute, top-level field, nested field, relation, or element container throws while its value is being materialized, Search Manager skips only that source. Healthy sibling fields continue, the element remains indexable, and the accepted document can contain partial automatic content. This behavior also applies to Commerce documents because `CommerceTransformer` builds on the automatic transformer.
+
+Search Manager writes a warning for each skipped extraction boundary with safe operational context such as element ID/type, attribute or field handle/class, the extraction boundary, and the exception class. The warning does not include the field value, rendered or relation content, raw rich text, exception message/data, or credentials. Check the Search Manager log when a field is unexpectedly absent, fix the field/provider exception, and reindex the element if you need that content added.
 
 For values that may be returned to API and GraphQL consumers as custom field data, write them to `_fields`:
 

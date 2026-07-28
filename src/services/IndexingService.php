@@ -142,6 +142,8 @@ class IndexingService extends Component
             ]);
         }
 
+        $matchedHandles = array_flip($indexHandles);
+
         // Index to all matching indices (no-op when $indexHandles is empty)
         $success = true;
         foreach ($indexHandles as $indexHandle) {
@@ -149,6 +151,7 @@ class IndexingService extends Component
                 // Check if index should skip entries without URL
                 $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
                 if ($index && $index->shouldSkipElementWithoutUrl($element)) {
+                    unset($matchedHandles[$indexHandle]);
                     $this->logDebug('Skipping element without URL for index', [
                         'elementId' => $element->id,
                         'indexHandle' => $indexHandle,
@@ -157,18 +160,38 @@ class IndexingService extends Component
                 }
 
                 // Transform element via TransformerService (fires before/after events)
-                $data = SearchManager::$plugin->transformers->transform(
+                $transformResult = SearchManager::$plugin->transformers->transformWithResult(
                     $element,
                     $indexHandle,
                     $index->transformerClass,
                     $index->headingLevels,
                 );
 
-                if ($data === null) {
-                    $this->logDebug('Transform returned null for index', [
+                if ($transformResult['status'] === 'skipped') {
+                    $this->logDebug('Transform intentionally skipped for index', [
                         'elementId' => $element->id,
                         'indexHandle' => $indexHandle,
                     ]);
+                    continue;
+                }
+
+                if ($transformResult['status'] === 'failed') {
+                    $this->logWarning('Transformer failed for inline indexing', [
+                        'elementId' => $element->id,
+                        'indexHandle' => $indexHandle,
+                        'error' => $transformResult['error'] ?? 'Unknown transformation failure.',
+                    ]);
+                    $success = false;
+                    continue;
+                }
+
+                $data = $transformResult['data'];
+                if ($data === null) {
+                    $this->logWarning('Transformer reported success without document data', [
+                        'elementId' => $element->id,
+                        'indexHandle' => $indexHandle,
+                    ]);
+                    $success = false;
                     continue;
                 }
 
@@ -263,7 +286,6 @@ class IndexingService extends Component
         // fallen out of some indices' criteria (e.g. custom status flipped). Scan
         // same-type-and-site indices the element did NOT match and purge any
         // stale documents — otherwise they linger until a full rebuild.
-        $matchedHandles = array_flip($indexHandles);
         $elementClass = get_class($element);
         $siteId = (int) $element->siteId;
 
@@ -308,6 +330,13 @@ class IndexingService extends Component
                         'indexHandle' => $index->handle,
                         'reason' => 'criteria no longer matches',
                     ]);
+                } else {
+                    $this->logWarning('Backend cleanup returned false', [
+                        'elementId' => $element->id,
+                        'siteId' => $siteId,
+                        'indexHandle' => $index->handle,
+                    ]);
+                    $success = false;
                 }
             } catch (\Throwable $e) {
                 $this->logError('Failed to clean up stale document', [
@@ -316,6 +345,7 @@ class IndexingService extends Component
                     'indexHandle' => $index->handle,
                     'error' => $e->getMessage(),
                 ]);
+                $success = false;
             }
         }
 
@@ -349,6 +379,7 @@ class IndexingService extends Component
      * @param ElementInterface[] $elements
      * @param string $indexHandle
      * @return bool
+     * @internal RebuildIndexJob is the sole supported runtime caller.
      */
     public function batchIndex(array $elements, string $indexHandle): bool
     {

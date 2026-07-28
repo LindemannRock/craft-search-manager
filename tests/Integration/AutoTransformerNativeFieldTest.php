@@ -49,10 +49,13 @@ use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
 use lindemannrock\searchmanager\helpers\NativeFieldKeywordHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
+use lindemannrock\searchmanager\transformers\CommerceTransformer;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use yii\log\Logger;
 
 /**
  * Locks AutoTransformer's first Craft-native searchable-field contract.
@@ -412,6 +415,160 @@ final class AutoTransformerNativeFieldTest extends TestCase
         self::assertStringContainsString('sort($categoryIds);', $helperSource);
     }
 
+    public function testThrowingSearchableAttributeLogsSafeContextAndKeepsHealthyAttribute(): void
+    {
+        $element = $this->testElement();
+        $element->setTestAttributeKeywords([
+            'a5ThrowingAttribute' => 'A5_ATTRIBUTE_VALUE_SENTINEL',
+            'a5HealthyAttribute' => 'Healthy attribute needle',
+        ]);
+        $element->setThrowingAttributes(['a5ThrowingAttribute']);
+
+        [$data, $warnings] = $this->transformWithWarnings($element);
+
+        self::assertStringContainsString('Healthy attribute needle', $data['content']);
+        $warning = $this->warningForBoundary($warnings, 'searchable-attribute');
+        self::assertStringContainsString('"elementId":123', $warning);
+        self::assertStringContainsString('"elementType":"' . addslashes(SearchManagerNativeFieldTestElement::class), $warning);
+        self::assertStringContainsString('"attribute":"a5ThrowingAttribute"', $warning);
+        self::assertStringContainsString('"exceptionClass":"RuntimeException"', $warning);
+        self::assertStringNotContainsString('A5_ATTRIBUTE_VALUE_SENTINEL', $warning);
+    }
+
+    public function testThrowingTopLevelFieldLogsSafeContextAndKeepsHealthyField(): void
+    {
+        $element = $this->testElement();
+        $throwing = new PlainText(['handle' => 'throwingTopLevel', 'searchable' => true]);
+        $healthy = new PlainText(['handle' => 'healthyTopLevel', 'searchable' => true]);
+        $element->setTestFieldLayout($this->fieldLayout([$throwing, $healthy]));
+        $element->setTestFieldValues([
+            'throwingTopLevel' => 'A5_TOP_LEVEL_VALUE_SENTINEL',
+            'healthyTopLevel' => 'Healthy top-level field needle',
+        ]);
+        $element->setThrowingFieldHandles(['throwingTopLevel']);
+
+        [$data, $warnings] = $this->transformWithWarnings($element);
+
+        self::assertStringContainsString('Healthy top-level field needle', $data['content']);
+        $warning = $this->warningForBoundary($warnings, 'field-materialization');
+        self::assertStringContainsString('"fieldHandle":"throwingTopLevel"', $warning);
+        self::assertStringContainsString('"fieldClass":"' . addslashes(PlainText::class), $warning);
+        self::assertStringNotContainsString('A5_TOP_LEVEL_VALUE_SENTINEL', $warning);
+    }
+
+    public function testThrowingNestedFieldLogsSafeContextAndKeepsHealthyNestedField(): void
+    {
+        $nested = $this->nestedElement('Nested warning fixture', 'Healthy nested field needle');
+        $throwingNested = new PlainText(['handle' => 'throwingNested', 'searchable' => true]);
+        $healthyNested = new PlainText(['handle' => 'nestedText', 'searchable' => true]);
+        $nested->setTestFieldLayout($this->fieldLayout([$throwingNested, $healthyNested]));
+        $nested->setTestFieldValues([
+            'throwingNested' => 'A5_NESTED_VALUE_SENTINEL',
+            'nestedText' => 'Healthy nested field needle',
+        ]);
+        $nested->setThrowingFieldHandles(['throwingNested']);
+        $element = $this->testElement();
+        $element->setTestFieldLayout($this->fieldLayout([
+            new Matrix(['handle' => 'matrixContainer', 'searchable' => true]),
+        ]));
+        $element->setTestFieldValues([
+            'matrixContainer' => new ElementCollection([$nested]),
+        ]);
+
+        [$data, $warnings] = $this->transformWithWarnings($element);
+
+        self::assertStringContainsString('Healthy nested field needle', $data['content']);
+        $warning = $this->warningForBoundary($warnings, 'nested-field-value');
+        self::assertStringContainsString('"fieldHandle":"matrixContainer.throwingNested"', $warning);
+        self::assertStringContainsString('"elementId":789', $warning);
+        self::assertStringNotContainsString('A5_NESTED_VALUE_SENTINEL', $warning);
+    }
+
+    public function testThrowingRelationMaterializationLogsSafeContextAndIndexingStillSucceeds(): void
+    {
+        $element = $this->testElement();
+        $relation = new A5ThrowingRelationField(['handle' => 'throwingRelation', 'searchable' => true]);
+        $healthy = new PlainText(['handle' => 'healthySibling', 'searchable' => true]);
+        $element->setTestFieldLayout($this->fieldLayout([$relation, $healthy]));
+        $element->setTestFieldValues([
+            'throwingRelation' => new A5ThrowingRelationCollection(),
+            'healthySibling' => 'Healthy relation sibling needle',
+        ]);
+
+        [$data, $warnings] = $this->transformWithWarnings($element);
+
+        self::assertStringContainsString('Healthy relation sibling needle', $data['content']);
+        $warning = $this->warningForBoundary($warnings, 'field-materialization');
+        self::assertStringContainsString('"fieldHandle":"throwingRelation"', $warning);
+        self::assertStringContainsString('"exceptionClass":"RuntimeException"', $warning);
+        self::assertStringNotContainsString('A5_RELATION_CONTENT_SENTINEL', $warning);
+    }
+
+    public function testThrowingContainerMaterializationLogsSafeContextAndKeepsHealthyField(): void
+    {
+        $element = $this->testElement();
+        $container = new Matrix(['handle' => 'throwingContainer', 'searchable' => true]);
+        $healthy = new PlainText(['handle' => 'healthyContainerSibling', 'searchable' => true]);
+        $element->setTestFieldLayout($this->fieldLayout([$container, $healthy]));
+        $element->setTestFieldValues([
+            'throwingContainer' => new A5ThrowingRelationCollection(),
+            'healthyContainerSibling' => 'Healthy container sibling needle',
+        ]);
+
+        [$data, $warnings] = $this->transformWithWarnings($element);
+
+        self::assertStringContainsString('Healthy container sibling needle', $data['content']);
+        $warning = $this->warningForBoundary($warnings, 'container-materialization');
+        self::assertStringContainsString('"fieldHandle":"throwingContainer"', $warning);
+        self::assertStringContainsString('"fieldClass":"' . addslashes(Matrix::class), $warning);
+        self::assertStringNotContainsString('A5_RELATION_CONTENT_SENTINEL', $warning);
+    }
+
+    public function testBestEffortExtractionRemainsSuccessfulTransformation(): void
+    {
+        $element = $this->testElement();
+        $element->setTestFieldLayout($this->fieldLayout([
+            new PlainText(['handle' => 'throwingButOptional', 'searchable' => true]),
+            new PlainText(['handle' => 'healthyAcceptedSibling', 'searchable' => true]),
+        ]));
+        $element->setTestFieldValues([
+            'throwingButOptional' => 'A5_SUCCESS_VALUE_SENTINEL',
+            'healthyAcceptedSibling' => 'Healthy accepted sibling needle',
+        ]);
+        $element->setThrowingFieldHandles(['throwingButOptional']);
+
+        $result = SearchManager::$plugin->transformers->transformWithResult(
+            $element,
+            '__sm_a5_best_effort',
+            AutoTransformer::class,
+        );
+
+        self::assertSame('transformed', $result['status']);
+        self::assertIsArray($result['data']);
+        self::assertStringContainsString('Healthy accepted sibling needle', (string)$result['data']['content']);
+    }
+
+    public function testNormalExtractionEmitsNoFailureWarningAndCommerceKeepsAutoInheritance(): void
+    {
+        $element = $this->testElement();
+        $element->setTestFieldLayout($this->fieldLayout([
+            new PlainText(['handle' => 'normalField', 'searchable' => true]),
+        ]));
+        $element->setTestFieldValues(['normalField' => 'Normal extraction needle']);
+
+        [$data, $warnings] = $this->transformWithWarnings($element);
+
+        self::assertStringContainsString('Normal extraction needle', $data['content']);
+        self::assertSame([], array_values(array_filter(
+            $warnings,
+            static fn(array $message): bool => str_contains(
+                (string)($message[0] ?? ''),
+                'Automatic search content extraction skipped',
+            ),
+        )));
+        self::assertTrue(is_subclass_of(CommerceTransformer::class, AutoTransformer::class));
+    }
+
     /**
      * @return array<string, array{0: class-string<Field>, 1: string}>
      */
@@ -469,14 +626,55 @@ final class AutoTransformerNativeFieldTest extends TestCase
      */
     private function transformWithFields(array $fields, array $values): array
     {
-        $element = new SearchManagerNativeFieldTestElement();
-        $element->id = 123;
-        $element->siteId = 1;
-        $element->title = 'Native Field Test Element';
+        $element = $this->testElement();
         $element->setTestFieldValues($values);
         $element->setTestFieldLayout($this->fieldLayout($fields));
 
         return (new AutoTransformer())->transform($element);
+    }
+
+    private function testElement(): SearchManagerNativeFieldTestElement
+    {
+        $element = new SearchManagerNativeFieldTestElement();
+        $element->id = 123;
+        $element->siteId = 1;
+        $element->title = 'Native Field Test Element';
+
+        return $element;
+    }
+
+    /**
+     * @return array{0: array<string, mixed>, 1: list<array<mixed>>}
+     */
+    private function transformWithWarnings(SearchManagerNativeFieldTestElement $element): array
+    {
+        $logger = Craft::getLogger();
+        $before = count($logger->messages);
+        $data = (new AutoTransformer())->transform($element);
+        $warnings = array_values(array_filter(
+            array_slice($logger->messages, $before),
+            static fn(array $message): bool => ($message[1] ?? null) === Logger::LEVEL_WARNING
+                && ($message[2] ?? null) === 'search-manager',
+        ));
+
+        return [$data, $warnings];
+    }
+
+    /**
+     * @param list<array<mixed>> $warnings
+     */
+    private function warningForBoundary(array $warnings, string $boundary): string
+    {
+        $matching = array_values(array_filter(
+            $warnings,
+            static fn(array $message): bool => str_contains(
+                (string)($message[0] ?? ''),
+                '"boundary":"' . $boundary . '"',
+            ),
+        ));
+        self::assertCount(1, $matching, "Expected one safe warning for {$boundary}.");
+
+        return (string)$matching[0][0];
     }
 
     /**
@@ -534,6 +732,15 @@ final class SearchManagerNativeFieldTestElement extends Element
      */
     private array $testFieldValues = [];
 
+    /** @var list<string> */
+    private array $throwingAttributes = [];
+
+    /** @var list<string> */
+    private array $throwingFieldHandles = [];
+
+    /** @var array<string, string> */
+    private array $testAttributeKeywords = [];
+
     public static function displayName(): string
     {
         return 'Search Manager Native Field Test Element';
@@ -546,7 +753,23 @@ final class SearchManagerNativeFieldTestElement extends Element
 
     public function getFieldValue(string $fieldHandle): mixed
     {
+        if (in_array($fieldHandle, $this->throwingFieldHandles, true)) {
+            throw new \RuntimeException('A5 field extraction failed: ' . ($this->testFieldValues[$fieldHandle] ?? ''));
+        }
+
         return $this->testFieldValues[$fieldHandle] ?? null;
+    }
+
+    public function getSearchKeywords(string $attribute): string
+    {
+        if (in_array($attribute, $this->throwingAttributes, true)) {
+            throw new \RuntimeException('A5 attribute extraction failed: ' . ($this->testAttributeKeywords[$attribute] ?? ''));
+        }
+        if (str_starts_with($attribute, 'a5')) {
+            return $this->testAttributeKeywords[$attribute] ?? '';
+        }
+
+        return parent::getSearchKeywords($attribute);
     }
 
     public function setTestFieldLayout(FieldLayout $fieldLayout): void
@@ -560,6 +783,35 @@ final class SearchManagerNativeFieldTestElement extends Element
     public function setTestFieldValues(array $fieldValues): void
     {
         $this->testFieldValues = $fieldValues;
+    }
+
+    /**
+     * @param array<string, string> $keywords
+     */
+    public function setTestAttributeKeywords(array $keywords): void
+    {
+        $this->testAttributeKeywords = $keywords;
+    }
+
+    /**
+     * @param list<string> $attributes
+     */
+    public function setThrowingAttributes(array $attributes): void
+    {
+        $this->throwingAttributes = $attributes;
+    }
+
+    /**
+     * @param list<string> $fieldHandles
+     */
+    public function setThrowingFieldHandles(array $fieldHandles): void
+    {
+        $this->throwingFieldHandles = $fieldHandles;
+    }
+
+    protected static function defineSearchableAttributes(): array
+    {
+        return ['a5ThrowingAttribute', 'a5HealthyAttribute'];
     }
 }
 
@@ -593,6 +845,29 @@ final class SearchManagerNativeFieldTestEntry extends Entry
     public function setTestFieldValues(array $fieldValues): void
     {
         $this->testFieldValues = $fieldValues;
+    }
+}
+
+final class A5ThrowingRelationCollection
+{
+    /**
+     * @return list<ElementInterface>
+     */
+    public function all(): array
+    {
+        throw new \RuntimeException('A5_RELATION_CONTENT_SENTINEL');
+    }
+}
+
+final class A5ThrowingRelationField extends Entries
+{
+    protected function searchKeywords(mixed $value, ElementInterface $element): string
+    {
+        if (is_object($value) && method_exists($value, 'all')) {
+            $value->all();
+        }
+
+        return '';
     }
 }
 

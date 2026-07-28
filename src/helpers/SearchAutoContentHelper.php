@@ -15,6 +15,7 @@ use craft\elements\Asset;
 use craft\fields\ContentBlock;
 use craft\fields\Matrix;
 use craft\helpers\ElementHelper;
+use lindemannrock\logginglibrary\traits\LoggingTrait;
 
 /**
  * Collects AutoTransformer searchable content, field mirrors, and rich text sources.
@@ -23,10 +24,13 @@ use craft\helpers\ElementHelper;
  */
 class SearchAutoContentHelper
 {
+    use LoggingTrait;
+
     public function __construct(
         private readonly NativeFieldKeywordHelper $nativeFieldKeywordHelper,
         private readonly SearchFieldTypeContentHelper $fieldTypeContentHelper,
     ) {
+        $this->setLoggingHandle('search-manager');
     }
 
     /**
@@ -54,7 +58,13 @@ class SearchAutoContentHelper
                 if (!empty($value)) {
                     $searchableContent[] = $value;
                 }
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                $this->logExtractionWarning(
+                    $element,
+                    'searchable-attribute',
+                    $e,
+                    attribute: $attribute,
+                );
                 continue;
             }
         }
@@ -62,6 +72,7 @@ class SearchAutoContentHelper
         if ($element->getFieldLayout()) {
             foreach ($element->getFieldLayout()->getCustomFields() as $field) {
                 $content = null;
+                $boundary = 'field-materialization';
 
                 try {
                     if (!($field instanceof Field)) {
@@ -101,6 +112,7 @@ class SearchAutoContentHelper
                         }
 
                         if ($isElementContainerField) {
+                            $boundary = 'container-materialization';
                             $containerContent = $this->containerContent($field, $field->handle, $fieldValue);
                             $content = array_merge(
                                 isset($content) ? (array)$content : [],
@@ -116,6 +128,7 @@ class SearchAutoContentHelper
                                 $bodyCleanParts[] = implode(' ', $containerContent['content']);
                             }
                         }
+                        $boundary = 'field-materialization';
                     } elseif ($this->nativeFieldKeywordHelper->supports($field)) {
                         $content = $this->nativeFieldKeywordHelper->getSearchKeywords($field, $element);
                         if ($isBodyFieldHandle && is_scalar($content)) {
@@ -153,7 +166,13 @@ class SearchAutoContentHelper
                             $searchableContent[] = $content;
                         }
                     }
-                } catch (\Throwable) {
+                } catch (\Throwable $e) {
+                    $this->logExtractionWarning(
+                        $element,
+                        $boundary,
+                        $e,
+                        field: $field,
+                    );
                     continue;
                 }
             }
@@ -292,59 +311,66 @@ class SearchAutoContentHelper
                     continue;
                 }
 
+                $nestedHandle = $fieldHandle . '.' . $nestedField->handle;
+                $boundary = 'nested-field-value';
                 try {
                     $nestedValue = $nestedElement->getFieldValue($nestedField->handle);
-                } catch (\Throwable) {
-                    continue;
-                }
 
-                if ($nestedValue === null || $nestedValue === '' || $nestedValue === []) {
-                    continue;
-                }
+                    if ($nestedValue === null || $nestedValue === '' || $nestedValue === []) {
+                        continue;
+                    }
 
-                $nestedHandle = $fieldHandle . '.' . $nestedField->handle;
-                if ($this->fieldTypeContentHelper->isRichTextField($nestedField)) {
-                    $rawHtml = (string)$nestedValue;
-                    if ($rawHtml !== '') {
-                        $result['richText'][] = $rawHtml;
-                        $result['richTextSources'][] = [
-                            'handle' => $nestedHandle,
-                            'html' => $rawHtml,
-                        ];
-                        $cleanBody = $this->fieldTypeContentHelper->cleanBody($rawHtml);
-                        if ($cleanBody !== '') {
-                            $result['bodyCleanParts'][] = $cleanBody;
-                        }
+                    $boundary = 'nested-field-content';
+                    if ($this->fieldTypeContentHelper->isRichTextField($nestedField)) {
+                        $rawHtml = (string)$nestedValue;
+                        if ($rawHtml !== '') {
+                            $result['richText'][] = $rawHtml;
+                            $result['richTextSources'][] = [
+                                'handle' => $nestedHandle,
+                                'html' => $rawHtml,
+                            ];
+                            $cleanBody = $this->fieldTypeContentHelper->cleanBody($rawHtml);
+                            if ($cleanBody !== '') {
+                                $result['bodyCleanParts'][] = $cleanBody;
+                            }
 
-                        $cleanContent = $this->fieldTypeContentHelper->process(
-                            $nestedField,
-                            $nestedValue,
-                            $nestedElement,
-                        );
-                        if (is_string($cleanContent) && $cleanContent !== '') {
-                            $result['content'][] = $cleanContent;
+                            $cleanContent = $this->fieldTypeContentHelper->process(
+                                $nestedField,
+                                $nestedValue,
+                                $nestedElement,
+                            );
+                            if (is_string($cleanContent) && $cleanContent !== '') {
+                                $result['content'][] = $cleanContent;
+                            }
                         }
                     }
-                }
 
-                if ($nestedField instanceof ElementContainerFieldInterface) {
-                    $child = $this->containerContent($nestedField, $nestedHandle, $nestedValue);
-                    $result = $this->mergeNestedContent($result, $child);
+                    if ($nestedField instanceof ElementContainerFieldInterface) {
+                        $boundary = 'nested-container-materialization';
+                        $child = $this->containerContent($nestedField, $nestedHandle, $nestedValue);
+                        $result = $this->mergeNestedContent($result, $child);
 
-                    continue;
-                }
+                        continue;
+                    }
 
-                if ($this->fieldTypeContentHelper->isRichTextField($nestedField)) {
-                    continue;
-                }
+                    if ($this->fieldTypeContentHelper->isRichTextField($nestedField)) {
+                        continue;
+                    }
 
-                try {
+                    $boundary = 'nested-field-keywords';
                     $keywords = trim((string)preg_replace(
                         '/\s+/',
                         ' ',
                         $nestedField->getSearchKeywords($nestedValue, $nestedElement),
                     ));
-                } catch (\Throwable) {
+                } catch (\Throwable $e) {
+                    $this->logExtractionWarning(
+                        $nestedElement,
+                        $boundary,
+                        $e,
+                        field: $nestedField,
+                        fieldHandle: $nestedHandle,
+                    );
                     continue;
                 }
 
@@ -385,5 +411,30 @@ class SearchAutoContentHelper
             'richTextSources' => [],
             'bodyCleanParts' => [],
         ];
+    }
+
+    private function logExtractionWarning(
+        ElementInterface $element,
+        string $boundary,
+        \Throwable $exception,
+        ?string $attribute = null,
+        ?Field $field = null,
+        ?string $fieldHandle = null,
+    ): void {
+        $context = [
+            'elementId' => $element->id !== null ? (int)$element->id : null,
+            'elementType' => get_class($element),
+            'boundary' => $boundary,
+        ];
+        if ($attribute !== null) {
+            $context['attribute'] = $attribute;
+        }
+        if ($field !== null) {
+            $context['fieldHandle'] = $fieldHandle ?? $field->handle;
+            $context['fieldClass'] = get_class($field);
+        }
+        $context['exceptionClass'] = get_class($exception);
+
+        $this->logWarning('Automatic search content extraction skipped', $context);
     }
 }

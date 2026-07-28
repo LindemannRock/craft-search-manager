@@ -132,6 +132,14 @@ If saved elements are not appearing in search:
 
 For a triage view of the buffer with filters, per-row retry, and a one-click "Failed & Abandoned" preset, open **Search Manager → Pending Syncs**. See [Pending Syncs](../feature-tour/pending-syncs.md) for the operator runbook.
 
+## An automatic field is missing from an indexed document
+
+Automatic field extraction is best-effort. If one searchable attribute, custom field, nested field, relation, or container throws while Search Manager reads it, the failing source is skipped while healthy fields continue and the element is still indexed. This avoids turning one broken field integration into a retry loop for the whole element.
+
+Check the Search Manager log for `Automatic search content extraction skipped`. Its warning identifies safe context — the element ID/type, attribute or field handle/class, extraction boundary, and exception class — without logging field values, rendered/relation content, raw rich text, exception data, or credentials.
+
+Fix the field or provider error, then save/index the element again or rebuild the affected index. A partial best-effort document remains valid until that retry; Search Manager does not fail the whole element solely because one automatic field could not be extracted.
+
 ## Scheduled cleanup or status sync does not reappear
 
 Search Manager schedules recurring queue jobs for analytics cleanup and entry status syncs. If the queue is empty after one of those jobs runs, the next occurrence was not scheduled correctly.

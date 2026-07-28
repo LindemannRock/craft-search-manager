@@ -200,15 +200,32 @@ class PendingSyncProcessor extends Component
                 continue;
             }
 
-            $data = SearchManager::$plugin->transformers->transform(
+            $transformResult = SearchManager::$plugin->transformers->transformWithResult(
                 $element,
                 $indexHandle,
                 $index->transformerClass,
                 $index->headingLevels,
             );
 
-            if ($data === null) {
+            if ($transformResult['status'] === 'skipped') {
                 $successIds[] = $rowId;
+                continue;
+            }
+
+            if ($transformResult['status'] === 'failed') {
+                $failures[] = [
+                    'ids' => [$rowId],
+                    'error' => $transformResult['error'] ?? 'Unknown transformation failure.',
+                ];
+                continue;
+            }
+
+            $data = $transformResult['data'];
+            if ($data === null) {
+                $failures[] = [
+                    'ids' => [$rowId],
+                    'error' => 'Transformer reported success without document data.',
+                ];
                 continue;
             }
 
