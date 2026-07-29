@@ -42,6 +42,7 @@ final class SyncBufferFailureTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->deleteBatchQueueRows();
 
         $settings = SearchManager::$plugin->getSettings();
         $this->originalMaxAttempts = $settings->batchMaxAttempts;
@@ -59,7 +60,11 @@ final class SyncBufferFailureTest extends TestCase
         $settings = SearchManager::$plugin->getSettings();
         $settings->batchMaxAttempts = $this->originalMaxAttempts;
         $settings->batchFlushInterval = $this->originalFlushInterval;
-        parent::tearDown();
+        try {
+            $this->deleteBatchQueueRows();
+        } finally {
+            parent::tearDown();
+        }
     }
 
     public function testBatchIndexFailureMarksRowFailedAndIncrementsAttempt(): void
@@ -77,6 +82,15 @@ final class SyncBufferFailureTest extends TestCase
         $this->assertSame('pending', $rowBefore['status']);
         $this->assertSame(0, (int) $rowBefore['attemptCount']);
 
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%queue}}', [
+                'and',
+                ['like', 'job', 'searchmanager'],
+                ['like', 'job', 'BatchSyncJob'],
+            ])
+            ->execute();
+
         (new BatchSyncJob())->execute(Craft::$app->queue);
 
         $rowAfter = $this->fetchPendingRow($index->handle, (int) $element->id, (int) $element->siteId);
@@ -84,6 +98,16 @@ final class SyncBufferFailureTest extends TestCase
         $this->assertSame('failed', $rowAfter['status']);
         $this->assertSame(1, (int) $rowAfter['attemptCount']);
         $this->assertNotEmpty($rowAfter['lastError']);
+        $this->assertSame(
+            1,
+            (int) (new Query())
+                ->from('{{%queue}}')
+                ->where(['like', 'job', 'searchmanager'])
+                ->andWhere(['like', 'job', 'BatchSyncJob'])
+                ->andWhere(['fail' => false, 'timeUpdated' => null])
+                ->count(),
+            'A failed row must leave one future BatchSyncJob wake-up.',
+        );
 
         // Backoff should push nextAttemptAt into the future so the same worker
         // can't immediately re-claim this row.
@@ -110,9 +134,9 @@ final class SyncBufferFailureTest extends TestCase
         // queueForElement can produce rows for multiple (index, site) pairs;
         // the truncate in setUp guarantees the buffer holds only our rows, so
         // a buffer-wide nextAttemptAt reset is safe.
-        (new BatchSyncJob())->execute(Craft::$app->queue);
+        $this->executeNextScheduledBatchJob();
         $this->resetAllBackoff();
-        (new BatchSyncJob())->execute(Craft::$app->queue);
+        $this->executeNextScheduledBatchJob();
 
         $row = $this->fetchPendingRow($index->handle, (int) $element->id, (int) $element->siteId);
         $this->assertNotNull($row, 'Abandoned row must remain in the buffer (it is not drained).');
@@ -160,6 +184,7 @@ final class SyncBufferFailureTest extends TestCase
         $this->assertSame('failed', $failed['status']);
         $this->assertSame(1, (int)$failed['attemptCount']);
         $this->assertStringContainsString('Batch delete failed', (string)$failed['lastError']);
+        $this->assertSame(1, $this->pendingBatchQueueCount());
 
         $this->resetAllBackoff();
         (new BatchSyncJob())->execute(Craft::$app->queue);
@@ -183,5 +208,49 @@ final class SyncBufferFailureTest extends TestCase
                 '1=1',
             )
             ->execute();
+    }
+
+    private function executeNextScheduledBatchJob(): void
+    {
+        $id = (new Query())
+            ->select(['id'])
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', 'BatchSyncJob'])
+            ->andWhere(['fail' => false, 'timeUpdated' => null])
+            ->orderBy(['id' => SORT_ASC])
+            ->scalar();
+        self::assertNotFalse($id, 'A scheduled BatchSyncJob must exist.');
+
+        Craft::$app->getDb()->createCommand()
+            ->update('{{%queue}}', [
+                'timePushed' => time() - 1,
+                'delay' => 0,
+            ], ['id' => $id])
+            ->execute();
+
+        self::assertTrue(Craft::$app->getQueue()->executeJob((string)$id));
+    }
+
+    private function deleteBatchQueueRows(): void
+    {
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%queue}}', [
+                'and',
+                ['like', 'job', 'searchmanager'],
+                ['like', 'job', 'BatchSyncJob'],
+            ])
+            ->execute();
+    }
+
+    private function pendingBatchQueueCount(): int
+    {
+        return (int)(new Query())
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', 'BatchSyncJob'])
+            ->andWhere(['fail' => false, 'timeUpdated' => null])
+            ->count();
     }
 }

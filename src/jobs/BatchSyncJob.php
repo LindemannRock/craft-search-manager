@@ -62,75 +62,92 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
         $settings = SearchManager::$plugin->getSettings();
         $repository = SearchManager::$plugin->pendingSyncs;
         $processor = SearchManager::$plugin->pendingSyncProcessor;
+        $executionError = null;
 
-        $repository->purgeOld($settings->pendingMaxAge);
+        try {
+            $repository->purgeOld($settings->pendingMaxAge);
 
-        $started = microtime(true);
-        $claimTtl = max(300, $settings->batchFlushInterval * 6);
-        $totalClaimed = 0;
-        $totalSucceeded = 0;
-        $totalFailureGroups = 0;
-        $passes = 0;
-        $syncedIndexHandles = [];
+            $started = microtime(true);
+            $claimTtl = max(300, $settings->batchFlushInterval * 6);
+            $totalClaimed = 0;
+            $totalSucceeded = 0;
+            $totalFailureGroups = 0;
+            $passes = 0;
+            $syncedIndexHandles = [];
 
-        // Drain in `syncBatchSize` chunks within a single job until the buffer
-        // is empty or our time budget runs out. The chunk size still bounds
-        // the SQL UPDATE...WHERE id IN (...) cardinality, but we no longer
-        // require N separate job invocations to drain N×chunk-size rows.
-        while (true) {
-            if ($this->hasExceededTimeBudget($started)) {
-                if ($repository->hasDueRows()) {
-                    $repository->scheduleBatchJob(true);
+            // Drain in `syncBatchSize` chunks within a single job until the
+            // buffer is empty or our time budget runs out. The chunk size
+            // still bounds the SQL UPDATE...WHERE id IN (...) cardinality,
+            // but we no longer require N separate job invocations to drain
+            // N×chunk-size rows.
+            while (true) {
+                if ($this->hasExceededTimeBudget($started)) {
+                    break;
                 }
-                break;
+
+                $rows = $repository->claim($settings->syncBatchSize, $claimTtl);
+                if (empty($rows)) {
+                    break;
+                }
+
+                $passes++;
+                $totalClaimed += count($rows);
+                $claimToken = (string)($rows[0]['claimToken'] ?? '');
+                if ($claimToken === '') {
+                    $this->logWarning('Skipping pending-sync batch with missing claim token', [
+                        'rowIds' => array_map(static fn(array $row): int => (int)$row['id'], $rows),
+                    ]);
+                    break;
+                }
+
+                $result = $processor->process($rows);
+                $repository->markSucceeded($result['success'], $claimToken);
+                foreach ($result['syncedIndexHandles'] as $indexHandle) {
+                    $syncedIndexHandles[$indexHandle] = true;
+                }
+                $totalSucceeded += count($result['success']);
+
+                foreach ($result['failures'] as $failure) {
+                    $repository->markRetry(
+                        $failure['ids'],
+                        $failure['error'],
+                        $settings->batchMaxAttempts,
+                        $settings->batchFlushInterval,
+                        $claimToken,
+                    );
+                    $totalFailureGroups++;
+                }
             }
 
-            $rows = $repository->claim($settings->syncBatchSize, $claimTtl);
-            if (empty($rows)) {
-                break;
-            }
+            if ($totalClaimed > 0) {
+                if (!empty($syncedIndexHandles)) {
+                    $this->refreshSyncedIndexCounts(array_keys($syncedIndexHandles));
+                }
 
-            $passes++;
-            $totalClaimed += count($rows);
-            $claimToken = (string)($rows[0]['claimToken'] ?? '');
-            if ($claimToken === '') {
-                $this->logWarning('Skipping pending-sync batch with missing claim token', [
-                    'rowIds' => array_map(static fn(array $row): int => (int)$row['id'], $rows),
+                $this->logInfo('Batch sync run complete', [
+                    'passes' => $passes,
+                    'claimed' => $totalClaimed,
+                    'succeeded' => $totalSucceeded,
+                    'failureGroups' => $totalFailureGroups,
+                    'durationMs' => (int) round((microtime(true) - $started) * 1000),
                 ]);
-                break;
             }
+        } catch (\Throwable $e) {
+            $executionError = $e;
+            throw $e;
+        } finally {
+            try {
+                $repository->scheduleNextEligibleBatchJob();
+            } catch (\Throwable $scheduleError) {
+                if ($executionError === null) {
+                    throw $scheduleError;
+                }
 
-            $result = $processor->process($rows);
-            $repository->markSucceeded($result['success'], $claimToken);
-            foreach ($result['syncedIndexHandles'] as $indexHandle) {
-                $syncedIndexHandles[$indexHandle] = true;
+                $this->logError('Unable to schedule pending-sync recovery after job failure', [
+                    'exception' => get_class($scheduleError),
+                    'error' => $scheduleError->getMessage(),
+                ]);
             }
-            $totalSucceeded += count($result['success']);
-
-            foreach ($result['failures'] as $failure) {
-                $repository->markRetry(
-                    $failure['ids'],
-                    $failure['error'],
-                    $settings->batchMaxAttempts,
-                    $settings->batchFlushInterval,
-                    $claimToken,
-                );
-                $totalFailureGroups++;
-            }
-        }
-
-        if ($totalClaimed > 0) {
-            if (!empty($syncedIndexHandles)) {
-                $this->refreshSyncedIndexCounts(array_keys($syncedIndexHandles));
-            }
-
-            $this->logInfo('Batch sync run complete', [
-                'passes' => $passes,
-                'claimed' => $totalClaimed,
-                'succeeded' => $totalSucceeded,
-                'failureGroups' => $totalFailureGroups,
-                'durationMs' => (int) round((microtime(true) - $started) * 1000),
-            ]);
         }
     }
 

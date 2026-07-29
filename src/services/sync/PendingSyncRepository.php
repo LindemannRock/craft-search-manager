@@ -454,17 +454,38 @@ class PendingSyncRepository extends Component
 
     public function scheduleBatchJob(bool $force = false): void
     {
-        $queue = Craft::$app->queue;
+        $delay = max(0, SearchManager::$plugin->getSettings()->batchFlushInterval);
+        $this->scheduleBatchJobAt(time() + $delay, $force);
+    }
 
-        if (!$force && $this->hasExistingDbQueueBatchJob($queue)) {
+    /**
+     * Schedule the next wake-up required by remaining non-abandoned work.
+     *
+     * @since 5.54.0
+     */
+    public function scheduleNextEligibleBatchJob(): void
+    {
+        $eligibleAt = $this->earliestEligibleTimestamp();
+        if ($eligibleAt === null) {
             return;
         }
 
-        $delay = max(0, SearchManager::$plugin->getSettings()->batchFlushInterval);
+        $this->scheduleBatchJobAt($eligibleAt);
+    }
+
+    private function scheduleBatchJobAt(int $runAt, bool $force = false): void
+    {
+        $queue = Craft::$app->queue;
+
+        if (!$force && $this->hasExistingDbQueueBatchJob($queue, $runAt)) {
+            return;
+        }
+
+        $delay = max(0, $runAt - time());
         $queue->delay($delay)->push(new BatchSyncJob());
     }
 
-    private function hasExistingDbQueueBatchJob(mixed $queue): bool
+    private function hasExistingDbQueueBatchJob(mixed $queue, ?int $requiredRunAt = null): bool
     {
         if (!$queue instanceof Queue) {
             return false;
@@ -476,7 +497,7 @@ class PendingSyncRepository extends Component
             return false;
         }
 
-        foreach (['job', 'fail', 'timeUpdated'] as $column) {
+        foreach (['job', 'fail', 'timeUpdated', 'timePushed', 'delay'] as $column) {
             if (!isset($tableSchema->columns[$column])) {
                 $this->logWarning('Skipping BatchSyncJob queue dedupe because the DB queue schema is not compatible', [
                     'queue' => get_class($queue),
@@ -487,13 +508,63 @@ class PendingSyncRepository extends Component
             }
         }
 
-        return (new Query())
+        $rows = (new Query())
+            ->select(['timePushed', 'delay'])
             ->from($queue->tableName)
             ->where(['like', 'job', 'BatchSyncJob'])
             ->andWhere(['like', 'job', 'searchmanager'])
             ->andWhere(['fail' => false])
             ->andWhere(['timeUpdated' => null])
-            ->exists();
+            ->all();
+
+        if ($requiredRunAt === null) {
+            return $rows !== [];
+        }
+
+        foreach ($rows as $row) {
+            if ((int)$row['timePushed'] + (int)$row['delay'] <= $requiredRunAt) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function earliestEligibleTimestamp(): ?int
+    {
+        $timestamps = [];
+
+        $nextAttemptAt = (new Query())
+            ->from('{{%searchmanager_pending_syncs}}')
+            ->where(['status' => [self::STATUS_PENDING, self::STATUS_FAILED]])
+            ->min('nextAttemptAt');
+        $nextAttemptTimestamp = $this->dbTimestamp($nextAttemptAt);
+        if ($nextAttemptTimestamp !== null) {
+            $timestamps[] = $nextAttemptTimestamp;
+        }
+
+        $claimedAt = (new Query())
+            ->from('{{%searchmanager_pending_syncs}}')
+            ->where(['status' => self::STATUS_PROCESSING])
+            ->min('claimedAt');
+        $claimedTimestamp = $this->dbTimestamp($claimedAt);
+        if ($claimedTimestamp !== null) {
+            // claim() uses a strict `< stale cutoff` comparison. The extra
+            // second ensures a second-precision queue wake-up cannot run at
+            // equality and immediately reschedule itself with zero delay.
+            $timestamps[] = $claimedTimestamp + $this->getStaleCutoffSeconds() + 1;
+        }
+
+        return $timestamps === [] ? null : min($timestamps);
+    }
+
+    private function dbTimestamp(mixed $value): ?int
+    {
+        if (!is_string($value) || $value === '') {
+            return null;
+        }
+
+        return (new \DateTimeImmutable($value, new \DateTimeZone('UTC')))->getTimestamp();
     }
 
     /**
@@ -595,7 +666,7 @@ class PendingSyncRepository extends Component
         $ids = array_map('intval', $ids);
         $nowDb = Db::prepareDateForDb(new \DateTime());
 
-        return Craft::$app->getDb()
+        $updated = Craft::$app->getDb()
             ->createCommand()
             ->update(
                 '{{%searchmanager_pending_syncs}}',
@@ -616,6 +687,12 @@ class PendingSyncRepository extends Component
                 ],
             )
             ->execute();
+
+        if ($updated > 0) {
+            $this->scheduleNextEligibleBatchJob();
+        }
+
+        return $updated;
     }
 
     /**

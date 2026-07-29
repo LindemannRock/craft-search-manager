@@ -225,9 +225,23 @@ final class RecurringJobsRescheduleTest extends TestCase
         $this->assertSame(2, $this->countQueueRows('BatchSyncJob'));
     }
 
-    public function testBatchSyncDebounceKeepsSingleBatchRowByDefault(): void
+    public function testLaterBatchSyncJobDoesNotSuppressEarlierRequiredWork(): void
     {
         Craft::$app->getQueue()->delay(300)->push(new BatchSyncJob());
+        $this->assertSame(1, $this->countQueueRows('BatchSyncJob'));
+
+        SearchManager::$plugin->pendingSyncs->scheduleBatchJob();
+
+        $this->assertSame(2, $this->countQueueRows('BatchSyncJob'));
+        $this->assertLessThanOrEqual(
+            time() + SearchManager::$plugin->getSettings()->batchFlushInterval + 1,
+            $this->earliestQueueRunAt('BatchSyncJob'),
+        );
+    }
+
+    public function testEarlierBatchSyncJobSuppressesLaterDuplicate(): void
+    {
+        Craft::$app->getQueue()->delay(0)->push(new BatchSyncJob());
         $this->assertSame(1, $this->countQueueRows('BatchSyncJob'));
 
         SearchManager::$plugin->pendingSyncs->scheduleBatchJob();
@@ -281,6 +295,24 @@ final class RecurringJobsRescheduleTest extends TestCase
             ->one();
 
         return is_array($row) ? $row : null;
+    }
+
+    private function earliestQueueRunAt(string $jobClass): int
+    {
+        $rows = (new \craft\db\Query())
+            ->select(['timePushed', 'delay'])
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', $jobClass])
+            ->andWhere(['fail' => false, 'timeUpdated' => null])
+            ->all();
+
+        self::assertNotSame([], $rows);
+
+        return min(array_map(
+            static fn(array $row): int => (int)$row['timePushed'] + (int)$row['delay'],
+            $rows,
+        ));
     }
 
     private function expectedDailyRunTime(): string

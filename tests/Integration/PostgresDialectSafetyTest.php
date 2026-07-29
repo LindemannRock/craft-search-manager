@@ -123,6 +123,17 @@ final class PostgresDialectSafetyTest extends TestCase
         }
     }
 
+    public function testPendingSyncEligibilityDatesUsePortableQueriesAndPhpArithmetic(): void
+    {
+        $source = $this->readPluginFile('src/services/sync/PendingSyncRepository.php');
+
+        self::assertStringContainsString("->min('nextAttemptAt')", $source);
+        self::assertStringContainsString("->min('claimedAt')", $source);
+        self::assertStringContainsString("new \\DateTimeZone('UTC')", $source);
+        self::assertStringNotContainsString('DATE_ADD(', $source);
+        self::assertStringNotContainsString('INTERVAL ', $source);
+    }
+
     private function readPluginFile(string $path): string
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);

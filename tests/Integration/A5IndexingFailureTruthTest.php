@@ -39,6 +39,7 @@ final class A5IndexingFailureTruthTest extends TestCase
         parent::setUp();
         A5SelectiveTransformer::$failingElementIds = [];
         $this->purgeOwnedRows();
+        $this->deleteBatchQueueRows();
     }
 
     protected function tearDown(): void
@@ -46,6 +47,7 @@ final class A5IndexingFailureTruthTest extends TestCase
         try {
             A5SelectiveTransformer::$failingElementIds = [];
             $this->purgeOwnedRows();
+            $this->deleteBatchQueueRows();
         } finally {
             parent::tearDown();
         }
@@ -177,6 +179,7 @@ final class A5IndexingFailureTruthTest extends TestCase
         self::assertSame('failed', $failed['status']);
         self::assertSame(1, (int)$failed['attemptCount']);
         self::assertNotEmpty($failed['lastError']);
+        self::assertSame(1, $this->pendingBatchQueueCount());
 
         Craft::$app->getDb()->createCommand()->update(
             '{{%searchmanager_pending_syncs}}',
@@ -442,6 +445,27 @@ final class A5IndexingFailureTruthTest extends TestCase
             ->execute();
         SearchIndex::clearCache();
         SearchManager::$plugin->dependencies->clearIndexCatalogue();
+    }
+
+    private function deleteBatchQueueRows(): void
+    {
+        Craft::$app->getDb()->createCommand()
+            ->delete('{{%queue}}', [
+                'and',
+                ['like', 'job', 'searchmanager'],
+                ['like', 'job', 'BatchSyncJob'],
+            ])
+            ->execute();
+    }
+
+    private function pendingBatchQueueCount(): int
+    {
+        return (int)(new \craft\db\Query())
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', 'BatchSyncJob'])
+            ->andWhere(['fail' => false, 'timeUpdated' => null])
+            ->count();
     }
 }
 

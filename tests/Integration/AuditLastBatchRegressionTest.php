@@ -60,11 +60,15 @@ final class AuditLastBatchRegressionTest extends TestCase
     public function testPendingSyncSchedulingRoutesThroughBatchSyncJob(): void
     {
         $source = $this->readPluginFile('src/services/sync/PendingSyncRepository.php');
-        $body = $this->methodBody($source, 'scheduleBatchJob');
+        $normalBody = $this->methodBody($source, 'scheduleBatchJob');
+        $eligibilityBody = $this->methodBody($source, 'scheduleNextEligibleBatchJob');
+        $pushBody = $this->methodBody($source, 'scheduleBatchJobAt');
 
         self::assertStringContainsString('use lindemannrock\\searchmanager\\jobs\\BatchSyncJob;', $source);
-        self::assertStringContainsString('push(new BatchSyncJob())', $body);
-        self::assertStringNotContainsString('IndexBatchJob', $body);
+        self::assertStringContainsString('scheduleBatchJobAt(', $normalBody);
+        self::assertStringContainsString('scheduleBatchJobAt(', $eligibilityBody);
+        self::assertStringContainsString('push(new BatchSyncJob())', $pushBody);
+        self::assertStringNotContainsString('IndexBatchJob', $normalBody . $eligibilityBody . $pushBody);
     }
 
     private function readPluginFile(string $path): string
@@ -78,7 +82,7 @@ final class AuditLastBatchRegressionTest extends TestCase
     private function methodBody(string $source, string $method): string
     {
         preg_match(
-            '/public function ' . preg_quote($method, '/') . '\(.*?^    \}/ms',
+            '/(?:public|private) function ' . preg_quote($method, '/') . '\(.*?^    \}/ms',
             $source,
             $matches,
         );
