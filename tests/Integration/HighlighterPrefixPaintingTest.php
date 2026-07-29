@@ -84,4 +84,18 @@ final class HighlighterPrefixPaintingTest extends TestCase
             $variable->snippets('Testing Tools', 'test tool', ['class' => '']),
         );
     }
+
+    public function testTwigHighlightAndSnippetHelpersRetainZero(): void
+    {
+        $variable = new SearchManagerVariable();
+
+        self::assertSame(
+            'Version <mark>0</mark>',
+            $variable->highlight('Version 0', '0', ['class' => '']),
+        );
+        self::assertSame(
+            ['Version <mark>0</mark>'],
+            $variable->snippets('Version 0', '0', ['class' => '']),
+        );
+    }
 }

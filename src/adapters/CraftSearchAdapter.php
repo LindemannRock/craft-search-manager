@@ -15,6 +15,7 @@ use craft\search\SearchQuery;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\helpers\TwigSearchOptionsHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 
@@ -59,18 +60,6 @@ class CraftSearchAdapter extends \craft\services\Search
             return parent::searchElements($query);
         }
 
-        $searchQuery = $query->search;
-
-        if (empty($searchQuery)) {
-            return [];
-        }
-
-        $this->logDebug('Searching elements via Craft adapter', [
-            'query' => $searchQuery,
-            'elementType' => $query->elementType,
-            'siteId' => $query->siteId,
-        ]);
-
         // Get index for this element type/site
         $index = $this->getIndexForQuery($query);
 
@@ -97,14 +86,26 @@ class CraftSearchAdapter extends \craft\services\Search
             return parent::searchElements($query);
         }
 
-        try {
-            // Parse search query
-            $parsedQuery = $this->parseSearchQuery($searchQuery);
+        $searchQuery = $this->parseSearchQuery($query->search);
+        if (trim($searchQuery) === '') {
+            return [];
+        }
 
+        if (mb_strlen($searchQuery) > TwigSearchOptionsHelper::MAX_QUERY_LENGTH) {
+            return [];
+        }
+
+        $this->logDebug('Searching elements via Craft adapter', [
+            'query' => $searchQuery,
+            'elementType' => $query->elementType,
+            'siteId' => $query->siteId,
+        ]);
+
+        try {
             // Search using our backend
             $results = SearchManager::$plugin->backend->search(
                 $indexHandle,
-                $parsedQuery,
+                $searchQuery,
                 [
                     'siteId' => SearchSiteScopeHelper::normalize($query->siteId),
                     'limit' => 0,
@@ -210,8 +211,7 @@ class CraftSearchAdapter extends \craft\services\Search
         }
 
         if ($searchQuery instanceof SearchQuery) {
-            // Return the query string if it has one
-            return $searchQuery->query ?? '';
+            return $searchQuery->getQuery();
         }
 
         return '';

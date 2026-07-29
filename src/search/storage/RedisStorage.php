@@ -1186,18 +1186,21 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
      */
     public function getTermsByPrefix(string $prefix, int $siteId): array
     {
-        if (empty($prefix)) {
+        if ($prefix === '') {
             return [];
         }
 
         [$min, $max] = $this->termLexBounds($prefix);
 
-        return $this->redis->zRangeByLex(
-            $this->getTermIndexKey($siteId),
-            $min,
-            $max,
-            0,
-            PHP_INT_MAX,
+        return array_map(
+            'strval',
+            $this->redis->zRangeByLex(
+                $this->getTermIndexKey($siteId),
+                $min,
+                $max,
+                0,
+                PHP_INT_MAX,
+            ),
         );
     }
 

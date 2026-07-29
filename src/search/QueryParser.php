@@ -41,7 +41,7 @@ class QueryParser
 
     private const SUPPORTED_FIELD_FILTERS = ['title', 'content'];
 
-    private const QUERY_TOKEN_PATTERN = '[\p{L}\p{N}_]+';
+    private const QUERY_TOKEN_PATTERN = '[\p{L}\p{N}\p{M}_]+';
 
     /**
      * Localized boolean operators by language
@@ -82,6 +82,13 @@ class QueryParser
      */
     private string $language = 'en';
 
+    private Tokenizer $tokenizer;
+
+    public function __construct()
+    {
+        $this->tokenizer = new Tokenizer();
+    }
+
     /**
      * Parse a search query string into structured components
      *
@@ -107,7 +114,7 @@ class QueryParser
         // Clean up whitespace
         $query = trim($query);
 
-        if (empty($query)) {
+        if ($query === '') {
             return $parsed;
         }
 
@@ -292,7 +299,7 @@ class QueryParser
         if (preg_match_all('/"([^"]+)"/', $query, $matches)) {
             foreach ($matches[1] as $phrase) {
                 $phrase = trim($phrase);
-                if (!empty($phrase)) {
+                if ($phrase !== '') {
                     $parsed->phrases[] = $phrase;
                     $this->logDebug('Extracted phrase', ['phrase' => $phrase]);
                 }
@@ -336,9 +343,11 @@ class QueryParser
 
                 foreach ($terms as $term) {
                     $term = trim($term);
-                    if (!empty($term)) {
-                        $parsed->fieldFilters[$field][] = $term;
-                        $extractedTerms[] = $term; // Keep terms for searching
+                    if ($term !== '') {
+                        foreach ($this->tokenizer->tokenize($term) as $normalizedTerm) {
+                            $parsed->fieldFilters[$field][] = $normalizedTerm;
+                            $extractedTerms[] = $normalizedTerm; // Keep terms for searching
+                        }
                     }
                 }
 
@@ -376,7 +385,7 @@ class QueryParser
         if (preg_match_all($pattern, $query, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
                 $notTerm = trim($match[2]);
-                if (!empty($notTerm)) {
+                if ($notTerm !== '') {
                     $parsed->notTerms[] = $notTerm;
                     $this->logDebug('Extracted NOT term', [
                         'operator' => $match[1],
@@ -408,9 +417,11 @@ class QueryParser
         if (preg_match_all('/(' . self::QUERY_TOKEN_PATTERN . ')\*/u', $query, $matches)) {
             foreach ($matches[1] as $wildcardTerm) {
                 $wildcardTerm = trim($wildcardTerm);
-                if (!empty($wildcardTerm)) {
-                    $parsed->wildcards[] = $wildcardTerm;
-                    $this->logDebug('Extracted wildcard', ['term' => $wildcardTerm]);
+                if ($wildcardTerm !== '') {
+                    foreach ($this->tokenizer->tokenize($wildcardTerm) as $normalizedTerm) {
+                        $parsed->wildcards[] = $normalizedTerm;
+                        $this->logDebug('Extracted wildcard', ['term' => $normalizedTerm]);
+                    }
                 }
             }
 
@@ -505,13 +516,13 @@ class QueryParser
         // Clean up extra whitespace
         $query = preg_replace('/\s+/', ' ', trim($query));
 
-        if (!empty($query)) {
+        if ($query !== '') {
             // Split into individual terms
             $terms = explode(' ', $query);
 
             foreach ($terms as $term) {
                 $term = trim($term);
-                if (!empty($term)) {
+                if ($term !== '') {
                     $parsed->terms[] = $term;
                 }
             }

@@ -1055,7 +1055,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface, ElementSuggestio
      */
     public function getTermsByPrefix(string $prefix, int $siteId): array
     {
-        if (empty($prefix)) {
+        if ($prefix === '') {
             return [];
         }
 

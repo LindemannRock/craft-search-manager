@@ -45,7 +45,7 @@ class Tokenizer
      */
     public function tokenize(string $text): array
     {
-        if (empty($text)) {
+        if ($text === '') {
             return [];
         }
 

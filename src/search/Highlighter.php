@@ -104,7 +104,7 @@ class Highlighter
      */
     public function highlight(string $text, array $terms, bool $stripTags = true, array $queryTerms = []): string
     {
-        if (empty($text) || empty($terms)) {
+        if ($text === '' || empty($terms)) {
             return $text;
         }
 
@@ -153,7 +153,7 @@ class Highlighter
      */
     public function generateSnippets(string $text, array $terms, bool $stripTags = true, array $queryTerms = []): array
     {
-        if (empty($text) || empty($terms)) {
+        if ($text === '' || empty($terms)) {
             return [];
         }
 
@@ -168,7 +168,7 @@ class Highlighter
         // Find positions of all term matches
         $matches = [];
         foreach ($terms as $term) {
-            if (mb_strlen($term) < 2) {
+            if ($term !== '0' && mb_strlen($term) < 2) {
                 continue;
             }
 
@@ -391,7 +391,10 @@ class Highlighter
                 continue;
             }
             preg_match_all('/[\p{L}\p{N}\p{M}_]+/u', TermNormalizer::normalize($term), $matches);
-            $tokens = array_values(array_filter($matches[0], static fn(string $token): bool => mb_strlen($token) >= 2));
+            $tokens = array_values(array_filter(
+                $matches[0],
+                static fn(string $token): bool => $token === '0' || mb_strlen($token) >= 2,
+            ));
             if ($tokens === []) {
                 continue;
             }
@@ -516,7 +519,10 @@ class Highlighter
         }
 
         // Remove duplicates and empty values
-        $terms = array_filter(array_unique($terms));
+        $terms = array_filter(
+            array_unique($terms),
+            static fn(string $term): bool => $term !== '',
+        );
 
         return array_values($terms);
     }

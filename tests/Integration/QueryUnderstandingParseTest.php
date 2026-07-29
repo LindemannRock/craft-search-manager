@@ -85,4 +85,16 @@ final class QueryUnderstandingParseTest extends TestCase
         self::assertSame(['البحث', 'المتقدم'], $parsed->tokens);
         self::assertSame('AND', $parsed->operator);
     }
+
+    public function testStringZeroRemainsATokenWhileEmptyControlsStayEmpty(): void
+    {
+        $zero = QueryUnderstanding::parse('0');
+        $doubleZero = QueryUnderstanding::parse('00');
+
+        self::assertSame(['0'], $zero->tokens);
+        self::assertSame('0', $zero->normalizedQuery);
+        self::assertSame(['00'], $doubleZero->tokens);
+        self::assertSame([], QueryUnderstanding::parse('')->tokens);
+        self::assertSame([], QueryUnderstanding::parse(" \t\n")->tokens);
+    }
 }

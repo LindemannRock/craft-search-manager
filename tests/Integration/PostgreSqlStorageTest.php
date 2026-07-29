@@ -85,6 +85,7 @@ final class PostgreSqlStorageTest extends TestCase
             $storage->storeDocument(1, 1001, ['protein' => 2, 'powder' => 1], 3, 'en');
             $storage->storeTermDocument('protein', 1, 1001, 2, 'en');
             $storage->storeTermDocument('powder', 1, 1001, 1, 'en');
+            $storage->storeTermDocument('0', 1, 1001, 1, 'en');
             $storage->storeTitleTerms(1, 1001, ['protein']);
             $storage->storeElement(1, 1001, 'Protein Powder', 'entry');
             $storage->updateMetadata(1, 3, true);
@@ -105,6 +106,7 @@ final class PostgreSqlStorageTest extends TestCase
             self::assertSame(['1:1001_1' => 3], $storage->getTermDocuments('protein', 1));
             self::assertSame(['protein'], $storage->getTitleTerms(1, 1001));
             self::assertSame(['protein'], $storage->getTermsByPrefix('pro', 1));
+            self::assertSame(['0'], $storage->getTermsByPrefix('0', 1));
 
             $engine = new SearchEngine($storage, 'test_pgsql_storage', ['enableStopWords' => false]);
             self::assertSame([1001], array_keys($engine->search('protein', 1)));

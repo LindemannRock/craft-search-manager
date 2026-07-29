@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
+use lindemannrock\searchmanager\search\QueryParser;
 use lindemannrock\searchmanager\search\storage\MySqlStorage;
 use lindemannrock\searchmanager\search\storage\PostgreSqlStorage;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -102,6 +103,49 @@ final class MySqlAutocompleteStorageTest extends TestCase
             $expectedAllTerms,
             (new PostgreSqlStorage(self::INDEX_HANDLE))->getTermsForAutocomplete(1, null, 10, 'pro'),
         );
+    }
+
+    public function testSqlPrefixStoresAcceptZeroIdentically(): void
+    {
+        Craft::$app->getDb()->createCommand()->batchInsert(
+            '{{%searchmanager_search_terms}}',
+            ['indexHandle', 'term', 'siteId', 'elementId', 'documentKey', 'frequency', 'language'],
+            [
+                [self::INDEX_HANDLE, '0', 1, 101, '101_1', 3, 'en'],
+                [self::INDEX_HANDLE, '00', 1, 102, '102_1', 2, 'en'],
+                [self::INDEX_HANDLE, '10', 1, 103, '103_1', 1, 'en'],
+            ],
+        )->execute();
+
+        self::assertSame(
+            ['0', '00'],
+            (new MySqlStorage(self::INDEX_HANDLE))->getTermsByPrefix('0', 1),
+        );
+        self::assertSame(
+            ['0', '00'],
+            (new PostgreSqlStorage(self::INDEX_HANDLE))->getTermsByPrefix('0', 1),
+        );
+    }
+
+    public function testSqlPrefixStoresReceiveCanonicalAccentedWildcardPrefixIdentically(): void
+    {
+        Craft::$app->getDb()->createCommand()->batchInsert(
+            '{{%searchmanager_search_terms}}',
+            ['indexHandle', 'term', 'siteId', 'elementId', 'documentKey', 'frequency', 'language'],
+            [
+                [self::INDEX_HANDLE, 'uber', 1, 101, '101_1', 3, 'de'],
+                [self::INDEX_HANDLE, 'ubiquitous', 1, 102, '102_1', 2, 'en'],
+            ],
+        )->execute();
+        $prefix = QueryParser::parse('ÜB*')->wildcards[0];
+
+        $mySqlTerms = (new MySqlStorage(self::INDEX_HANDLE))->getTermsByPrefix($prefix, 1);
+        $postgreSqlTerms = (new PostgreSqlStorage(self::INDEX_HANDLE))->getTermsByPrefix($prefix, 1);
+        sort($mySqlTerms, SORT_STRING);
+        sort($postgreSqlTerms, SORT_STRING);
+
+        self::assertSame(['uber', 'ubiquitous'], $mySqlTerms);
+        self::assertSame(['uber', 'ubiquitous'], $postgreSqlTerms);
     }
 
     private function purgeTerms(): void

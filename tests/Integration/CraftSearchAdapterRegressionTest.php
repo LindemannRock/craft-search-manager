@@ -13,6 +13,7 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use Craft;
 use craft\db\Query;
 use craft\elements\Entry;
+use craft\search\SearchQuery as CraftSearchQuery;
 use craft\services\Search as CraftSearchService;
 use craft\web\Request as WebRequest;
 use lindemannrock\searchmanager\adapters\CraftSearchAdapter;
@@ -78,7 +79,7 @@ final class CraftSearchAdapterRegressionTest extends TestCase
 
         $this->withOnlySearchIndices([$this->index('products', 1)], function() use ($adapter, $backend, &$nativeSearchCalls): void {
             $query = Entry::find();
-            $query->search = 'classic watches';
+            $query->search = str_repeat('x', 257);
             $query->siteId = 1;
 
             $this->withCpRequest(true, fn(): array => $adapter->searchElements($query));
@@ -117,6 +118,96 @@ final class CraftSearchAdapterRegressionTest extends TestCase
         self::assertSame(['products', 'products'], $backend->backendForIndexCalls);
         self::assertCount(1, $backend->searchCalls);
         self::assertSame('products', $backend->searchCalls[0]['indexName'] ?? null);
+    }
+
+    public function testOwnedPublicLengthGuardUsesUnicodeLengthForStringsAndSearchQueries(): void
+    {
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [
+            'hits' => [
+                ['elementId' => 49639, 'siteId' => 1, 'score' => 12.5],
+            ],
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $adapter = new CraftSearchAdapter();
+        $nativeSearchCalls = 0;
+        $adapter->on(CraftSearchService::EVENT_BEFORE_SEARCH, static function() use (&$nativeSearchCalls): void {
+            ++$nativeSearchCalls;
+        });
+
+        $accepted = str_repeat('é', 256);
+        $rejected = str_repeat('é', 257);
+
+        $scores = $this->withOnlySearchIndices([$this->index('products', 1)], function() use ($adapter, $accepted, $rejected): array {
+            $results = [];
+            foreach ([
+                'string-accepted' => $accepted,
+                'string-rejected' => $rejected,
+                'object-accepted' => new CraftSearchQuery($accepted),
+                'object-rejected' => new CraftSearchQuery($rejected),
+            ] as $key => $search) {
+                $query = Entry::find();
+                $query->search = $search;
+                $query->siteId = 1;
+                $results[$key] = $adapter->searchElements($query);
+            }
+
+            return $results;
+        });
+
+        self::assertSame(['49639-1' => 12.5], $scores['string-accepted']);
+        self::assertSame([], $scores['string-rejected']);
+        self::assertSame(['49639-1' => 12.5], $scores['object-accepted']);
+        self::assertSame([], $scores['object-rejected']);
+        self::assertSame(0, $nativeSearchCalls);
+        self::assertCount(2, $backend->searchCalls);
+        self::assertSame([$accepted, $accepted], array_column($backend->searchCalls, 'query'));
+    }
+
+    public function testOwnedZeroStringAndSearchQueryPreserveSubmittedQueryAndScores(): void
+    {
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [
+            'hits' => [
+                ['elementId' => 49639, 'siteId' => 1, 'score' => 12.5],
+            ],
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $scores = $this->withOnlySearchIndices([$this->index('products', 1)], function(): array {
+            $results = [];
+            foreach (['string' => '0', 'object' => new CraftSearchQuery('0')] as $key => $search) {
+                $query = Entry::find();
+                $query->search = $search;
+                $query->siteId = 1;
+                $results[$key] = (new CraftSearchAdapter())->searchElements($query);
+            }
+
+            return $results;
+        });
+
+        self::assertSame(['49639-1' => 12.5], $scores['string']);
+        self::assertSame(['49639-1' => 12.5], $scores['object']);
+        self::assertSame(['0', '0'], array_column($backend->searchCalls, 'query'));
+    }
+
+    public function testOwnedStructuredQueryReachesBackendByteIdentically(): void
+    {
+        $backend = new CraftSearchAdapterRecordingBackendService(new MySqlBackend(), [
+            'hits' => [],
+            'total' => 0,
+        ]);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+        $submitted = 'TITLE:Café Über* NOT 0';
+
+        $this->withOnlySearchIndices([$this->index('products', 1)], function() use ($submitted): void {
+            $query = Entry::find();
+            $query->search = $submitted;
+            $query->siteId = 1;
+
+            (new CraftSearchAdapter())->searchElements($query);
+        });
+
+        self::assertSame($submitted, $backend->searchCalls[0]['query'] ?? null);
     }
 
     public function testAllSitesSearchKeysScoresByHitSiteId(): void
@@ -375,14 +466,21 @@ final class CraftSearchAdapterRegressionTest extends TestCase
         ]);
         $this->swapPluginComponent('search-manager', 'backend', $backend);
 
-        $this->withOnlySearchIndices([$this->index('narrow-db', 1, null, ['sections' => ['news']])], function() use ($backend): void {
+        $adapter = new CraftSearchAdapter();
+        $nativeSearchCalls = 0;
+        $adapter->on(CraftSearchService::EVENT_BEFORE_SEARCH, static function() use (&$nativeSearchCalls): void {
+            ++$nativeSearchCalls;
+        });
+
+        $this->withOnlySearchIndices([$this->index('narrow-db', 1, null, ['sections' => ['news']])], function() use ($adapter, $backend, &$nativeSearchCalls): void {
             $query = Entry::find();
-            $query->search = 'classic watches';
+            $query->search = str_repeat('x', 257);
             $query->siteId = 1;
 
-            (new CraftSearchAdapter())->searchElements($query);
+            $adapter->searchElements($query);
 
             self::assertSame([], $backend->searchCalls);
+            self::assertSame(1, $nativeSearchCalls);
         });
     }
 

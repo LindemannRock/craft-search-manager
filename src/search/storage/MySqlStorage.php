@@ -1080,7 +1080,7 @@ class MySqlStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
      */
     public function getTermsByPrefix(string $prefix, int $siteId): array
     {
-        if (empty($prefix)) {
+        if ($prefix === '') {
             return [];
         }
 

@@ -66,11 +66,13 @@ final class AutocompletePrefixRegressionTest extends TestCase
         $autocompleteTerms['profile'] = 2;
 
         $storage = new RecordingStorage(
-            termDocs: [],
+            termDocs: [
+                '0' => ['1:1' => 8],
+            ],
             titleByElement: [],
-            docLengths: [],
-            totalDocs: 0,
-            avgDocLength: 0.0,
+            docLengths: ['1:1' => 1],
+            totalDocs: 1,
+            avgDocLength: 1.0,
             autocompleteTerms: $autocompleteTerms,
         );
         $this->swapPluginComponent('search-manager', 'backend', new AutocompletePrefixBackendService($storage));
@@ -111,6 +113,35 @@ final class AutocompletePrefixRegressionTest extends TestCase
 
         self::assertSame(['tools', 'toolbar'], $suggestions);
         self::assertSame('to', $storage->getTermsForAutocompleteCalls[0]['prefix'] ?? null);
+    }
+
+    public function testZeroPrefixReachesExistingAutocompleteStoreAtMinimumLengthOne(): void
+    {
+        $storage = new RecordingStorage(
+            termDocs: [
+                '0' => ['1:1' => 8],
+            ],
+            titleByElement: [],
+            docLengths: ['1:1' => 1],
+            totalDocs: 1,
+            avgDocLength: 1.0,
+            autocompleteTerms: [
+                '0' => 8,
+                '00' => 5,
+                '01' => 3,
+                '10' => 2,
+            ],
+        );
+        $this->swapPluginComponent('search-manager', 'backend', new AutocompletePrefixBackendService($storage));
+
+        $suggestions = SearchManager::$plugin->autocomplete->suggest('0', 'content', [
+            'limit' => 3,
+            'minLength' => 1,
+            'siteId' => 1,
+        ]);
+
+        self::assertSame(['0', '00', '01'], $suggestions);
+        self::assertSame('0', $storage->getTermsForAutocompleteCalls[0]['prefix'] ?? null);
     }
 
     public function testAutocompleteRejectsFirstCharacterFuzzyPollution(): void

@@ -350,6 +350,28 @@ final class GraphqlSearchTest extends TestCase
         $this->assertSame('graphql', $calls[0]['items'][0]['options']['sourceDefault']);
     }
 
+    public function testGraphqlLocalSearchPreservesZeroQuery(): void
+    {
+        $index = $this->recordingIndex(1);
+        $stub = $this->installStubBackend();
+        $stub->searchResponse = ['hits' => [], 'total' => 0];
+        $resolveInfo = $this->createStub(\GraphQL\Type\Definition\ResolveInfo::class);
+
+        $response = $this->withOnlySearchIndices([$index], static fn(): array => SearchResolver::resolveSearch(null, [
+            'query' => '0',
+            'indexHandles' => [$index->handle],
+            'siteId' => 1,
+            'resultsLimit' => 0,
+            'skipAnalytics' => false,
+        ], null, $resolveInfo));
+
+        self::assertSame('0', $response['query']);
+        $call = $stub->callsFor('search')[0]['items'][0];
+        self::assertSame('0', $call['query']);
+        self::assertSame(20, $call['options']['limit']);
+        self::assertFalse($call['options']['skipAnalytics']);
+    }
+
     public function testGraphqlSearchSchemaDoesNotExposeEnrichArgument(): void
     {
         $queries = SearchQuery::getQueries(false);

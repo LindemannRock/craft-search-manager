@@ -239,6 +239,8 @@ Use this when you want existing front-end templates to benefit from Search Manag
 
 Search Manager uses an index only when it has full coverage for the query: the index must be enabled, match the queried element type, run on a local backend (MySQL, PostgreSQL, Redis, or File), cover the query's site scope, and have no criteria restriction. Element types or site scopes without a matching full-coverage index continue using Craft's native search. Craft's native search index stays fully up to date, so fallback searches remain current and disabling native replacement does not require a content resave.
 
+After Search Manager owns a front-end query, it applies the same 256-Unicode-character limit as its other public search surfaces. Exactly 256 characters are accepted. A longer query returns no scored elements without parsing, query rules, synonyms, cache access, search, analytics, or fallback to Craft. The query is rejected rather than truncated so structured operators keep their original meaning.
+
 > [!NOTE]
 > Control Panel search is not affected. CP requests always use Craft's native search service, including Craft's native statuses, events, and query syntax.
 
@@ -254,6 +256,7 @@ Replace Native Search is intentionally a front-end enhancement, not a transparen
 
 - **Front-end `.search()` only:** it affects template/site element queries that go through Craft's search service. It does not change CP element indexes or CP global search.
 - **Coverage-based fallback:** if Search Manager cannot find a full-coverage local index for the query's element type and site scope, the query falls back to Craft native search.
+- **Owned-query length:** a query owned by Search Manager accepts up to 256 Unicode characters; a longer query returns no results without falling back to Craft.
 - **Public-content indexing:** Search Manager indexes searchable content only. Entries must be live; users must be active; products and variants must be live where the Commerce element type exposes that status; assets, categories, and other element types must be enabled. Drafts, revisions, disabled content, and disabled-for-site content are not kept in the Search Manager index.
 - **Score values differ:** Craft native search returns Craft keyword scores. Search Manager returns backend relevance scores, with the built-in backends using BM25. Both paths hand Craft a descending score map for normal `orderBy('score')` use, but the numeric values are not comparable. If a split-section index returns several section hits for the same element and site, the adapter keeps that element's highest section score.
 

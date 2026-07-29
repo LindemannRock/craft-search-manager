@@ -50,9 +50,28 @@ final class RedisStorageRegressionTest extends TestCase
         $storage->updateMetadata(1, 7, true);
 
         $engine = new SearchEngine($storage, 'test-index', ['enableStopWords' => false]);
-        $results = $engine->search('pro*', 1);
+        $results = $engine->search('PRÖ*', 1);
 
         self::assertSame([101, 102], array_keys($results));
+    }
+
+    public function testZeroPrefixAndWildcardSearchRemainAvailable(): void
+    {
+        [$storage] = $this->makeStorage();
+        $storage->storeTermDocument('0', 1, 101, 3);
+        $storage->storeTermDocument('00', 1, 102, 2);
+        $storage->storeTermDocument('10', 1, 103, 1);
+        $storage->storeDocument(1, 101, ['0' => 3], 3);
+        $storage->storeDocument(1, 102, ['00' => 2], 2);
+        $storage->storeTitleTerms(1, 101, ['0']);
+        $storage->storeTitleTerms(1, 102, ['00']);
+        $storage->updateMetadata(1, 3, true);
+        $storage->updateMetadata(1, 2, true);
+
+        self::assertSame(['0', '00'], $storage->getTermsByPrefix('0', 1));
+
+        $engine = new SearchEngine($storage, 'test-index', ['enableStopWords' => false]);
+        self::assertSame([101, 102], array_keys($engine->search('0*', 1)));
     }
 
     public function testDocumentTermsExcludeSpecialLanguageAndLengthRows(): void

@@ -51,6 +51,24 @@ final class SearchManagerVariableGuardTest extends TestCase
         self::assertSame([], $stub->callsFor('searchMultiple'));
     }
 
+    public function testTwigSearchPreservesZeroAndExistingFalsyOptionMeanings(): void
+    {
+        $variable = new SearchManagerVariable();
+        $stub = $this->installStubBackend();
+        $stub->searchResponse = ['hits' => [], 'total' => 0];
+
+        $response = $variable->search('content', '0', [
+            'limit' => 0,
+            'skipAnalytics' => false,
+        ]);
+
+        self::assertSame(0, $response['total']);
+        $call = $stub->callsFor('search')[0]['items'][0];
+        self::assertSame('0', $call['query']);
+        self::assertSame(20, $call['options']['limit']);
+        self::assertFalse($call['options']['skipAnalytics']);
+    }
+
     public function testTwigSearchLimitsAreClampedBeforeBackendDelegation(): void
     {
         $variable = new SearchManagerVariable();

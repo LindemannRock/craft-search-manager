@@ -332,6 +332,35 @@ final class FileStorageRegressionTest extends TestCase
         self::assertArrayHasKey('Москва', $storage->getTermsForAutocomplete(1, null, 10, 'Мос'));
     }
 
+    public function testZeroPrefixAndWildcardSearchRemainAvailable(): void
+    {
+        $storage = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'file-storage-regression', [
+            'disableStopWords' => true,
+        ]);
+
+        self::assertTrue($engine->indexDocument(1, 101, '0', '0 numeric value', 'en'));
+        self::assertTrue($engine->indexDocument(1, 102, '00', '00 numeric value', 'en'));
+
+        $terms = $storage->getTermsByPrefix('0', 1);
+        sort($terms, SORT_STRING);
+        self::assertSame(['0', '00'], $terms);
+        $elementIds = array_keys($engine->search('0*', 1));
+        sort($elementIds);
+        self::assertSame([101, 102], $elementIds);
+    }
+
+    public function testAccentedUppercaseWildcardUsesCanonicalFilePrefix(): void
+    {
+        $storage = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'file-storage-regression', [
+            'disableStopWords' => true,
+        ]);
+
+        self::assertTrue($engine->indexDocument(1, 101, 'Protein', 'Protein guide', 'en'));
+        self::assertSame([101], array_keys($engine->search('PRÖ*', 1)));
+    }
+
     public function testUnicodeNgramScansRecoverOriginalTerms(): void
     {
         $storage = $this->makeStorage();

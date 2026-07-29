@@ -138,6 +138,8 @@ These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The 
 
 > [!NOTE]
 > When `replaceNativeSearch` is enabled, front-end template `.search()` queries can use Search Manager when a full-coverage index exists for the element type and site scope. Control Panel searches always stay on Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.
+>
+> Once Search Manager owns a front-end query, it accepts up to 256 Unicode characters. A longer owned query returns no scored elements and does not fall back to Craft. Queries without Search Manager coverage still use the normal Craft fallback.
 
 ### Language
 **CP:** Settings → Language

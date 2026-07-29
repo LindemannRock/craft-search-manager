@@ -130,6 +130,8 @@ If you've enabled `replaceNativeSearch`, front-end template `.search()` queries 
 
 Search Manager's query operators work in this mode when Search Manager answers the query. See [Search features](../feature-tour/search-features.md#query-syntax-differences) for the syntax differences from Craft native search.
 
+An owned native-replacement query may contain up to 256 Unicode characters. Search Manager does not truncate longer queries because that could change structured syntax; it returns no scored elements and does not fall back to Craft. Queries that Search Manager does not own continue through Craft native search.
+
 Control Panel searches always stay on Craft's native search.
 
 ## Next steps
