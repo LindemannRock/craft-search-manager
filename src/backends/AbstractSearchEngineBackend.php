@@ -44,6 +44,11 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
      */
     protected array $storages = [];
 
+    /**
+     * Private per-call reporter supplied by BackendService for cache eligibility.
+     */
+    private ?\Closure $searchFailureReporter = null;
+
     // =========================================================================
     // ABSTRACT METHODS - Must be implemented by each backend
     // =========================================================================
@@ -202,6 +207,9 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
                 'similarityThreshold' => $settings->similarityThreshold ?? 0.25,
                 'maxFuzzyCandidates' => $settings->maxFuzzyCandidates ?? 100,
                 'enableFuzzy' => $settings->enableFuzzy ?? true,
+                'searchFailureReporter' => function(): void {
+                    $this->reportSearchFailure();
+                },
             ]);
         }
 
@@ -622,6 +630,10 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
      */
     public function search(string $indexName, string $query, array $options = []): array
     {
+        $failureReporter = $options['_localSearchFailureReporter'] ?? null;
+        unset($options['_localSearchFailureReporter']);
+        $this->searchFailureReporter = $failureReporter instanceof \Closure ? $failureReporter : null;
+
         try {
             $siteScope = SearchSiteScopeHelper::normalize($options['siteId'] ?? null);
 
@@ -682,8 +694,18 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
 
             return $response;
         } catch (\Throwable $e) {
+            $this->reportSearchFailure();
             $this->logError("{$this->getBackendLabel()} search failed", ['error' => $e->getMessage()]);
             return ['hits' => [], 'total' => 0];
+        } finally {
+            $this->searchFailureReporter = null;
+        }
+    }
+
+    private function reportSearchFailure(): void
+    {
+        if ($this->searchFailureReporter !== null) {
+            ($this->searchFailureReporter)();
         }
     }
 

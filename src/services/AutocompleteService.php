@@ -246,6 +246,7 @@ class AutocompleteService extends Component
 
         // Layer 2 + keystone filter: complete the last token via the shared
         // resolver, constrained by the preceding tokens' resolved documents.
+        $suggestionFailed = false;
         $suggestions = $this->buildTokenSuggestions(
             $storage,
             $parsed->tokens,
@@ -253,10 +254,11 @@ class AutocompleteService extends Component
             $limit,
             $language,
             $fuzzy,
+            $suggestionFailed,
         );
 
         // Save to cache
-        if ($settings->enableAutocompleteCache) {
+        if ($settings->enableAutocompleteCache && !$suggestionFailed) {
             $this->saveToCache($cacheKey, $suggestions, $fullIndexHandle);
         }
 
@@ -296,6 +298,7 @@ class AutocompleteService extends Component
      * @param int $limit Maximum suggestions
      * @param string|null $language Language filter for prefix completions
      * @param bool $fuzzy Whether fuzzy candidates participate
+     * @param bool $failed Receives whether a participating storage read failed
      * @return string[] Full suggestion strings (preceding tokens + completion)
      */
     private function buildTokenSuggestions(
@@ -305,7 +308,9 @@ class AutocompleteService extends Component
         int $limit,
         ?string $language,
         bool $fuzzy,
+        bool &$failed,
     ): array {
+        $failed = false;
         if ($tokens === [] || $limit < 1) {
             return [];
         }
@@ -331,6 +336,7 @@ class AutocompleteService extends Component
 
             return $merged;
         } catch (\Throwable $e) {
+            $failed = true;
             // Autocomplete degrades gracefully on storage failure; log without
             // trace strings (audit batch 7).
             $this->logError('Failed to build token suggestions', [
@@ -764,14 +770,14 @@ class AutocompleteService extends Component
     /**
      * Get from autocomplete cache
      */
-    private function getFromCache(?string $cacheKey, ?string $indexHandle = null): ?array
+    private function getFromCache(?string $cacheKey, string $indexHandle): ?array
     {
         if ($cacheKey === null) {
             return null;
         }
 
         $settings = SearchManager::$plugin->getSettings();
-        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $cacheKey;
+        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $indexHandle . ':' . $cacheKey;
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
@@ -819,14 +825,14 @@ class AutocompleteService extends Component
     /**
      * Save to autocomplete cache
      */
-    private function saveToCache(?string $cacheKey, array $data, ?string $indexHandle = null): void
+    private function saveToCache(?string $cacheKey, array $data, string $indexHandle): void
     {
         if ($cacheKey === null) {
             return;
         }
 
         $settings = SearchManager::$plugin->getSettings();
-        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $cacheKey;
+        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $indexHandle . ':' . $cacheKey;
 
         $this->logDebug('Saving to autocomplete cache', [
             'cacheKey' => $cacheKey,
@@ -952,15 +958,24 @@ class AutocompleteService extends Component
             if ($cache !== null) {
                 $redis = $cache->redis;
                 $keys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]);
+                $indexPrefix = $fullIndexHandle === null
+                    ? null
+                    : PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $fullIndexHandle . ':';
 
                 if (!empty($keys)) {
                     foreach ($keys as $key) {
                         // If indexHandle specified, only delete keys for that index
-                        if ($fullIndexHandle === null || str_contains($key, $fullIndexHandle)) {
+                        if ($indexPrefix === null || str_starts_with((string)$key, $indexPrefix)) {
                             $cache->delete($key);
-                            $redis->executeCommand('SREM', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete'), $key]);
+                            if ($indexPrefix !== null) {
+                                $redis->executeCommand('SREM', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete'), $key]);
+                            }
                         }
                     }
+                }
+
+                if ($indexPrefix === null) {
+                    $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]);
                 }
 
                 $this->logInfo('Cleared autocomplete cache (Redis)', ['index' => $indexHandle]);

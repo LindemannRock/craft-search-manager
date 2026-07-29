@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\backends\AbstractSearchEngineBackend;
 use lindemannrock\searchmanager\backends\AlgoliaBackend;
 use lindemannrock\searchmanager\backends\BaseBackend;
 use lindemannrock\searchmanager\backends\FileBackend;
@@ -692,12 +693,19 @@ class BackendService extends Component
 
         // 2. No cache - perform actual search
         $startTime = microtime(true);
+        $backendFailed = false;
+        $backendOptions = $options;
+        if ($backend instanceof AbstractSearchEngineBackend) {
+            $backendOptions['_localSearchFailureReporter'] = static function() use (&$backendFailed): void {
+                $backendFailed = true;
+            };
+        }
 
         // If synonyms exist, search for all expanded queries and merge results
         if ($useSynonyms) {
-            $results = $this->_searchWithSynonyms($backend, $indexName, $expandedQueries, $options);
+            $results = $this->_searchWithSynonyms($backend, $indexName, $expandedQueries, $backendOptions);
         } else {
-            $results = $backend->search($indexName, $query, $options);
+            $results = $backend->search($indexName, $query, $backendOptions);
         }
 
         // =====================================================================
@@ -716,7 +724,7 @@ class BackendService extends Component
 
         $executionTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
 
-        $backendFailed = (bool) ($results['_failed'] ?? false);
+        $backendFailed = $backendFailed || (bool)($results['_failed'] ?? false);
 
         // 3. Cache RAW results (BEFORE promotions) so promotions can be applied fresh
         // This ensures disabled/expired promotions are immediately excluded
@@ -859,10 +867,12 @@ class BackendService extends Component
         $allHits = [];
         $hitIndexesByElementId = [];
         $searchDebug = null;
+        $backendFailed = false;
         $childOptions = $this->aggregateChildPaginationOptions($options, 50);
 
         foreach ($queries as $searchQuery) {
             $queryResults = $backend->search($indexName, $searchQuery, $childOptions);
+            $backendFailed = $backendFailed || (bool)($queryResults['_failed'] ?? false);
 
             // Merge local-engine debug across the expanded queries: relax is
             // sticky, per-token resolutions union (first query wins per token).
@@ -920,6 +930,9 @@ class BackendService extends Component
 
         if ($searchDebug !== null) {
             $merged['searchDebug'] = $searchDebug;
+        }
+        if ($backendFailed) {
+            $merged['_failed'] = true;
         }
 
         return $merged;

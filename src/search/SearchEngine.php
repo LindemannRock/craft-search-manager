@@ -91,6 +91,11 @@ class SearchEngine
     private float $phraseBoostFactor;
 
     /**
+     * Private failure reporter used by the local backend cache boundary.
+     */
+    private ?\Closure $searchFailureReporter;
+
+    /**
      * Constructor
      *
      * @param StorageInterface $storage Storage backend
@@ -103,6 +108,9 @@ class SearchEngine
         $this->storage = $storage;
         $this->indexHandle = $indexHandle;
         $this->phraseBoostFactor = $config['phraseBoost'] ?? 4.0;
+        $failureReporter = $config['searchFailureReporter'] ?? null;
+        $this->searchFailureReporter = $failureReporter instanceof \Closure ? $failureReporter : null;
+        unset($config['searchFailureReporter']);
 
         // Initialize components with configuration
         $this->tokenizer = new Tokenizer();
@@ -529,6 +537,8 @@ class SearchEngine
      */
     public function search(string $query, int $siteId, int $limit = 0, array $options = []): array
     {
+        $this->resetSearchDebug();
+
         try {
             // Route explicit advanced syntax through parsed-query orchestration.
             if (QueryParser::hasAdvancedOperators($query)) {
@@ -544,6 +554,7 @@ class SearchEngine
             // Plain queries use the resolver-driven simple relevance path.
             return $this->searchSimple($query, $siteId, $limit, $options);
         } catch (\Throwable $e) {
+            $this->reportSearchFailure();
             $this->logError('Search failed', [
                 'query' => $query,
                 'site_id' => $siteId,
@@ -675,6 +686,7 @@ class SearchEngine
 
             return $finalResults;
         } catch (\Throwable $e) {
+            $this->reportSearchFailure();
             $this->logError('Advanced search failed', [
                 'query' => $parsed->originalQuery ?? 'unknown',
                 'site_id' => $siteId,
@@ -792,12 +804,20 @@ class SearchEngine
 
             return $finalResults;
         } catch (\Throwable $e) {
+            $this->reportSearchFailure();
             $this->logError('Search failed', [
                 'query' => $query,
                 'site_id' => $siteId,
                 'error' => $e->getMessage(),
             ]);
             return [];
+        }
+    }
+
+    private function reportSearchFailure(): void
+    {
+        if ($this->searchFailureReporter !== null) {
+            ($this->searchFailureReporter)();
         }
     }
 

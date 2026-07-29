@@ -25,7 +25,7 @@ use lindemannrock\searchmanager\search\storage\StorageInterface;
  *
  * @since 5.47.0
  */
-final class RecordingStorage implements StorageInterface, ElementSuggestionStorageInterface
+class RecordingStorage implements StorageInterface, ElementSuggestionStorageInterface
 {
     /** @var int Times getTitleTerms() (per-document) was called. */
     public int $getTitleTermsCalls = 0;
