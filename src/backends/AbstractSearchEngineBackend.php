@@ -293,28 +293,40 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
      */
     public function batchIndex(string $indexName, array $items): bool
     {
+        $this->clearLastIndexingFailures();
+
         try {
             $engine = $this->getSearchEngine($indexName);
             $storage = $this->getStorage($indexName);
             if (!$this->assertSplitStorageCapability($indexName, $storage)) {
+                foreach ($items as $data) {
+                    $this->recordLocalIndexingFailure(is_array($data) ? $data : []);
+                }
+
                 return false;
             }
 
             $successCount = 0;
             foreach ($items as $data) {
-                $data = SearchHitIdentityHelper::normalizeHit($data);
-                $title = $data['title'] ?? '';
-                $content = SearchRecordProjectionHelper::localMatchingText($data);
+                try {
+                    $data = SearchHitIdentityHelper::normalizeHit($data);
+                    $title = $data['title'] ?? '';
+                    $content = SearchRecordProjectionHelper::localMatchingText($data);
 
-                $siteId = $data['siteId'] ?? 1;
-                $elementId = SearchHitIdentityHelper::elementId($data);
-                if ($elementId === null) {
-                    continue;
-                }
-                $elementType = $data['type'] ?? $this->deriveElementType($indexName, $data);
-                $documentKey = SearchHitIdentityHelper::documentId($data) ?? SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+                    $siteId = $data['siteId'] ?? 1;
+                    $elementId = SearchHitIdentityHelper::elementId($data);
+                    if ($elementId === null) {
+                        $this->recordLocalIndexingFailure($data);
+                        continue;
+                    }
+                    $elementType = $data['type'] ?? $this->deriveElementType($indexName, $data);
+                    $documentKey = SearchHitIdentityHelper::documentId($data) ?? SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
 
-                if ($engine->indexDocumentWithKeyResult($siteId, $elementId, $documentKey, $title, $content)['success']) {
+                    if (!$engine->indexDocumentWithKeyResult($siteId, $elementId, $documentKey, $title, $content)['success']) {
+                        $this->recordLocalIndexingFailure($data);
+                        continue;
+                    }
+
                     $documentData = $this->buildDocumentData($indexName, $data);
                     $documentStorage = $this->documentKeyStorage($storage);
                     if ($documentStorage !== null) {
@@ -323,6 +335,12 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
                         $storage->storeElement($siteId, $elementId, $title, $elementType, $documentData);
                     }
                     $successCount++;
+                } catch (\Throwable) {
+                    $this->logError("Failed to index document in {$this->getBackendLabel()} batch", [
+                        'backend_id' => is_array($data) ? SearchHitIdentityHelper::documentId($data) : null,
+                        'element_id' => is_array($data) ? SearchHitIdentityHelper::elementId($data) : null,
+                    ]);
+                    $this->recordLocalIndexingFailure(is_array($data) ? $data : []);
                 }
             }
 
@@ -332,11 +350,28 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
                 'total' => count($items),
             ]);
 
-            return $successCount > 0;
-        } catch (\Throwable $e) {
-            $this->logError("Failed to batch index in {$this->getBackendLabel()}", ['error' => $e->getMessage()]);
+            return $items !== [] && $successCount === count($items);
+        } catch (\Throwable) {
+            $this->logError("Failed to batch index in {$this->getBackendLabel()}", [
+                'classification' => 'local_batch_failure',
+            ]);
+            foreach ($items as $data) {
+                $this->recordLocalIndexingFailure(is_array($data) ? $data : []);
+            }
+
             return false;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    private function recordLocalIndexingFailure(array $document): void
+    {
+        $this->recordIndexingFailure([
+            'backendId' => SearchHitIdentityHelper::documentId($document),
+            'elementId' => SearchHitIdentityHelper::elementId($document),
+        ], 'Local document indexing failed.');
     }
 
     /**
