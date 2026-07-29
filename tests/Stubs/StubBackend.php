@@ -71,12 +71,29 @@ final class StubBackend extends BackendService
      */
     public array $searchResponsesBySiteId = [];
 
+    /**
+     * @var array<int, list<array<string, mixed>>>
+     * @since 5.54.0
+     */
+    public array $searchHitPoolsBySiteId = [];
+
     /** @var array<string, mixed> */
     public array $searchMultipleResponse = [
         'hits' => [],
         'total' => 0,
         'indices' => [],
     ];
+
+    /**
+     * @var array<int, list<array<string, mixed>>>
+     * @since 5.54.0
+     */
+    public array $searchMultipleHitPoolsBySiteId = [];
+
+    /**
+     * @since 5.54.0
+     */
+    public string $searchPaginationMode = 'none';
 
     /**
      * @param array<int, array<string, mixed>> $items
@@ -316,6 +333,9 @@ final class StubBackend extends BackendService
         ];
 
         $siteId = isset($options['siteId']) ? (int)$options['siteId'] : null;
+        if ($siteId !== null && isset($this->searchHitPoolsBySiteId[$siteId])) {
+            return $this->paginateSearchHitPool($this->searchHitPoolsBySiteId[$siteId], $options);
+        }
 
         return $siteId !== null && isset($this->searchResponsesBySiteId[$siteId])
             ? $this->searchResponsesBySiteId[$siteId]
@@ -341,6 +361,21 @@ final class StubBackend extends BackendService
             ],
         ];
 
+        $siteId = isset($options['siteId']) ? (int)$options['siteId'] : null;
+        if ($siteId !== null && isset($this->searchMultipleHitPoolsBySiteId[$siteId])) {
+            $hitPool = $this->searchMultipleHitPoolsBySiteId[$siteId];
+            $response = $this->paginateSearchHitPool($hitPool, $options);
+            $response['indices'] = array_fill_keys($indexNames, 0);
+            foreach ($hitPool as $hit) {
+                $indexHandle = $hit['_index'] ?? null;
+                if (is_string($indexHandle) && array_key_exists($indexHandle, $response['indices'])) {
+                    $response['indices'][$indexHandle]++;
+                }
+            }
+
+            return $response;
+        }
+
         return $this->searchMultipleResponse;
     }
 
@@ -362,5 +397,31 @@ final class StubBackend extends BackendService
         }
 
         return $indexName . ':' . $elementId . ':' . ($siteId ?? 'null');
+    }
+
+    /**
+     * @param list<array<string, mixed>> $hits
+     * @param array<string, mixed> $options
+     * @return array{hits: list<array<string, mixed>>, total: int}
+     */
+    private function paginateSearchHitPool(array $hits, array $options): array
+    {
+        $total = count($hits);
+        $limit = (int)($options['limit'] ?? 0);
+        $offset = (int)($options['offset'] ?? 0);
+        if ($this->searchPaginationMode === 'page' && $limit > 0) {
+            $offset = (int)($options['page'] ?? 0) * $limit;
+        }
+
+        if ($limit > 0) {
+            $hits = array_slice($hits, $offset, $limit);
+        } elseif ($offset > 0) {
+            $hits = array_slice($hits, $offset);
+        }
+
+        return [
+            'hits' => array_values($hits),
+            'total' => $total,
+        ];
     }
 }

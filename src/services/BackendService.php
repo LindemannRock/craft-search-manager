@@ -859,9 +859,10 @@ class BackendService extends Component
         $allHits = [];
         $hitIndexesByElementId = [];
         $searchDebug = null;
+        $childOptions = $this->aggregateChildPaginationOptions($options, 50);
 
         foreach ($queries as $searchQuery) {
-            $queryResults = $backend->search($indexName, $searchQuery, $options);
+            $queryResults = $backend->search($indexName, $searchQuery, $childOptions);
 
             // Merge local-engine debug across the expanded queries: relax is
             // sticky, per-token resolutions union (first query wins per token).
@@ -1050,16 +1051,10 @@ class BackendService extends Component
 
         $limit = (int) ($options['limit'] ?? 0);
         $offset = (int) ($options['offset'] ?? 0);
-        $perIndexLimit = $limit > 0 ? $limit + $offset : 0;
 
         foreach ($indexNames as $indexName) {
-            $indexOptions = $options;
+            $indexOptions = $this->aggregateChildPaginationOptions($options, 0);
             $indexOptions['sessionId'] = $sessionId;
-            if ($perIndexLimit > 0) {
-                $indexOptions['limit'] = $perIndexLimit;
-                $indexOptions['offset'] = 0;
-                $indexOptions['page'] = 0;
-            }
 
             $indexResults = $this->search($indexName, $query, $indexOptions);
 
@@ -1148,6 +1143,25 @@ class BackendService extends Component
                 'resolvedTerms' => $meta['resolvedTerms'],
             ],
         ];
+    }
+
+    /**
+     * Give an aggregate child enough candidates while retaining pagination
+     * authority at the owning aggregate.
+     *
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    private function aggregateChildPaginationOptions(array $options, int $defaultLimit): array
+    {
+        $limit = (int)($options['limit'] ?? $defaultLimit);
+        $offset = (int)($options['offset'] ?? 0);
+
+        $options['limit'] = $limit > 0 ? $limit + $offset : 0;
+        $options['offset'] = 0;
+        $options['page'] = 0;
+
+        return $options;
     }
 
     /**

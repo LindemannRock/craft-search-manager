@@ -371,6 +371,7 @@ class SearchResolver extends Resolver
                 'siteId' => $siteId,
                 'limit' => (int)($options['offset'] ?? 0) + (int)($options['limit'] ?? 20),
                 'offset' => 0,
+                'page' => 0,
             ]);
             $siteResults = count($indexHandles) === 1
                 ? SearchManager::$plugin->backend->search($indexHandles[0], $query, $siteOptions)

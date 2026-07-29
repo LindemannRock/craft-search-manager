@@ -278,6 +278,159 @@ final class Pr1Debt9AnalyticsSourceAttributionTest extends TestCase
         self::assertSame($rows[0]['sessionId'], $rows[1]['sessionId']);
     }
 
+    #[DataProvider('multiIndexPaginationModeProvider')]
+    public function testDirectPhpUnboundedMultiIndexSearchOwnsOffset(
+        string $backendStyle,
+        string $paginationMode,
+    ): void {
+        $handles = $this->requireAnalyticsIndexHandles(2);
+        $query = self::QUERY_PREFIX . 'multi-unbounded-' . $backendStyle;
+        $siteId = $this->testSiteId();
+        $backend = new Pr1Debt9Backend();
+        $backend->paginationMode = $paginationMode;
+        $backend->hitPoolsByIndex = [
+            $handles[0] => [
+                ['elementId' => 101, 'siteId' => $siteId, 'score' => 100.0],
+                ['elementId' => 102, 'siteId' => $siteId, 'score' => 70.0],
+                ['elementId' => 103, 'siteId' => $siteId, 'score' => 50.0],
+            ],
+            $handles[1] => [
+                ['elementId' => 201, 'siteId' => $siteId, 'score' => 90.0],
+                ['elementId' => 202, 'siteId' => $siteId, 'score' => 80.0],
+                ['elementId' => 203, 'siteId' => $siteId, 'score' => 60.0],
+            ],
+        ];
+        $service = $this->installOrchestratedBackend($backend);
+
+        $results = $service->searchMultiple($handles, $query, [
+            'limit' => 0,
+            'offset' => 2,
+            'page' => 3,
+            'siteId' => $siteId,
+            'source' => ' direct pagination! ',
+            'sourceDefault' => TrackingMetadataHelper::SOURCE_GRAPHQL,
+            'includeQueryRuleDebug' => true,
+        ]);
+
+        self::assertSame([202, 102, 203, 103], array_column($results['hits'], 'elementId'), $backendStyle);
+        self::assertSame(6, $results['total'], $backendStyle);
+        self::assertSame([$handles[0] => 3, $handles[1] => 3], $results['indices'], $backendStyle);
+        self::assertSame(
+            [$handles[1], $handles[0], $handles[1], $handles[0]],
+            array_column($results['hits'], '_index'),
+            $backendStyle,
+        );
+        self::assertFalse($results['meta']['cached'], $backendStyle);
+        self::assertFalse($results['meta']['synonymsExpanded'], $backendStyle);
+        self::assertSame([], $results['meta']['rulesMatched'], $backendStyle);
+        self::assertSame([], $results['meta']['promotionsMatched'], $backendStyle);
+
+        self::assertCount(2, $backend->searchCallRecords, $backendStyle);
+        foreach ($backend->searchCallRecords as $call) {
+            self::assertSame(0, $call['options']['limit'], $backendStyle);
+            self::assertSame(0, $call['options']['offset'], $backendStyle);
+            self::assertSame(0, $call['options']['page'], $backendStyle);
+        }
+
+        $rows = $this->analyticsRows($query);
+        self::assertCount(2, $rows, $backendStyle);
+        self::assertSame(['directpagination', 'directpagination'], array_column($rows, 'source'), $backendStyle);
+        self::assertNotEmpty($rows[0]['sessionId'], $backendStyle);
+        self::assertSame($rows[0]['sessionId'], $rows[1]['sessionId'], $backendStyle);
+    }
+
+    public function testDirectPhpBoundedMultiIndexSearchRetainsCandidateHeadroom(): void
+    {
+        $handles = $this->requireAnalyticsIndexHandles(2);
+        $query = self::QUERY_PREFIX . 'multi-bounded';
+        $siteId = $this->testSiteId();
+        $backend = new Pr1Debt9Backend();
+        $backend->paginationMode = 'page';
+        $backend->hitPoolsByIndex = [
+            $handles[0] => [
+                ['elementId' => 101, 'siteId' => $siteId, 'score' => 100.0],
+                ['elementId' => 102, 'siteId' => $siteId, 'score' => 70.0],
+                ['elementId' => 103, 'siteId' => $siteId, 'score' => 50.0],
+            ],
+            $handles[1] => [
+                ['elementId' => 201, 'siteId' => $siteId, 'score' => 90.0],
+                ['elementId' => 202, 'siteId' => $siteId, 'score' => 80.0],
+                ['elementId' => 203, 'siteId' => $siteId, 'score' => 60.0],
+            ],
+        ];
+        $service = $this->installOrchestratedBackend($backend);
+
+        $results = $service->searchMultiple($handles, $query, [
+            'limit' => 2,
+            'offset' => 2,
+            'page' => 4,
+            'siteId' => $siteId,
+            'skipAnalytics' => true,
+            'includeQueryRuleDebug' => true,
+        ]);
+
+        self::assertSame([202, 102], array_column($results['hits'], 'elementId'));
+        foreach ($backend->searchCallRecords as $call) {
+            self::assertSame(4, $call['options']['limit']);
+            self::assertSame(0, $call['options']['offset']);
+            self::assertSame(0, $call['options']['page']);
+        }
+    }
+
+    public function testUnboundedMultiIndexAndSynonymAggregatesEachOwnTheirPagination(): void
+    {
+        $handles = $this->requireAnalyticsIndexHandles(2);
+        $query = self::QUERY_PREFIX . 'multi-synonym';
+        $synonymQuery = $query . '-expanded';
+        $siteId = $this->testSiteId();
+        $backend = new Pr1Debt9Backend();
+        $backend->paginationMode = 'offset';
+        $backend->hitPoolsByIndexAndQuery = [
+            $handles[0] => [
+                $query => [
+                    ['elementId' => 101, 'siteId' => $siteId, 'score' => 100.0],
+                    ['elementId' => 102, 'siteId' => $siteId, 'score' => 70.0],
+                ],
+                $synonymQuery => [
+                    ['elementId' => 101, 'siteId' => $siteId, 'score' => 110.0],
+                    ['elementId' => 103, 'siteId' => $siteId, 'score' => 50.0],
+                ],
+            ],
+            $handles[1] => [
+                $query => [
+                    ['elementId' => 201, 'siteId' => $siteId, 'score' => 90.0],
+                    ['elementId' => 202, 'siteId' => $siteId, 'score' => 80.0],
+                ],
+                $synonymQuery => [
+                    ['elementId' => 202, 'siteId' => $siteId, 'score' => 85.0],
+                    ['elementId' => 203, 'siteId' => $siteId, 'score' => 60.0],
+                ],
+            ],
+        ];
+        $service = $this->installOrchestratedBackend($backend);
+        $this->swapPluginComponent('search-manager', 'queryRules', new Pr1Debt9SynonymQueryRuleService());
+
+        $results = $service->searchMultiple($handles, $query, [
+            'limit' => 0,
+            'offset' => 2,
+            'page' => 5,
+            'siteId' => $siteId,
+            'skipAnalytics' => true,
+            'includeQueryRuleDebug' => true,
+        ]);
+
+        self::assertSame([202, 102, 203, 103], array_column($results['hits'], 'elementId'));
+        self::assertSame(6, $results['total']);
+        self::assertTrue($results['meta']['synonymsExpanded']);
+        self::assertSame([$query, $synonymQuery], $results['meta']['expandedQueries']);
+        self::assertCount(4, $backend->searchCallRecords);
+        foreach ($backend->searchCallRecords as $call) {
+            self::assertSame(0, $call['options']['limit']);
+            self::assertSame(0, $call['options']['offset']);
+            self::assertSame(0, $call['options']['page']);
+        }
+    }
+
     public function testSingleAndMultiIndexRedirectsPreserveAttributionWithoutSearching(): void
     {
         $handles = $this->requireAnalyticsIndexHandles(2);
@@ -392,6 +545,15 @@ final class Pr1Debt9AnalyticsSourceAttributionTest extends TestCase
             yield $boundary . ' default' => [$boundary, null, $boundary];
             yield $boundary . ' custom' => [$boundary, ' custom source! ', 'customsource'];
         }
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: string}>
+     */
+    public static function multiIndexPaginationModeProvider(): iterable
+    {
+        yield 'local/Meilisearch offset consumer' => ['offset', 'offset'];
+        yield 'Algolia/Typesense page consumer' => ['page', 'page'];
     }
 
     /**
@@ -636,12 +798,47 @@ final class Pr1Debt9Backend extends MySqlBackend
 {
     public int $searchCalls = 0;
 
+    /** @var list<array{indexName: string, query: string, options: array<string, mixed>}> */
+    public array $searchCallRecords = [];
+
     /** @var array<string, mixed> */
     public array $response = ['hits' => [], 'total' => 0];
+
+    /** @var array<string, list<array<string, mixed>>> */
+    public array $hitPoolsByIndex = [];
+
+    /** @var array<string, array<string, list<array<string, mixed>>>> */
+    public array $hitPoolsByIndexAndQuery = [];
+
+    public string $paginationMode = 'none';
 
     public function search(string $indexName, string $query, array $options = []): array
     {
         $this->searchCalls++;
+        $this->searchCallRecords[] = [
+            'indexName' => $indexName,
+            'query' => $query,
+            'options' => $options,
+        ];
+
+        $hits = $this->hitPoolsByIndexAndQuery[$indexName][$query]
+            ?? $this->hitPoolsByIndex[$indexName]
+            ?? null;
+        if ($hits !== null) {
+            $total = count($hits);
+            $limit = (int)($options['limit'] ?? 0);
+            $offset = (int)($options['offset'] ?? 0);
+            if ($this->paginationMode === 'page' && $limit > 0) {
+                $offset = (int)($options['page'] ?? 0) * $limit;
+            }
+            if ($limit > 0) {
+                $hits = array_slice($hits, $offset, $limit);
+            } elseif ($offset > 0) {
+                $hits = array_slice($hits, $offset);
+            }
+
+            return ['hits' => array_values($hits), 'total' => $total];
+        }
 
         return $this->response;
     }
@@ -687,5 +884,25 @@ final class Pr1Debt9RedirectQueryRuleService extends QueryRuleService
         ?array $matchedRules = null,
     ): ?string {
         return 'https://example.test/search-redirect';
+    }
+}
+
+/**
+ * @since 5.54.0
+ */
+final class Pr1Debt9SynonymQueryRuleService extends QueryRuleService
+{
+    public function getMatchingRules(string $query, ?string $indexHandle = null, ?int $siteId = null): array
+    {
+        return [];
+    }
+
+    public function expandWithSynonyms(
+        string $query,
+        ?string $indexHandle = null,
+        ?int $siteId = null,
+        ?array $matchedRules = null,
+    ): array {
+        return [$query, $query . '-expanded'];
     }
 }

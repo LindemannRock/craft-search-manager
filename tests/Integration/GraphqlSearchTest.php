@@ -372,6 +372,159 @@ final class GraphqlSearchTest extends TestCase
         self::assertFalse($call['options']['skipAnalytics']);
     }
 
+    #[DataProvider('multiSitePaginationModeProvider')]
+    public function testGraphqlMultiSiteSingleIndexOwnsPaginationAcrossBackendStyles(
+        string $backendStyle,
+        string $paginationMode,
+    ): void {
+        $sites = array_slice(Craft::$app->getSites()->getAllSites(), 0, 2);
+        if (count($sites) < 2) {
+            self::markTestSkipped('Need at least two sites for GraphQL multi-site pagination coverage.');
+        }
+
+        $index = $this->recordingIndex((int)$sites[0]->id);
+        $stub = $this->installStubBackend();
+        $stub->searchPaginationMode = $paginationMode;
+        $stub->searchHitPoolsBySiteId = [
+            (int)$sites[0]->id => [
+                $this->paginationHit(101, (int)$sites[0]->id, 100.0, $index->handle),
+                $this->paginationHit(102, (int)$sites[0]->id, 70.0, $index->handle),
+                $this->paginationHit(103, (int)$sites[0]->id, 50.0, $index->handle),
+                $this->paginationHit(104, (int)$sites[0]->id, 30.0, $index->handle),
+            ],
+            (int)$sites[1]->id => [
+                $this->paginationHit(201, (int)$sites[1]->id, 90.0, $index->handle),
+                $this->paginationHit(202, (int)$sites[1]->id, 80.0, $index->handle),
+                $this->paginationHit(203, (int)$sites[1]->id, 60.0, $index->handle),
+                $this->paginationHit(204, (int)$sites[1]->id, 40.0, $index->handle),
+            ],
+        ];
+        Craft::$app->getGql()->setActiveSchema($this->schemaForSites(array_column($sites, 'uid')));
+        $resolveInfo = $this->createStub(\GraphQL\Type\Definition\ResolveInfo::class);
+
+        $response = $this->withOnlySearchIndices([$index], static fn(): array => SearchResolver::resolveSearch(null, [
+            'query' => 'pagination',
+            'indexHandles' => [$index->handle],
+            'resultsLimit' => 2,
+            'page' => 1,
+            'language' => 'en',
+            'skipAnalytics' => true,
+        ], null, $resolveInfo));
+
+        self::assertSame([202, 102], array_column($response['hits'], 'elementId'), $backendStyle);
+        self::assertSame(8, $response['total'], $backendStyle);
+        self::assertSame(4, $response['totalPages'], $backendStyle);
+        self::assertSame(1, $response['page'], $backendStyle);
+        self::assertSame(2, $response['resultsLimit'], $backendStyle);
+
+        $calls = $stub->callsFor('search');
+        self::assertCount(2, $calls, $backendStyle);
+        self::assertSame(
+            array_map(static fn($site): int => (int)$site->id, $sites),
+            array_map(static fn(array $call): int => (int)$call['items'][0]['options']['siteId'], $calls),
+            $backendStyle,
+        );
+        foreach ($calls as $call) {
+            $options = $call['items'][0]['options'];
+            self::assertSame(4, $options['limit'], $backendStyle);
+            self::assertSame(0, $options['offset'], $backendStyle);
+            self::assertSame(0, $options['page'], $backendStyle);
+            self::assertSame('en', $options['language'], $backendStyle);
+            self::assertTrue($options['skipAnalytics'], $backendStyle);
+            self::assertSame('graphql', $options['sourceDefault'], $backendStyle);
+        }
+    }
+
+    public function testGraphqlSingleSiteRetainsRequestedProviderPage(): void
+    {
+        $site = Craft::$app->getSites()->getAllSites()[0] ?? null;
+        if ($site === null) {
+            self::markTestSkipped('No site available.');
+        }
+
+        $index = $this->recordingIndex((int)$site->id);
+        $stub = $this->installStubBackend();
+        $stub->searchPaginationMode = 'page';
+        $stub->searchHitPoolsBySiteId[(int)$site->id] = [
+            $this->paginationHit(101, (int)$site->id, 100.0, $index->handle),
+            $this->paginationHit(102, (int)$site->id, 90.0, $index->handle),
+            $this->paginationHit(103, (int)$site->id, 80.0, $index->handle),
+            $this->paginationHit(104, (int)$site->id, 70.0, $index->handle),
+        ];
+        Craft::$app->getGql()->setActiveSchema($this->schemaForSites([$site->uid]));
+        $resolveInfo = $this->createStub(\GraphQL\Type\Definition\ResolveInfo::class);
+
+        $response = $this->withOnlySearchIndices([$index], static fn(): array => SearchResolver::resolveSearch(null, [
+            'query' => 'pagination',
+            'indexHandles' => [$index->handle],
+            'resultsLimit' => 2,
+            'page' => 1,
+            'skipAnalytics' => true,
+        ], null, $resolveInfo));
+
+        self::assertSame([103, 104], array_column($response['hits'], 'elementId'));
+        $options = $stub->callsFor('search')[0]['items'][0]['options'];
+        self::assertSame(2, $options['limit']);
+        self::assertSame(2, $options['offset']);
+        self::assertSame(1, $options['page']);
+    }
+
+    public function testGraphqlMultiSiteMultiIndexOwnsPaginationAndMergesIndexTotals(): void
+    {
+        $sites = array_slice(Craft::$app->getSites()->getAllSites(), 0, 2);
+        if (count($sites) < 2) {
+            self::markTestSkipped('Need at least two sites for GraphQL multi-site pagination coverage.');
+        }
+
+        $firstIndex = $this->recordingIndex((int)$sites[0]->id, '__sm_pr167_first__');
+        $secondIndex = $this->recordingIndex((int)$sites[0]->id, '__sm_pr167_second__');
+        $stub = $this->installStubBackend();
+        $stub->searchPaginationMode = 'page';
+        $stub->searchMultipleHitPoolsBySiteId = [
+            (int)$sites[0]->id => [
+                $this->paginationHit(101, (int)$sites[0]->id, 100.0, $firstIndex->handle),
+                $this->paginationHit(102, (int)$sites[0]->id, 70.0, $secondIndex->handle),
+                $this->paginationHit(103, (int)$sites[0]->id, 50.0, $firstIndex->handle),
+                $this->paginationHit(104, (int)$sites[0]->id, 30.0, $secondIndex->handle),
+            ],
+            (int)$sites[1]->id => [
+                $this->paginationHit(201, (int)$sites[1]->id, 90.0, $secondIndex->handle),
+                $this->paginationHit(202, (int)$sites[1]->id, 80.0, $firstIndex->handle),
+                $this->paginationHit(203, (int)$sites[1]->id, 60.0, $secondIndex->handle),
+                $this->paginationHit(204, (int)$sites[1]->id, 40.0, $firstIndex->handle),
+            ],
+        ];
+        Craft::$app->getGql()->setActiveSchema($this->schemaForSites(array_column($sites, 'uid')));
+        $resolveInfo = $this->createStub(\GraphQL\Type\Definition\ResolveInfo::class);
+
+        $response = $this->withOnlySearchIndices(
+            [$firstIndex, $secondIndex],
+            static fn(): array => SearchResolver::resolveSearch(null, [
+                'query' => 'pagination',
+                'indexHandles' => [$firstIndex->handle, $secondIndex->handle],
+                'resultsLimit' => 2,
+                'page' => 1,
+                'skipAnalytics' => true,
+            ], null, $resolveInfo),
+        );
+
+        self::assertSame([202, 102], array_column($response['hits'], 'elementId'));
+        self::assertSame(8, $response['total']);
+        self::assertSame([
+            ['index' => $firstIndex->handle, 'total' => 4],
+            ['index' => $secondIndex->handle, 'total' => 4],
+        ], $response['indices']);
+        self::assertSame([], $stub->callsFor('search'));
+        $calls = $stub->callsFor('searchMultiple');
+        self::assertCount(2, $calls);
+        foreach ($calls as $call) {
+            self::assertSame([$firstIndex->handle, $secondIndex->handle], $call['items'][0]['indices']);
+            self::assertSame(4, $call['items'][0]['options']['limit']);
+            self::assertSame(0, $call['items'][0]['options']['offset']);
+            self::assertSame(0, $call['items'][0]['options']['page']);
+        }
+    }
+
     public function testGraphqlSearchSchemaDoesNotExposeEnrichArgument(): void
     {
         $queries = SearchQuery::getQueries(false);
@@ -663,15 +816,32 @@ final class GraphqlSearchTest extends TestCase
         return 'query { searchManagerAutocomplete(query: "cof") { suggestions } }';
     }
 
-    private function recordingIndex(int $siteId): SearchIndex
+    private function recordingIndex(int $siteId, string $handle = '__sm_pr144_recording__'): SearchIndex
     {
         return new SearchIndex([
             'name' => 'PR1.44 recording index',
-            'handle' => '__sm_pr144_recording__',
+            'handle' => $handle,
             'elementType' => Entry::class,
             'siteId' => $siteId,
             'enabled' => true,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function paginationHit(int $elementId, int $siteId, float $score, string $indexHandle): array
+    {
+        return [
+            'elementId' => $elementId,
+            'backendId' => $elementId . '_' . $siteId,
+            'siteId' => $siteId,
+            'score' => $score,
+            'title' => 'Pagination hit ' . $elementId,
+            'url' => 'https://example.test/' . $elementId,
+            'type' => 'entry',
+            '_index' => $indexHandle,
+        ];
     }
 
     private function graphqlCacheKey(GqlSchema $schema, string $query, string $operationName): string
@@ -749,6 +919,17 @@ final class GraphqlSearchTest extends TestCase
         $this->assertIsString($content);
 
         return $content;
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: string}>
+     */
+    public static function multiSitePaginationModeProvider(): iterable
+    {
+        yield 'local offset consumer' => ['local', 'offset'];
+        yield 'Meilisearch offset consumer' => ['meilisearch', 'offset'];
+        yield 'Algolia page consumer' => ['algolia', 'page'];
+        yield 'Typesense page consumer' => ['typesense', 'page'];
     }
 }
 
