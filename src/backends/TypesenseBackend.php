@@ -27,6 +27,8 @@ use Typesense\Client;
  */
 class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterface, IndexCountBackendInterface
 {
+    private const IMPORT_FAILURE_CLASSIFICATION = 'Typesense import failed.';
+
     /**
      * Search Manager options that must not be forwarded to Typesense.
      */
@@ -212,20 +214,77 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
      */
     private function recordTypesenseImportFailures(array $items, mixed $response): bool
     {
-        if (!is_string($response) || trim($response) === '') {
-            return false;
+        $rows = $this->normalizeTypesenseImportResponse($response);
+        if ($rows === null || count($rows) !== count($items)) {
+            foreach ($items as $item) {
+                $this->recordTypesenseImportFailure($item);
+            }
+
+            return true;
         }
 
-        foreach (preg_split('/\R/', trim($response)) ?: [] as $i => $line) {
-            $row = json_decode($line, true);
-            if (!is_array($row) || ($row['success'] ?? true) === true) {
+        foreach ($rows as $i => $row) {
+            if ($row['success']) {
                 continue;
             }
 
-            $this->recordIndexingFailure($items[$i] ?? [], is_scalar($row['error'] ?? null) ? (string)$row['error'] : 'Typesense import failed.');
+            $this->recordTypesenseImportFailure($items[$i]);
         }
 
         return $this->lastIndexingFailures !== [];
+    }
+
+    /**
+     * @return list<array<string, mixed>>|null
+     */
+    private function normalizeTypesenseImportResponse(mixed $response): ?array
+    {
+        if (is_array($response)) {
+            if ($response === [] || !array_is_list($response)) {
+                return null;
+            }
+
+            $rows = $response;
+        } elseif (is_string($response) && trim($response) !== '') {
+            $lines = preg_split('/\R/', trim($response));
+            if ($lines === false || $lines === []) {
+                return null;
+            }
+
+            $rows = [];
+            try {
+                foreach ($lines as $line) {
+                    $rows[] = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
+                }
+            } catch (\JsonException) {
+                return null;
+            }
+        } else {
+            return null;
+        }
+
+        foreach ($rows as $row) {
+            if (
+                !is_array($row)
+                || !array_key_exists('success', $row)
+                || !is_bool($row['success'])
+            ) {
+                return null;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function recordTypesenseImportFailure(array $item): void
+    {
+        $this->recordIndexingFailure([
+            'backendId' => SearchHitIdentityHelper::documentId($item),
+            'elementId' => SearchHitIdentityHelper::elementId($item),
+        ], self::IMPORT_FAILURE_CLASSIFICATION);
     }
 
     /**
