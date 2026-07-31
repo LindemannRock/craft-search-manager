@@ -14,13 +14,11 @@ use craft\db\Query;
 use craft\helpers\FileHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
-use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\storage\FileStorage;
 use lindemannrock\searchmanager\search\storage\MySqlStorage;
 use lindemannrock\searchmanager\search\storage\PostgreSqlStorage;
-use lindemannrock\searchmanager\search\storage\RedisStorage;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\SearchManager;
 
@@ -34,6 +32,7 @@ class StorageMaintenanceService extends Component
     use LoggingTrait;
 
     private const STORAGE_ORDER = ['database', 'redis', 'file'];
+    private const REDIS_STATUS_STATISTICS_FAILED = 'statistics-failed';
 
     /**
      * Return every local table owned by the database storage implementations.
@@ -130,12 +129,12 @@ class StorageMaintenanceService extends Component
      * orphan cleanup when it can resolve the standard Search Manager database.
      *
      * @param list<ConfiguredBackend>|null $backends
-     * @return array<string, mixed>
+     * @return RedisConnectionConfiguration|null
      */
-    public function getRedisConfig(?array $backends = null): array
+    public function getRedisConfig(?array $backends = null): ?RedisConnectionConfiguration
     {
         $targets = $this->getRedisTargets($backends);
-        return $targets[0]['settings'] ?? RedisConnectionHelper::storageSettings([]);
+        return $targets[0]['connection'] ?? null;
     }
 
     /**
@@ -144,12 +143,9 @@ class StorageMaintenanceService extends Component
      * @param list<ConfiguredBackend>|null $backends
      * @param list<SearchIndex>|null $indices
      * @return list<array{
-     *   key: string,
-     *   host: string,
-     *   port: int,
-     *   password: mixed,
-     *   database: int,
-     *   settings: array<string, mixed>,
+     *   label: string,
+     *   connection: RedisConnectionConfiguration,
+     *   presentation: array<string, mixed>,
      *   backendHandles: list<string>,
      *   indexHandles: list<string>,
      *   fallback: bool
@@ -159,7 +155,7 @@ class StorageMaintenanceService extends Component
     {
         $backends ??= ConfiguredBackend::findAll();
         $indices ??= SearchIndex::findAll();
-        $targetsByKey = [];
+        $targetsByIdentity = [];
         $backendsByHandle = [];
         foreach ($backends as $backend) {
             $backendsByHandle[$backend->handle] = $backend;
@@ -170,23 +166,27 @@ class StorageMaintenanceService extends Component
         ));
 
         foreach ($redisBackends as $backend) {
-            $settings = RedisConnectionHelper::storageSettings($backend->settings ?? []);
-            if (empty($settings['host'])) {
-                continue;
+            $connection = SearchManager::$plugin->redisConnections->resolveForBackend($backend);
+            $identity = $this->redisTargetIdentity($connection, $backend->handle);
+            if (!isset($targetsByIdentity[$identity])) {
+                $targetsByIdentity[$identity] = $this->redisTarget(
+                    $connection,
+                    $backend->handle,
+                    false,
+                );
             }
-
-            $key = $this->redisTargetKey($settings);
-            if (!isset($targetsByKey[$key])) {
-                $targetsByKey[$key] = $this->redisTarget($key, $settings, false);
-            }
-            $targetsByKey[$key]['backendHandles'][] = $backend->handle;
+            $targetsByIdentity[$identity]['backendHandles'][] = $backend->handle;
         }
 
         if ($redisBackends === []) {
-            $settings = RedisConnectionHelper::storageSettings([]);
-            if (!empty($settings['host'])) {
-                $key = $this->redisTargetKey($settings);
-                $targetsByKey[$key] = $this->redisTarget($key, $settings, true);
+            $connection = SearchManager::$plugin->redisConnections->resolve([]);
+            if ($connection->resolutionStatus !== RedisNativeConnectionFactory::STATUS_NOT_CONFIGURED) {
+                $identity = $this->redisTargetIdentity($connection, 'craft-cache-fallback');
+                $targetsByIdentity[$identity] = $this->redisTarget(
+                    $connection,
+                    Craft::t('search-manager', 'Craft Redis cache configuration'),
+                    true,
+                );
             }
         }
 
@@ -196,24 +196,21 @@ class StorageMaintenanceService extends Component
                 continue;
             }
 
-            $settings = RedisConnectionHelper::storageSettings($backend->settings ?? []);
-            if (empty($settings['host'])) {
-                continue;
-            }
-            $key = $this->redisTargetKey($settings);
-            if (isset($targetsByKey[$key])) {
-                $targetsByKey[$key]['indexHandles'][] = $index->handle;
+            $connection = SearchManager::$plugin->redisConnections->resolveForBackend($backend);
+            $identity = $this->redisTargetIdentity($connection, $backend->handle);
+            if (isset($targetsByIdentity[$identity])) {
+                $targetsByIdentity[$identity]['indexHandles'][] = $index->handle;
             }
         }
 
-        foreach ($targetsByKey as &$target) {
+        foreach ($targetsByIdentity as &$target) {
             $target['backendHandles'] = $this->sortedUnique($target['backendHandles']);
             $target['indexHandles'] = $this->sortedUnique($target['indexHandles']);
         }
         unset($target);
 
-        ksort($targetsByKey, SORT_STRING);
-        return array_values($targetsByKey);
+        ksort($targetsByIdentity, SORT_STRING);
+        return array_values($targetsByIdentity);
     }
 
     /**
@@ -310,20 +307,10 @@ class StorageMaintenanceService extends Component
     /**
      * Open and select the resolved Redis target.
      *
-     * @param array<string, mixed> $config
      */
-    public function connectRedis(array $config): \Redis
+    public function connectRedis(RedisConnectionConfiguration $configuration): \Redis
     {
-        $redis = new \Redis();
-        $redis->connect((string)$config['host'], (int)$config['port']);
-
-        if (!empty($config['password'])) {
-            $redis->auth($config['password']);
-        }
-
-        $redis->select((int)$config['database']);
-
-        return $redis;
+        return SearchManager::$plugin->redisConnections->connect($configuration);
     }
 
     /**
@@ -465,14 +452,14 @@ class StorageMaintenanceService extends Component
         if (!class_exists('\Redis')) {
             return [
                 'available' => false,
-                'status' => 'extension_not_installed',
+                'status' => RedisNativeConnectionFactory::STATUS_EXTENSION_UNAVAILABLE,
             ];
         }
 
         if ($targets === []) {
             return [
                 'available' => false,
-                'status' => 'not_configured',
+                'status' => RedisNativeConnectionFactory::STATUS_NOT_CONFIGURED,
             ];
         }
 
@@ -481,44 +468,76 @@ class StorageMaintenanceService extends Component
         $connected = 0;
 
         foreach ($targets as $target) {
+            $redis = null;
             try {
-                $redis = $this->connectRedis($target['settings']);
+                $redis = $this->connectRedis($target['connection']);
                 $keys = $this->scanRedisKeys($redis, 'sm:idx:*');
                 $count = count($keys);
                 $keyCount += $count;
                 $connected++;
                 $targetStats[] = [
-                    'key' => $target['key'],
-                    'status' => 'connected',
+                    'target' => $target['label'],
+                    'status' => RedisNativeConnectionFactory::STATUS_CONNECTED,
                     'keyCount' => $count,
                     'backendHandles' => $target['backendHandles'],
                     'indexHandles' => $target['indexHandles'],
                     'fallback' => $target['fallback'],
+                    'connection' => SearchManager::$plugin->redisConnections->safePresentation(
+                        $target['connection'],
+                        RedisNativeConnectionFactory::STATUS_CONNECTED,
+                    ),
                 ];
-            } catch (\Throwable $e) {
+            } catch (RedisConnectionException $exception) {
                 $this->logError('Failed to get Redis storage stats', [
-                    'target' => $target['key'],
-                    'error' => $e->getMessage(),
+                    'backendHandles' => $target['backendHandles'],
+                    'classification' => $exception->getMessage(),
                 ]);
                 $targetStats[] = [
-                    'key' => $target['key'],
-                    'status' => 'connection_failed',
+                    'target' => $target['label'],
+                    'status' => $exception->getMessage(),
                     'keyCount' => 0,
                     'backendHandles' => $target['backendHandles'],
                     'indexHandles' => $target['indexHandles'],
                     'fallback' => $target['fallback'],
-                    'error' => Craft::$app->getConfig()->getGeneral()->devMode
-                        ? $e->getMessage()
-                        : Craft::t('search-manager', 'Failed to get storage statistics'),
+                    'connection' => SearchManager::$plugin->redisConnections->safePresentation(
+                        $target['connection'],
+                        $exception->getMessage(),
+                    ),
                 ];
+            } catch (\Throwable) {
+                $this->logError('Failed to get Redis storage stats', [
+                    'backendHandles' => $target['backendHandles'],
+                    'classification' => self::REDIS_STATUS_STATISTICS_FAILED,
+                ]);
+                $targetStats[] = [
+                    'target' => $target['label'],
+                    'status' => self::REDIS_STATUS_STATISTICS_FAILED,
+                    'keyCount' => 0,
+                    'backendHandles' => $target['backendHandles'],
+                    'indexHandles' => $target['indexHandles'],
+                    'fallback' => $target['fallback'],
+                    'connection' => SearchManager::$plugin->redisConnections->safePresentation(
+                        $target['connection'],
+                        self::REDIS_STATUS_STATISTICS_FAILED,
+                    ),
+                ];
+            } finally {
+                SearchManager::$plugin->redisConnections->close($redis);
             }
+        }
+
+        $aggregateStatus = RedisNativeConnectionFactory::STATUS_CONNECTION_FAILED;
+        if ($connected === count($targets)) {
+            $aggregateStatus = RedisNativeConnectionFactory::STATUS_CONNECTED;
+        } elseif ($connected > 0) {
+            $aggregateStatus = 'partial';
+        } elseif (count($targetStats) === 1) {
+            $aggregateStatus = (string)$targetStats[0]['status'];
         }
 
         return [
             'available' => $connected > 0,
-            'status' => $connected === count($targets)
-                ? 'connected'
-                : ($connected > 0 ? 'partial' : 'connection_failed'),
+            'status' => $aggregateStatus,
             'keyCount' => $keyCount,
             'targets' => $targetStats,
         ];
@@ -671,10 +690,7 @@ class StorageMaintenanceService extends Component
         $operations = match ($type) {
             'database' => [fn() => $this->createDatabaseStorage($fullIndexHandle)->clearAll()],
             'redis' => array_map(
-                static fn(array $target): \Closure => static fn() => (new RedisStorage(
-                    $fullIndexHandle,
-                    $target['settings'],
-                ))->clearAll(),
+                fn(array $target): \Closure => fn() => $this->clearRedisHandle($target, $fullIndexHandle),
                 $this->getRedisTargets(),
             ),
             'file' => array_map(
@@ -692,8 +708,10 @@ class StorageMaintenanceService extends Component
             try {
                 $operation();
                 $succeeded++;
-            } catch (\Throwable $e) {
-                $errors[] = $e->getMessage();
+            } catch (RedisConnectionException $exception) {
+                $errors[] = $exception->getMessage();
+            } catch (\Throwable) {
+                $errors[] = $type === 'redis' ? 'redis-clear-failed' : 'storage-clear-failed';
             }
         }
 
@@ -793,7 +811,7 @@ class StorageMaintenanceService extends Component
         $stop = false;
         foreach ($targets as $target) {
             if ($stop) {
-                $results[] = $this->unattemptedStorageTarget($target['key'], $target['indexHandles']);
+                $results[] = $this->unattemptedStorageTarget($target['label'], $target['indexHandles']);
                 continue;
             }
 
@@ -828,44 +846,46 @@ class StorageMaintenanceService extends Component
      */
     protected function clearRedisTarget(array $target): array
     {
+        $redis = null;
+        $mutationStarted = false;
         try {
-            $redis = $this->connectRedis($target['settings']);
+            $redis = $this->connectRedis($target['connection']);
             $keys = $this->scanRedisKeys($redis, 'sm:idx:*');
-        } catch (\Throwable $e) {
-            return [
-                'status' => 'failure',
-                'target' => $target['key'],
-                'deletedCount' => 0,
-                'indexHandles' => $target['indexHandles'],
-                'error' => $e->getMessage(),
-            ];
-        }
+            if ($keys === []) {
+                return [
+                    'status' => 'success',
+                    'target' => $target['label'],
+                    'deletedCount' => 0,
+                    'indexHandles' => $target['indexHandles'],
+                ];
+            }
 
-        if ($keys === []) {
-            return [
-                'status' => 'success',
-                'target' => $target['key'],
-                'deletedCount' => 0,
-                'indexHandles' => $target['indexHandles'],
-            ];
-        }
-
-        try {
+            $mutationStarted = true;
             $deleted = $redis->del($keys);
             return [
                 'status' => (int)$deleted === count($keys) ? 'success' : 'partial',
-                'target' => $target['key'],
+                'target' => $target['label'],
                 'deletedCount' => (int)$deleted,
                 'indexHandles' => $target['indexHandles'],
             ];
-        } catch (\Throwable $e) {
+        } catch (RedisConnectionException $exception) {
             return [
-                'status' => 'partial',
-                'target' => $target['key'],
+                'status' => 'failure',
+                'target' => $target['label'],
                 'deletedCount' => 0,
                 'indexHandles' => $target['indexHandles'],
-                'error' => $e->getMessage(),
+                'error' => $exception->getMessage(),
             ];
+        } catch (\Throwable) {
+            return [
+                'status' => $mutationStarted ? 'partial' : 'failure',
+                'target' => $target['label'],
+                'deletedCount' => 0,
+                'indexHandles' => $target['indexHandles'],
+                'error' => $mutationStarted ? 'redis-clear-failed' : RedisNativeConnectionFactory::STATUS_CONNECTION_FAILED,
+            ];
+        } finally {
+            SearchManager::$plugin->redisConnections->close($redis);
         }
     }
 
@@ -1079,36 +1099,58 @@ class StorageMaintenanceService extends Component
         ];
     }
 
-    /**
-     * @param array<string, mixed> $settings
-     */
-    private function redisTargetKey(array $settings): string
-    {
-        return sprintf(
-            '%s:%d:%d',
-            (string)$settings['host'],
-            (int)$settings['port'],
-            (int)$settings['database'],
-        );
+    private function redisTargetIdentity(
+        RedisConnectionConfiguration $connection,
+        string $unsupportedDiscriminator,
+    ): string {
+        return $connection->isSupported()
+            ? $connection->targetIdentity()
+            : hash('sha256', $connection->resolutionStatus . ':' . $unsupportedDiscriminator);
     }
 
     /**
-     * @param array<string, mixed> $settings
      * @return array<string, mixed>
      */
-    private function redisTarget(string $key, array $settings, bool $fallback): array
-    {
+    private function redisTarget(
+        RedisConnectionConfiguration $connection,
+        string $fallbackLabel,
+        bool $fallback,
+    ): array {
+        $presentation = SearchManager::$plugin->redisConnections->safePresentation($connection);
+        $label = $presentation['endpoint'] ?? $fallbackLabel;
+        if ($presentation['databaseLabel'] !== null) {
+            $label .= ' / ' . $presentation['databaseLabel'];
+        }
+
         return [
-            'key' => $key,
-            'host' => (string)$settings['host'],
-            'port' => (int)$settings['port'],
-            'password' => $settings['password'] ?? null,
-            'database' => (int)$settings['database'],
-            'settings' => $settings,
+            'label' => $label,
+            'connection' => $connection,
+            'presentation' => $presentation,
             'backendHandles' => [],
             'indexHandles' => [],
             'fallback' => $fallback,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $target
+     */
+    private function clearRedisHandle(array $target, string $fullIndexHandle): void
+    {
+        $redis = null;
+        try {
+            $redis = $this->connectRedis($target['connection']);
+            $keys = $this->scanRedisKeys($redis, 'sm:idx:' . $fullIndexHandle . ':*');
+            if ($keys !== [] && (int)$redis->del($keys) !== count($keys)) {
+                throw new RedisConnectionException('redis-clear-failed');
+            }
+        } catch (RedisConnectionException $exception) {
+            throw $exception;
+        } catch (\Throwable) {
+            throw new RedisConnectionException('redis-clear-failed');
+        } finally {
+            SearchManager::$plugin->redisConnections->close($redis);
+        }
     }
 
     /**
@@ -1175,19 +1217,27 @@ class StorageMaintenanceService extends Component
 
         $handles = [];
         foreach ($this->getRedisTargets() as $target) {
+            $redis = null;
             try {
-                $redis = $this->connectRedis($target['settings']);
+                $redis = $this->connectRedis($target['connection']);
                 foreach ($this->scanRedisKeys($redis, 'sm:idx:*') as $key) {
                     $handle = $this->storageHandleFromRedisKey($key);
                     if ($handle !== null) {
                         $handles[] = $handle;
                     }
                 }
-            } catch (\Throwable $e) {
+            } catch (RedisConnectionException $exception) {
                 $this->logWarning('Failed to scan Redis storage handles', [
-                    'target' => $target['key'],
-                    'error' => $e->getMessage(),
+                    'backendHandles' => $target['backendHandles'],
+                    'classification' => $exception->getMessage(),
                 ]);
+            } catch (\Throwable) {
+                $this->logWarning('Failed to scan Redis storage handles', [
+                    'backendHandles' => $target['backendHandles'],
+                    'classification' => RedisNativeConnectionFactory::STATUS_CONNECTION_FAILED,
+                ]);
+            } finally {
+                SearchManager::$plugin->redisConnections->close($redis);
             }
         }
 

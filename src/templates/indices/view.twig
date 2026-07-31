@@ -201,7 +201,7 @@
 					</dd>
 				</div>
 			{% endif %}
-			{% set redisConnectionInfo = index.redisConnectionInfo %}
+			{% set redisConnectionInfo = index.redisSafePresentation %}
 			{% if redisConnectionInfo %}
 				<div class="data">
 					<dt class="heading">{{ 'Database'|t('search-manager') }}</dt>

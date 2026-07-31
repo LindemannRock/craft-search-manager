@@ -4,32 +4,32 @@ Move your search index into memory for faster query response: the Redis backend 
 
 ## What you'll use it for
 
-- Reuse Redis you already run for Craft's cache or sessions
+- Derive a compatible Redis endpoint from Craft's Redis cache configuration
 - Share search data across a multi-server setup
 - Get faster query response than MySQL once an index exceeds ~50,000 elements
 - In-memory speed with optional persistence
 
 ## Create your first Redis backend
 
-You'll need the PHP Redis extension (`ext-redis`) and a Redis server — you can reuse Craft's existing Redis connection or point at a dedicated one.
+You'll need the PHP Redis extension (`ext-redis`) and a Redis server. Search Manager can derive a compatible endpoint from Craft's Redis cache configuration or use its own four-field settings.
 
 1. Go to **Search Manager → Backends** and click **New Backend**.
 2. Give it a **Name** (e.g. "Craft Redis") — the **Handle** fills in automatically as you type, or edit it yourself.
 3. Set **Backend Type** to **Redis**.
-4. Fill in the Redis fields, or leave them blank to reuse Craft's connection:
-   - **Host**, **Port**, **Password**, **Database** — leave all four empty and Search Manager reuses Craft's Redis cache settings automatically, storing its data on Craft's Redis database number + 1 (isolated from Craft's cache so a cache flush doesn't wipe your search index). The edit screen shows the effective database it will use — e.g. `DB 6 (5 + 1)` if Craft uses DB 5.
-   - Fill in **Host** (and optionally **Port**, **Password**, **Database**) to point at a dedicated Redis connection instead. See [Dedicated Redis connection](#option-2-dedicated-redis-connection) below for the equivalent config-file setup.
+4. Fill in the Redis fields, or leave them blank to derive compatible settings from Craft:
+   - **Host**, **Port**, **Password**, **Database** are the complete Search Manager configuration surface. Leave all four empty to derive the active Craft Redis cache endpoint. Search Manager opens its own non-persistent native client and selects Craft's database number + 1. The edit screen shows the effective database — for example, `DB 6 (5 + 1)` when Craft uses DB 5.
+   - Fill in **Host** and optionally **Port**, **Password**, and **Database** to use Search Manager settings instead. See [Search Manager Redis settings](#option-2-search-manager-redis-settings) for the equivalent config-file setup.
 
    Each field supports environment-variable autosuggest — start typing `$` to pick from your defined environment variables instead of pasting a raw value.
 5. In the sidebar, confirm **Enabled** is on, and turn on **Default** if this should be the backend new indices use automatically.
 6. Click **Save**. Search Manager tests the connection and switches to a **Diagnostics** tab showing the result, response time, and whether this backend supports **Browse** and **Multi-Query** (both **No** for Redis — see [Built-in vs external backends](backends.md#built-in-vs-external-backends)). Use **Refresh Connection** to retest anytime.
 
-For environment-specific setups — secrets pulled from environment variables, a dedicated connection per environment — define the backend in `config/search-manager.php` instead.
+For environment-specific setups—such as Search Manager settings sourced from different environment variables—define the backend in `config/search-manager.php` instead.
 
 ## Requirements
 
 - PHP Redis extension (`ext-redis`)
-- Redis server (can reuse Craft's existing Redis connection)
+- Redis server (Search Manager can derive supported settings from Craft's Redis cache configuration)
 
 ## Features
 
@@ -43,9 +43,9 @@ For environment-specific setups — secrets pulled from environment variables, a
 
 ## Configuration
 
-### Option 1: Reuse Craft's Redis connection
+### Option 1: Derive Craft's Redis cache configuration
 
-If Craft already uses Redis for caching, you can reuse that connection with no additional config:
+If Craft uses the standard Yii Redis connection for caching, leave the Search Manager settings empty:
 
 ```php
 'backends' => [
@@ -58,18 +58,22 @@ If Craft already uses Redis for caching, you can reuse that connection with no a
 ],
 ```
 
-When the Redis database setting is empty, Search Manager automatically stores data in a separate database (Craft's Redis database number + 1) when Craft uses Redis. This applies whether Search Manager is reusing Craft's Redis connection or using an explicitly configured Redis host.
+Search Manager reads the supported connection properties without opening, selecting, closing, or reusing Craft's Yii connection. It then creates an independently owned native phpredis client. Supported derived connections preserve representable TCP or TLS transport, Unix sockets, password or ACL authentication, SSL stream context, connection timeout, and read timeout.
+
+If an active Craft option cannot be represented exactly—such as a different Redis connection implementation, conflicting transport/context settings, incomplete ACL credentials, or an invalid timeout—Search Manager reports `unsupported-configuration`. It does not downgrade TLS, discard authentication, or guess at another endpoint.
+
+When the Redis database setting is empty, Search Manager selects Craft's normalized database number + 1. This also applies to an explicit Search Manager host when Craft uses Redis; only the database number is derived in that case, not Craft's host or credentials.
 
 The backend edit screen and Redis-backed index sidebars show the effective database Search Manager will use. For example, if Craft uses DB 5 and no Redis database is set explicitly, Search Manager displays `DB 6 (5 + 1)`.
 
-### Option 2: Dedicated Redis connection
+### Option 2: Search Manager Redis settings
 
-For production, a dedicated Redis connection gives you full control:
+Use the unchanged four-field Search Manager surface when you want to provide the endpoint explicitly:
 
 ```php
 'backends' => [
-    'dedicated-redis' => [
-        'name' => 'Dedicated Redis',
+    'search-redis' => [
+        'name' => 'Search Redis',
         'backendType' => 'redis',
         'enabled' => true,
         'settings' => [
@@ -94,15 +98,23 @@ REDIS_SEARCH_DATABASE=1
 
 When you explicitly set the `database` value, that exact number is used — no automatic offset.
 
-## Database isolation
+## Database selection
 
-The automatic database offset (+1) applies whenever no explicit `database` value is set and Craft's cache is Redis-backed — both when reusing Craft's Redis connection and when a dedicated `host` is configured. Setting an explicit `database` always disables the offset.
+The automatic database offset (+1) applies whenever no explicit `database` value is set and Craft's cache is Redis-backed—both for fully derived settings and when a Search Manager `host` is configured. Setting an explicit `database` always disables the offset. If Craft's Redis database is `null`, Search Manager treats Craft as DB 0 and selects DB 1.
+
+The selected number is a routing policy, not proof that the database is reserved or dedicated to Search Manager. Confirm the database with whoever operates Redis, especially when sessions, queues, page caches, or other applications share the service.
 
 If your hosting platform uses `FLUSHALL` instead of `FLUSHDB` when clearing cache, the automatic isolation won't help — consider setting an explicit database number or using a different backend.
 
 On managed platforms where Redis may also hold sessions, queue data, or static page-cache data, prefer an explicit `database` value after confirming which DB number is safe for custom application data.
 
-Test by clearing Craft's cache and checking that your search index is still intact.
+Test cache-clearing behavior in a non-production environment before relying on the separation.
+
+## Safe configuration failures
+
+Environment references must resolve to supported values. Ports accept integers or digits-only strings from `1` to `65535`; databases accept non-negative integers or digits-only strings. An unresolved host, port, password, or database variable is `unsupported-configuration` and never falls back to defaults, Craft credentials, or unauthenticated access. A port or password without a host is also unsupported.
+
+Connection checks use fixed credential-safe classifications: `extension-unavailable`, `not-configured`, `unsupported-configuration`, `connection-failed`, `authentication-failed`, `database-selection-failed`, and `ping-failed`. The backend sidebar and diagnostics retain the effective source, transport, endpoint, selected database, and authentication mode without returning the password, ACL username, SSL context, or provider exception text.
 
 ## Docker / DDEV environments
 

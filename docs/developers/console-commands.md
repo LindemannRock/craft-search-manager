@@ -112,7 +112,7 @@ ddev craft search-manager/index/clear --handle=entries-en
 
 ### `search-manager/maintenance/status`
 
-Show the current state of all backend storage types (database, Redis, and file). Displays document counts, key counts, and file counts for each storage type. When external backends (Algolia, Meilisearch, Typesense) are configured, an External Backends section also shows connection status, capabilities, and index lists.
+Show the current state of all backend storage types (database, Redis, and file). Displays document counts, key counts, and file counts for each storage type. Redis targets use a credential-safe endpoint/database label and fixed status codes; passwords, ACL usernames, SSL contexts, provider exception text, and internal target identities are never printed. When external backends (Algolia, Meilisearch, Typesense) are configured, an External Backends section also shows connection status, capabilities, and index lists.
 
 ```bash title="PHP"
 php craft search-manager/maintenance/status
@@ -129,9 +129,9 @@ ddev craft search-manager/maintenance/status
 ### `search-manager/maintenance/clear-storage`
 
 Clear backend storage data. Use this for cleanup or troubleshooting. The `--type` option is **required**.
-The status display, pre-clear counts, and clear operation use the same server-owned target inventory. Database clearing covers all eight Search Manager index tables in one transaction. Redis clearing discovers and deduplicates every effective Redis target; when no stored Redis backend exists, a resolvable Craft Redis connection contributes the Search Manager database target. File clearing includes the default runtime path and every valid configured File path.
+The status display, pre-clear counts, and clear operation use the same server-owned target inventory. Database clearing covers all eight Search Manager index tables in one transaction. Redis clearing discovers and deduplicates every equivalent normalized Redis target through the same native connection authority used at runtime; when no Redis backend exists, a supported Craft-derived configuration contributes the Search Manager database target. File clearing includes the default runtime path and every valid configured File path.
 
-After each target is cleared successfully, Search Manager resets the stored document counts for the indices mapped to that target and clears their search-results and autocomplete caches. A safe failure before mutation does not prevent another target from being attempted. An irreversible partial result stops the operation, marks later targets unattempted, prints the per-target outcome, and returns a non-zero exit code.
+After each target is cleared successfully, Search Manager resets the stored document counts for the indices mapped to that target and clears their search-results and autocomplete caches. Redis failures use fixed classifications such as `unsupported-configuration`, `connection-failed`, `authentication-failed`, and `database-selection-failed`. A failure before mutation performs no SCAN, delete, or reconciliation and does not prevent another safe target from being attempted. An irreversible partial result stops the operation, marks later targets unattempted, prints the per-target outcome, and returns a non-zero exit code.
 
 ```bash title="PHP"
 php craft search-manager/maintenance/clear-storage --type=database

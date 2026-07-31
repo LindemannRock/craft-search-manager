@@ -48,7 +48,9 @@ Switch to the **Backend** tab to run **Backend Diagnostics**.
 2. The page immediately tests the connection through `search-manager/backends/test`.
 3. When the connection succeeds, the page loads backend info through `search-manager/backends/info`.
 
-The diagnostics panel shows **Connection**, **Response Time**, **Browse**, **Multi-Query**, and **Indices**. Open **View indices in backend** to list backend-side indices and entry counts when the backend reports them.
+The diagnostics panel shows **Connection**, **Response Time**, **Browse**, **Multi-Query**, and **Indices**. Backend diagnostics require `searchManager:manageBackends`. Open **View indices in backend** to list backend-side indices and entry counts when the backend reports them.
+
+For Redis, the backend sidebar also shows the factual configuration source, transport, endpoint, selected database, authentication mode, and a fixed safe status when configuration cannot be used. Search Manager settings and settings derived from Craft's Redis cache configuration are identified separately. Passwords, ACL usernames, SSL context, internal target identity, and provider exception text are not returned to the browser. A failed connect, authentication, database selection, or PING check stops before any backend information is requested.
 
 ## Download the Postman collection
 

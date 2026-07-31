@@ -8,7 +8,7 @@ Complete [Installation & Setup](installation.md#post-install-setup) first. The s
 
 ## 1. Choose a backend
 
-Go to **Search Manager > Backends**, click **New Backend**, and create one. For a quick local setup, **MySQL** or **PostgreSQL** works out of the box — no external services needed. The first backend you create becomes the default; you can change the default later under **Settings > General**.
+Go to **Search Manager > Backends**, click **New Backend**, and create one. For a quick local setup, **MySQL** or **PostgreSQL** works out of the box—no external services needed. If you choose Redis, Search Manager can use its four-field settings or derive a supported Craft Redis cache configuration into an independently owned client; review the effective endpoint and database in the backend sidebar. The first backend you create becomes the default; you can change the default later under **Settings > General**.
 
 ## 2. Create an index
 

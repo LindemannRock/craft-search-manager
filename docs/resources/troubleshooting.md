@@ -249,7 +249,7 @@ The rebuild clears only that configured backend index, creates a ready empty man
 ## Connection refused (Redis)
 
 ```text
-[ERROR] Redis connection error | {"host":"127.0.0.1","port":6379,"error":"Connection refused"}
+connection-failed
 ```
 
 **In Docker/DDEV:** Use the service hostname, not `127.0.0.1`:
@@ -260,6 +260,20 @@ REDIS_HOST=redis
 
 `127.0.0.1` refers to localhost inside the container, not your host machine.
 
+Search Manager deliberately reports fixed Redis classifications instead of raw provider exceptions:
+
+| Status | What to check |
+|---|---|
+| `extension-unavailable` | Install and enable `ext-redis` for the PHP runtime that serves Craft. |
+| `not-configured` | Set a Search Manager Redis host or configure Craft's cache with the standard Yii Redis connection. |
+| `unsupported-configuration` | Resolve every referenced environment variable; remove a port/password without a host; verify TLS context, Unix-socket transport, ACL credentials, and timeouts are exactly representable. |
+| `connection-failed` | Check the hostname, port or socket path, network route, and Redis availability. |
+| `authentication-failed` | Verify the password or the derived Craft ACL username/password without printing them. The string `"0"` is a real password, not an empty value. |
+| `database-selection-failed` | Verify that the selected non-negative database exists and the account can select it. |
+| `ping-failed` | Confirm the connected service accepts PING and is healthy. |
+
+An unresolved environment reference never turns into a default, Craft fallback, or unauthenticated connection. The diagnostics response, console output, and logs omit credentials and raw exception text; correct the configuration at its source and use **Refresh Connection** to retest.
+
 ## Redis data lost after cache clear
 
 If your search index disappears when Craft's cache is cleared:
@@ -267,7 +281,7 @@ If your search index disappears when Craft's cache is cleared:
 - Your hosting platform may use `FLUSHALL` (clears all Redis databases) instead of `FLUSHDB` (clears one database)
 - **Fix**: Set an explicit `database` number in your Redis backend config, or switch to MySQL/File backend
 
-See [Redis Backend](../backends/backend-redis.md) for database isolation details.
+See [Redis Backend](../backends/backend-redis.md#database-selection) for selected-database details and its limits.
 
 ## Algolia/Meilisearch/Typesense connection issues
 

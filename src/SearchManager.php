@@ -80,6 +80,7 @@ use lindemannrock\searchmanager\services\LiveComparisonService;
 use lindemannrock\searchmanager\services\NativeSearchCoverageService;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
+use lindemannrock\searchmanager\services\RedisNativeConnectionFactory;
 use lindemannrock\searchmanager\services\SetupService;
 use lindemannrock\searchmanager\services\StorageMaintenanceService;
 use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
@@ -117,6 +118,7 @@ use yii\base\Event;
  * @property-read QueryRuleService $queryRules
  * @property-read SetupService $setup
  * @property-read StorageMaintenanceService $storageMaintenance
+ * @property-read RedisNativeConnectionFactory $redisConnections
  * @property-read PendingSyncRepository $pendingSyncs
  * @property-read PendingSyncProcessor $pendingSyncProcessor
  * @property-read WidgetConfigService $widgetConfigs
@@ -360,6 +362,7 @@ class SearchManager extends Plugin
             'pendingSyncProcessor' => PendingSyncProcessor::class,
             'promotions' => PromotionService::class,
             'queryRules' => QueryRuleService::class,
+            'redisConnections' => RedisNativeConnectionFactory::class,
             'setup' => SetupService::class,
             'storageMaintenance' => StorageMaintenanceService::class,
             'transformers' => TransformerService::class,
@@ -1489,7 +1492,23 @@ class SearchManager extends Plugin
      */
     public function getRedisConnectionInfo(array $settings = []): array
     {
-        return \lindemannrock\searchmanager\helpers\RedisConnectionHelper::resolve($settings);
+        $configuration = $this->redisConnections->resolve($settings);
+
+        return $this->redisConnections->compatibilityProjection($configuration, false);
+    }
+
+    /**
+     * Resolve credential-safe Redis diagnostics for CP templates.
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     * @since 5.54.0
+     */
+    public function getRedisSafePresentation(array $settings = []): array
+    {
+        $configuration = $this->redisConnections->resolve($settings);
+
+        return $this->redisConnections->safePresentation($configuration);
     }
 
     // =========================================================================

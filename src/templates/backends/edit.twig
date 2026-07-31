@@ -205,12 +205,12 @@
 
 						{# Show Redis configuration info #}
 						{% if type == 'redis' %}
-							{% set redisInfo = craft.searchManager.getPlugin().getRedisConnectionInfo(backend.settings ?? {}) %}
+							{% set redisInfo = craft.searchManager.getPlugin().getRedisSafePresentation(backend.settings ?? {}) %}
 							{# 1. Redis Detected status #}
 							{% if redisInfo.usesCraftCache %}
 								{% include 'lindemannrock-base/_components/info-box' with {
                                     type: 'success',
-                                    message: 'Redis detected: Craft uses Redis at {host}:{port} on DB {db}. If no settings are provided below, Search Manager will reuse this connection and store its data on DB {fallbackDb} — isolated from Craft\'s cache so it survives cache flushes. If DB {fallbackDb} is already used for sessions or queue, set database explicitly below.'|t('search-manager', {host: redisInfo.host, port: redisInfo.port, db: redisInfo.craftDatabase, fallbackDb: redisInfo.database}),
+                                    message: 'Redis detected: Search Manager can derive Craft\'s Redis cache configuration and open an independent native client on DB {fallbackDb}. If that database is already used for sessions or queue data, set the database explicitly below.'|t('search-manager', {fallbackDb: redisInfo.database}),
                                 } %}
                             {% elseif not redisInfo.isConfigured %}
                                 {% include 'lindemannrock-base/_components/info-box' with {
@@ -520,14 +520,38 @@ setTimeout(updateActionButton, 10);
 							<span>{{ backend.getTypeLabel() }}</span>
 						</dd>
 					</div>
-					{% set redisConnectionInfo = backend.redisConnectionInfo %}
+					{% set redisConnectionInfo = backend.redisSafePresentation %}
 					{% if redisConnectionInfo %}
+						<div class="data">
+							<dt class="heading">{{ 'Redis source'|t('search-manager') }}</dt>
+							<dd class="value">{{ (redisConnectionInfo.source == 'craft-cache-fallback' ? 'Derived from Craft Redis cache configuration' : 'Search Manager settings')|t('search-manager') }}</dd>
+						</div>
+						<div class="data">
+							<dt class="heading">{{ 'Transport'|t('search-manager') }}</dt>
+							<dd class="value"><code>{{ (redisConnectionInfo.transport == 'unix' ? 'Unix socket' : (redisConnectionInfo.transport == 'tls' ? 'TLS' : 'TCP'))|t('search-manager') }}</code></dd>
+						</div>
+						{% if redisConnectionInfo.endpoint %}
+							<div class="data">
+								<dt class="heading">{{ 'Endpoint'|t('search-manager') }}</dt>
+								<dd class="value"><code>{{ redisConnectionInfo.endpoint }}</code></dd>
+							</div>
+						{% endif %}
 						<div class="data">
 							<dt class="heading">{{ 'Database'|t('search-manager') }}</dt>
 							<dd class="value">
-								<code>{{ redisConnectionInfo.databaseLabel }}</code>
+								<code>{{ redisConnectionInfo.databaseLabel ?? '—' }}</code>
 							</dd>
 						</div>
+						<div class="data">
+							<dt class="heading">{{ 'Authentication'|t('search-manager') }}</dt>
+							<dd class="value">{{ (redisConnectionInfo.authenticationMode == 'acl' ? 'ACL' : (redisConnectionInfo.authenticationMode == 'password' ? 'Password' : 'None'))|t('search-manager') }}</dd>
+						</div>
+						{% if redisConnectionInfo.status in ['not-configured', 'unsupported-configuration'] %}
+							<div class="data">
+								<dt class="heading">{{ 'Configuration status'|t('search-manager') }}</dt>
+								<dd class="value">{{ (redisConnectionInfo.status == 'not-configured' ? 'Not configured' : 'Unsupported configuration')|t('search-manager') }}</dd>
+							</div>
+						{% endif %}
 					{% endif %}
 					{% if isDefault %}
 						<div class="data">

@@ -8,10 +8,10 @@
 
 namespace lindemannrock\searchmanager\backends;
 
-use Craft;
-use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\search\storage\RedisStorage;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
+use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\RedisNativeConnectionFactory;
 
 /**
  * Redis Backend
@@ -26,44 +26,14 @@ use lindemannrock\searchmanager\search\storage\StorageInterface;
  */
 class RedisBackend extends AbstractSearchEngineBackend
 {
-    /**
-     * @var \Redis|null Redis client for availability checks
-     */
-    private ?\Redis $_client = null;
+    private string $lastConnectionStatus = RedisNativeConnectionFactory::STATUS_NOT_CONFIGURED;
 
     /**
      * @inheritdoc
      */
     protected function createStorage(string $fullIndexName): StorageInterface
     {
-        // Use resolved settings (with Craft fallback applied)
-        $resolvedSettings = $this->getResolvedRedisSettings();
-        return new RedisStorage($fullIndexName, $resolvedSettings);
-    }
-
-    /**
-     * Get resolved Redis settings, applying Craft cache fallback if needed.
-     *
-     * When no explicit Redis host is configured, falls back to Craft's Redis
-     * cache settings but uses a DIFFERENT database to isolate search data.
-     *
-     * @return array Resolved Redis settings
-     */
-    private function getResolvedRedisSettings(): array
-    {
-        $backendSettings = $this->getBackendSettings();
-        $resolved = RedisConnectionHelper::resolve($backendSettings);
-
-        if ($resolved['source'] === RedisConnectionHelper::SOURCE_CRAFT_CACHE_FALLBACK) {
-            $this->logInfo('Using Craft Redis cache settings for Search Manager', [
-                'host' => $resolved['host'],
-                'port' => $resolved['port'],
-                'craftDatabase' => $resolved['craftDatabase'],
-                'searchDatabase' => $resolved['database'],
-            ]);
-        }
-
-        return RedisConnectionHelper::storageSettings($backendSettings);
+        return new RedisStorage($fullIndexName, $this->getBackendSettings());
     }
 
     /**
@@ -87,20 +57,15 @@ class RedisBackend extends AbstractSearchEngineBackend
      */
     public function isAvailable(): bool
     {
-        if (!extension_loaded('redis')) {
-            return false;
+        $configuration = SearchManager::$plugin->redisConnections->resolve($this->getBackendSettings());
+        $this->lastConnectionStatus = SearchManager::$plugin->redisConnections->probe($configuration);
+        if ($this->lastConnectionStatus !== RedisNativeConnectionFactory::STATUS_CONNECTED) {
+            $this->logError('Redis availability check failed', [
+                'classification' => $this->lastConnectionStatus,
+            ]);
         }
 
-        try {
-            $client = $this->getClient();
-            $client->ping();
-            return true;
-        } catch (\Throwable $e) {
-            $this->logError('Redis connection failed', [
-                'error' => $e->getMessage(),
-            ]);
-            return false;
-        }
+        return $this->lastConnectionStatus === RedisNativeConnectionFactory::STATUS_CONNECTED;
     }
 
     /**
@@ -108,47 +73,25 @@ class RedisBackend extends AbstractSearchEngineBackend
      */
     public function getStatus(): array
     {
-        $settings = $this->getBackendSettings();
+        $configuration = SearchManager::$plugin->redisConnections->resolve($this->getBackendSettings());
 
         return [
             'name' => 'Redis',
             'enabled' => $this->isEnabledInConfig(),
-            'configured' => !empty($settings['host']) || Craft::$app->cache instanceof \yii\redis\Cache,
+            'configured' => $configuration->isConfigured(),
             'available' => $this->isAvailable(),
             'extension' => extension_loaded('redis'),
+            'connectionStatus' => $this->lastConnectionStatus,
         ];
     }
 
     /**
-     * Get or create Redis client
+     * Return the last fixed availability classification.
      *
-     * Uses the same resolved settings as storage to ensure consistency.
-     *
-     * @return \Redis
-     * @throws \Exception
+     * @since 5.54.0
      */
-    private function getClient(): \Redis
+    public function getLastConnectionStatus(): string
     {
-        if ($this->_client === null) {
-            // Use resolved settings (same as storage uses)
-            $settings = $this->getResolvedRedisSettings();
-
-            $this->_client = new \Redis();
-
-            $host = $settings['host'] ?? '127.0.0.1';
-            $port = (int) ($settings['port'] ?? 6379);
-            $password = $settings['password'] ?? null;
-            $database = (int) ($settings['database'] ?? 0);
-
-            $this->_client->connect($host, $port);
-
-            if ($password) {
-                $this->_client->auth($password);
-            }
-
-            $this->_client->select($database);
-        }
-
-        return $this->_client;
+        return $this->lastConnectionStatus;
     }
 }

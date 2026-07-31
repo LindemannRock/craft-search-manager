@@ -41,11 +41,14 @@ final class AuditPass29RegressionTest extends TestCase
 
     public function testRedisEnvResolutionDoesNotLogResolvedSecrets(): void
     {
-        $source = $this->readPluginFile('src/search/storage/RedisStorage.php');
+        $storage = $this->readPluginFile('src/search/storage/RedisStorage.php');
+        $factory = $this->readPluginFile('src/services/RedisNativeConnectionFactory.php');
 
-        self::assertStringNotContainsString("'Resolved env var'", $source);
-        self::assertStringNotContainsString("'resolved' => \$resolved", $source);
-        self::assertStringContainsString('return App::env($envVarName) ?? $default;', $source);
+        self::assertStringNotContainsString("'Resolved env var'", $storage);
+        self::assertStringNotContainsString("'resolved' => \$resolved", $storage);
+        self::assertStringNotContainsString('App::env(', $storage);
+        self::assertStringContainsString('App::env($matches[1])', $factory);
+        self::assertStringNotContainsString("'resolved' => \$resolved", $factory);
     }
 
     public function testBackendSearchReusesMatchedQueryRules(): void

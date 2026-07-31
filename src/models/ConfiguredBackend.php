@@ -17,7 +17,7 @@ use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
-use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
@@ -192,7 +192,7 @@ class ConfiguredBackend extends Model
             'database' => [
                 'type' => 'number',
                 'label' => 'Database',
-                'instructions' => 'Redis database number. When using Craft\'s Redis settings, defaults to Craft database + 1 to isolate search data.',
+                'instructions' => 'Redis database number. When using Craft\'s Redis cache configuration, defaults to Craft database + 1.',
                 'placeholder' => 'Leave empty for auto',
                 'required' => false,
             ],
@@ -234,7 +234,7 @@ class ConfiguredBackend extends Model
         'redis' => [
             'title' => 'Redis Configuration',
             'description' => 'In-memory search storage. Requires Redis server and PHP Redis extension. <a href="https://redis.io/docs/getting-started/" target="_blank" rel="noopener">Redis Documentation</a>',
-            'infoBox' => '<strong>Important:</strong> When no host is configured, Search Manager uses Craft\'s Redis cache settings but stores data in a separate database (Craft database + 1) to prevent data loss when Craft cache is cleared.',
+            'infoBox' => '<strong>Important:</strong> When no host is configured, Search Manager derives Craft\'s Redis cache configuration and opens an independent native client on Craft database + 1.',
         ],
         'mysql' => [
             'title' => 'MySQL Configuration',
@@ -438,7 +438,26 @@ class ConfiguredBackend extends Model
             return null;
         }
 
-        return RedisConnectionHelper::resolveForBackend($this);
+        $configuration = SearchManager::$plugin->redisConnections->resolveForBackend($this);
+
+        return SearchManager::$plugin->redisConnections->compatibilityProjection($configuration, false);
+    }
+
+    /**
+     * Get the credential-safe Redis diagnostics projection for this backend.
+     *
+     * @return array<string, mixed>|null
+     * @since 5.54.0
+     */
+    public function getRedisSafePresentation(): ?array
+    {
+        if ($this->backendType !== 'redis') {
+            return null;
+        }
+
+        $configuration = SearchManager::$plugin->redisConnections->resolveForBackend($this);
+
+        return SearchManager::$plugin->redisConnections->safePresentation($configuration);
     }
 
     // =========================================================================

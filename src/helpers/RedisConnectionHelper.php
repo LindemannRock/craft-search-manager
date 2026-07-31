@@ -8,9 +8,8 @@
 
 namespace lindemannrock\searchmanager\helpers;
 
-use Craft;
-use craft\helpers\App;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
+use lindemannrock\searchmanager\services\RedisNativeConnectionFactory;
 
 /**
  * Resolves Redis backend connection settings consistently across runtime and CP surfaces.
@@ -23,8 +22,6 @@ class RedisConnectionHelper
     public const SOURCE_CRAFT_CACHE_FALLBACK = 'craft-cache-fallback';
     public const SOURCE_DEFAULT = 'default';
 
-    private const SEARCH_DATABASE_OFFSET = 1;
-
     /**
      * Resolve the effective Redis connection for a configured backend.
      *
@@ -32,7 +29,9 @@ class RedisConnectionHelper
      */
     public static function resolveForBackend(ConfiguredBackend $backend): array
     {
-        return self::resolve($backend->settings ?? []);
+        $factory = self::factory();
+
+        return $factory->compatibilityProjection($factory->resolveForBackend($backend));
     }
 
     /**
@@ -43,68 +42,9 @@ class RedisConnectionHelper
      */
     public static function resolve(array $settings): array
     {
-        $configuredHost = self::resolveEnvValue($settings['host'] ?? null, null);
-        $configuredDatabase = self::resolveEnvValue($settings['database'] ?? null, null);
-        $hasExplicitDatabase = $configuredDatabase !== null && $configuredDatabase !== '';
-        $craftDatabase = self::craftRedisDatabase();
-        $autoDatabase = $craftDatabase !== null
-            ? $craftDatabase + self::SEARCH_DATABASE_OFFSET
-            : 0;
+        $factory = self::factory();
 
-        if (!empty($configuredHost)) {
-            $database = $hasExplicitDatabase ? (int) $configuredDatabase : $autoDatabase;
-
-            return [
-                'host' => $configuredHost,
-                'port' => (int) self::resolveEnvValue($settings['port'] ?? null, 6379),
-                'password' => self::resolveEnvValue($settings['password'] ?? null, null),
-                'passwordConfigured' => self::resolveEnvValue($settings['password'] ?? null, null) !== null,
-                'database' => $database,
-                'databaseLabel' => self::databaseLabel($database, $hasExplicitDatabase ? null : $craftDatabase),
-                'source' => self::SOURCE_EXPLICIT,
-                'craftDatabase' => $craftDatabase,
-                'isAutoDatabase' => !$hasExplicitDatabase,
-                'isConfigured' => true,
-                'usesCraftCache' => false,
-            ];
-        }
-
-        if (Craft::$app->cache instanceof \yii\redis\Cache) {
-            $redisConnection = Craft::$app->cache->redis;
-            $database = $hasExplicitDatabase
-                ? (int) $configuredDatabase
-                : $autoDatabase;
-
-            return [
-                'host' => $redisConnection->hostname ?? 'localhost',
-                'port' => (int) ($redisConnection->port ?? 6379),
-                'password' => $redisConnection->password ?? null,
-                'passwordConfigured' => ($redisConnection->password ?? null) !== null,
-                'database' => $database,
-                'databaseLabel' => self::databaseLabel($database, $hasExplicitDatabase ? null : $craftDatabase),
-                'source' => self::SOURCE_CRAFT_CACHE_FALLBACK,
-                'craftDatabase' => $craftDatabase,
-                'isAutoDatabase' => !$hasExplicitDatabase,
-                'isConfigured' => true,
-                'usesCraftCache' => true,
-            ];
-        }
-
-        $database = $hasExplicitDatabase ? (int) $configuredDatabase : $autoDatabase;
-
-        return [
-            'host' => self::resolveEnvValue($settings['host'] ?? null, null),
-            'port' => (int) self::resolveEnvValue($settings['port'] ?? null, 6379),
-            'password' => self::resolveEnvValue($settings['password'] ?? null, null),
-            'passwordConfigured' => self::resolveEnvValue($settings['password'] ?? null, null) !== null,
-            'database' => $database,
-            'databaseLabel' => self::databaseLabel($database),
-            'source' => self::SOURCE_DEFAULT,
-            'craftDatabase' => null,
-            'isAutoDatabase' => !$hasExplicitDatabase,
-            'isConfigured' => !empty($configuredHost),
-            'usesCraftCache' => false,
-        ];
+        return $factory->compatibilityProjection($factory->resolve($settings));
     }
 
     /**
@@ -130,25 +70,7 @@ class RedisConnectionHelper
      */
     public static function databaseLabel(int $database, ?int $craftDatabase = null): string
     {
-        $label = 'DB ' . $database;
-
-        if ($craftDatabase !== null) {
-            $label .= ' (' . $craftDatabase . ' + 1)';
-        }
-
-        return $label;
-    }
-
-    /**
-     * Return Craft's Redis cache database when Craft cache uses Redis.
-     */
-    private static function craftRedisDatabase(): ?int
-    {
-        if (!Craft::$app->cache instanceof \yii\redis\Cache) {
-            return null;
-        }
-
-        return (int) (Craft::$app->cache->redis->database ?? 0);
+        return self::factory()->databaseLabel($database, $craftDatabase);
     }
 
     /**
@@ -156,14 +78,11 @@ class RedisConnectionHelper
      */
     public static function resolveEnvValue(mixed $value, mixed $default): mixed
     {
-        if ($value === null || $value === '') {
-            return $default;
-        }
+        return self::factory()->resolveEnvValue($value, $default);
+    }
 
-        if (is_string($value) && str_starts_with($value, '$')) {
-            return App::env(ltrim($value, '$')) ?? $default;
-        }
-
-        return $value;
+    private static function factory(): RedisNativeConnectionFactory
+    {
+        return new RedisNativeConnectionFactory();
     }
 }

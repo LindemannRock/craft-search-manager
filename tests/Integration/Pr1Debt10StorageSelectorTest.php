@@ -141,9 +141,10 @@ final class Pr1Debt10StorageSelectorTest extends TestCase
 
         $config = SearchManager::$plugin->storageMaintenance->getRedisConfig([$backend]);
 
-        self::assertSame('redis.internal', $config['host']);
-        self::assertSame(6380, $config['port']);
-        self::assertSame(9, $config['database']);
+        self::assertNotNull($config);
+        self::assertSame('redis.internal', $config->host);
+        self::assertSame(6380, $config->port);
+        self::assertSame(9, $config->database);
     }
 
     public function testFileCountingUsesAnIsolatedTemporaryPath(): void

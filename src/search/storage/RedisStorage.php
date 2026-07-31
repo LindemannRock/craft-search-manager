@@ -8,9 +8,9 @@
 
 namespace lindemannrock\searchmanager\search\storage;
 
-use craft\helpers\App;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\search\TermNormalizer;
+use lindemannrock\searchmanager\SearchManager;
 
 /**
  * RedisStorage
@@ -65,67 +65,13 @@ class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStor
         $this->indexHandle = $indexHandle;
         $this->keyPrefix = 'sm:idx:' . $indexHandle . ':';
 
-        // Initialize Redis connection
-        $this->initializeRedis($config);
+        $configuration = SearchManager::$plugin->redisConnections->resolve($config);
+        $this->redis = SearchManager::$plugin->redisConnections->connect($configuration);
 
         $this->logDebug('Initialized RedisStorage', [
             'index' => $this->indexHandle,
             'prefix' => $this->keyPrefix,
         ]);
-    }
-
-    /**
-     * Initialize Redis connection
-     *
-     * @param array $config Redis configuration
-     * @return void
-     * @throws \Exception
-     */
-    private function initializeRedis(array $config): void
-    {
-        if (!class_exists('\Redis')) {
-            throw new \Exception('Redis extension is not installed');
-        }
-
-        $this->logDebug('RedisStorage initializeRedis received config', [
-            'configKeys' => array_keys($config),
-            'rawHost' => $config['host'] ?? 'NOT IN CONFIG',
-            'configCount' => count($config),
-        ]);
-
-        $this->redis = new \Redis();
-
-        // Resolve environment variables (strip $ prefix if present)
-        $host = $this->resolveEnvVar($config['host'] ?? null, '127.0.0.1');
-        $port = (int)$this->resolveEnvVar($config['port'] ?? null, 6379);
-        $password = $this->resolveEnvVar($config['password'] ?? null, null);
-        $database = (int)$this->resolveEnvVar($config['database'] ?? null, 0);
-
-        try {
-            $connected = $this->redis->connect($host, $port);
-
-            if (!$connected) {
-                $this->logError('Failed to connect to Redis', [
-                    'host' => $host,
-                    'port' => $port,
-                    'port_type' => gettype($port),
-                ]);
-                throw new \Exception("Failed to connect to Redis at {$host}:{$port}");
-            }
-        } catch (\Throwable $e) {
-            $this->logError('Redis connection error', [
-                'host' => $host,
-                'port' => $port,
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
-        }
-
-        if ($password) {
-            $this->redis->auth($password);
-        }
-
-        $this->redis->select($database);
     }
 
     // =========================================================================
@@ -1985,29 +1931,5 @@ LUA;
     private function getMetaKey(int $siteId, string $key): string
     {
         return $this->keyPrefix . 'meta:' . $siteId . ':' . $key;
-    }
-
-    /**
-     * Resolve environment variable
-     * Strips $ prefix if present and calls App::env()
-     *
-     * @param mixed $value Config value (e.g., "$REDIS_HOST" or "REDIS_HOST" or "redis")
-     * @param mixed $default Default value if env var not found
-     * @return mixed Resolved value
-     */
-    private function resolveEnvVar($value, $default)
-    {
-        if ($value === null || $value === '') {
-            return $default;
-        }
-
-        // If it's a string starting with $, it's an env var reference
-        if (is_string($value) && str_starts_with($value, '$')) {
-            $envVarName = ltrim($value, '$');
-            return App::env($envVarName) ?? $default;
-        }
-
-        // Return the value as-is (it's a plain string, not an env var reference)
-        return $value;
     }
 }

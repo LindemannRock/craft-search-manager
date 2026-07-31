@@ -187,6 +187,23 @@ final class DedicatedI18nSweepTest extends TestCase
             'Cannot change the handle for the default widget. Set another widget as default first.',
             'The indexHandles argument accepts at most {max} indices.',
             'Widget',
+            'Connection test failed ({status}). Check your settings.',
+            'Redis source',
+            'Derived from Craft Redis cache configuration',
+            'Search Manager settings',
+            'Transport',
+            'Endpoint',
+            'Authentication',
+            'Configuration status',
+            'Unsupported configuration',
+            'Craft Redis cache configuration',
+            'Unix socket',
+            'ACL',
+            'TCP',
+            'TLS',
+            'Redis database number. When using Craft\'s Redis cache configuration, defaults to Craft database + 1.',
+            '<strong>Important:</strong> When no host is configured, Search Manager derives Craft\'s Redis cache configuration and opens an independent native client on Craft database + 1.',
+            'Redis detected: Search Manager can derive Craft\'s Redis cache configuration and open an independent native client on DB {fallbackDb}. If that database is already used for sessions or queue data, set the database explicitly below.',
         ];
         $locales = ['en', 'de', 'fr', 'nl', 'es', 'ar', 'it', 'pt', 'ja', 'sv', 'da', 'no'];
         foreach ($locales as $locale) {
@@ -196,6 +213,18 @@ final class DedicatedI18nSweepTest extends TestCase
                 self::assertArrayHasKey($key, $translations, "Missing '{$key}' in {$locale}");
                 self::assertNotSame('', (string) $translations[$key], "Empty '{$key}' in {$locale}");
             }
+            self::assertArrayNotHasKey(
+                'Redis detected: Craft uses Redis at {host}:{port} on DB {db}. If no settings are provided below, Search Manager will reuse this connection and store its data on DB {fallbackDb} — isolated from Craft\'s cache so it survives cache flushes. If DB {fallbackDb} is already used for sessions or queue, set database explicitly below.',
+                $translations,
+            );
+            self::assertArrayNotHasKey(
+                'Redis database number. When using Craft\'s Redis settings, defaults to Craft database + 1 to isolate search data.',
+                $translations,
+            );
+            self::assertArrayNotHasKey(
+                '<strong>Important:</strong> When no host is configured, Search Manager uses Craft\'s Redis cache settings but stores data in a separate database (Craft database + 1) to prevent data loss when Craft cache is cleared.',
+                $translations,
+            );
         }
     }
 

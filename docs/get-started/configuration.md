@@ -614,6 +614,8 @@ TYPESENSE_ADMIN_API_KEY=your-admin-api-key
 TYPESENSE_SEARCH_API_KEY=your-search-key
 ```
 
+Redis backends accept exactly `host`, `port`, `password`, and `database`. All four support environment references in the Control Panel. References must resolve: an unresolved value fails safely as `unsupported-configuration` rather than becoming a default, Craft fallback, or unauthenticated connection. Leave all four fields empty only when you intend Search Manager to derive a supported Craft Redis cache configuration into its own native client. See [Redis Backend](../backends/backend-redis.md) for transport, authentication, selected-database, and diagnostics behavior.
+
 ## Translations
 
 Search Manager includes translations for 12 languages. See [Translations](../resources/translations.md) for the full list and override instructions.

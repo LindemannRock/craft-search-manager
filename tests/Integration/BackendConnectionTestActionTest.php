@@ -162,7 +162,7 @@ final class BackendConnectionTestActionTest extends TestCase
         self::assertSame(['not-registered'], $service->requestedTypes);
     }
 
-    public function testThrownExceptionUsesDevDisclosureAndGenericProductionError(): void
+    public function testThrownExceptionNeverDisclosesProviderDetailOrSecrets(): void
     {
         $backendId = $this->insertBackend('throws', ['apiKey' => 'stored-secret']);
         $generalConfig = Craft::$app->getConfig()->getGeneral();
@@ -184,18 +184,15 @@ final class BackendConnectionTestActionTest extends TestCase
                 $response = $controller->actionTest();
 
                 self::assertFalse($response->data['success']);
-                self::assertSame(
-                    $devMode
-                        ? 'adapter detail with stored-secret'
-                        : 'Connection test failed.',
-                    $response->data['error'],
-                );
-                if (!$devMode) {
-                    self::assertStringNotContainsString('stored-secret', $response->data['error']);
-                }
+                self::assertSame('connection-failed', $response->data['status']);
+                self::assertSame('Connection test failed.', $response->data['error']);
+                self::assertStringNotContainsString('stored-secret', $response->data['error']);
                 self::assertSame([[
                     'message' => 'Backend connection test failed',
-                    'params' => ['error' => 'adapter detail with stored-secret'],
+                    'params' => [
+                        'operation' => 'backend-connection-test',
+                        'classification' => 'connection-failed',
+                    ],
                 ]], $controller->errors);
             }
         } finally {

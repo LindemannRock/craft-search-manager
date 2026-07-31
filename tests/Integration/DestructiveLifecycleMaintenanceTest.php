@@ -25,6 +25,9 @@ use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\IndexMaintenanceService;
+use lindemannrock\searchmanager\services\RedisConnectionConfiguration;
+use lindemannrock\searchmanager\services\RedisConnectionException;
+use lindemannrock\searchmanager\services\RedisNativeConnectionFactory;
 use lindemannrock\searchmanager\services\StorageMaintenanceService;
 use lindemannrock\searchmanager\tests\TestCase;
 use yii\console\ExitCode;
@@ -468,11 +471,12 @@ final class DestructiveLifecycleMaintenanceTest extends TestCase
         $targets = (new StorageMaintenanceService())->getRedisTargets($backends, $indices);
 
         self::assertCount(2, $targets);
-        self::assertSame('redis-a.test:6379:2', $targets[0]['key']);
-        self::assertSame(['redis-a', 'redis-a-duplicate'], $targets[0]['backendHandles']);
-        self::assertSame(['index-a', 'index-a-duplicate'], $targets[0]['indexHandles']);
-        self::assertSame('redis-b.test:6380:3', $targets[1]['key']);
-        self::assertSame(['index-b'], $targets[1]['indexHandles']);
+        $targetsByEndpoint = array_column($targets, null, 'label');
+        self::assertSame(['redis-a', 'redis-a-duplicate'], $targetsByEndpoint['redis-a.test:6379 / DB 2']['backendHandles']);
+        self::assertSame(['index-a', 'index-a-duplicate'], $targetsByEndpoint['redis-a.test:6379 / DB 2']['indexHandles']);
+        self::assertSame(['index-b'], $targetsByEndpoint['redis-b.test:6380 / DB 3']['indexHandles']);
+        self::assertArrayNotHasKey('password', $targetsByEndpoint['redis-a.test:6379 / DB 2']['presentation']);
+        self::assertArrayNotHasKey('identity', $targetsByEndpoint['redis-a.test:6379 / DB 2']);
     }
 
     public function testRedisFallbackWithoutBackendRowsUsesCraftDatabasePlusOne(): void
@@ -490,11 +494,140 @@ final class DestructiveLifecycleMaintenanceTest extends TestCase
 
             self::assertCount(1, $targets);
             self::assertTrue($targets[0]['fallback']);
-            self::assertSame('redis', $targets[0]['host']);
-            self::assertSame(6, $targets[0]['database']);
+            self::assertSame('redis', $targets[0]['connection']->host);
+            self::assertSame(6, $targets[0]['connection']->database);
+            self::assertSame('redis:6379 / DB 6 (5 + 1)', $targets[0]['label']);
         } finally {
             Craft::$app->set('cache', $originalCache);
         }
+    }
+
+    public function testRedisStatisticsContainGenericTargetFailureAndContinueWithoutDisclosure(): void
+    {
+        $configuration = (new RedisNativeConnectionFactory())->resolve([
+            'host' => 'redis.internal',
+            'database' => 4,
+        ]);
+        $clients = [new \Redis(), new \Redis(), new \Redis()];
+        $service = new class($clients) extends StorageMaintenanceService {
+            /** @param list<\Redis> $clients */
+            public function __construct(private array $clients)
+            {
+                parent::__construct();
+            }
+
+            /** @var list<int> */
+            public array $connectedClientIds = [];
+            public int $scanCalls = 0;
+
+            public function connectRedis(RedisConnectionConfiguration $configuration): \Redis
+            {
+                $client = array_shift($this->clients);
+                if (!$client instanceof \Redis) {
+                    throw new \LogicException('No recording Redis client remains.');
+                }
+
+                $this->connectedClientIds[] = spl_object_id($client);
+                return $client;
+            }
+
+            public function scanRedisKeys(\Redis $redis, string $pattern, int $count = 1000): array
+            {
+                $this->scanCalls++;
+                if ($this->scanCalls === 2) {
+                    throw new \RuntimeException('INJECTED_REDIS_SCAN_SECRET');
+                }
+
+                return $this->scanCalls === 1 ? ['first-key'] : ['third-key-a', 'third-key-b'];
+            }
+        };
+        $closeRecorder = new RecordingRedisCloseFactory();
+        $this->swapPluginComponent('search-manager', 'redisConnections', $closeRecorder);
+        $targets = array_map(
+            static fn(string $label): array => [
+                'label' => $label,
+                'connection' => $configuration,
+                'presentation' => [],
+                'backendHandles' => [$label],
+                'indexHandles' => [$label . '-index'],
+                'fallback' => false,
+            ],
+            ['first', 'failing', 'third'],
+        );
+        $logOffset = count(Craft::getLogger()->messages);
+
+        $method = new \ReflectionMethod(StorageMaintenanceService::class, 'getRedisStats');
+        $method->setAccessible(true);
+        $result = $method->invoke($service, $targets);
+        self::assertIsArray($result);
+
+        self::assertTrue($result['available']);
+        self::assertSame('partial', $result['status']);
+        self::assertSame(3, $result['keyCount']);
+        self::assertSame(['connected', 'statistics-failed', 'connected'], array_column($result['targets'], 'status'));
+        self::assertSame([1, 0, 2], array_column($result['targets'], 'keyCount'));
+        self::assertSame(3, $service->scanCalls);
+        self::assertSame($service->connectedClientIds, $closeRecorder->closedClientIds);
+
+        $serializedResult = serialize($result);
+        $serializedLogs = serialize(array_slice(Craft::getLogger()->messages, $logOffset));
+        self::assertStringContainsString('statistics-failed', $serializedResult);
+        self::assertStringContainsString('statistics-failed', $serializedLogs);
+        self::assertStringNotContainsString('INJECTED_REDIS_SCAN_SECRET', $serializedResult);
+        self::assertStringNotContainsString('INJECTED_REDIS_SCAN_SECRET', $serializedLogs);
+    }
+
+    public function testRedisSelectionFailureStopsBeforeScanDeleteAndReconciliation(): void
+    {
+        $configuration = SearchManager::$plugin->redisConnections->resolve([
+            'host' => 'redis.internal',
+            'database' => 4,
+        ]);
+        $service = new class($configuration) extends StorageMaintenanceService {
+            public int $scanCalls = 0;
+            public int $reconciliationCalls = 0;
+
+            public function __construct(private readonly RedisConnectionConfiguration $configuration)
+            {
+                parent::__construct();
+            }
+
+            public function getRedisTargets(?array $backends = null, ?array $indices = null): array
+            {
+                return [[
+                    'label' => 'redis.internal:6379 / DB 4',
+                    'connection' => $this->configuration,
+                    'presentation' => [],
+                    'backendHandles' => ['redis'],
+                    'indexHandles' => ['index'],
+                    'fallback' => false,
+                ]];
+            }
+
+            public function connectRedis(RedisConnectionConfiguration $configuration): \Redis
+            {
+                throw new RedisConnectionException(RedisNativeConnectionFactory::STATUS_DATABASE_SELECTION_FAILED);
+            }
+
+            public function scanRedisKeys(\Redis $redis, string $pattern, int $count = 1000): array
+            {
+                $this->scanCalls++;
+                return ['must-not-delete'];
+            }
+
+            protected function reconcileClearedIndices(array $indexHandles): array
+            {
+                $this->reconciliationCalls++;
+                return ['success' => true, 'updated' => $indexHandles, 'failed' => []];
+            }
+        };
+
+        $result = $this->invokeProtected($service, 'clearRedisStorage');
+
+        self::assertSame('failure', $result['status']);
+        self::assertSame(RedisNativeConnectionFactory::STATUS_DATABASE_SELECTION_FAILED, $result['results'][0]['error']);
+        self::assertSame(0, $service->scanCalls);
+        self::assertSame(0, $service->reconciliationCalls);
     }
 
     public function testRedisClearContinuesAfterSafeTargetFailureAndReconcilesOnlySuccesses(): void
@@ -1061,6 +1194,19 @@ final class RecordingStorageMaintenanceService extends StorageMaintenanceService
             'successfulTargets' => $status === 'success' ? 1 : 0,
             'errors' => $status === 'success' ? [] : ['recording failure'],
         ];
+    }
+}
+
+final class RecordingRedisCloseFactory extends RedisNativeConnectionFactory
+{
+    /** @var list<int> */
+    public array $closedClientIds = [];
+
+    public function close(?\Redis $client): void
+    {
+        if ($client !== null) {
+            $this->closedClientIds[] = spl_object_id($client);
+        }
     }
 }
 

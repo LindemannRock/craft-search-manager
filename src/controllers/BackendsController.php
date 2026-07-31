@@ -14,6 +14,7 @@ use craft\web\Controller;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\backends\RedisBackend;
 use lindemannrock\searchmanager\models\BulkMutationResult;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\SearchManager;
@@ -475,26 +476,43 @@ class BackendsController extends Controller
             $backendAdapter->setConfiguredSettings($configuredBackend->settings);
 
             if ($backendAdapter->isAvailable()) {
-                return $this->asJson([
+                $response = [
                     'success' => true,
                     'message' => Craft::t('search-manager', 'Connection successful'),
+                ];
+                if ($backendAdapter instanceof RedisBackend) {
+                    $response['status'] = 'connected';
+                }
+
+                return $this->asJson($response);
+            }
+
+            if (!$backendAdapter instanceof RedisBackend) {
+                return $this->asJson([
+                    'success' => false,
+                    'error' => Craft::t('search-manager', 'Backend is not available. Check your settings.'),
                 ]);
             }
 
+            $status = $backendAdapter->getLastConnectionStatus();
+
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Backend is not available. Check your settings.'),
+                'status' => $status,
+                'error' => Craft::t('search-manager', 'Connection test failed ({status}). Check your settings.', [
+                    'status' => $status,
+                ]),
             ]);
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             $this->logError('Backend connection test failed', [
-                'error' => $e->getMessage(),
+                'operation' => 'backend-connection-test',
+                'classification' => 'connection-failed',
             ]);
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::$app->getConfig()->getGeneral()->devMode
-                    ? $e->getMessage()
-                    : Craft::t('search-manager', 'Connection test failed. Check logs for details.'),
+                'status' => 'connection-failed',
+                'error' => Craft::t('search-manager', 'Connection test failed. Check logs for details.'),
             ]);
         }
     }
@@ -544,10 +562,10 @@ class BackendsController extends Controller
             $indices = [];
             try {
                 $indices = $backendAdapter->listIndices();
-            } catch (\Throwable $e) {
+            } catch (\Throwable) {
                 $this->logWarning('Failed to list indices from backend', [
                     'backend' => $configuredBackend->handle,
-                    'error' => $e->getMessage(),
+                    'classification' => 'backend-list-failed',
                 ]);
             }
 
@@ -557,16 +575,15 @@ class BackendsController extends Controller
                 'supportsMultipleQueries' => $supportsMultipleQueries,
                 'indices' => $indices,
             ]);
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             $this->logError('Failed to get backend info', [
-                'error' => $e->getMessage(),
+                'operation' => 'backend-info',
+                'classification' => 'backend-info-failed',
             ]);
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::$app->getConfig()->getGeneral()->devMode
-                    ? $e->getMessage()
-                    : Craft::t('search-manager', 'Failed to load backend info. Check logs for details.'),
+                'error' => Craft::t('search-manager', 'Failed to load backend info. Check logs for details.'),
             ]);
         }
     }

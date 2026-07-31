@@ -161,11 +161,12 @@ final class MaintenanceStorageClearTest extends TestCase
 
         $clearBody = self::methodSource($serviceSource, 'purgeOrphanedStorageHandle');
         self::assertStringContainsString('createDatabaseStorage($fullIndexHandle)->clearAll()', $clearBody);
-        self::assertStringContainsString('new RedisStorage(', $clearBody);
-        self::assertStringContainsString("\$target['settings']", $clearBody);
+        self::assertStringContainsString('clearRedisHandle($target, $fullIndexHandle)', $clearBody);
+        self::assertStringNotContainsString('new RedisStorage(', $clearBody);
+        self::assertStringNotContainsString("\$target['settings']", $clearBody);
         self::assertStringContainsString('new FileStorage(', $clearBody);
         self::assertStringContainsString("\$target['configuredPath']", $clearBody);
-        self::assertSame(3, substr_count($clearBody, '->clearAll()'));
+        self::assertSame(2, substr_count($clearBody, '->clearAll()'));
         self::assertStringNotContainsString('createCommand()->delete', $clearBody);
 
         $databaseStorageBody = self::methodSource($serviceSource, 'createDatabaseStorage');

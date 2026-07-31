@@ -19,7 +19,6 @@ use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexQueryHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
@@ -2288,7 +2287,31 @@ class SearchIndex extends Model
             return $configuredBackend->getRedisConnectionInfo();
         }
 
-        return RedisConnectionHelper::resolve([]);
+        $configuration = SearchManager::$plugin->redisConnections->resolve([]);
+
+        return SearchManager::$plugin->redisConnections->compatibilityProjection($configuration, false);
+    }
+
+    /**
+     * Get credential-safe Redis diagnostics when this index uses Redis.
+     *
+     * @return array<string, mixed>|null
+     * @since 5.54.0
+     */
+    public function getRedisSafePresentation(): ?array
+    {
+        if ($this->getEffectiveBackendType() !== 'redis') {
+            return null;
+        }
+
+        $configuredBackend = $this->getConfiguredBackend();
+        if ($configuredBackend !== null) {
+            return $configuredBackend->getRedisSafePresentation();
+        }
+
+        $configuration = SearchManager::$plugin->redisConnections->resolve([]);
+
+        return SearchManager::$plugin->redisConnections->safePresentation($configuration);
     }
 
     /**

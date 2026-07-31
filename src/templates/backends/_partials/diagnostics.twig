@@ -82,7 +82,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (responseTime) responseTime.textContent = elapsed + 'ms';
                 fetchBackendInfo();
             } else {
-                if (connectionResult) connectionResult.innerHTML = statusDots.off + ' ' + Craft.escapeHtml(labels.failed);
+                const failure = response.data.error || labels.failed;
+                if (connectionResult) connectionResult.innerHTML = statusDots.off + ' ' + Craft.escapeHtml(failure);
                 if (indicesList) indicesList.innerHTML = '<p class="light error">' + Craft.escapeHtml(labels.connectionFailed) + '</p>';
             }
         }).catch(function(error) {

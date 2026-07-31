@@ -204,12 +204,16 @@ final class ControllerMessageI18nTest extends TestCase
         self::assertStringContainsString("Craft::t('search-manager', 'Failed to clear {type} storage'", $storageCompletion);
         self::assertStringNotContainsString('Redis connection failed: {error}', $storageCompletion);
 
-        foreach (['getDatabaseStats' => 'database', 'getRedisStats' => 'Redis'] as $method => $label) {
-            $methodBody = $this->sourceMethodBody('src/services/StorageMaintenanceService.php', $method);
-            self::assertStringContainsString("\$this->logError('Failed to get {$label} storage stats'", $methodBody);
-            self::assertStringContainsString("'error' => Craft::\$app->getConfig()->getGeneral()->devMode", $methodBody);
-            self::assertStringContainsString(": Craft::t('search-manager', 'Failed to get storage statistics')", $methodBody);
-        }
+        $databaseStats = $this->sourceMethodBody('src/services/StorageMaintenanceService.php', 'getDatabaseStats');
+        self::assertStringContainsString("\$this->logError('Failed to get database storage stats'", $databaseStats);
+        self::assertStringContainsString("'error' => Craft::\$app->getConfig()->getGeneral()->devMode", $databaseStats);
+        self::assertStringContainsString(": Craft::t('search-manager', 'Failed to get storage statistics')", $databaseStats);
+
+        $redisStats = $this->sourceMethodBody('src/services/StorageMaintenanceService.php', 'getRedisStats');
+        self::assertStringContainsString("\$this->logError('Failed to get Redis storage stats'", $redisStats);
+        self::assertStringContainsString("'classification' => \$exception->getMessage()", $redisStats);
+        self::assertStringNotContainsString("'error' => Craft::\$app->getConfig()->getGeneral()->devMode", $redisStats);
+        self::assertStringNotContainsString('$e->getMessage()', $redisStats);
     }
 
     public function testControllerResponseExceptionMessagesRequireDevModeGate(): void

@@ -293,7 +293,7 @@ class MaintenanceController extends Controller
         $redis = $stats['redis'];
         $this->stdout("  Status: " . ($redis['status'] ?? 'not_configured') . "\n");
         foreach (($redis['targets'] ?? []) as $target) {
-            $this->stdout("  {$target['key']}:\n");
+            $this->stdout("  {$target['target']}:\n");
             $this->stdout("    Status: {$target['status']}\n");
             if ($this->verbose) {
                 $this->stdout("    Search Manager Keys: {$target['keyCount']}\n");
