@@ -294,6 +294,7 @@
             label: 'Sync Count from Backend'|t('search-manager'),
             jsAction: 'sync-count',
             data: {name: indexReference.displayName},
+            showIf: indexReference.actions.syncCount.visible,
             permission: 'searchManager:rebuildIndices',
             disabled: not indexReference.actions.syncCount.allowed,
             title: indexReference.actions.syncCount.reason,

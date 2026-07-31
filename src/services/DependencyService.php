@@ -58,6 +58,9 @@ class DependencyService extends Component
     /** @since 5.54.0 */
     public const ACTION_DELETE = 'delete';
 
+    /** @var list<string> */
+    private const SYNC_COUNT_BACKEND_TYPES = ['algolia', 'meilisearch', 'typesense'];
+
     /**
      * Request-scoped effective catalogue before selected-reference decoration.
      *
@@ -502,7 +505,7 @@ class DependencyService extends Component
      *     transformer: array<string, mixed>
      *   }|null,
      *   backendIdentity: array<string, mixed>,
-     *   actions: array<string, array{allowed: bool, reasonCode: string|null, reason: string|null}>,
+     *   actions: array<string, array{visible: bool, allowed: bool, reasonCode: string|null, reason: string|null}>,
      *   status: array{label: string, value: string, colorSet: string, title: string|null}
      * }>
      * @since 5.54.0
@@ -791,7 +794,7 @@ class DependencyService extends Component
     /**
      * Return the canonical capability result for one index action.
      *
-     * @return array{allowed: bool, reasonCode: string|null, reason: string|null}
+     * @return array{visible: bool, allowed: bool, reasonCode: string|null, reason: string|null}
      * @since 5.54.0
      */
     public function getIndexActionCapability(string $indexHandle, string $action): array
@@ -1089,7 +1092,7 @@ class DependencyService extends Component
     }
 
     /**
-     * @return array<string, array{allowed: bool, reasonCode: string|null, reason: string|null}>
+     * @return array<string, array{visible: bool, allowed: bool, reasonCode: string|null, reason: string|null}>
      */
     private function projectIndexActions(
         SearchIndex $index,
@@ -1109,13 +1112,16 @@ class DependencyService extends Component
             : ($targetedRebuild['allowed']
                 ? $this->actionResult(false, (string)$backendIdentity['reasonCode'])
                 : $targetedRebuild);
-        $syncCount = $targetedRebuild['allowed'] && $backendIdentity['available']
-            ? (($backendIdentity['supportsSyncCount'] ?? false)
-                ? $this->actionResult(true)
-                : $this->actionResult(false, 'backend-count-unsupported'))
-            : ($targetedRebuild['allowed']
-                ? $this->actionResult(false, (string)$backendIdentity['reasonCode'])
-                : $targetedRebuild);
+        $syncCountReason = !$targetedRebuild['allowed']
+            ? $targetedRebuild['reasonCode']
+            : (!$backendIdentity['available']
+                ? $backendIdentity['reasonCode']
+                : (($backendIdentity['supportsSyncCount'] ?? false) ? null : 'backend-count-unsupported'));
+        $syncCount = $this->actionResult(
+            $syncCountReason === null,
+            $syncCountReason,
+            ($backendIdentity['syncCountApplicable'] ?? null) === true,
+        );
 
         if ($index->source !== 'database') {
             $delete = $this->actionResult(false, 'config-owned-index');
@@ -1147,7 +1153,7 @@ class DependencyService extends Component
     }
 
     /**
-     * @return array<string, array{allowed: bool, reasonCode: string|null, reason: string|null}>
+     * @return array<string, array{visible: bool, allowed: bool, reasonCode: string|null, reason: string|null}>
      */
     private function deniedActions(string $reasonCode, bool $clearCache): array
     {
@@ -1160,17 +1166,18 @@ class DependencyService extends Component
             self::ACTION_REBUILD_ALL => $denied,
             self::ACTION_CLEAR_DATA => $denied,
             self::ACTION_CLEAR_CACHE => $clearCache ? $this->actionResult(true) : $denied,
-            self::ACTION_SYNC_COUNT => $denied,
+            self::ACTION_SYNC_COUNT => $this->actionResult(false, $reasonCode, false),
             self::ACTION_DELETE => $denied,
         ];
     }
 
     /**
-     * @return array{allowed: bool, reasonCode: string|null, reason: string|null}
+     * @return array{visible: bool, allowed: bool, reasonCode: string|null, reason: string|null}
      */
-    private function actionResult(bool $allowed, ?string $reasonCode = null): array
+    private function actionResult(bool $allowed, ?string $reasonCode = null, bool $visible = true): array
     {
         return [
+            'visible' => $visible,
             'allowed' => $allowed,
             'reasonCode' => $allowed ? null : $reasonCode,
             'reason' => $allowed || $reasonCode === null ? null : $this->reasonMessage($reasonCode),
@@ -1213,6 +1220,7 @@ class DependencyService extends Component
      *   configured: bool,
      *   supported: bool,
      *   constructible: bool,
+     *   syncCountApplicable: bool|null,
      *   supportsSyncCount: bool,
      *   reasonCode: string|null
      * }
@@ -1252,6 +1260,7 @@ class DependencyService extends Component
         $identity['recordExists'] = true;
         $identity['enabled'] = (bool)$configuredBackend->enabled;
         $identity['type'] = trim($configuredBackend->backendType) ?: null;
+        $identity['syncCountApplicable'] = $this->syncCountApplicability($identity['type']);
         if (!$configuredBackend->enabled) {
             $identity['reasonCode'] = 'backend-disabled';
             return $identity;
@@ -1284,7 +1293,7 @@ class DependencyService extends Component
         }
 
         $identity['fullIndexName'] = $fullIndexName;
-        $identity['supportsSyncCount'] = in_array($configuredBackend->backendType, ['algolia', 'meilisearch', 'typesense'], true)
+        $identity['supportsSyncCount'] = $identity['syncCountApplicable'] === true
             && $backend instanceof IndexCountBackendInterface;
         $identity['available'] = true;
         $identity['reasonCode'] = null;
@@ -1310,9 +1319,19 @@ class DependencyService extends Component
             'configured' => false,
             'supported' => false,
             'constructible' => false,
+            'syncCountApplicable' => null,
             'supportsSyncCount' => false,
             'reasonCode' => 'backend-not-configured',
         ];
+    }
+
+    private function syncCountApplicability(?string $backendType): ?bool
+    {
+        if ($backendType === null || !array_key_exists($backendType, ConfiguredBackend::BACKEND_TYPES)) {
+            return null;
+        }
+
+        return in_array($backendType, self::SYNC_COUNT_BACKEND_TYPES, true);
     }
 
     private function reasonMessage(string $reasonCode): string

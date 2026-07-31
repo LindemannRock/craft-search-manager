@@ -92,23 +92,25 @@
 								{% if indexReference.actions.targetedRebuild.allowed %}
 									<a id="rebuild-btn" href="#">{{ "Rebuild Index"|t('search-manager') }}</a>
 								{% else %}
-									<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.targetedRebuild.reason }}">{{ "Rebuild Index"|t('search-manager') }}</span>
+									<a class="disabled" aria-disabled="true" title="{{ indexReference.actions.targetedRebuild.reason }}">{{ "Rebuild Index"|t('search-manager') }}</a>
 								{% endif %}
 							</li>
-							<li>
-								{% if indexReference.actions.syncCount.allowed %}
-									<a id="sync-count-btn" href="#">{{ "Sync Count from Backend"|t('search-manager') }}</a>
-								{% else %}
-									<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.syncCount.reason }}">{{ "Sync Count from Backend"|t('search-manager') }}</span>
-								{% endif %}
-							</li>
+							{% if indexReference.actions.syncCount.visible %}
+								<li>
+									{% if indexReference.actions.syncCount.allowed %}
+										<a id="sync-count-btn" href="#">{{ "Sync Count from Backend"|t('search-manager') }}</a>
+									{% else %}
+										<a class="disabled" aria-disabled="true" title="{{ indexReference.actions.syncCount.reason }}">{{ "Sync Count from Backend"|t('search-manager') }}</a>
+									{% endif %}
+								</li>
+							{% endif %}
 							{% endif %}
 							{% if canClear %}
 							<li>
 								{% if indexReference.actions.clearData.allowed %}
 									<a id="clear-btn" href="#" class="error">{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})</a>
 								{% else %}
-									<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.clearData.reason }}">{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})</span>
+									<a class="disabled" aria-disabled="true" title="{{ indexReference.actions.clearData.reason }}">{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})</a>
 								{% endif %}
 							</li>
 							{% endif %}
@@ -118,7 +120,7 @@
 								{% if indexReference.actions.clearCache.allowed %}
 									<a id="clear-cache-btn" href="#">{{ "Clear Index Cache"|t('search-manager') }}</a>
 								{% else %}
-									<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.clearCache.reason }}">{{ "Clear Index Cache"|t('search-manager') }}</span>
+									<a class="disabled" aria-disabled="true" title="{{ indexReference.actions.clearCache.reason }}">{{ "Clear Index Cache"|t('search-manager') }}</a>
 								{% endif %}
 							</li>
 							{% endif %}

@@ -15,7 +15,11 @@ use craft\db\Query;
 use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use craft\web\Request;
+use craft\web\Response;
+use craft\web\View;
 use lindemannrock\searchmanager\backends\FileBackend;
+use lindemannrock\searchmanager\controllers\IndicesController;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\IndexCountBackendInterface;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
@@ -39,8 +43,13 @@ final class Pr169IndexActionCapabilityTest extends TestCase
     private const PREFIX = 'sm-pr169-';
     private const BACKEND = self::PREFIX . 'external';
     private const DISABLED_BACKEND = self::PREFIX . 'disabled-backend';
+    private const INTERNAL_BACKEND = self::PREFIX . 'internal';
 
     private mixed $originalConfigCache = null;
+    private ?object $originalRequest = null;
+    private ?object $originalResponse = null;
+    private ?object $originalUser = null;
+    private string $originalRequestMethod = 'GET';
     private Pr169RecordingBackendService $backendService;
 
     protected function setUp(): void
@@ -60,6 +69,16 @@ final class Pr169IndexActionCapabilityTest extends TestCase
             $this->setConfigCache($this->originalConfigCache);
             SearchIndex::clearCache();
             SearchManager::$plugin->dependencies->clearIndexCatalogue();
+            if ($this->originalRequest !== null) {
+                Craft::$app->set('request', $this->originalRequest);
+            }
+            if ($this->originalResponse !== null) {
+                Craft::$app->set('response', $this->originalResponse);
+            }
+            if ($this->originalUser !== null) {
+                Craft::$app->set('user', $this->originalUser);
+            }
+            $_SERVER['REQUEST_METHOD'] = $this->originalRequestMethod;
         } finally {
             parent::tearDown();
         }
@@ -139,6 +158,67 @@ final class Pr169IndexActionCapabilityTest extends TestCase
         self::assertSame('success', $cache['status']);
         self::assertSame(1, $this->backendService->cacheClears);
         self::assertSame(17, $this->storedCount($id));
+    }
+
+    public function testSyncCountVisibilityIsProjectedFromCanonicalBackendApplicability(): void
+    {
+        $external = $this->insertIndex(self::PREFIX . 'sync-external', true, self::BACKEND);
+        $invalidExternal = $this->insertIndex(self::PREFIX . 'sync-invalid-external', true, self::DISABLED_BACKEND);
+        $internal = $this->insertIndex(self::PREFIX . 'sync-internal', true, self::INTERNAL_BACKEND);
+        $indeterminate = $this->insertIndex(self::PREFIX . 'sync-indeterminate', true, self::PREFIX . 'missing-backend');
+
+        $catalogue = SearchManager::$plugin->dependencies->getIndexCatalogue();
+        $externalAction = $catalogue[self::PREFIX . 'sync-external']['actions'][DependencyService::ACTION_SYNC_COUNT];
+        self::assertTrue($externalAction['visible']);
+        self::assertTrue($externalAction['allowed']);
+
+        $invalidExternalAction = $catalogue[self::PREFIX . 'sync-invalid-external']['actions'][DependencyService::ACTION_SYNC_COUNT];
+        self::assertTrue($invalidExternalAction['visible']);
+        self::assertFalse($invalidExternalAction['allowed']);
+        self::assertSame('backend-disabled', $invalidExternalAction['reasonCode']);
+
+        $internalAction = $catalogue[self::PREFIX . 'sync-internal']['actions'][DependencyService::ACTION_SYNC_COUNT];
+        self::assertFalse($internalAction['visible']);
+        self::assertFalse($internalAction['allowed']);
+        self::assertSame('backend-count-unsupported', $internalAction['reasonCode']);
+
+        $indeterminateAction = $catalogue[self::PREFIX . 'sync-indeterminate']['actions'][DependencyService::ACTION_SYNC_COUNT];
+        self::assertFalse($indeterminateAction['visible']);
+        self::assertFalse($indeterminateAction['allowed']);
+        self::assertSame('backend-not-found', $indeterminateAction['reasonCode']);
+
+        foreach ([$internal, $indeterminate] as $id) {
+            $index = SearchIndex::findById($id);
+            self::assertNotNull($index);
+            $result = SearchManager::$plugin->indexMaintenance->syncIndexCount($index);
+            self::assertFalse($result['success']);
+        }
+        self::assertSame(0, $this->backendService->backend->countCalls);
+    }
+
+    public function testRenderedIndexRowsUseCanonicalSyncCountVisibilityAndDenial(): void
+    {
+        $fixtures = $this->syncCountPresentationFixtures();
+        $this->actAsMaintenanceUser('row');
+
+        foreach ($fixtures as $fixture) {
+            $html = $this->renderCaptured($this->indexListResponse($fixture['index']->handle));
+            $this->assertRenderedSyncCount($html, 'row', $fixture['visible'], $fixture['allowed'], $fixture['reason']);
+        }
+    }
+
+    public function testRenderedIndexViewAndEditUseCanonicalSyncCountVisibilityAndDenial(): void
+    {
+        $fixtures = $this->syncCountPresentationFixtures();
+        $this->actAsMaintenanceUser('details');
+
+        foreach ($fixtures as $fixture) {
+            $controller = new Pr169IndicesController('indices', SearchManager::$plugin);
+            $viewHtml = $this->renderCaptured($controller->actionView($fixture['index']->handle));
+            $editHtml = $this->renderCaptured($controller->actionEdit($fixture['index']->id));
+            $this->assertRenderedSyncCount($viewHtml, 'view', $fixture['visible'], $fixture['allowed'], $fixture['reason']);
+            $this->assertRenderedSyncCount($editHtml, 'edit', $fixture['visible'], $fixture['allowed'], $fixture['reason']);
+        }
     }
 
     public function testStrictBackendOverrideNeverFallsBackAndSyncFailurePreservesMetadata(): void
@@ -438,6 +518,12 @@ final class Pr169IndexActionCapabilityTest extends TestCase
                     ],
                     'enabled' => false,
                 ],
+                self::INTERNAL_BACKEND => [
+                    'name' => 'PR1.69 Internal Backend',
+                    'backendType' => 'mysql',
+                    'settings' => [],
+                    'enabled' => true,
+                ],
             ],
             'indices' => $indices,
         ];
@@ -518,6 +604,140 @@ final class Pr169IndexActionCapabilityTest extends TestCase
             ->count();
     }
 
+    /**
+     * @return list<array{index: SearchIndex, visible: bool, allowed: bool, reason: string|null}>
+     */
+    private function syncCountPresentationFixtures(): array
+    {
+        $definitions = [
+            [self::PREFIX . 'render-external', self::BACKEND],
+            [self::PREFIX . 'render-invalid-external', self::DISABLED_BACKEND],
+            [self::PREFIX . 'render-internal', self::INTERNAL_BACKEND],
+            [self::PREFIX . 'render-indeterminate', self::PREFIX . 'missing-backend'],
+        ];
+        foreach ($definitions as [$handle, $backend]) {
+            $this->insertIndex($handle, true, $backend);
+        }
+
+        $catalogue = SearchManager::$plugin->dependencies->getIndexCatalogue();
+        $fixtures = [];
+        foreach ($definitions as [$handle]) {
+            $index = SearchIndex::findByHandle($handle);
+            self::assertNotNull($index);
+            $action = $catalogue[$handle]['actions'][DependencyService::ACTION_SYNC_COUNT];
+            $fixtures[] = [
+                'index' => $index,
+                'visible' => $action['visible'],
+                'allowed' => $action['allowed'],
+                'reason' => $action['reason'],
+            ];
+        }
+
+        return $fixtures;
+    }
+
+    private function actAsMaintenanceUser(string $suffix): void
+    {
+        $this->originalRequest = Craft::$app->getRequest();
+        $this->originalResponse = Craft::$app->getResponse();
+        $this->originalUser = Craft::$app->getUser();
+        $this->originalRequestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        Craft::$app->set('request', new Request([
+            'enableCookieValidation' => false,
+            'enableCsrfValidation' => false,
+        ]));
+        Craft::$app->set('response', new Response());
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+
+        $user = $this->createTestUser(self::PREFIX . 'render-' . $suffix);
+        $this->grantPermissions($user, [
+            'accessCp',
+            'searchManager:manageIndices',
+            'searchManager:editIndices',
+            'searchManager:deleteIndices',
+            'searchManager:rebuildIndices',
+            'searchManager:clearIndices',
+            'searchManager:clearCache',
+        ]);
+        $this->actingAs($user);
+        $renderUser = new class extends \craft\console\User {
+            public function getRemainingSessionTime(): int
+            {
+                return -1;
+            }
+
+            public function getImpersonator(): ?\craft\elements\User
+            {
+                return null;
+            }
+        };
+        $renderUser->setIdentity($user);
+        Craft::$app->set('user', $renderUser);
+    }
+
+    private function indexListResponse(string $handle): Response
+    {
+        $request = Craft::$app->getRequest();
+        $queryParams = $request->getQueryParams();
+        $request->setQueryParams(['search' => $handle]);
+
+        try {
+            return (new Pr169IndicesController('indices', SearchManager::$plugin))->actionIndex();
+        } finally {
+            $request->setQueryParams($queryParams);
+        }
+    }
+
+    private function renderCaptured(Response $response): string
+    {
+        $template = $response->data['template'] ?? null;
+        $variables = $response->data['variables'] ?? null;
+        self::assertIsString($template);
+        self::assertIsArray($variables);
+
+        $currentUser = Craft::$app->getUser()->getIdentity();
+        self::assertNotNull($currentUser);
+        $variables['currentUser'] = $currentUser;
+        if ($template === 'search-manager/indices/edit') {
+            $variables['docsManagerTransformerAvailable'] = false;
+        }
+
+        return Craft::$app->getView()->renderTemplate($template, $variables, View::TEMPLATE_MODE_CP);
+    }
+
+    private function assertRenderedSyncCount(
+        string $html,
+        string $surface,
+        bool $visible,
+        bool $allowed,
+        ?string $reason,
+    ): void {
+        $label = 'Sync Count from Backend';
+        if (!$visible) {
+            self::assertStringNotContainsString($label, $html, $surface);
+            return;
+        }
+
+        self::assertStringContainsString($label, $html, $surface);
+        if ($allowed) {
+            $enabledMarker = $surface === 'row' ? 'data-action="sync-count"' : 'id="sync-count-btn"';
+            self::assertStringContainsString($enabledMarker, $html, $surface);
+            return;
+        }
+
+        self::assertNotNull($reason);
+        self::assertStringContainsString('aria-disabled="true"', $html, $surface);
+        self::assertStringContainsString($reason, $html, $surface);
+        if ($surface !== 'row') {
+            self::assertMatchesRegularExpression(
+                '/<a class="disabled" aria-disabled="true"[^>]*>Sync Count from Backend<\/a>/',
+                $html,
+                $surface,
+            );
+            self::assertStringNotContainsString('<span class="menu-item disabled"', $html, $surface);
+        }
+    }
+
     /** @return list<SearchIndex> */
     private function ownedIndices(): array
     {
@@ -559,6 +779,14 @@ final class Pr169IndexActionCapabilityTest extends TestCase
             ->execute();
         SearchIndex::clearCache();
         SearchManager::$plugin->dependencies->clearIndexCatalogue();
+    }
+}
+
+final class Pr169IndicesController extends IndicesController
+{
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    {
+        return new Response(['data' => compact('template', 'variables')]);
     }
 }
 

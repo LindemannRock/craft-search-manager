@@ -645,23 +645,25 @@ document.addEventListener('DOMContentLoaded', function() {
 									{% if indexReference.actions.targetedRebuild.allowed %}
 										<a class="formsubmit" data-action="search-manager/indices/rebuild" data-params='{"indexId":{{ index.id }}}' data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">{{ "Rebuild Index"|t('search-manager') }}</a>
 									{% else %}
-										<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.targetedRebuild.reason }}">{{ "Rebuild Index"|t('search-manager') }}</span>
+										<a class="disabled" aria-disabled="true" title="{{ indexReference.actions.targetedRebuild.reason }}">{{ "Rebuild Index"|t('search-manager') }}</a>
 									{% endif %}
 								</li>
-								<li>
-									{% if indexReference.actions.syncCount.allowed %}
-										<a id="sync-count-btn" href="#">{{ "Sync Count from Backend"|t('search-manager') }}</a>
-									{% else %}
-										<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.syncCount.reason }}">{{ "Sync Count from Backend"|t('search-manager') }}</span>
-									{% endif %}
-								</li>
+								{% if indexReference.actions.syncCount.visible %}
+									<li>
+										{% if indexReference.actions.syncCount.allowed %}
+											<a id="sync-count-btn" href="#">{{ "Sync Count from Backend"|t('search-manager') }}</a>
+										{% else %}
+											<a class="disabled" aria-disabled="true" title="{{ indexReference.actions.syncCount.reason }}">{{ "Sync Count from Backend"|t('search-manager') }}</a>
+										{% endif %}
+									</li>
+								{% endif %}
 								{% endif %}
 								{% if currentUser.can('searchManager:clearIndices') %}
 								<li>
 									{% if indexReference.actions.clearData.allowed %}
 										<a class="formsubmit error" data-action="search-manager/indices/clear" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'This will remove all documents from the index. Continue?'|t('search-manager') }}" data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})</a>
 									{% else %}
-										<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.clearData.reason }}">{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})</span>
+										<a class="disabled" aria-disabled="true" title="{{ indexReference.actions.clearData.reason }}">{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})</a>
 									{% endif %}
 								</li>
 								{% endif %}
@@ -671,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
 									{% if indexReference.actions.clearCache.allowed %}
 										<a id="clear-index-cache-btn" href="#">{{ "Clear Index Cache"|t('search-manager') }}</a>
 									{% else %}
-										<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.clearCache.reason }}">{{ "Clear Index Cache"|t('search-manager') }}</span>
+										<a class="disabled" aria-disabled="true" title="{{ indexReference.actions.clearCache.reason }}">{{ "Clear Index Cache"|t('search-manager') }}</a>
 									{% endif %}
 								</li>
 								{% endif %}
