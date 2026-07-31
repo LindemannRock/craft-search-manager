@@ -104,6 +104,7 @@ class ClearSearchCache extends Utility
         $searchCacheFiles = 0;
         $autocompleteCacheFiles = 0;
         $storageOptions = [];
+        $rebuildAllPlan = null;
 
         // Only count files when using file storage (Redis counts are not displayed)
         if ($user->getIdentity() && $user->checkPermission('searchManager:clearCache') && $settings->cacheStorageMethod === 'file') {
@@ -114,6 +115,7 @@ class ClearSearchCache extends Utility
 
         if ($user->getIdentity() && $user->checkPermission('searchManager:rebuildIndices')) {
             $storageOptions = SearchManager::$plugin->storageMaintenance->getProjection()['storageOptions'];
+            $rebuildAllPlan = SearchManager::$plugin->dependencies->getRebuildAllPlan();
         }
 
         return Craft::$app->getView()->renderTemplate('search-manager/utilities/index', [
@@ -128,6 +130,7 @@ class ClearSearchCache extends Utility
             'storageMethod' => $settings->cacheStorageMethod,
             'analyticsCount' => $analyticsCount,
             'storageOptions' => $storageOptions,
+            'rebuildAllPlan' => $rebuildAllPlan,
             'settings' => $settings,
         ]);
     }

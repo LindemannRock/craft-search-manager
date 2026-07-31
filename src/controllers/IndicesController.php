@@ -663,7 +663,7 @@ class IndicesController extends Controller
 
         $result = SearchManager::$plugin->indexMaintenance->clearIndex($index);
         if ($result['status'] !== 'success') {
-            $error = Craft::t('search-manager', 'Failed to clear index data');
+            $error = (string)($result['error'] ?? Craft::t('search-manager', 'Failed to clear index data'));
             if ($acceptsJson) {
                 return $this->asJson(array_merge($result, ['error' => $error]));
             }
@@ -700,34 +700,7 @@ class IndicesController extends Controller
             ]);
         }
 
-        try {
-            // Clear search cache for this index
-            SearchManager::$plugin->backend->clearSearchCache($index->handle);
-
-            // Clear autocomplete cache for this index
-            SearchManager::$plugin->autocomplete->clearCache($index->handle);
-
-            $this->logInfo('Index cache cleared', [
-                'index' => $index->handle,
-            ]);
-
-            return $this->asJson([
-                'success' => true,
-                'message' => Craft::t('search-manager', 'Cache cleared for "{name}"', [
-                    'name' => $index->name,
-                ]),
-            ]);
-        } catch (\Throwable $e) {
-            $this->logError('Failed to clear index cache', [
-                'index' => $index->handle,
-                'error' => $e->getMessage(),
-            ]);
-
-            return $this->asJson([
-                'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to clear cache'),
-            ]);
-        }
+        return $this->asJson(SearchManager::$plugin->indexMaintenance->clearIndexCache($index));
     }
 
     /**
@@ -755,89 +728,7 @@ class IndicesController extends Controller
             ]);
         }
 
-        try {
-            // Get the backend for this index
-            $backend = SearchManager::$plugin->backend->getBackendForIndex($index->handle);
-
-            if (!$backend) {
-                return $this->asJson([
-                    'success' => false,
-                    'error' => Craft::t('search-manager', 'No backend configured for this index'),
-                ]);
-            }
-
-            // Get all indices from the backend
-            $backendIndices = $backend->listIndices();
-
-            // Build full index name with prefix
-            $settings = SearchManager::$plugin->getSettings();
-            $fullIndexName = $settings->getFullIndexName($index->handle);
-
-            // Find matching index by full name (with prefix)
-            $backendCount = 0;
-            $entriesAvailable = true;
-            $indexFound = false;
-            foreach ($backendIndices as $backendIndex) {
-                if (($backendIndex['name'] ?? '') === $fullIndexName) {
-                    $indexFound = true;
-                    $backendCount = $backendIndex['entries'] ?? 0;
-                    $entriesAvailable = $backendIndex['entriesAvailable'] ?? true;
-                    break;
-                }
-            }
-
-            // Check if index was found on backend
-            if (!$indexFound) {
-                return $this->asJson([
-                    'success' => false,
-                    'error' => Craft::t('search-manager', 'Index "{name}" not found on backend', [
-                        'name' => $fullIndexName,
-                    ]),
-                ]);
-            }
-
-            // Check if count is available (stats may fail due to permissions)
-            if ($entriesAvailable === false) {
-                return $this->asJson([
-                    'success' => false,
-                    'error' => Craft::t('search-manager', 'Could not retrieve document count from backend (permission issue)'),
-                ]);
-            }
-
-            // Update the local document count
-            if (!$index->updateStats($backendCount)) {
-                return $this->asJson([
-                    'success' => false,
-                    'error' => Craft::t('search-manager', 'Failed to update index stats'),
-                ]);
-            }
-
-            $this->logInfo('Synced document count from backend', [
-                'index' => $index->handle,
-                'count' => $backendCount,
-            ]);
-
-            return $this->asJson([
-                'success' => true,
-                'message' => Craft::t('search-manager', 'Count synced for "{name}": {count} documents', [
-                    'name' => $index->name,
-                    'count' => number_format($backendCount),
-                ]),
-                'count' => $backendCount,
-            ]);
-        } catch (\Throwable $e) {
-            $this->logError('Failed to sync count from backend', [
-                'index' => $index->handle,
-                'error' => $e->getMessage(),
-            ]);
-
-            return $this->asJson([
-                'success' => false,
-                'error' => Craft::$app->getConfig()->getGeneral()->devMode
-                    ? $e->getMessage()
-                    : Craft::t('search-manager', 'Failed to sync count'),
-            ]);
-        }
+        return $this->asJson(SearchManager::$plugin->indexMaintenance->syncIndexCount($index));
     }
 
     /**
@@ -871,7 +762,20 @@ class IndicesController extends Controller
             throw new NotFoundHttpException(Craft::t('search-manager', 'Index not found'));
         }
 
-        SearchManager::$plugin->indexing->rebuildIndex($index->handle);
+        $result = SearchManager::$plugin->indexing->rebuildIndexResult($index->handle);
+        if (!$result['queued']) {
+            $error = (string)($result['reason'] ?? Craft::t('search-manager', 'Failed to queue index rebuild'));
+            if ($acceptsJson) {
+                return $this->asJson([
+                    'success' => false,
+                    'queued' => false,
+                    'reasonCode' => $result['reasonCode'],
+                    'error' => $error,
+                ]);
+            }
+            Craft::$app->getSession()->setError($error);
+            return $this->redirectToPostedUrl(null, 'search-manager/indices');
+        }
 
         $message = Craft::t('search-manager', 'Index rebuild queued');
         if ($acceptsJson) {

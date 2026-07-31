@@ -44,6 +44,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 final class IndexReferenceLifecycleTest extends TestCase
 {
     private const PREFIX = 'sm-index-reference-lifecycle';
+    private const BACKEND = self::PREFIX . '-backend';
 
     private mixed $originalConfigCache = null;
     private ?object $originalRequest = null;
@@ -56,6 +57,7 @@ final class IndexReferenceLifecycleTest extends TestCase
         $this->originalConfigCache = $this->configCache();
         $this->purgeMarkedRows();
         $this->setSearchManagerConfig([]);
+        $this->insertBackend();
         $this->forcePluginEdition(SearchManager::EDITION_PRO);
     }
 
@@ -247,7 +249,7 @@ final class IndexReferenceLifecycleTest extends TestCase
 
         $originalMaintenance = SearchManager::$plugin->indexMaintenance;
         SearchManager::$plugin->set('indexMaintenance', new class extends IndexMaintenanceService {
-            protected function clearBackendStorage(SearchIndex $index): bool
+            protected function clearBackendStorage(SearchIndex $index, string $operation = 'clear'): bool
             {
                 return true;
             }
@@ -604,7 +606,7 @@ final class IndexReferenceLifecycleTest extends TestCase
             'splitSections' => 0,
             'retrievableFields' => '["*"]',
             'source' => 'database',
-            'backend' => null,
+            'backend' => self::BACKEND,
             'documentCount' => 0,
             'dateCreated' => $now,
             'dateUpdated' => $now,
@@ -614,6 +616,22 @@ final class IndexReferenceLifecycleTest extends TestCase
         SearchManager::$plugin->dependencies->clearIndexCatalogue();
 
         return (int)Craft::$app->getDb()->getLastInsertID();
+    }
+
+    private function insertBackend(): void
+    {
+        $now = Db::prepareDateForDb(new \DateTimeImmutable());
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_backends}}', [
+            'name' => 'Index Reference Lifecycle Backend',
+            'handle' => self::BACKEND,
+            'backendType' => 'file',
+            'settings' => '{}',
+            'enabled' => 1,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
 
     /**
@@ -763,6 +781,9 @@ final class IndexReferenceLifecycleTest extends TestCase
             ->execute();
         Craft::$app->getDb()->createCommand()
             ->delete('{{%searchmanager_promotions}}', ['like', 'indexHandle', self::PREFIX . '%', false])
+            ->execute();
+        Craft::$app->getDb()->createCommand()
+            ->delete('{{%searchmanager_backends}}', ['handle' => self::BACKEND])
             ->execute();
         SearchIndex::clearCache();
         SearchManager::$plugin->dependencies->clearIndexCatalogue();

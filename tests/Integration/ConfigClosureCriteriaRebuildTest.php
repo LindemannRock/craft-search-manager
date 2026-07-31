@@ -31,6 +31,7 @@ use lindemannrock\searchmanager\tests\TestCase;
 final class ConfigClosureCriteriaRebuildTest extends TestCase
 {
     private const INDEX_HANDLE = 'sm-test-config-closure-rebuild';
+    private const BACKEND_HANDLE = 'sm-test-config-closure-backend';
     private const ENTRY_PREFIX = '__sm_config_closure_';
 
     /** @var list<int> */
@@ -43,6 +44,7 @@ final class ConfigClosureCriteriaRebuildTest extends TestCase
         parent::setUp();
         $this->originalConfigCache = $this->configCache();
         $this->purgeOwnedRows();
+        $this->insertBackend();
     }
 
     protected function tearDown(): void
@@ -82,6 +84,7 @@ final class ConfigClosureCriteriaRebuildTest extends TestCase
                 'elementType' => Entry::class,
                 'siteId' => $siteId,
                 'criteria' => $criteria,
+                'backend' => self::BACKEND_HANDLE,
                 'enabled' => true,
             ],
         ]);
@@ -216,7 +219,26 @@ final class ConfigClosureCriteriaRebuildTest extends TestCase
         Craft::$app->getDb()->createCommand()
             ->delete('{{%queue}}', ['like', 'job', self::INDEX_HANDLE])
             ->execute();
+        Craft::$app->getDb()->createCommand()
+            ->delete('{{%searchmanager_backends}}', ['handle' => self::BACKEND_HANDLE])
+            ->execute();
         SearchIndex::clearCache();
+    }
+
+    private function insertBackend(): void
+    {
+        $now = Db::prepareDateForDb(new \DateTimeImmutable());
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_backends}}', [
+            'name' => 'Config Closure Backend',
+            'handle' => self::BACKEND_HANDLE,
+            'backendType' => 'file',
+            'settings' => '{}',
+            'enabled' => 1,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
 
 }

@@ -78,9 +78,14 @@ SearchManager::$plugin->backend->index('entries-en', [
 
 Indexed backend records are unique by `backendId`, not by the provider `id` or `objectID` field. Whole-page records use a backend ID such as `{elementId}_{siteId}`; split section records use `{elementId}_{siteId}_{sectionId}` while keeping the same parent `elementId`. Public REST and GraphQL hits expose `elementId`, `backendId`, and `siteId`; provider-level `id` and `objectID` do not appear in public hit responses.
 
-### `clearIndex(indexName)`
+### `clearIndex(indexHandle)`
 
-Clear all data from a specific index.
+Clear all data for an authoritative Search Manager index handle. The method
+returns `false` when the catalogue denies Clear Index Data, resolves the
+index's strict backend and full storage identity, and never falls back to a
+different backend. Call `IndexMaintenanceService::clearIndex()` when you need
+the stable structural reason and the complete metadata/cache reconciliation
+result.
 
 ```php
 SearchManager::$plugin->backend->clearIndex('entries-en');
@@ -132,19 +137,44 @@ if (!$indexed) {
 
 ### `rebuildIndex(indexHandle)`
 
-Rebuild a specific index. This queues a background `RebuildIndexJob` and returns immediately — `true` means the job was queued, not that the rebuild finished. The job clears the index data and re-indexes all matching elements.
+Rebuild a specific index. This queues a background `RebuildIndexJob` and returns immediately — `true` means the job was queued, not that the rebuild finished. Healthy disabled indices are valid targeted rebuilds. Structurally invalid or missing indices return `false` before queueing.
 
 ```php
 SearchManager::$plugin->indexing->rebuildIndex('entries-en');
 ```
 
+Use `rebuildIndexResult()` when the caller must distinguish a queued job from a structural denial. It returns `queued`, a stable machine `reasonCode`, and a translated, disclosure-safe `reason`.
+
+```php
+$result = SearchManager::$plugin->indexing->rebuildIndexResult('entries-en');
+if (!$result['queued']) {
+    Craft::warning($result['reasonCode'] . ': ' . $result['reason'], 'my-module');
+}
+```
+
 ### `rebuildAll()`
 
-Rebuild all configured indices.
+Queue all enabled indices that currently pass the same structural targeted-rebuild capability. Disabled and structurally invalid definitions are omitted; structural-only omissions are warnings, not aggregate failures. If none qualify, the method returns `false` without queueing. Config/database handle collisions use the same precondition as the Control Panel and console command.
 
 ```php
 SearchManager::$plugin->indexing->rebuildAll();
 ```
+
+`rebuildAllResult()` exposes the complete pre-queue result: `queued`, `participants`, `skips`, `collisions`, and the stable `reasonCode`/translated `reason`. The job rechecks each participant before mutation, continues eligible siblings after runtime failures, and fails the aggregate only for an actual runtime failure from an eligible participant.
+
+## IndexMaintenanceService
+
+Use the index-level maintenance service when custom PHP needs the same safety boundary as the Control Panel and console. `clearIndex()` requires targeted-rebuild safety plus an exact backend/storage identity; `clearIndexCache()` remains available for an authoritative handle even when the index is structurally invalid; and `syncIndexCount()` requires a strictly resolved supported external backend. These methods return structured status data and never fall back from an invalid index backend override to the default backend.
+
+```php
+$index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle('entries-en');
+
+$clear = SearchManager::$plugin->indexMaintenance->clearIndex($index);
+$cache = SearchManager::$plugin->indexMaintenance->clearIndexCache($index);
+$count = SearchManager::$plugin->indexMaintenance->syncIndexCount($index);
+```
+
+Structural denials happen before provider contact, storage mutation, count changes, or cache reconciliation. Temporary provider outages remain runtime failures and preserve document-count metadata when count synchronization does not complete.
 
 ## AutocompleteService
 

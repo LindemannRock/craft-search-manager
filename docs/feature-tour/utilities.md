@@ -26,7 +26,9 @@ The top of the page shows three status cards:
 
 ### Rebuild All Indices
 
-Queues a rebuild of every configured index. Each index is cleared and re-indexed from scratch. This runs via Craft's queue, so it won't block the CP.
+Queues enabled indices that are structurally valid for a targeted rebuild. Disabled indices, unresolved config definitions, and resolvable definitions with config, dependency, or backend-identity errors are skipped with recovery reasons; warning-only indices remain eligible. If no index qualifies, Search Manager reports that before queueing.
+
+The queued job checks each participant again before clearing its backend. A participant that became ineligible is skipped without mutation, while valid siblings continue. Structural omissions produce a successful completion with warnings. An actual runtime failure from an eligible participant makes the aggregate fail after the remaining eligible siblings have been attempted. This runs via Craft's queue, so it won't block the CP.
 
 ### Clear storage by type
 

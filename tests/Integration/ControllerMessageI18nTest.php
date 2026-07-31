@@ -176,12 +176,12 @@ final class ControllerMessageI18nTest extends TestCase
         $this->assertControllerMethodContains(
             'IndicesController.php',
             'actionSyncCount',
-            "'error' => Craft::\$app->getConfig()->getGeneral()->devMode",
+            'indexMaintenance->syncIndexCount($index)',
         );
-        $this->assertControllerMethodContains(
+        $this->assertControllerMethodNotContains(
             'IndicesController.php',
             'actionSyncCount',
-            ": Craft::t('search-manager', 'Failed to sync count')",
+            '$e->getMessage()',
         );
         $this->assertControllerMethodNotContains(
             'IndicesController.php',

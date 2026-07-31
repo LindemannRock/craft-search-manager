@@ -16,9 +16,9 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchIndexQueryHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
-use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\DependencyService;
 use yii\queue\RetryableJobInterface;
 
 /**
@@ -34,6 +34,29 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
     use LoggingTrait;
 
     public ?string $indexHandle = null;
+
+    /**
+     * Capability origin for a serialized single-index rebuild.
+     *
+     * @since 5.54.0
+     */
+    public string $capabilityAction = DependencyService::ACTION_TARGETED_REBUILD;
+
+    /**
+     * Frozen rebuild-all participants selected by the shared precondition.
+     *
+     * @var list<string>|null
+     * @since 5.54.0
+     */
+    public ?array $indexHandles = null;
+
+    /**
+     * Structural omissions recorded when rebuild-all was queued.
+     *
+     * @var list<array{handle: string, reasonCode: string, reason: string}>
+     * @since 5.54.0
+     */
+    public array $structuralSkips = [];
 
     /**
      * Whether this job owns an affected-index scheduler marker.
@@ -72,7 +95,23 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
     protected function executeRebuild($queue): void
     {
         if ($this->indexHandle) {
-            $this->rebuildSingleIndex($queue, $this->indexHandle);
+            if (!in_array($this->capabilityAction, [
+                DependencyService::ACTION_TARGETED_REBUILD,
+                DependencyService::ACTION_AUTOMATIC_REBUILD,
+            ], true)) {
+                $this->logWarning('Index rebuild skipped because its serialized capability origin is invalid', [
+                    'handle' => $this->indexHandle,
+                    'capabilityAction' => $this->capabilityAction,
+                ]);
+                $this->setProgress($queue, 1.0);
+                return;
+            }
+
+            $this->rebuildSingleIndex(
+                $queue,
+                $this->indexHandle,
+                capabilityAction: $this->capabilityAction,
+            );
         } else {
             $this->rebuildAllIndices($queue);
         }
@@ -84,7 +123,23 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         ?SearchIndex $preloadedIndex = null,
         float $progressStart = 0.0,
         float $progressEnd = 1.0,
-    ): void {
+        string $capabilityAction = DependencyService::ACTION_TARGETED_REBUILD,
+    ): bool {
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
+        $capability = SearchManager::$plugin->dependencies->getIndexActionCapability(
+            $indexHandle,
+            $capabilityAction,
+        );
+        if (!$capability['allowed']) {
+            $this->logWarning('Index rebuild skipped before mutation', [
+                'handle' => $indexHandle,
+                'reasonCode' => $capability['reasonCode'],
+                'reason' => $capability['reason'],
+            ]);
+            $this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);
+            return false;
+        }
+
         $preflight = $this->preflightIndexRebuild($indexHandle, $preloadedIndex);
         $index = $preflight['index'];
         $elementType = $preflight['elementType'];
@@ -94,7 +149,12 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         $this->logInfo('Rebuilding index', ['handle' => $indexHandle]);
 
         // Clear existing index
-        if (!SearchManager::$plugin->backend->clearIndex($indexHandle)) {
+        try {
+            $cleared = SearchManager::$plugin->backend->clearIndex($indexHandle);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': backend clear failed.", 0, $e);
+        }
+        if (!$cleared) {
             throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': backend clear failed.");
         }
 
@@ -211,6 +271,7 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         }
 
         $this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);
+        return true;
     }
 
     /**
@@ -220,19 +281,19 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
      */
     private function preflightIndexRebuild(string $indexHandle, ?SearchIndex $preloadedIndex = null): array
     {
-        $configValidation = SearchManager::$plugin->configIndexValidator->validate();
-        if ($configValidation->hasErrors($indexHandle)) {
-            $findings = $configValidation->getFindingsForHandle($indexHandle);
-            $message = $findings[0]['message'] ?? 'config index validation failed';
-            throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': {$message}");
-        }
-
         $index = $preloadedIndex ?? SearchIndex::findByHandle($indexHandle);
         if (!$index) {
             throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': index model could not be resolved.");
         }
 
         if ($index->source === 'config') {
+            $configValidation = SearchManager::$plugin->configIndexValidator->validate();
+            if ($configValidation->hasErrors($indexHandle)) {
+                $findings = $configValidation->getFindingsForHandle($indexHandle);
+                $message = $findings[0]['message'] ?? 'config index validation failed';
+                throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': {$message}");
+            }
+
             $this->logInfo('Config index detected - syncing metadata', [
                 'handle' => $indexHandle,
                 'hasId' => $index->id ? 'YES' : 'NO',
@@ -310,16 +371,11 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
             );
         }
 
-        try {
-            $backend = SearchManager::$plugin->backend->getBackendForIndex($indexHandle);
-        } catch (\Throwable $e) {
-            throw new \RuntimeException(
-                "Cannot rebuild index '{$indexHandle}': backend resolution failed: {$e->getMessage()}",
-                0,
-                $e,
-            );
-        }
-        if (!$backend instanceof BackendInterface) {
+        $target = SearchManager::$plugin->dependencies->getStrictBackendTarget(
+            $indexHandle,
+            DependencyService::ACTION_TARGETED_REBUILD,
+        );
+        if ($target === null || !$target['backend'] instanceof BackendInterface) {
             throw new \RuntimeException("Cannot rebuild index '{$indexHandle}': backend could not be resolved.");
         }
 
@@ -332,36 +388,47 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 
     private function rebuildAllIndices($queue): void
     {
-        $resolvedIndices = SearchIndex::findAll();
-        $resolvedHandles = array_fill_keys(array_map(
-            static fn(SearchIndex $index): string => $index->handle,
-            $resolvedIndices,
-        ), true);
-        $indices = array_values(array_filter(
-            $resolvedIndices,
-            static fn(SearchIndex $index): bool => $index->enabled,
-        ));
-        $indexCount = count($indices);
-        $failures = $this->unresolvedConfigValidationFailures($resolvedHandles);
+        if ($this->indexHandles === null) {
+            SearchManager::$plugin->dependencies->clearIndexCatalogue();
+            $plan = SearchManager::$plugin->dependencies->getRebuildAllPlan();
+            $this->indexHandles = $plan['participants'];
+            $this->structuralSkips = $plan['skips'];
+        }
 
-        if ($indexCount === 0 && $failures === []) {
+        foreach ($this->structuralSkips as $skip) {
+            $this->logWarning('Index omitted from rebuild-all by structural capability', [
+                'handle' => $skip['handle'],
+                'reasonCode' => $skip['reasonCode'],
+                'reason' => $skip['reason'],
+            ]);
+        }
+
+        $indexCount = count($this->indexHandles);
+        $failures = [];
+        if ($indexCount === 0) {
             $this->setProgress($queue, 1.0);
             return;
         }
 
-        foreach ($indices as $i => $index) {
+        $currentIndices = [];
+        foreach (SearchIndex::findAll() as $index) {
+            $currentIndices[$index->handle] = $index;
+        }
+
+        foreach ($this->indexHandles as $i => $indexHandle) {
             try {
                 $this->rebuildSingleIndex(
                     $queue,
-                    $index->handle,
-                    $index,
+                    $indexHandle,
+                    $currentIndices[$indexHandle] ?? null,
                     $i / $indexCount,
                     ($i + 1) / $indexCount,
+                    DependencyService::ACTION_REBUILD_ALL,
                 );
             } catch (\Throwable $e) {
-                $failures[$index->handle] = $e->getMessage();
+                $failures[$indexHandle] = $e->getMessage();
                 $this->logError('Index rebuild failed; continuing with remaining indices', [
-                    'handle' => $index->handle,
+                    'handle' => $indexHandle,
                     'error' => $e->getMessage(),
                 ]);
                 $this->setRebuildProgress($queue, 1.0, $i / $indexCount, ($i + 1) / $indexCount);
@@ -379,46 +446,6 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 
             throw new \RuntimeException('Rebuild all indices completed with failures: ' . $failureSummary);
         }
-    }
-
-    /**
-     * Report validator errors for malformed config items that could not produce
-     * an operational SearchIndex model and therefore are absent from findAll().
-     *
-     * @param array<string, true> $resolvedHandles
-     * @return array<string, string>
-     */
-    private function unresolvedConfigValidationFailures(array $resolvedHandles): array
-    {
-        $failures = [];
-        $validation = SearchManager::$plugin->configIndexValidator->validate();
-
-        foreach ($validation->getFindingGroups() as $group) {
-            if ($group['severity'] !== ConfigIndexValidationResult::SEVERITY_ERROR) {
-                continue;
-            }
-
-            $handle = $group['handle'];
-            if ($handle !== null && isset($resolvedHandles[$handle])) {
-                continue;
-            }
-
-            $label = match ($handle) {
-                null => 'config',
-                '' => '(empty handle)',
-                default => $handle,
-            };
-            $failures[$label] = implode(' | ', array_map(
-                static fn(array $finding): string => $finding['message'],
-                $group['findings'],
-            ));
-            $this->logError('Config index skipped during rebuild-all', [
-                'handle' => $label,
-                'error' => $failures[$label],
-            ]);
-        }
-
-        return $failures;
     }
 
     private function setRebuildProgress($queue, float $progress, float $start = 0.0, float $end = 1.0): void

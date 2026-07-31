@@ -21,6 +21,7 @@ use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\DependencyService;
 use lindemannrock\searchmanager\services\IndexingService;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
@@ -749,18 +750,10 @@ final class Pr1Debt5LifecycleRegressionTest extends TestCase
         $this->swapPluginComponent('search-manager', 'backend', $backend);
         $index = $this->index('rebuild-provider-affected', Pr1Debt5PluginElement::class);
 
-        $error = $this->withOnlySearchIndices([$index], static function(): \RuntimeException {
-            try {
-                (new RebuildIndexJob())->execute(Craft::$app->getQueue());
-            } catch (\RuntimeException $e) {
-                return $e;
-            }
-
-            self::fail('Unavailable provider rebuild should fail before clearing storage.');
+        $this->withOnlySearchIndices([$index], static function(): void {
+            (new RebuildIndexJob())->execute(Craft::$app->getQueue());
         });
 
-        self::assertStringContainsString('rebuild-provider-affected', $error->getMessage());
-        self::assertStringContainsString('element type', $error->getMessage());
         self::assertSame([], $backend->clearedIndices);
     }
 
@@ -1100,7 +1093,7 @@ final class Pr1Debt5LifecycleIndexingService extends IndexingService
 /**
  * @since 5.54.0
  */
-final class Pr1Debt5CacheBackend extends Component
+final class Pr1Debt5CacheBackend extends BackendService
 {
     /** @var list<string> */
     public array $cleared = [];

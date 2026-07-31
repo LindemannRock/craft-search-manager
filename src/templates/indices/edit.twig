@@ -41,7 +41,7 @@
 		<div id="action-menu" class="menu menu--disclosure">
 			<ul>
 				<li>
-					<button class="menu-item error formsubmit" data-destructive data-action="search-manager/indices/delete" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'Are you sure you want to delete this index?'|t('search-manager') }}" data-redirect="{{ 'search-manager/indices'|hash }}" data-headers='{"Accept":"application/json"}'>
+					<button class="menu-item error{{ indexReference.actions.delete.allowed ? ' formsubmit' : ' disabled' }}"{% if indexReference.actions.delete.allowed %} data-destructive data-action="search-manager/indices/delete" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'Are you sure you want to delete this index?'|t('search-manager') }}" data-redirect="{{ 'search-manager/indices'|hash }}" data-headers='{"Accept":"application/json"}'{% else %} disabled aria-disabled="true" title="{{ indexReference.actions.delete.reason }}"{% endif %}>
 						<span class="icon">{{ svg('@app/icons/trash.svg') }}</span>
 						<span class="menu-item-label">{{ "Delete"|t('search-manager') }}</span>
 					</button>
@@ -642,31 +642,37 @@ document.addEventListener('DOMContentLoaded', function() {
 							<ul>
 								{% if currentUser.can('searchManager:rebuildIndices') %}
 								<li>
-									<a class="formsubmit" data-action="search-manager/indices/rebuild" data-params='{"indexId":{{ index.id }}}' data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">
-										{{ "Rebuild Index"|t('search-manager') }}
-									</a>
+									{% if indexReference.actions.targetedRebuild.allowed %}
+										<a class="formsubmit" data-action="search-manager/indices/rebuild" data-params='{"indexId":{{ index.id }}}' data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">{{ "Rebuild Index"|t('search-manager') }}</a>
+									{% else %}
+										<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.targetedRebuild.reason }}">{{ "Rebuild Index"|t('search-manager') }}</span>
+									{% endif %}
 								</li>
-								{% if index.effectiveBackendType in ['algolia', 'meilisearch', 'typesense'] %}
 								<li>
-									<a id="sync-count-btn" href="#">
-										{{ "Sync Count from Backend"|t('search-manager') }}
-									</a>
+									{% if indexReference.actions.syncCount.allowed %}
+										<a id="sync-count-btn" href="#">{{ "Sync Count from Backend"|t('search-manager') }}</a>
+									{% else %}
+										<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.syncCount.reason }}">{{ "Sync Count from Backend"|t('search-manager') }}</span>
+									{% endif %}
 								</li>
-								{% endif %}
 								{% endif %}
 								{% if currentUser.can('searchManager:clearIndices') %}
 								<li>
-									<a class="formsubmit error" data-action="search-manager/indices/clear" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'This will remove all documents from the index. Continue?'|t('search-manager') }}" data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">
-										{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})
-									</a>
+									{% if indexReference.actions.clearData.allowed %}
+										<a class="formsubmit error" data-action="search-manager/indices/clear" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'This will remove all documents from the index. Continue?'|t('search-manager') }}" data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})</a>
+									{% else %}
+										<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.clearData.reason }}">{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})</span>
+									{% endif %}
 								</li>
 								{% endif %}
 								{% if currentUser.can('searchManager:clearCache') and (globalSettings.enableCache or globalSettings.enableAutocompleteCache) %}
 								<li><hr class="padded"></li>
 								<li>
-									<a id="clear-index-cache-btn" href="#">
-										{{ "Clear Index Cache"|t('search-manager') }}
-									</a>
+									{% if indexReference.actions.clearCache.allowed %}
+										<a id="clear-index-cache-btn" href="#">{{ "Clear Index Cache"|t('search-manager') }}</a>
+									{% else %}
+										<span class="menu-item disabled" aria-disabled="true" title="{{ indexReference.actions.clearCache.reason }}">{{ "Clear Index Cache"|t('search-manager') }}</span>
+									{% endif %}
 								</li>
 								{% endif %}
 							</ul>

@@ -88,16 +88,30 @@ class IndexController extends Controller
                 return ExitCode::UNSPECIFIED_ERROR;
             }
 
+            $result = SearchManager::$plugin->indexing->rebuildIndexResult($this->handle);
+            if (!$result['queued']) {
+                $this->stderr("Rebuild denied [{$result['reasonCode']}]: {$result['reason']}\n", Console::FG_RED);
+                return ExitCode::UNSPECIFIED_ERROR;
+            }
             $this->stdout("Rebuilding index: {$index->name}...\n", Console::FG_GREEN);
-            SearchManager::$plugin->indexing->rebuildIndex($this->handle);
         } else {
             if (!$this->confirm('This will rebuild all indices. Continue?')) {
                 $this->stdout("Operation cancelled.\n", Console::FG_YELLOW);
                 return ExitCode::OK;
             }
 
-            $this->stdout("Rebuilding all indices...\n", Console::FG_GREEN);
-            SearchManager::$plugin->indexing->rebuildAll();
+            $result = SearchManager::$plugin->indexing->rebuildAllResult();
+            if (!$result['queued']) {
+                $this->stderr("Rebuild All denied [{$result['reasonCode']}]: {$result['reason']}\n", Console::FG_RED);
+                if ($result['collisions'] !== []) {
+                    $this->stderr('Colliding handles: ' . implode(', ', $result['collisions']) . "\n", Console::FG_RED);
+                }
+                return ExitCode::UNSPECIFIED_ERROR;
+            }
+            foreach ($result['skips'] as $skip) {
+                $this->stdout("  - {$skip['handle']} [{$skip['reasonCode']}]: {$skip['reason']}\n", Console::FG_YELLOW);
+            }
+            $this->stdout("Rebuilding all eligible indices...\n", Console::FG_GREEN);
         }
 
         $this->stdout("\n✓ Rebuild job(s) queued successfully\n", Console::FG_GREEN);
@@ -126,7 +140,8 @@ class IndexController extends Controller
 
             $result = SearchManager::$plugin->indexMaintenance->clearIndex($index);
             if ($result['status'] !== 'success') {
-                $this->stderr("\n✗ Index was not fully cleared: {$index->name}\n", Console::FG_RED);
+                $reasonCode = $result['reasonCode'] ? " [{$result['reasonCode']}]" : '';
+                $this->stderr("\n✗ Index was not fully cleared{$reasonCode}: {$result['error']}\n", Console::FG_RED);
                 return ExitCode::UNSPECIFIED_ERROR;
             }
             $this->stdout("\n✓ Index cleared: {$index->name}\n", Console::FG_GREEN);
@@ -160,7 +175,7 @@ class IndexController extends Controller
         $label = "{$result['name']} ({$result['handle']})";
         match ($result['status']) {
             'success' => $this->stdout("  ✓ {$label}\n", Console::FG_GREEN),
-            'failure' => $this->stderr("  ✗ {$label}\n", Console::FG_RED),
+            'failure' => $this->stderr("  ✗ {$label}" . ($result['reasonCode'] ? " [{$result['reasonCode']}]" : '') . ": {$result['error']}\n", Console::FG_RED),
             'partial' => $this->stderr("  ! {$label} (storage changed; rebuild or retry required)\n", Console::FG_YELLOW),
             'unattempted' => $this->stdout("  - {$label} (unattempted)\n", Console::FG_YELLOW),
             default => null,

@@ -678,13 +678,70 @@ class IndexingService extends Component
      */
     public function rebuildIndex(string $indexHandle): bool
     {
-        Craft::$app->getQueue()->push(new RebuildIndexJob([
+        return $this->rebuildIndexResult($indexHandle)['queued'];
+    }
+
+    /**
+     * Queue a targeted rebuild through the canonical action capability.
+     *
+     * @return array{queued: bool, reasonCode: string|null, reason: string|null}
+     * @since 5.54.0
+     */
+    public function rebuildIndexResult(string $indexHandle): array
+    {
+        return $this->queueSingleIndexRebuild(
+            $indexHandle,
+            DependencyService::ACTION_TARGETED_REBUILD,
+            'Targeted index rebuild denied',
+            'Queued index rebuild',
+        );
+    }
+
+    /**
+     * @return array{queued: bool, reasonCode: string|null, reason: string|null}
+     */
+    private function queueSingleIndexRebuild(
+        string $indexHandle,
+        string $capabilityAction,
+        string $deniedLogMessage,
+        string $queuedLogMessage,
+    ): array {
+        $capability = SearchManager::$plugin->dependencies->getIndexActionCapability(
+            $indexHandle,
+            $capabilityAction,
+        );
+        if (!$capability['allowed']) {
+            $this->logWarning($deniedLogMessage, [
+                'indexHandle' => $indexHandle,
+                'reasonCode' => $capability['reasonCode'],
+            ]);
+
+            return [
+                'queued' => false,
+                'reasonCode' => $capability['reasonCode'],
+                'reason' => $capability['reason'],
+            ];
+        }
+
+        $jobId = $this->pushIndexRebuildJob(new RebuildIndexJob([
             'indexHandle' => $indexHandle,
+            'capabilityAction' => $capabilityAction,
         ]));
+        $queued = $jobId !== null;
+        if ($queued) {
+            $this->logInfo($queuedLogMessage, ['indexHandle' => $indexHandle]);
+        }
 
-        $this->logInfo('Queued index rebuild', ['indexHandle' => $indexHandle]);
+        return [
+            'queued' => $queued,
+            'reasonCode' => $queued ? null : 'queue-rejected',
+            'reason' => $queued ? null : Craft::t('search-manager', 'Failed to queue index rebuild'),
+        ];
+    }
 
-        return true;
+    protected function pushIndexRebuildJob(RebuildIndexJob $job): string|int|null
+    {
+        return Craft::$app->getQueue()->push($job);
     }
 
     /**
@@ -694,11 +751,54 @@ class IndexingService extends Component
      */
     public function rebuildAll(): bool
     {
-        Craft::$app->getQueue()->push(new RebuildIndexJob());
+        return $this->rebuildAllResult()['queued'];
+    }
 
-        $this->logInfo('Queued rebuild for all indices');
+    /**
+     * Queue the shared rebuild-all participant plan.
+     *
+     * @return array<string, mixed>
+     * @since 5.54.0
+     */
+    public function rebuildAllResult(): array
+    {
+        $plan = SearchManager::$plugin->dependencies->getRebuildAllPlan();
+        if (!$plan['allowed']) {
+            return array_merge($plan, ['queued' => false]);
+        }
 
-        return true;
+        $jobId = Craft::$app->getQueue()->push(new RebuildIndexJob([
+            'indexHandles' => $plan['participants'],
+            'structuralSkips' => $plan['skips'],
+        ]));
+        $queued = $jobId !== null;
+        if ($queued) {
+            $this->logInfo('Queued rebuild for all eligible indices', [
+                'participants' => $plan['participants'],
+                'structuralSkips' => array_column($plan['skips'], 'reasonCode', 'handle'),
+            ]);
+        }
+
+        return array_merge($plan, [
+            'queued' => $queued,
+            'reasonCode' => $queued ? null : 'queue-rejected',
+            'reason' => $queued ? null : Craft::t('search-manager', 'Failed to queue index rebuild'),
+        ]);
+    }
+
+    /**
+     * Queue a configuration-change rebuild only when automatic participation is allowed.
+     *
+     * @since 5.54.0
+     */
+    public function rebuildIndexAutomatically(string $indexHandle): bool
+    {
+        return $this->queueSingleIndexRebuild(
+            $indexHandle,
+            DependencyService::ACTION_AUTOMATIC_REBUILD,
+            'Automatic index rebuild skipped',
+            'Queued automatic index rebuild',
+        )['queued'];
     }
 
     /**
@@ -712,10 +812,7 @@ class IndexingService extends Component
     {
         $queued = [];
         foreach ($indices as $index) {
-            if (
-                !$index->enabled
-                || !$this->isAffectedIndexAvailable($index->handle)
-            ) {
+            if (!$this->isAffectedIndexAvailable($index->handle)) {
                 continue;
             }
 
@@ -1019,6 +1116,7 @@ class IndexingService extends Component
     {
         $jobId = $this->pushAffectedRebuildJob(new RebuildIndexJob([
             'indexHandle' => $indexHandle,
+            'capabilityAction' => DependencyService::ACTION_AUTOMATIC_REBUILD,
             'releaseAffectedSchedule' => true,
         ]));
         if ($jobId === null) {
@@ -1033,6 +1131,9 @@ class IndexingService extends Component
 
     protected function isAffectedIndexAvailable(string $indexHandle): bool
     {
-        return SearchManager::$plugin->dependencies->isIndexAvailable($indexHandle);
+        return SearchManager::$plugin->dependencies->getIndexActionCapability(
+            $indexHandle,
+            DependencyService::ACTION_AUTOMATIC_REBUILD,
+        )['allowed'];
     }
 }

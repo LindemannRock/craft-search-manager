@@ -69,26 +69,25 @@ class UtilitiesController extends Controller
     {
         $this->requirePostRequest();
 
-        // Check for handle collisions before proceeding
-        $collisions = $this->getHandleCollisions();
-        if (!empty($collisions)) {
-            $handleList = implode(', ', $collisions);
-            Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'Cannot rebuild indices: Handle collision detected. The following handles exist in both config and database: {handles}. Please resolve these conflicts first.', [
-                    'handles' => $handleList,
-                ])
-            );
-            return $this->redirectToPostedUrl();
-        }
-
         try {
-            SearchManager::$plugin->indexing->rebuildAll();
+            $result = SearchManager::$plugin->indexing->rebuildAllResult();
+            if (!$result['queued']) {
+                $error = $result['reason'];
+                if ($result['reasonCode'] === 'index-handle-collision') {
+                    $error = Craft::t('search-manager', 'Cannot rebuild indices: Handle collision detected. The following handles exist in both config and database: {handles}. Please resolve these conflicts first.', [
+                        'handles' => implode(', ', $result['collisions']),
+                    ]);
+                }
+                Craft::$app->getSession()->setError((string)$error);
+                return $this->redirectToPostedUrl();
+            }
 
             $this->logInfo('All indices rebuild queued via utility');
 
-            Craft::$app->getSession()->setNotice(
-                Craft::t('search-manager', 'All indices rebuild has been queued.')
-            );
+            $notice = $result['skips'] === []
+                ? Craft::t('search-manager', 'All indices rebuild has been queued.')
+                : Craft::t('search-manager', 'Eligible indices were queued. Some indices were skipped because they are disabled or structurally invalid.');
+            Craft::$app->getSession()->setNotice($notice);
         } catch (\Throwable $e) {
             $this->logError('Failed to queue index rebuild', [
                 'error' => $e->getMessage(),
@@ -451,34 +450,5 @@ class UtilitiesController extends Controller
                 'error' => Craft::t('search-manager', 'Failed to get storage statistics'),
             ]);
         }
-    }
-
-    /**
-     * Get list of handles that exist in both config and database
-     *
-     * @return array List of colliding handles
-     */
-    private function getHandleCollisions(): array
-    {
-        // Use the same operational config-index projection as findAll(), so
-        // malformed items cannot create phantom collision blockers.
-        $configHandles = array_map(
-            static fn(\lindemannrock\searchmanager\models\SearchIndex $index): string => $index->handle,
-            \lindemannrock\searchmanager\models\SearchIndex::loadFromConfig(),
-        );
-
-        if (empty($configHandles)) {
-            return [];
-        }
-
-        // Get handles from database that are marked as 'database' source
-        $dbHandles = Craft::$app->getDb()
-            ->createCommand()
-            ->setSql('SELECT handle FROM {{%searchmanager_indices}} WHERE source = :source')
-            ->bindValue(':source', 'database')
-            ->queryColumn();
-
-        // Find collisions
-        return array_intersect($configHandles, $dbHandles);
     }
 }

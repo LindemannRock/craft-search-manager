@@ -41,15 +41,15 @@ final class AuditItem278RegressionTest extends TestCase
         self::assertStringContainsString('($siteIndex + 1) / count($sitesToIndex)', $body);
     }
 
-    public function testAllIndicesRebuildProgressUsesEnabledCountAndReachesComplete(): void
+    public function testAllIndicesRebuildProgressUsesCapabilityParticipantCountAndReachesComplete(): void
     {
         $source = $this->readPluginSource('src/jobs/RebuildIndexJob.php');
         $body = $this->methodBody($source, 'rebuildAllIndices');
 
-        self::assertStringContainsString('array_filter(', $body);
-        self::assertStringContainsString('static fn(SearchIndex $index): bool => $index->enabled', $body);
-        self::assertStringContainsString('$indexCount = count($indices);', $body);
-        self::assertStringContainsString('if ($indexCount === 0 && $failures === [])', $body);
+        self::assertStringContainsString('$indexCount = count($this->indexHandles);', $body);
+        self::assertStringContainsString('foreach ($this->indexHandles as $i => $indexHandle)', $body);
+        self::assertStringContainsString('if ($indexCount === 0)', $body);
+        self::assertStringNotContainsString('static fn(SearchIndex $index): bool => $index->enabled', $body);
         self::assertStringContainsString('$this->setProgress($queue, 1.0);', $body);
         self::assertStringContainsString('$i / $indexCount', $body);
         self::assertStringContainsString('($i + 1) / $indexCount', $body);

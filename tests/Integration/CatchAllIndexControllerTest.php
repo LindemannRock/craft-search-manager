@@ -21,9 +21,11 @@ use lindemannrock\searchmanager\backends\AlgoliaBackend;
 use lindemannrock\searchmanager\backends\FileBackend;
 use lindemannrock\searchmanager\controllers\IndicesController;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
+use lindemannrock\searchmanager\services\DependencyService;
 use lindemannrock\searchmanager\services\IndexingService;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -125,6 +127,7 @@ final class CatchAllIndexControllerTest extends TestCase
         self::assertSame(true, $data['success'] ?? null, json_encode($data));
         self::assertIsString($data['indexHandle'] ?? null);
         self::assertSame([$data['indexHandle']], $indexing->rebuilds);
+        self::assertSame([DependencyService::ACTION_AUTOMATIC_REBUILD], $indexing->capabilityActions);
 
         $row = $this->fetchIndexRow((string)$data['indexHandle']);
         self::assertNotNull($row);
@@ -331,10 +334,14 @@ final class CatchAllIndexRecordingIndexingService extends IndexingService
      */
     public array $rebuilds = [];
 
-    public function rebuildIndex(string $indexHandle): bool
-    {
-        $this->rebuilds[] = $indexHandle;
+    /** @var list<string> */
+    public array $capabilityActions = [];
 
-        return true;
+    protected function pushIndexRebuildJob(RebuildIndexJob $job): string|int|null
+    {
+        $this->rebuilds[] = (string)$job->indexHandle;
+        $this->capabilityActions[] = $job->capabilityAction;
+
+        return count($this->rebuilds);
     }
 }

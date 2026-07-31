@@ -946,13 +946,23 @@ class BackendService extends Component
      */
     public function clearIndex(string $indexName): bool
     {
-        $backend = $this->getBackendForIndex($indexName);
-        if (!$backend) {
-            $this->logError('No backend available for clearing index', ['index' => $indexName]);
+        $target = SearchManager::$plugin->dependencies->getStrictBackendTarget(
+            $indexName,
+            DependencyService::ACTION_CLEAR_DATA,
+        );
+        if ($target === null) {
+            $capability = SearchManager::$plugin->dependencies->getIndexActionCapability(
+                $indexName,
+                DependencyService::ACTION_CLEAR_DATA,
+            );
+            $this->logWarning('Index clear denied by structural capability', [
+                'index' => $indexName,
+                'reasonCode' => $capability['reasonCode'],
+            ]);
             return false;
         }
 
-        return $backend->clearIndex($indexName);
+        return $target['backend']->clearIndex($indexName);
     }
 
     /**

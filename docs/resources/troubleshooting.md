@@ -87,6 +87,18 @@ If an index was already removed outside this guarded workflow, or its config def
 
 All index selectors use the same effective catalogue. A config index with an Error is not offered for a new selection, but remains visible when it is already selected so you can correct the record. Warning-only indices remain available. A disabled but otherwise valid index also remains available and is marked **Disabled** because disabled indices are still valid configuration references.
 
+## Index maintenance action is disabled
+
+**Symptom:** Rebuild Index, Clear Index Data, or Sync Count is visible but disabled, or a direct CP/console/PHP request returns a structural reason without doing work.
+
+**Cause:** Search Manager could not prove the complete action target from the authoritative index catalogue. Common causes include a config validation error, an unavailable element type or transformer, a disabled owning plugin, a missing or disabled backend, an invalid default backend, or an invalid full storage identity. A per-index backend override is strict: Search Manager will not redirect maintenance to the default backend when that override is broken.
+
+**Fix:** Use the displayed reason to repair `config/search-manager.php`, re-enable the owning plugin/backend, or select a valid backend. Then reload the page and retry. Search Manager does not probe provider health while deciding whether an action is available, so a temporary provider outage appears only when an otherwise valid operation runs.
+
+**What remains safe:** The index stays visible for review when its model can be resolved. **Clear Index Cache** remains available because it removes only recoverable, handle-scoped caches. A healthy disabled index can still be rebuilt explicitly, cleared, or have its external document count synchronized, but it remains excluded from automatic rebuilds and Rebuild All.
+
+For Rebuild All, structural omissions are warnings and eligible siblings continue. “No eligible indices” is reported before queueing. If an eligible participant fails at runtime, the remaining eligible siblings are still attempted and the aggregate finishes as failed. If a queued participant becomes ineligible before execution, it is skipped before backend clear or other mutation.
+
 ## Backend, widget, style, or API-key handle cannot be changed
 
 **Symptom:** Saving a new handle reports that the resource is in use or is the active default.

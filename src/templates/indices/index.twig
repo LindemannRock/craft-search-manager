@@ -263,7 +263,6 @@
 
 {% block rowActions %}
     {% set indexReference = indexCatalogue[item.handle] %}
-    {% set indexBackendType = item.effectiveBackendType %}
     {% set itemId = item.id ?: item.handle %}
     {% set canEditItem = canEdit and item.canEdit() %}
 
@@ -288,19 +287,24 @@
             jsAction: 'rebuild',
             data: {name: indexReference.displayName},
             permission: 'searchManager:rebuildIndices',
+            disabled: not indexReference.actions.targetedRebuild.allowed,
+            title: indexReference.actions.targetedRebuild.reason,
         },
         {
             label: 'Sync Count from Backend'|t('search-manager'),
             jsAction: 'sync-count',
             data: {name: indexReference.displayName},
-            showIf: indexBackendType in ['algolia', 'meilisearch', 'typesense'],
             permission: 'searchManager:rebuildIndices',
+            disabled: not indexReference.actions.syncCount.allowed,
+            title: indexReference.actions.syncCount.reason,
         },
         {
             label: 'Clear Index Data'|t('search-manager') ~ ' (' ~ item.documentCount|number_format ~ ')',
             jsAction: 'clear',
             data: {name: indexReference.displayName},
             permission: 'searchManager:clearIndices',
+            disabled: not indexReference.actions.clearData.allowed,
+            title: indexReference.actions.clearData.reason,
         },
         {
             label: 'Clear Index Cache'|t('search-manager'),
@@ -308,6 +312,8 @@
             data: {name: indexReference.displayName},
             showIf: globalSettings.enableCache or globalSettings.enableAutocompleteCache,
             permission: 'searchManager:clearCache',
+            disabled: not indexReference.actions.clearCache.allowed,
+            title: indexReference.actions.clearCache.reason,
         },
         {type: 'divider'},
         {
@@ -317,6 +323,8 @@
             data: {name: indexReference.displayName},
             showIf: item.canEdit(),
             permission: 'searchManager:deleteIndices',
+            disabled: not indexReference.actions.delete.allowed,
+            title: indexReference.actions.delete.reason,
         },
     ]) %}
 

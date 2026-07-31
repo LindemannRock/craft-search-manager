@@ -1,4 +1,5 @@
 {% extends 'lindemannrock-base/_layouts/cp-utilities' %}
+{% set rebuildAllPlan = rebuildAllPlan ?? {allowed: true, reason: null} %}
 
 {% import "_includes/forms" as forms %}
 
@@ -174,7 +175,7 @@
                     {{ csrfInput() }}
                     {{ actionInput('search-manager/utilities/rebuild-all-indices') }}
                     {{ redirectInput('utilities/clear-search-cache') }}
-                    <button type="submit" class="btn submit">
+                    <button type="submit" class="btn submit"{% if rebuildAllPlan and not rebuildAllPlan.allowed %} disabled aria-disabled="true" title="{{ rebuildAllPlan.reason }}"{% endif %}>
                         {{ "Rebuild All Indices"|t('search-manager') }}
                     </button>
                 </form>

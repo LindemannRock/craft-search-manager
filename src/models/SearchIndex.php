@@ -1638,7 +1638,8 @@ class SearchIndex extends Model
     private function queueRebuildAfterSave(): void
     {
         try {
-            $this->rebuildQueuedOnLastSave = SearchManager::$plugin->indexing->rebuildIndex($this->handle);
+            SearchManager::$plugin->dependencies->clearIndexCatalogue();
+            $this->rebuildQueuedOnLastSave = SearchManager::$plugin->indexing->rebuildIndexAutomatically($this->handle);
         } catch (\Throwable $e) {
             $this->logWarning('Unable to queue index rebuild after index save', [
                 'handle' => $this->handle,

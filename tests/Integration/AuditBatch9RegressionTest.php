@@ -18,7 +18,6 @@ use craft\web\Request as WebRequest;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\searchmanager\adapters\CraftSearchAdapter;
 use lindemannrock\searchmanager\backends\FileBackend;
-use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -112,10 +111,13 @@ final class AuditBatch9RegressionTest extends TestCase
 
         $index = SearchIndex::findByHandle(self::INDEX_HANDLE);
         self::assertNotNull($index);
-        $preflight = new \ReflectionMethod(RebuildIndexJob::class, 'preflightIndexRebuild');
-        $preflight->setAccessible(true);
-        $result = $preflight->invoke(new RebuildIndexJob(), self::INDEX_HANDLE, $index);
-        self::assertSame(self::INDEX_HANDLE, $result['index']->handle);
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
+        $capability = SearchManager::$plugin->dependencies->getIndexActionCapability(
+            self::INDEX_HANDLE,
+            \lindemannrock\searchmanager\services\DependencyService::ACTION_TARGETED_REBUILD,
+        );
+        self::assertFalse($capability['allowed']);
+        self::assertSame('backend-configuration-invalid', $capability['reasonCode']);
 
         $request = Craft::$app->get('request');
         $siteRequest = new WebRequest();

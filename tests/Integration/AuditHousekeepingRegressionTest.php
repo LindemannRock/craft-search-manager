@@ -32,6 +32,7 @@ use PHPUnit\Framework\Attributes\Depends;
 final class AuditHousekeepingRegressionTest extends TestCase
 {
     private const PREFIX = 'audit-housekeeping';
+    private const CONFIG_BACKEND = self::PREFIX . '-config-backend';
 
     private static ?array $settingsRowBeforeSave = null;
 
@@ -42,6 +43,7 @@ final class AuditHousekeepingRegressionTest extends TestCase
         parent::setUp();
         $this->originalConfigCache = $this->configCache();
         $this->purgeRows();
+        $this->insertBackend(self::CONFIG_BACKEND, 'file');
     }
 
     protected function tearDown(): void
@@ -359,11 +361,11 @@ final class AuditHousekeepingRegressionTest extends TestCase
             $settings->getFullIndexName('sample'),
         );
 
-        $indicesController = $this->readPluginFile('src/controllers/IndicesController.php');
+        $dependencyService = $this->readPluginFile('src/services/DependencyService.php');
         $autocompleteService = $this->readPluginFile('src/services/AutocompleteService.php');
 
-        self::assertStringContainsString('$fullIndexName = $settings->getFullIndexName($index->handle);', $indicesController);
-        self::assertStringNotContainsString('$prefix . $index->handle', $indicesController);
+        self::assertStringContainsString("getSettings()->getFullIndexName(\$index->handle)", $dependencyService);
+        self::assertStringNotContainsString('$prefix . $index->handle', $dependencyService);
         self::assertStringContainsString('$fullIndexHandle = $settings->getFullIndexName($indexHandle);', $autocompleteService);
         self::assertStringNotContainsString('$indexPrefix . $indexHandle', $autocompleteService);
     }
@@ -509,7 +511,7 @@ final class AuditHousekeepingRegressionTest extends TestCase
             'transformer' => null,
             'headingLevels' => null,
             'language' => null,
-            'backend' => null,
+            'backend' => self::CONFIG_BACKEND,
             'enabled' => true,
             'enableAnalytics' => true,
             'disableStopWords' => false,

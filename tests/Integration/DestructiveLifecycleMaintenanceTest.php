@@ -95,6 +95,7 @@ final class DestructiveLifecycleMaintenanceTest extends TestCase
 
     public function testClearReloadsPersistedIdentityBeforeSelectingStorageAndMetadata(): void
     {
+        $this->insertFileBackend('persisted-backend');
         $id = $this->insertIndex('authoritative-clear', 13, [1, 2], 'persisted-backend');
         $caller = SearchIndex::findById($id);
         self::assertNotNull($caller);
@@ -155,6 +156,7 @@ final class DestructiveLifecycleMaintenanceTest extends TestCase
 
     public function testModelDeleteReloadsPersistedIdentityBeforeEveryMutation(): void
     {
+        $this->insertFileBackend('persisted-backend');
         $id = $this->insertIndex('authoritative-delete', 18, [1, 2], 'persisted-backend');
         $caller = SearchIndex::findById($id);
         self::assertNotNull($caller);
@@ -188,36 +190,26 @@ final class DestructiveLifecycleMaintenanceTest extends TestCase
         self::assertSame(0, $this->siteCount($id));
     }
 
-    public function testDeleteReloadsPersistedIdentityBeforeConfigGuard(): void
+    public function testDeleteUsesCatalogueOwnershipInsteadOfCallerSourceMutation(): void
     {
         $id = $this->insertIndex('authoritative-config', 19, [1, 2]);
-        $authoritative = SearchIndex::findById($id);
         $caller = SearchIndex::findById($id);
-        self::assertNotNull($authoritative);
         self::assertNotNull($caller);
-        $authoritative->source = 'config';
         $caller->handle = self::PREFIX . 'config-bypass';
-        $caller->source = 'database';
+        $caller->source = 'config';
         $caller->backend = 'caller-selected-backend';
 
         $service = new RecordingIndexMaintenanceService();
-        $service->authoritativeById[$id] = $authoritative;
         $result = $service->deleteIndex($caller);
 
-        self::assertSame('failure', $result['status']);
+        self::assertSame('success', $result['status']);
         self::assertSame(self::PREFIX . 'authoritative-config', $result['handle']);
-        self::assertSame(
-            'This index is defined in config and cannot be deleted.',
-            $result['error'],
-        );
         self::assertSame([
             'preflight:' . self::PREFIX . 'authoritative-config',
+            'clear:' . self::PREFIX . 'authoritative-config',
         ], $service->events);
-        self::assertSame([], $service->storageIdentities);
-        self::assertSame([], $service->cacheCalls);
-        self::assertTrue($this->indexExists($id));
-        self::assertSame(19, $this->storedCount($id));
-        self::assertSame(2, $this->siteCount($id));
+        self::assertFalse($this->indexExists($id));
+        self::assertSame(0, $this->siteCount($id));
     }
 
     public function testStaleIdClearAndDeleteHaveNoSideEffects(): void
@@ -810,6 +802,22 @@ final class DestructiveLifecycleMaintenanceTest extends TestCase
         return $id;
     }
 
+    private function insertFileBackend(string $handle): void
+    {
+        $now = Db::prepareDateForDb(new \DateTimeImmutable());
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_backends}}', [
+            'name' => 'Destructive Lifecycle Backend',
+            'handle' => $handle,
+            'backendType' => 'file',
+            'settings' => '{}',
+            'enabled' => 1,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
+    }
+
     /**
      * @param list<string> $indexHandles
      */
@@ -985,7 +993,11 @@ final class DestructiveLifecycleMaintenanceTest extends TestCase
         Craft::$app->getDb()->createCommand()
             ->delete('{{%searchmanager_indices}}', ['like', 'handle', self::PREFIX . '%', false])
             ->execute();
+        Craft::$app->getDb()->createCommand()
+            ->delete('{{%searchmanager_backends}}', ['handle' => 'persisted-backend'])
+            ->execute();
         SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
 }
 
@@ -1023,7 +1035,7 @@ final class RecordingIndexMaintenanceService extends IndexMaintenanceService
         return parent::findIndexById($id);
     }
 
-    protected function clearBackendStorage(SearchIndex $index): bool
+    protected function clearBackendStorage(SearchIndex $index, string $operation = 'clear'): bool
     {
         $this->events[] = 'clear:' . $index->handle;
         $this->storageIdentities[] = [

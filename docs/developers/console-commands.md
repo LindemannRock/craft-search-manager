@@ -46,7 +46,7 @@ Shows each index's name, handle, element type, document count, last indexed date
 
 ### `search-manager/index/rebuild`
 
-Rebuild all indices or a specific index. This clears the index data and re-indexes all matching elements.
+Rebuild all eligible indices or target one index. A structurally healthy disabled index can be targeted explicitly, but disabled indices do not participate in rebuild-all. Config errors, unavailable dependencies, and invalid backend identities are rejected before queueing or clearing data, with the same stable recovery reason used by the Control Panel.
 
 Rebuild all indices:
 
@@ -72,6 +72,8 @@ ddev craft search-manager/index/rebuild --handle=entries-en
 |--------|------|-------------|
 | `--handle` | `string` | Optional index handle to rebuild. Omit to rebuild all. |
 
+Without `--handle`, Search Manager queues only enabled indices that currently pass the targeted-rebuild capability. Structural skips are printed as warnings and do not make otherwise successful siblings fail. No eligible indices returns before queueing. A runtime failure from an eligible participant fails the aggregate after sibling continuation, and every participant is checked again before its backend is cleared. The same config/database collision precondition used by the Control Panel and PHP service applies here.
+
 After rebuilding, cache warming runs automatically if enabled (see [Caching](../feature-tour/caching.md)).
 
 > [!TIP]
@@ -79,7 +81,7 @@ After rebuilding, cache warming runs automatically if enabled (see [Caching](../
 
 ### `search-manager/index/clear`
 
-Clear all indices or a specific index without re-indexing. The index configuration remains — only the data is removed.
+Clear all indices or a specific index without re-indexing. The index configuration remains — only the data is removed. A healthy disabled index can be cleared explicitly. An index with a config/dependency error, or one whose exact backend and full storage identity cannot be resolved, is rejected before mutation; Search Manager never falls back from an invalid per-index backend to the default backend.
 The command also resets each cleared index's stored document count and clears its search-results and autocomplete caches, matching the Control Panel action.
 
 If a backend rejects the clear before changing storage, Search Manager leaves that index's definition, stored count, site metadata, and caches unchanged. When clearing all indices, it continues after those safe failures. If storage was cleared but the count or cache reconciliation could not finish, the command reports an irreversible partial result, stops to limit further changes, marks later indices unattempted, and exits non-zero.

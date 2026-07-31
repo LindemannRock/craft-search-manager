@@ -12,10 +12,15 @@ use Craft;
 use craft\base\Component;
 use craft\base\ElementInterface;
 use craft\base\Model;
+use craft\db\Query;
+use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\PluginHelper;
+use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\interfaces\IndexCountBackendInterface;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
+use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -29,12 +34,41 @@ use lindemannrock\searchmanager\SearchManager;
  */
 class DependencyService extends Component
 {
+    /** @since 5.54.0 */
+    public const ACTION_VIEW = 'view';
+
+    /** @since 5.54.0 */
+    public const ACTION_TARGETED_REBUILD = 'targetedRebuild';
+
+    /** @since 5.54.0 */
+    public const ACTION_AUTOMATIC_REBUILD = 'automaticRebuild';
+
+    /** @since 5.54.0 */
+    public const ACTION_REBUILD_ALL = 'rebuildAll';
+
+    /** @since 5.54.0 */
+    public const ACTION_CLEAR_DATA = 'clearData';
+
+    /** @since 5.54.0 */
+    public const ACTION_CLEAR_CACHE = 'clearCache';
+
+    /** @since 5.54.0 */
+    public const ACTION_SYNC_COUNT = 'syncCount';
+
+    /** @since 5.54.0 */
+    public const ACTION_DELETE = 'delete';
+
     /**
      * Request-scoped effective catalogue before selected-reference decoration.
      *
      * @var array<string, array<string, mixed>>|null
      */
     private ?array $indexCatalogue = null;
+
+    private ?ConfigIndexValidationResult $indexConfigValidation = null;
+
+    /** @var array<string, array{backend: BackendInterface, handle: string, type: string, fullIndexName: string}> */
+    private array $strictBackendTargets = [];
 
     /**
      * The permission groups are independent, so a caller holding only a delete
@@ -199,9 +233,12 @@ class DependencyService extends Component
      */
     public function getEnabledAllSitesIndices(): array
     {
+        $catalogue = $this->getIndexCatalogue();
+
         return array_values(array_filter(
             SearchIndex::findAll(),
-            static fn(SearchIndex $index): bool => $index->enabled && $index->getSiteIds() === null,
+            static fn(SearchIndex $index): bool => ($catalogue[$index->handle]['actions'][self::ACTION_AUTOMATIC_REBUILD]['allowed'] ?? false)
+                && $index->getSiteIds() === null,
         ));
     }
 
@@ -464,6 +501,8 @@ class DependencyService extends Component
      *     element: array<string, mixed>,
      *     transformer: array<string, mixed>
      *   }|null,
+     *   backendIdentity: array<string, mixed>,
+     *   actions: array<string, array{allowed: bool, reasonCode: string|null, reason: string|null}>,
      *   status: array{label: string, value: string, colorSet: string, title: string|null}
      * }>
      * @since 5.54.0
@@ -472,7 +511,7 @@ class DependencyService extends Component
     {
         $selected = $this->normalizeSelectedHandles($selectedHandles);
         if ($this->indexCatalogue === null) {
-            $validation = SearchManager::$plugin->configIndexValidator->validate();
+            $validation = $this->getIndexConfigValidation();
             $catalogue = [];
             $siteNames = [];
             foreach (Craft::$app->getSites()->getAllSites() as $site) {
@@ -501,6 +540,13 @@ class DependencyService extends Component
                     'errorTitle' => $errorTitle,
                 ]);
                 $state = $status['value'];
+                $backendIdentity = $this->resolveStrictBackendIdentity($index);
+                $structuralReason = $this->structuralReasonCode(
+                    $configFindings,
+                    $dependencyAvailability,
+                    $backendIdentity,
+                );
+                $actions = $this->projectIndexActions($index, $structuralReason, $backendIdentity);
 
                 $catalogue[$index->handle] = [
                     'handle' => $index->handle,
@@ -522,6 +568,8 @@ class DependencyService extends Component
                     'errorTitle' => $errorTitle,
                     'findings' => $findings,
                     'dependencyAvailability' => $dependencyAvailability,
+                    'backendIdentity' => $backendIdentity,
+                    'actions' => $actions,
                     'status' => $status,
                 ];
             }
@@ -563,6 +611,8 @@ class DependencyService extends Component
                 'errorTitle' => $errorTitle,
                 'findings' => [],
                 'dependencyAvailability' => null,
+                'backendIdentity' => $this->missingBackendIdentity(),
+                'actions' => $this->deniedActions('index-not-found', false),
                 'status' => $status,
             ];
         }
@@ -718,6 +768,122 @@ class DependencyService extends Component
     public function clearIndexCatalogue(): void
     {
         $this->indexCatalogue = null;
+        $this->indexConfigValidation = null;
+        $this->strictBackendTargets = [];
+    }
+
+    /**
+     * Resolve an allowed action and its strict backend target without fallback.
+     *
+     * @return array{backend: BackendInterface, handle: string, type: string, fullIndexName: string}|null
+     * @since 5.54.0
+     */
+    public function getStrictBackendTarget(string $indexHandle, string $action): ?array
+    {
+        $record = $this->getIndexCatalogue([$indexHandle])[$indexHandle];
+        if (!($record['actions'][$action]['allowed'] ?? false)) {
+            return null;
+        }
+
+        return $this->strictBackendTargets[$indexHandle] ?? null;
+    }
+
+    /**
+     * Return the canonical capability result for one index action.
+     *
+     * @return array{allowed: bool, reasonCode: string|null, reason: string|null}
+     * @since 5.54.0
+     */
+    public function getIndexActionCapability(string $indexHandle, string $action): array
+    {
+        $record = $this->getIndexCatalogue([$indexHandle])[$indexHandle];
+
+        return $record['actions'][$action] ?? $this->actionResult(false, 'index-not-found');
+    }
+
+    /**
+     * Build the shared rebuild-all precondition and participant projection.
+     *
+     * @return array{
+     *   allowed: bool,
+     *   reasonCode: string|null,
+     *   reason: string|null,
+     *   participants: list<string>,
+     *   skips: list<array{handle: string, reasonCode: string, reason: string}>,
+     *   collisions: list<string>
+     * }
+     * @since 5.54.0
+     */
+    public function getRebuildAllPlan(): array
+    {
+        $configHandles = array_map(
+            static fn(SearchIndex $index): string => $index->handle,
+            SearchIndex::loadFromConfig(),
+        );
+        $databaseHandles = (new Query())
+            ->select(['handle'])
+            ->from('{{%searchmanager_indices}}')
+            ->where(['source' => 'database'])
+            ->column();
+        $collisions = array_values(array_intersect($configHandles, $databaseHandles));
+        sort($collisions, SORT_STRING);
+
+        if ($collisions !== []) {
+            return [
+                'allowed' => false,
+                'reasonCode' => 'index-handle-collision',
+                'reason' => Craft::t('search-manager', 'Rebuild All is unavailable because one or more index handles exist in both config and the database.'),
+                'participants' => [],
+                'skips' => [],
+                'collisions' => $collisions,
+            ];
+        }
+
+        $participants = [];
+        $skips = [];
+        $catalogue = $this->getIndexCatalogue();
+        foreach ($catalogue as $handle => $record) {
+            $capability = $record['actions'][self::ACTION_REBUILD_ALL];
+            if ($capability['allowed']) {
+                $participants[] = $handle;
+                continue;
+            }
+
+            $skips[] = [
+                'handle' => $handle,
+                'reasonCode' => (string)$capability['reasonCode'],
+                'reason' => (string)$capability['reason'],
+            ];
+        }
+
+        $resolvedHandles = array_fill_keys(array_keys($catalogue), true);
+        foreach ($this->getIndexConfigValidation()->getFindingGroups() as $group) {
+            if ($group['severity'] !== ConfigIndexValidationResult::SEVERITY_ERROR) {
+                continue;
+            }
+            $handle = $group['handle'];
+            if (is_string($handle) && $handle !== '' && isset($resolvedHandles[$handle])) {
+                continue;
+            }
+            $skips[] = [
+                'handle' => is_string($handle) && $handle !== '' ? $handle : 'config',
+                'reasonCode' => 'config-definition-unresolved',
+                'reason' => $this->reasonMessage('config-definition-unresolved'),
+            ];
+        }
+
+        sort($participants, SORT_STRING);
+        usort($skips, static fn(array $left, array $right): int => strcmp($left['handle'], $right['handle']));
+        $allowed = $participants !== [];
+
+        return [
+            'allowed' => $allowed,
+            'reasonCode' => $allowed ? null : 'no-eligible-indices',
+            'reason' => $allowed ? null : $this->reasonMessage('no-eligible-indices'),
+            'participants' => $participants,
+            'skips' => $skips,
+            'collisions' => [],
+        ];
     }
 
     /**
@@ -920,6 +1086,264 @@ class DependencyService extends Component
         return $state === 'enabled'
             ? $identityLabel
             : sprintf('%s — %s', $identityLabel, $statusLabel);
+    }
+
+    /**
+     * @return array<string, array{allowed: bool, reasonCode: string|null, reason: string|null}>
+     */
+    private function projectIndexActions(
+        SearchIndex $index,
+        ?string $structuralReason,
+        array $backendIdentity,
+    ): array {
+        $targetedRebuild = $structuralReason === null
+            ? $this->actionResult(true)
+            : $this->actionResult(false, $structuralReason);
+        $automaticRebuild = !$targetedRebuild['allowed']
+            ? $targetedRebuild
+            : ($index->enabled
+                ? $this->actionResult(true)
+                : $this->actionResult(false, 'index-disabled'));
+        $clearData = $targetedRebuild['allowed'] && $backendIdentity['available']
+            ? $this->actionResult(true)
+            : ($targetedRebuild['allowed']
+                ? $this->actionResult(false, (string)$backendIdentity['reasonCode'])
+                : $targetedRebuild);
+        $syncCount = $targetedRebuild['allowed'] && $backendIdentity['available']
+            ? (($backendIdentity['supportsSyncCount'] ?? false)
+                ? $this->actionResult(true)
+                : $this->actionResult(false, 'backend-count-unsupported'))
+            : ($targetedRebuild['allowed']
+                ? $this->actionResult(false, (string)$backendIdentity['reasonCode'])
+                : $targetedRebuild);
+
+        if ($index->source !== 'database') {
+            $delete = $this->actionResult(false, 'config-owned-index');
+        } else {
+            $usages = $this->getIndexUsages($index->handle);
+            if ($usages !== []) {
+                $delete = [
+                    'allowed' => false,
+                    'reasonCode' => 'index-in-use',
+                    'reason' => $this->formatInUseError($index->name, $usages),
+                ];
+            } elseif (!$backendIdentity['available']) {
+                $delete = $this->actionResult(false, (string)$backendIdentity['reasonCode']);
+            } else {
+                $delete = $this->actionResult(true);
+            }
+        }
+
+        return [
+            self::ACTION_VIEW => $this->actionResult(true),
+            self::ACTION_TARGETED_REBUILD => $targetedRebuild,
+            self::ACTION_AUTOMATIC_REBUILD => $automaticRebuild,
+            self::ACTION_REBUILD_ALL => $automaticRebuild,
+            self::ACTION_CLEAR_DATA => $clearData,
+            self::ACTION_CLEAR_CACHE => $this->actionResult(true),
+            self::ACTION_SYNC_COUNT => $syncCount,
+            self::ACTION_DELETE => $delete,
+        ];
+    }
+
+    /**
+     * @return array<string, array{allowed: bool, reasonCode: string|null, reason: string|null}>
+     */
+    private function deniedActions(string $reasonCode, bool $clearCache): array
+    {
+        $denied = $this->actionResult(false, $reasonCode);
+
+        return [
+            self::ACTION_VIEW => $denied,
+            self::ACTION_TARGETED_REBUILD => $denied,
+            self::ACTION_AUTOMATIC_REBUILD => $denied,
+            self::ACTION_REBUILD_ALL => $denied,
+            self::ACTION_CLEAR_DATA => $denied,
+            self::ACTION_CLEAR_CACHE => $clearCache ? $this->actionResult(true) : $denied,
+            self::ACTION_SYNC_COUNT => $denied,
+            self::ACTION_DELETE => $denied,
+        ];
+    }
+
+    /**
+     * @return array{allowed: bool, reasonCode: string|null, reason: string|null}
+     */
+    private function actionResult(bool $allowed, ?string $reasonCode = null): array
+    {
+        return [
+            'allowed' => $allowed,
+            'reasonCode' => $allowed ? null : $reasonCode,
+            'reason' => $allowed || $reasonCode === null ? null : $this->reasonMessage($reasonCode),
+        ];
+    }
+
+    private function structuralReasonCode(
+        array $configFindings,
+        array $dependencyAvailability,
+        array $backendIdentity,
+    ): ?string {
+        foreach ($configFindings as $finding) {
+            if (($finding['severity'] ?? null) === ConfigIndexValidationResult::SEVERITY_ERROR) {
+                return 'config-invalid';
+            }
+        }
+
+        foreach (['element' => 'element-type-unavailable', 'transformer' => 'transformer-unavailable'] as $kind => $reason) {
+            $dependency = $dependencyAvailability[$kind] ?? [];
+            if (($dependency['available'] ?? false) === true) {
+                continue;
+            }
+
+            return ($dependency['reason'] ?? null) === 'provider-disabled'
+                ? 'dependency-owner-disabled'
+                : $reason;
+        }
+
+        return $backendIdentity['available'] ? null : $backendIdentity['reasonCode'];
+    }
+
+    /**
+     * @return array{
+     *   available: bool,
+     *   handle: string|null,
+     *   type: string|null,
+     *   fullIndexName: string|null,
+     *   recordExists: bool,
+     *   enabled: bool,
+     *   configured: bool,
+     *   supported: bool,
+     *   constructible: bool,
+     *   supportsSyncCount: bool,
+     *   reasonCode: string|null
+     * }
+     */
+    private function resolveStrictBackendIdentity(SearchIndex $index): array
+    {
+        $identity = $this->missingBackendIdentity();
+        $handle = trim((string)$index->getEffectiveBackend());
+        $identity['handle'] = $handle !== '' ? $handle : null;
+        if ($handle === '') {
+            $identity['reasonCode'] = 'backend-not-configured';
+            return $identity;
+        }
+
+        $rawConfig = BaseConfigFileHelper::getConfigSection('search-manager', 'backends');
+        $configuredBackend = null;
+        if (array_key_exists($handle, $rawConfig)) {
+            foreach (ConfiguredBackend::findAllFromConfig() as $candidate) {
+                if ($candidate->handle === $handle) {
+                    $configuredBackend = $candidate;
+                    break;
+                }
+            }
+            if ($configuredBackend === null) {
+                $identity['reasonCode'] = 'backend-configuration-invalid';
+                return $identity;
+            }
+        } else {
+            $configuredBackend = ConfiguredBackend::findByHandle($handle);
+        }
+
+        if ($configuredBackend === null) {
+            $identity['reasonCode'] = 'backend-not-found';
+            return $identity;
+        }
+
+        $identity['recordExists'] = true;
+        $identity['enabled'] = (bool)$configuredBackend->enabled;
+        $identity['type'] = trim($configuredBackend->backendType) ?: null;
+        if (!$configuredBackend->enabled) {
+            $identity['reasonCode'] = 'backend-disabled';
+            return $identity;
+        }
+
+        $identity['supported'] = isset(ConfiguredBackend::BACKEND_TYPES[$configuredBackend->backendType]);
+        if (!$identity['supported']) {
+            $identity['reasonCode'] = 'backend-type-unsupported';
+            return $identity;
+        }
+
+        $configuredBackend->clearErrors();
+        $identity['configured'] = $configuredBackend->validate(['backendType', 'settings']);
+        if (!$identity['configured']) {
+            $identity['reasonCode'] = 'backend-configuration-invalid';
+            return $identity;
+        }
+
+        $backend = SearchManager::$plugin->backend->createBackendFromConfig($configuredBackend);
+        $identity['constructible'] = $backend instanceof BackendInterface;
+        if (!$identity['constructible']) {
+            $identity['reasonCode'] = 'backend-not-constructible';
+            return $identity;
+        }
+
+        $fullIndexName = trim(SearchManager::$plugin->getSettings()->getFullIndexName($index->handle));
+        if ($fullIndexName === '') {
+            $identity['reasonCode'] = 'backend-index-identity-invalid';
+            return $identity;
+        }
+
+        $identity['fullIndexName'] = $fullIndexName;
+        $identity['supportsSyncCount'] = in_array($configuredBackend->backendType, ['algolia', 'meilisearch', 'typesense'], true)
+            && $backend instanceof IndexCountBackendInterface;
+        $identity['available'] = true;
+        $identity['reasonCode'] = null;
+        $this->strictBackendTargets[$index->handle] = [
+            'backend' => $backend,
+            'handle' => $handle,
+            'type' => $configuredBackend->backendType,
+            'fullIndexName' => $fullIndexName,
+        ];
+
+        return $identity;
+    }
+
+    private function missingBackendIdentity(): array
+    {
+        return [
+            'available' => false,
+            'handle' => null,
+            'type' => null,
+            'fullIndexName' => null,
+            'recordExists' => false,
+            'enabled' => false,
+            'configured' => false,
+            'supported' => false,
+            'constructible' => false,
+            'supportsSyncCount' => false,
+            'reasonCode' => 'backend-not-configured',
+        ];
+    }
+
+    private function reasonMessage(string $reasonCode): string
+    {
+        return Craft::t('search-manager', match ($reasonCode) {
+            'index-not-found' => 'This index no longer exists.',
+            'config-invalid' => 'Fix this index in config/search-manager.php before using this action.',
+            'config-definition-unresolved' => 'Fix this unresolved index definition in config/search-manager.php before rebuilding.',
+            'element-type-unavailable' => 'The configured element type is unavailable. Restore it before using this action.',
+            'transformer-unavailable' => 'The configured transformer is unavailable. Restore it before using this action.',
+            'dependency-owner-disabled' => 'A plugin required by this index is disabled. Enable it before using this action.',
+            'backend-not-configured' => 'Select a valid default backend or index backend before using this action.',
+            'backend-not-found' => 'The selected backend does not exist. Correct the backend handle before using this action.',
+            'backend-disabled' => 'The selected backend is disabled. Enable it or select another backend before using this action.',
+            'backend-configuration-invalid' => 'The selected backend configuration is invalid. Correct it before using this action.',
+            'backend-type-unsupported' => 'The selected backend type is not supported.',
+            'backend-not-constructible' => 'The selected backend cannot be initialized from its configuration.',
+            'backend-index-identity-invalid' => 'The index storage identity is invalid. Correct the index prefix or handle before using this action.',
+            'backend-count-unsupported' => 'This backend does not support syncing the document count.',
+            'index-disabled' => 'Disabled indices are excluded from automatic and Rebuild All operations.',
+            'config-owned-index' => 'This index is defined in config and cannot be deleted.',
+            'index-in-use' => 'This index is still in use and cannot be deleted.',
+            'index-handle-collision' => 'Rebuild All is unavailable because one or more index handles exist in both config and the database.',
+            'no-eligible-indices' => 'No enabled, structurally valid indices are eligible for Rebuild All.',
+            default => 'This action is not available for the current index configuration.',
+        });
+    }
+
+    private function getIndexConfigValidation(): ConfigIndexValidationResult
+    {
+        return $this->indexConfigValidation ??= SearchManager::$plugin->configIndexValidator->validate();
     }
 
     /**

@@ -13,6 +13,7 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use craft\base\Component;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\interfaces\IndexCountBackendInterface;
 use lindemannrock\searchmanager\models\BulkMutationResult;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -48,6 +49,14 @@ class IndexMaintenanceService extends Component
         }
 
         $index = $authoritativeIndex;
+        $capability = SearchManager::$plugin->dependencies->getIndexActionCapability(
+            $index->handle,
+            DependencyService::ACTION_CLEAR_DATA,
+        );
+        if (!$capability['allowed']) {
+            return $this->capabilityFailureResult($index, 'clear', $capability);
+        }
+
         $result = $this->clearStorageAndReconcile($index, 'clear');
         if ($result['status'] !== 'success') {
             return $result;
@@ -118,7 +127,10 @@ class IndexMaintenanceService extends Component
         $index = $authoritativeIndex;
         $preflightError = $this->preflightAuthoritativeDelete($index);
         if ($preflightError !== null) {
-            return $this->failureResult($index, 'delete', $preflightError);
+            $capability = $this->deleteCapability($index);
+            return !$capability['allowed']
+                ? $this->capabilityFailureResult($index, 'delete', $capability)
+                : $this->failureResult($index, 'delete', $preflightError);
         }
 
         $result = $this->clearStorageAndReconcile($index, 'delete');
@@ -180,9 +192,12 @@ class IndexMaintenanceService extends Component
                 continue;
             }
 
-            $error = $this->preflightAuthoritativeDelete($index);
-            if ($error !== null) {
-                $resultsById[$id] = $this->failureResult($index, 'delete', $error);
+            $preflightError = $this->preflightAuthoritativeDelete($index);
+            if ($preflightError !== null) {
+                $capability = $this->deleteCapability($index);
+                $resultsById[$id] = !$capability['allowed']
+                    ? $this->capabilityFailureResult($index, 'delete', $capability)
+                    : $this->failureResult($index, 'delete', $preflightError);
                 continue;
             }
 
@@ -231,16 +246,130 @@ class IndexMaintenanceService extends Component
      */
     protected function preflightAuthoritativeDelete(SearchIndex $index): ?string
     {
-        if (!$index->canEdit()) {
-            return Craft::t('search-manager', 'This index is defined in config and cannot be deleted.');
+        $capability = $this->deleteCapability($index);
+
+        return $capability['allowed'] ? null : $capability['reason'];
+    }
+
+    /** @return array{allowed: bool, reasonCode: string|null, reason: string|null} */
+    private function deleteCapability(SearchIndex $index): array
+    {
+        return SearchManager::$plugin->dependencies->getIndexActionCapability(
+            $index->handle,
+            DependencyService::ACTION_DELETE,
+        );
+    }
+
+    /**
+     * Clear the recoverable caches scoped to one authoritative index handle.
+     *
+     * @return array<string, mixed>
+     * @since 5.54.0
+     */
+    public function clearIndexCache(SearchIndex $index): array
+    {
+        $authoritativeIndex = $this->resolveAuthoritativeIndex($index);
+        if ($authoritativeIndex === null) {
+            return $this->missingIndexResult($index->id, 'clear-cache');
         }
 
-        $usages = SearchManager::$plugin->dependencies->getIndexUsages($index->handle);
-        if ($usages !== []) {
-            return SearchManager::$plugin->dependencies->formatInUseError($index->name, $usages);
+        $capability = SearchManager::$plugin->dependencies->getIndexActionCapability(
+            $authoritativeIndex->handle,
+            DependencyService::ACTION_CLEAR_CACHE,
+        );
+        if (!$capability['allowed']) {
+            return $this->capabilityFailureResult($authoritativeIndex, 'clear-cache', $capability);
         }
 
-        return null;
+        $errors = $this->invalidateIndexCaches($authoritativeIndex);
+        if ($errors !== []) {
+            return $this->failureResult(
+                $authoritativeIndex,
+                'clear-cache',
+                Craft::t('search-manager', 'Failed to clear cache'),
+            );
+        }
+
+        return array_merge($this->baseResult($authoritativeIndex, 'clear-cache'), [
+            'status' => 'success',
+            'success' => true,
+            'cachesInvalidated' => true,
+            'message' => Craft::t('search-manager', 'Cache cleared for "{name}"', [
+                'name' => $authoritativeIndex->name,
+            ]),
+        ]);
+    }
+
+    /**
+     * Synchronize document-count metadata through a strict external backend target.
+     *
+     * @return array<string, mixed>
+     * @since 5.54.0
+     */
+    public function syncIndexCount(SearchIndex $index): array
+    {
+        $authoritativeIndex = $this->resolveAuthoritativeIndex($index);
+        if ($authoritativeIndex === null) {
+            return $this->missingIndexResult($index->id, 'sync-count');
+        }
+
+        $capability = SearchManager::$plugin->dependencies->getIndexActionCapability(
+            $authoritativeIndex->handle,
+            DependencyService::ACTION_SYNC_COUNT,
+        );
+        if (!$capability['allowed']) {
+            return $this->capabilityFailureResult($authoritativeIndex, 'sync-count', $capability);
+        }
+
+        $target = SearchManager::$plugin->dependencies->getStrictBackendTarget(
+            $authoritativeIndex->handle,
+            DependencyService::ACTION_SYNC_COUNT,
+        );
+        if ($target === null || !$target['backend'] instanceof IndexCountBackendInterface) {
+            return $this->capabilityFailureResult($authoritativeIndex, 'sync-count', [
+                'reasonCode' => 'backend-count-unsupported',
+                'reason' => Craft::t('search-manager', 'This backend does not support syncing the document count.'),
+            ]);
+        }
+
+        try {
+            $count = $target['backend']->getDocumentCount($authoritativeIndex->handle);
+            if ($count === null) {
+                return $this->failureResult(
+                    $authoritativeIndex,
+                    'sync-count',
+                    Craft::t('search-manager', 'Failed to sync count'),
+                );
+            }
+            if (!$authoritativeIndex->updateStats($count)) {
+                return $this->failureResult(
+                    $authoritativeIndex,
+                    'sync-count',
+                    Craft::t('search-manager', 'Failed to update index stats'),
+                );
+            }
+        } catch (\Throwable $e) {
+            $this->logError('Failed to sync count from backend', [
+                'index' => $authoritativeIndex->handle,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->failureResult(
+                $authoritativeIndex,
+                'sync-count',
+                Craft::t('search-manager', 'Failed to sync count'),
+            );
+        }
+
+        return array_merge($this->baseResult($authoritativeIndex, 'sync-count'), [
+            'status' => 'success',
+            'success' => true,
+            'count' => $count,
+            'message' => Craft::t('search-manager', 'Count synced for "{name}": {count} documents', [
+                'name' => $authoritativeIndex->name,
+                'count' => number_format($count),
+            ]),
+        ]);
     }
 
     /**
@@ -281,7 +410,7 @@ class IndexMaintenanceService extends Component
     protected function clearStorageAndReconcile(SearchIndex $index, string $operation): array
     {
         try {
-            if (!$this->clearBackendStorage($index)) {
+            if (!$this->clearBackendStorage($index, $operation)) {
                 return $this->failureResult(
                     $index,
                     $operation,
@@ -327,9 +456,18 @@ class IndexMaintenanceService extends Component
         return $result;
     }
 
-    protected function clearBackendStorage(SearchIndex $index): bool
+    protected function clearBackendStorage(SearchIndex $index, string $operation = 'clear'): bool
     {
-        return SearchManager::$plugin->backend->clearIndex($index->handle);
+        if ($operation !== 'delete') {
+            return SearchManager::$plugin->backend->clearIndex($index->handle);
+        }
+
+        $target = SearchManager::$plugin->dependencies->getStrictBackendTarget(
+            $index->handle,
+            DependencyService::ACTION_DELETE,
+        );
+
+        return $target !== null && $target['backend']->clearIndex($index->handle);
     }
 
     protected function updateDocumentCount(SearchIndex $index): bool
@@ -426,6 +564,7 @@ class IndexMaintenanceService extends Component
             'cachesInvalidated' => false,
             'metadataDeleted' => false,
             'error' => null,
+            'reasonCode' => null,
             'message' => null,
             'recovery' => [],
         ];
@@ -443,9 +582,24 @@ class IndexMaintenanceService extends Component
 
     private function failureMessage(string $operation): string
     {
-        return $operation === 'delete'
-            ? Craft::t('search-manager', 'Could not delete index')
-            : Craft::t('search-manager', 'Failed to clear index data');
+        return match ($operation) {
+            'delete' => Craft::t('search-manager', 'Could not delete index'),
+            'clear-cache' => Craft::t('search-manager', 'Failed to clear cache'),
+            'sync-count' => Craft::t('search-manager', 'Failed to sync count'),
+            default => Craft::t('search-manager', 'Failed to clear index data'),
+        };
+    }
+
+    /**
+     * @param array{reasonCode: string|null, reason: string|null} $capability
+     * @return array<string, mixed>
+     */
+    private function capabilityFailureResult(SearchIndex $index, string $operation, array $capability): array
+    {
+        return array_merge($this->baseResult($index, $operation), [
+            'reasonCode' => $capability['reasonCode'],
+            'error' => $capability['reason'] ?? $this->failureMessage($operation),
+        ]);
     }
 
     /**

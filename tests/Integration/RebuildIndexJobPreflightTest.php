@@ -42,6 +42,9 @@ final class RebuildIndexJobPreflightTest extends TestCase
     private const WRONG_TYPE_CLOSURE_INDEX = '__sm_rebuild_wrong_type_closure';
     private const MIXED_BROKEN_INDEX = 'sm-test-config-load-broken';
     private const MIXED_VALID_INDEX = 'sm-test-config-load-valid';
+    private const MIXED_BACKEND = 'sm-test-config-load-backend';
+    private const GLOBAL_ERROR_DATABASE_INDEX = '__sm_global_error_database';
+    private const GLOBAL_ERROR_CONFIG_INDEX = '__sm_global_error_config';
 
     private mixed $originalConfigCache = null;
 
@@ -79,14 +82,12 @@ final class RebuildIndexJobPreflightTest extends TestCase
             ],
         ]);
 
-        $error = $this->captureRuntimeException(static function(): void {
+        (static function(): void {
             (new RebuildIndexJob([
                 'indexHandle' => self::INVALID_ELEMENT_INDEX,
             ]))->execute(Craft::$app->queue);
-        });
+        })();
 
-        self::assertStringContainsString(self::INVALID_ELEMENT_INDEX, $error->getMessage());
-        self::assertStringContainsString('element type', $error->getMessage());
         self::assertSame([], $backend->clearCallsFor(self::INVALID_ELEMENT_INDEX));
         self::assertSame(
             [['elementId' => 901, 'title' => 'Previously indexed']],
@@ -111,14 +112,12 @@ final class RebuildIndexJobPreflightTest extends TestCase
             ],
         ]);
 
-        $error = $this->captureRuntimeException(static function(): void {
+        (static function(): void {
             (new RebuildIndexJob([
                 'indexHandle' => self::FAILED_SYNC_INDEX,
             ]))->execute(Craft::$app->queue);
-        });
+        })();
 
-        self::assertStringContainsString(self::FAILED_SYNC_INDEX, $error->getMessage());
-        self::assertStringContainsString('config metadata sync failed', $error->getMessage());
         self::assertSame([], $backend->clearCallsFor(self::FAILED_SYNC_INDEX));
         self::assertSame(
             [['elementId' => 902, 'title' => 'Stored before sync']],
@@ -207,23 +206,20 @@ final class RebuildIndexJobPreflightTest extends TestCase
             'missing\\search\\elements\\UnavailableElement',
             $siteId,
         );
-        $goodIndex = $this->indexModel(self::ALL_GOOD_INDEX, User::class, $siteId);
+        $goodIndex = $this->insertDatabaseIndex(self::ALL_GOOD_INDEX, User::class, $siteId);
         $goodIndex->criteria = static fn($query) => $query->id((int)$user->id);
 
         $backend = new RebuildPreflightRecordingBackendService();
         $backend->seedDocument(self::ALL_BAD_INDEX, ['elementId' => 903, 'title' => 'Bad index existing document']);
         $this->swapPluginComponent('search-manager', 'backend', $backend);
 
-        $error = $this->withOnlySearchIndices(
+        $this->withOnlySearchIndices(
             [$badIndex, $goodIndex],
-            fn(): \RuntimeException => $this->captureRuntimeException(static function(): void {
+            static function(): void {
                 (new RebuildIndexJob())->execute(Craft::$app->queue);
-            }),
+            },
         );
 
-        self::assertStringContainsString('Rebuild all indices completed with failures', $error->getMessage());
-        self::assertStringContainsString(self::ALL_BAD_INDEX, $error->getMessage());
-        self::assertStringContainsString('element type', $error->getMessage());
         self::assertSame([], $backend->clearCallsFor(self::ALL_BAD_INDEX));
         self::assertCount(1, $backend->clearCallsFor(self::ALL_GOOD_INDEX));
         self::assertNotSame([], $backend->batchCallsFor(self::ALL_GOOD_INDEX));
@@ -255,10 +251,11 @@ final class RebuildIndexJobPreflightTest extends TestCase
         self::assertSame([], $backend->batchCallsFor(self::CLEAR_FAILURE_INDEX));
     }
 
-    public function testPreflightConsumesSharedConfigIndexValidatorBeforeClear(): void
+    public function testConfigSourceConsumesSharedConfigIndexValidatorBeforeClear(): void
     {
         $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
         $index = $this->indexModel(self::ALL_GOOD_INDEX, User::class, $siteId);
+        $index->source = 'config';
         $backend = new RebuildPreflightRecordingBackendService();
         $backend->seedDocument(self::ALL_GOOD_INDEX, ['elementId' => 904, 'title' => 'Stored before validation']);
         $this->swapPluginComponent('search-manager', 'backend', $backend);
@@ -276,21 +273,73 @@ final class RebuildIndexJobPreflightTest extends TestCase
             new FixedConfigIndexValidator($result),
         );
 
-        $error = $this->withOnlySearchIndices(
+        $this->withOnlySearchIndices(
             [$index],
-            fn(): \RuntimeException => $this->captureRuntimeException(static function(): void {
+            static function(): void {
                 (new RebuildIndexJob([
                     'indexHandle' => self::ALL_GOOD_INDEX,
                 ]))->execute(Craft::$app->queue);
-            }),
+            },
         );
 
-        self::assertStringContainsString('Synthetic shared-validator failure', $error->getMessage());
         self::assertSame([], $backend->clearCallsFor(self::ALL_GOOD_INDEX));
         self::assertSame(
             [['elementId' => 904, 'title' => 'Stored before validation']],
             $backend->documentsFor(self::ALL_GOOD_INDEX),
         );
+    }
+
+    public function testDatabaseIndexIgnoresUnrelatedGlobalConfigErrorForTargetedAndRebuildAll(): void
+    {
+        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        $databaseIndex = $this->insertDatabaseIndex(self::GLOBAL_ERROR_DATABASE_INDEX, User::class, $siteId);
+        $configIndex = $this->indexModel(self::GLOBAL_ERROR_CONFIG_INDEX, User::class, $siteId);
+        $configIndex->source = 'config';
+
+        $validation = new ConfigIndexValidationResult(ConfigIndexValidationResult::STATUS_LOAD_FAILURE);
+        $validation->addFinding(
+            null,
+            ConfigIndexValidationResult::SEVERITY_ERROR,
+            'indices',
+            'Synthetic unrelated global config failure',
+        );
+        $this->swapPluginComponent(
+            'search-manager',
+            'configIndexValidator',
+            new FixedConfigIndexValidator($validation),
+        );
+
+        $backend = new RebuildPreflightRecordingBackendService();
+        $backend->seedDocument(self::GLOBAL_ERROR_DATABASE_INDEX, ['elementId' => 907, 'title' => 'Database document']);
+        $backend->seedDocument(self::GLOBAL_ERROR_CONFIG_INDEX, ['elementId' => 908, 'title' => 'Config document']);
+        $this->swapPluginComponent('search-manager', 'backend', $backend);
+
+        $this->withOnlySearchIndices([$databaseIndex, $configIndex], static function() use ($backend): void {
+            SearchManager::$plugin->dependencies->clearIndexCatalogue();
+            $plan = SearchManager::$plugin->dependencies->getRebuildAllPlan();
+            self::assertSame([self::GLOBAL_ERROR_DATABASE_INDEX], $plan['participants']);
+            self::assertSame('config-invalid', $plan['skips'][0]['reasonCode']);
+
+            (new RebuildIndexJob([
+                'indexHandle' => self::GLOBAL_ERROR_DATABASE_INDEX,
+            ]))->execute(Craft::$app->queue);
+            self::assertCount(1, $backend->clearCallsFor(self::GLOBAL_ERROR_DATABASE_INDEX));
+
+            (new RebuildIndexJob([
+                'indexHandles' => $plan['participants'],
+                'structuralSkips' => $plan['skips'],
+            ]))->execute(Craft::$app->queue);
+            self::assertCount(2, $backend->clearCallsFor(self::GLOBAL_ERROR_DATABASE_INDEX));
+
+            (new RebuildIndexJob([
+                'indexHandle' => self::GLOBAL_ERROR_CONFIG_INDEX,
+            ]))->execute(Craft::$app->queue);
+            self::assertSame([], $backend->clearCallsFor(self::GLOBAL_ERROR_CONFIG_INDEX));
+            self::assertSame(
+                [['elementId' => 908, 'title' => 'Config document']],
+                $backend->documentsFor(self::GLOBAL_ERROR_CONFIG_INDEX),
+            );
+        });
     }
 
     public function testMixedConfigLoadKeepsValidIndexAndDoesNotResurrectSkippedMetadata(): void
@@ -342,6 +391,7 @@ final class RebuildIndexJobPreflightTest extends TestCase
         }
 
         $mixedIndices = $this->mixedConfigIndices($siteId, (int)$user->id);
+        $this->insertFileBackend(self::MIXED_BACKEND);
         $this->withConfigFileIndices($mixedIndices);
         $validation = (new ConfigIndexValidator())->validateConfig(['indices' => $mixedIndices]);
         $this->swapPluginComponent(
@@ -353,16 +403,19 @@ final class RebuildIndexJobPreflightTest extends TestCase
         $backend = new RebuildPreflightRecordingBackendService();
         $this->swapPluginComponent('search-manager', 'backend', $backend);
         $loadedIndices = SearchIndex::loadFromConfig();
-
-        $error = $this->withOnlySearchIndices(
+        $plan = $this->withOnlySearchIndices(
             $loadedIndices,
-            fn(): \RuntimeException => $this->captureRuntimeException(static function(): void {
+            static fn(): array => SearchManager::$plugin->dependencies->getRebuildAllPlan(),
+        );
+        self::assertContains(self::MIXED_VALID_INDEX, $plan['participants'], json_encode($plan));
+
+        $this->withOnlySearchIndices(
+            $loadedIndices,
+            static function(): void {
                 (new RebuildIndexJob())->execute(Craft::$app->queue);
-            }),
+            },
         );
 
-        self::assertStringContainsString(self::MIXED_BROKEN_INDEX, $error->getMessage());
-        self::assertStringContainsString('(empty handle)', $error->getMessage());
         self::assertCount(1, $backend->clearCallsFor(self::MIXED_VALID_INDEX));
         self::assertNotSame([], $backend->batchCallsFor(self::MIXED_VALID_INDEX));
         self::assertNotSame([], $backend->documentsFor(self::MIXED_VALID_INDEX));
@@ -382,6 +435,43 @@ final class RebuildIndexJobPreflightTest extends TestCase
             'source' => 'database',
             'enabled' => true,
         ]);
+    }
+
+    private function insertDatabaseIndex(string $handle, string $elementType, int $siteId): SearchIndex
+    {
+        $now = Db::prepareDateForDb(new \DateTimeImmutable());
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_indices}}', [
+            'name' => $handle,
+            'handle' => $handle,
+            'elementType' => $elementType,
+            'siteId' => null,
+            'criteria' => '{}',
+            'transformerClass' => '',
+            'headingLevels' => null,
+            'language' => null,
+            'backend' => null,
+            'enabled' => 1,
+            'enableAnalytics' => 1,
+            'disableStopWords' => 0,
+            'skipEntriesWithoutUrl' => 0,
+            'splitSections' => 0,
+            'retrievableFields' => '["*"]',
+            'source' => 'database',
+            'documentCount' => 0,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+        $id = (int)Craft::$app->getDb()->getLastInsertID();
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_index_sites}}', [
+            'indexId' => $id,
+            'siteId' => $siteId,
+        ])->execute();
+        SearchIndex::clearCache();
+
+        $index = SearchIndex::findById($id);
+        self::assertNotNull($index);
+        return $index;
     }
 
     private function captureRuntimeException(callable $callback): \RuntimeException
@@ -407,6 +497,8 @@ final class RebuildIndexJobPreflightTest extends TestCase
             self::WRONG_TYPE_CLOSURE_INDEX,
             self::MIXED_BROKEN_INDEX,
             self::MIXED_VALID_INDEX,
+            self::GLOBAL_ERROR_DATABASE_INDEX,
+            self::GLOBAL_ERROR_CONFIG_INDEX,
         ];
         $indexIds = (new Query())
             ->select('id')
@@ -422,6 +514,9 @@ final class RebuildIndexJobPreflightTest extends TestCase
 
         Craft::$app->getDb()->createCommand()
             ->delete('{{%searchmanager_indices}}', ['handle' => $handles])
+            ->execute();
+        Craft::$app->getDb()->createCommand()
+            ->delete('{{%searchmanager_backends}}', ['handle' => self::MIXED_BACKEND])
             ->execute();
         foreach ($handles as $handle) {
             Craft::$app->getDb()->createCommand()
@@ -447,9 +542,26 @@ final class RebuildIndexJobPreflightTest extends TestCase
                 'elementType' => User::class,
                 'siteId' => $siteId,
                 'criteria' => static fn($query) => $query->id($userId),
+                'backend' => self::MIXED_BACKEND,
                 'enabled' => true,
             ],
         ];
+    }
+
+    private function insertFileBackend(string $handle): void
+    {
+        $now = Db::prepareDateForDb(new \DateTimeImmutable());
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_backends}}', [
+            'name' => 'Rebuild Preflight Backend',
+            'handle' => $handle,
+            'backendType' => 'file',
+            'settings' => '{}',
+            'enabled' => 1,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
 
     private function insertConfigMetadata(string $handle, int $documentCount): int
