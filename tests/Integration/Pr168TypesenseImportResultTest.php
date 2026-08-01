@@ -31,6 +31,7 @@ use Typesense\Collection;
 use Typesense\Collections;
 use Typesense\Documents;
 use yii\base\Event;
+use yii\log\Logger;
 
 /**
  * Regression coverage for PR1.68 Typesense import-result truth.
@@ -90,9 +91,9 @@ final class Pr168TypesenseImportResultTest extends TestCase
         int $failedElementId,
     ): void {
         [$backend] = $this->typesenseBackend($this->responseRows($outcomes));
-        $logOffset = count(Craft::getLogger()->messages);
-
-        $result = $backend->batchIndex(self::INDEX_HANDLE, $this->documents());
+        [$result, $loggedMessages] = $this->captureLoggerMessages(
+            fn(): bool => $backend->batchIndex(self::INDEX_HANDLE, $this->documents()),
+        );
 
         self::assertFalse($result);
         self::assertSame([[
@@ -102,7 +103,7 @@ final class Pr168TypesenseImportResultTest extends TestCase
             'error' => self::FIXED_ERROR,
         ]], $backend->getLastIndexingFailures());
         $this->assertNoSensitiveSentinels(serialize($backend->getLastIndexingFailures()));
-        $this->assertImportFailureLogIsAggregateAndSafe($logOffset);
+        $this->assertImportFailureLogIsAggregateAndSafe($loggedMessages);
     }
 
     public function testAllSuccessAllFailedEmptyAndConsecutiveCallsKeepExactTruth(): void
@@ -189,9 +190,9 @@ final class Pr168TypesenseImportResultTest extends TestCase
     public function testStructurallyInvalidResponseFailsEverySubmittedIdentity(mixed $response): void
     {
         [$backend] = $this->typesenseBackend($response);
-        $logOffset = count(Craft::getLogger()->messages);
-
-        $result = $backend->batchIndex(self::INDEX_HANDLE, $this->documents());
+        [$result, $loggedMessages] = $this->captureLoggerMessages(
+            fn(): bool => $backend->batchIndex(self::INDEX_HANDLE, $this->documents()),
+        );
 
         self::assertFalse($result);
         self::assertSame([
@@ -209,7 +210,54 @@ final class Pr168TypesenseImportResultTest extends TestCase
             ],
         ], $backend->getLastIndexingFailures());
         $this->assertNoSensitiveSentinels(serialize($backend->getLastIndexingFailures()));
-        $this->assertImportFailureLogIsAggregateAndSafe($logOffset);
+        $this->assertImportFailureLogIsAggregateAndSafe($loggedMessages);
+    }
+
+    public function testLoggerCaptureIsolatesThresholdAndRestoresExactState(): void
+    {
+        $logger = Craft::getLogger();
+        $initialMessages = $logger->messages;
+        $initialFlushInterval = $logger->flushInterval;
+
+        try {
+            $logger->messages = [];
+            $logger->flushInterval = 3;
+            $logger->log('PR1.71 before one', Logger::LEVEL_INFO, 'pr168-test');
+            $logger->log('PR1.71 before two', Logger::LEVEL_INFO, 'pr168-test');
+            $adjacentThresholdMessages = $logger->messages;
+
+            [$result, $captured] = $this->captureLoggerMessages(static function() use ($logger): string {
+                $logger->log('Typesense batch import reported document failures', Logger::LEVEL_ERROR, 'pr168-test');
+
+                return 'captured';
+            });
+
+            self::assertSame('captured', $result);
+            self::assertCount(1, $captured);
+            self::assertSame('Typesense batch import reported document failures', $captured[0][0] ?? null);
+            self::assertSame($adjacentThresholdMessages, $logger->messages);
+            self::assertSame(3, $logger->flushInterval);
+
+            $expected = new \RuntimeException('PR1.71 capture exception');
+            try {
+                $this->captureLoggerMessages(static function() use ($logger, $expected): never {
+                    $logger->log('PR1.71 exceptional capture', Logger::LEVEL_ERROR, 'pr168-test');
+                    throw $expected;
+                });
+                self::fail('The capture callback exception was not rethrown.');
+            } catch (\RuntimeException $caught) {
+                self::assertSame($expected, $caught);
+            }
+
+            self::assertSame($adjacentThresholdMessages, $logger->messages);
+            self::assertSame(3, $logger->flushInterval);
+        } finally {
+            $logger->messages = $initialMessages;
+            $logger->flushInterval = $initialFlushInterval;
+        }
+
+        self::assertSame($initialMessages, $logger->messages);
+        self::assertSame($initialFlushInterval, $logger->flushInterval);
     }
 
     public function testA5AccountsForAcceptedTypesenseSiblingDocumentsAndElements(): void
@@ -373,9 +421,35 @@ final class Pr168TypesenseImportResultTest extends TestCase
         return [$backend, $documents];
     }
 
-    private function assertImportFailureLogIsAggregateAndSafe(int $logOffset): void
+    /**
+     * @template T
+     * @param callable(): T $operation
+     * @return array{T, array<mixed>}
+     */
+    private function captureLoggerMessages(callable $operation): array
     {
-        $logged = serialize(array_slice(Craft::getLogger()->messages, $logOffset));
+        $logger = Craft::getLogger();
+        $messages = $logger->messages;
+        $flushInterval = $logger->flushInterval;
+        $logger->messages = [];
+        $logger->flushInterval = 0;
+
+        try {
+            $result = $operation();
+
+            return [$result, $logger->messages];
+        } finally {
+            $logger->messages = $messages;
+            $logger->flushInterval = $flushInterval;
+        }
+    }
+
+    /**
+     * @param array<mixed> $loggedMessages
+     */
+    private function assertImportFailureLogIsAggregateAndSafe(array $loggedMessages): void
+    {
+        $logged = serialize($loggedMessages);
         self::assertStringContainsString('Typesense batch import reported document failures', $logged);
         $this->assertNoSensitiveSentinels($logged);
     }

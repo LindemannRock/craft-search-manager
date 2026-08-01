@@ -122,8 +122,8 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         ];
 
         foreach ($dirs as $dir) {
-            if (!is_dir($dir)) {
-                @mkdir($dir, 0755, true);
+            if (!$this->ensureDirectory($dir)) {
+                throw new \RuntimeException('Unable to create the required File index directory.');
             }
         }
     }
@@ -495,13 +495,13 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency, string $language = 'en'): void
     {
-        $this->rememberFilenameKey($term);
+        $this->rememberFilenameKeyOrFail($term);
         $termPath = $this->getTermPath($term, $siteId);
         $termLanguagePath = $this->getTermLanguagePath($term, $siteId);
 
         $docId = $siteId . ':' . $elementId;
 
-        $this->updateJsonFile(
+        $this->updateJsonFileOrFail(
             $termPath,
             static function(mixed $current) use ($docId, $frequency): array {
                 $data = is_array($current) ? $current : [];
@@ -510,7 +510,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
                 return $data;
             },
         );
-        $this->updateJsonFile(
+        $this->updateJsonFileOrFail(
             $termLanguagePath,
             static function(mixed $current) use ($docId, $language): array {
                 $data = is_array($current) ? $current : [];
@@ -558,7 +558,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         $termLanguagePath = $this->getTermLanguagePath($term, $siteId);
         $docId = $siteId . ':' . $elementId;
 
-        $this->updateJsonFile(
+        if (!$this->updateJsonFile(
             $termPath,
             static function(mixed $current) use ($docId): array {
                 $data = is_array($current) ? $current : [];
@@ -566,8 +566,10 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
                 return $data;
             },
-        );
-        $this->updateJsonFile(
+        )) {
+            throw new \RuntimeException('Unable to update required File term storage.');
+        }
+        if (!$this->updateJsonFile(
             $termLanguagePath,
             static function(mixed $current) use ($docId): array {
                 $data = is_array($current) ? $current : [];
@@ -575,7 +577,9 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
                 return $data;
             },
-        );
+        )) {
+            throw new \RuntimeException('Unable to update required File term-language storage.');
+        }
     }
 
     public function storeTermDocumentByKey(string $term, int $siteId, int $elementId, string $documentKey, int $frequency, string $language = 'en'): void
@@ -585,14 +589,15 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             return;
         }
 
-        $this->rememberFilenameKey($term);
+        $this->rememberFilenameKeyOrFail($term);
+        $this->rememberFilenameKeyOrFail($documentKey);
         $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
 
         $termPath = $this->getTermPath($term, $siteId);
         $termLanguagePath = $this->getTermLanguagePath($term, $siteId);
         $docId = $siteId . ':' . $documentKey;
 
-        $this->updateJsonFile(
+        $this->updateJsonFileOrFail(
             $termPath,
             static function(mixed $current) use ($docId, $frequency): array {
                 $data = is_array($current) ? $current : [];
@@ -601,7 +606,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
                 return $data;
             },
         );
-        $this->updateJsonFile(
+        $this->updateJsonFileOrFail(
             $termLanguagePath,
             static function(mixed $current) use ($docId, $language): array {
                 $data = is_array($current) ? $current : [];
@@ -624,7 +629,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         $termLanguagePath = $this->getTermLanguagePath($term, $siteId);
         $docId = $siteId . ':' . $documentKey;
 
-        $this->updateJsonFile(
+        if (!$this->updateJsonFile(
             $termPath,
             static function(mixed $current) use ($docId): array {
                 $data = is_array($current) ? $current : [];
@@ -632,8 +637,10 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
                 return $data;
             },
-        );
-        $this->updateJsonFile(
+        )) {
+            throw new \RuntimeException('Unable to update required File term storage.');
+        }
+        if (!$this->updateJsonFile(
             $termLanguagePath,
             static function(mixed $current) use ($docId): array {
                 $data = is_array($current) ? $current : [];
@@ -641,7 +648,9 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
                 return $data;
             },
-        );
+        )) {
+            throw new \RuntimeException('Unable to update required File term-language storage.');
+        }
     }
 
     /**
@@ -669,14 +678,14 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             }
 
             // Read serialized data
-            $data = $this->readFile($file);
+            $data = $this->readFile($file, true);
             if ($language !== null && is_array($data)) {
                 $termSiteId = $siteId ?? $this->extractSiteIdFromTermFilename(basename($file));
                 if ($termSiteId === null) {
                     continue;
                 }
 
-                $postingLanguages = $this->readFile($this->getTermLanguagePath($term, $termSiteId));
+                $postingLanguages = $this->readFile($this->getTermLanguagePath($term, $termSiteId), true);
                 $data = array_intersect_key(
                     $data,
                     array_filter(
@@ -712,7 +721,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     public function storeTitleTerms(int $siteId, int $elementId, array $titleTerms): void
     {
         $titlePath = $this->getTitlePath($siteId, $elementId);
-        $this->writeFile($titlePath, $titleTerms);
+        $this->writeFileOrFail($titlePath, $titleTerms);
 
         $this->logDebug('Stored title terms', [
             'site_id' => $siteId,
@@ -756,9 +765,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     {
         $titlePath = $this->getTitlePath($siteId, $elementId);
 
-        if (file_exists($titlePath)) {
-            @unlink($titlePath);
-        }
+        $this->deleteFileOrFail($titlePath);
     }
 
     public function storeTitleTermsByKey(int $siteId, int $elementId, string $documentKey, array $titleTerms): void
@@ -768,9 +775,9 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             return;
         }
 
-        $this->rememberFilenameKey($documentKey);
+        $this->rememberFilenameKeyOrFail($documentKey);
         $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
-        $this->writeFile($this->getTitlePathByKey($siteId, $documentKey), $titleTerms);
+        $this->writeFileOrFail($this->getTitlePathByKey($siteId, $documentKey), $titleTerms);
     }
 
     public function getTitleTermsBatchByKeys(int $siteId, array $documentKeys): array
@@ -790,9 +797,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     public function deleteTitleTermsByKey(int $siteId, string $documentKey): void
     {
         $titlePath = $this->getTitlePathByKey($siteId, $documentKey);
-        if (file_exists($titlePath)) {
-            @unlink($titlePath);
-        }
+        $this->deleteFileOrFail($titlePath);
     }
 
     // =========================================================================
@@ -896,7 +901,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             $elementPath = $this->getElementPath($siteId, (int)$elementId);
 
             if (file_exists($elementPath)) {
-                $data = $this->readFile($elementPath);
+                $data = $this->readFile($elementPath, true);
                 if (!empty($data)) {
                     $result[(int)$elementId] = [
                         'title' => $data['title'] ?? '',
@@ -1056,11 +1061,11 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function storeTermNgrams(string $term, array $ngrams, int $siteId): void
     {
-        $this->rememberFilenameKey($term);
+        $this->rememberFilenameKeyOrFail($term);
 
         $ngramDir = $this->basePath . '/ngrams/site' . $siteId;
-        if (!is_dir($ngramDir)) {
-            @mkdir($ngramDir, 0755, true);
+        if (!$this->ensureDirectory($ngramDir)) {
+            throw new \RuntimeException('Unable to create the required File ngram directory.');
         }
 
         $ngramPath = $ngramDir . '/' . $this->sanitizeFilename($term) . '.dat';
@@ -1069,7 +1074,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             $this->removeTermFromNgramBuckets($term, $oldNgrams, $siteId);
         }
 
-        $this->writeFile($ngramPath, $ngrams);
+        $this->writeFileOrFail($ngramPath, $ngrams);
         $this->addTermToNgramBuckets($term, $ngrams, $siteId);
 
         $this->logDebug('Stored n-grams', [
@@ -1100,12 +1105,9 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     {
         $ngramPath = $this->basePath . '/ngrams/site' . $siteId . '/' . $this->sanitizeFilename($term) . '.dat';
 
-        $storedNgrams = file_exists($ngramPath) ? $this->readFile($ngramPath) : null;
+        $storedNgrams = file_exists($ngramPath) ? $this->readFile($ngramPath, true) : null;
         $this->removeTermFromNgramBuckets($term, is_array($storedNgrams) ? $storedNgrams : $ngrams, $siteId);
-
-        if (file_exists($ngramPath)) {
-            @unlink($ngramPath);
-        }
+        $this->deleteFileOrFail($ngramPath);
     }
 
     /**
@@ -1180,10 +1182,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
         $files = [];
         foreach ($patterns as $pattern) {
-            $matches = glob($pattern);
-            if (is_array($matches)) {
-                $files = array_merge($files, $matches);
-            }
+            $files = array_merge($files, $this->globFilesOrFail($pattern));
         }
 
         return array_values(array_unique($files));
@@ -1195,12 +1194,12 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void
     {
         $oldRows = $this->readCompoundRows($siteId, $elementId);
-        if (!empty($oldRows)) {
-            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        if (!empty($oldRows) && !$this->applyCompoundAggregateDelta($siteId, $oldRows, -1)) {
+            throw new \RuntimeException('Unable to update required File compound aggregates.');
         }
 
         if (empty($suggestions)) {
-            @unlink($this->getCompoundPath($siteId, $elementId));
+            $this->deleteFileOrFail($this->getCompoundPath($siteId, $elementId));
             return;
         }
 
@@ -1215,8 +1214,10 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             ];
         }
 
-        $this->writeFile($this->getCompoundPath($siteId, $elementId), $rows);
-        $this->applyCompoundAggregateDelta($siteId, $rows, 1);
+        $this->writeFileOrFail($this->getCompoundPath($siteId, $elementId), $rows);
+        if (!$this->applyCompoundAggregateDelta($siteId, $rows, 1)) {
+            throw new \RuntimeException('Unable to update required File compound aggregates.');
+        }
     }
 
     /**
@@ -1225,11 +1226,11 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     public function deleteCompoundSuggestions(int $siteId, int $elementId): void
     {
         $oldRows = $this->readCompoundRows($siteId, $elementId);
-        if (!empty($oldRows)) {
-            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        if (!empty($oldRows) && !$this->applyCompoundAggregateDelta($siteId, $oldRows, -1)) {
+            throw new \RuntimeException('Unable to update required File compound aggregates.');
         }
 
-        @unlink($this->getCompoundPath($siteId, $elementId));
+        $this->deleteFileOrFail($this->getCompoundPath($siteId, $elementId));
     }
 
     public function storeCompoundSuggestionsByKey(int $siteId, int $elementId, string $documentKey, array $suggestions, string $language = 'en'): void
@@ -1240,15 +1241,16 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         }
 
         $oldRows = $this->readCompoundRowsByKey($siteId, $documentKey);
-        if (!empty($oldRows)) {
-            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        if (!empty($oldRows) && !$this->applyCompoundAggregateDelta($siteId, $oldRows, -1)) {
+            throw new \RuntimeException('Unable to update required File compound aggregates.');
         }
 
         if (empty($suggestions)) {
-            @unlink($this->getCompoundPathByKey($siteId, $documentKey));
+            $this->deleteFileOrFail($this->getCompoundPathByKey($siteId, $documentKey));
             return;
         }
 
+        $this->rememberFilenameKeyOrFail($documentKey);
         $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
 
         $rows = [];
@@ -1262,18 +1264,20 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             ];
         }
 
-        $this->writeFile($this->getCompoundPathByKey($siteId, $documentKey), $rows);
-        $this->applyCompoundAggregateDelta($siteId, $rows, 1);
+        $this->writeFileOrFail($this->getCompoundPathByKey($siteId, $documentKey), $rows);
+        if (!$this->applyCompoundAggregateDelta($siteId, $rows, 1)) {
+            throw new \RuntimeException('Unable to update required File compound aggregates.');
+        }
     }
 
     public function deleteCompoundSuggestionsByKey(int $siteId, string $documentKey): void
     {
         $oldRows = $this->readCompoundRowsByKey($siteId, $documentKey);
-        if (!empty($oldRows)) {
-            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        if (!empty($oldRows) && !$this->applyCompoundAggregateDelta($siteId, $oldRows, -1)) {
+            throw new \RuntimeException('Unable to update required File compound aggregates.');
         }
 
-        @unlink($this->getCompoundPathByKey($siteId, $documentKey));
+        $this->deleteFileOrFail($this->getCompoundPathByKey($siteId, $documentKey));
     }
 
     public function getDocumentKeysByParent(int $siteId, int $elementId): array
@@ -1352,15 +1356,19 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     public function updateMetadata(int $siteId, int $docLength, bool $isAddition): void
     {
-        $this->updateJsonFile(
+        if (!$this->updateJsonFile(
             $this->getMetaPath($siteId, 'doc_count'),
             static fn(mixed $current): int => max(0, (int)$current + ($isAddition ? 1 : -1))
-        );
+        )) {
+            throw new \RuntimeException('Unable to update required File document-count metadata.');
+        }
 
-        $this->updateJsonFile(
+        if (!$this->updateJsonFile(
             $this->getMetaPath($siteId, 'total_length'),
             static fn(mixed $current): int => max(1, (int)$current + ($isAddition ? $docLength : -$docLength))
-        );
+        )) {
+            throw new \RuntimeException('Unable to update required File total-length metadata.');
+        }
     }
 
     // =========================================================================
@@ -1389,7 +1397,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
             function() use ($siteId): void {
                 $compoundFiles = $this->globFilesOrFail($this->basePath . '/compounds/' . $siteId . '_*.dat');
                 foreach ($compoundFiles as $file) {
-                    $rows = $this->readFile($file);
+                    $rows = $this->readFile($file, true);
                     if (
                         is_array($rows)
                         && !$this->applyCompoundAggregateDelta(
@@ -1762,8 +1770,8 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     {
         $lockPath = $this->getManifestLockPath();
         $lockDirectory = dirname($lockPath);
-        if (!is_dir($lockDirectory)) {
-            @mkdir($lockDirectory, 0755, true);
+        if (!$this->ensureDirectory($lockDirectory)) {
+            throw new \RuntimeException('Unable to create the File index manifest lock directory.');
         }
 
         $handle = @fopen($lockPath, 'c+');
@@ -1920,38 +1928,51 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      * Uses JSON for safe deserialization (no object injection risk).
      *
      * @param string $path File path
+     * @param bool $required Whether absence is a storage failure
      * @return mixed Decoded data or null
      */
-    private function readFile(string $path)
+    private function readFile(string $path, bool $required = false)
     {
-        $handle = @fopen($path, 'rb');
-        if ($handle === false) {
+        if (!file_exists($path) && !is_link($path)) {
+            if ($required) {
+                throw new \RuntimeException('Required File index storage is missing.');
+            }
+
             return null;
         }
 
+        $handle = @fopen($path, 'rb');
+        if ($handle === false) {
+            throw new \RuntimeException('Unable to open existing File index storage.');
+        }
+
+        $locked = false;
         try {
             if (!flock($handle, LOCK_SH)) {
-                return null;
+                throw new \RuntimeException('Unable to lock existing File index storage for reading.');
             }
+            $locked = true;
 
-            $contents = stream_get_contents($handle);
+            $contents = @stream_get_contents($handle);
+            if ($contents === false) {
+                throw new \RuntimeException('Unable to read existing File index storage.');
+            }
         } finally {
-            flock($handle, LOCK_UN);
+            if ($locked) {
+                flock($handle, LOCK_UN);
+            }
             fclose($handle);
         }
 
-        if ($contents === false || $contents === '') {
-            return null;
+        if ($contents === '') {
+            throw new \RuntimeException('Existing File index storage is empty.');
         }
 
-        $data = json_decode($contents, true);
-
-        // Return null on JSON decode failure
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return null;
+        try {
+            return json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new \RuntimeException('Unable to decode existing File index storage.', 0, $e);
         }
-
-        return $data;
     }
 
     /**
@@ -1966,8 +1987,8 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     private function writeFile(string $path, $data): bool
     {
         $dir = dirname($path);
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0755, true);
+        if (!$this->ensureDirectory($dir)) {
+            return false;
         }
 
         $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -1978,13 +1999,18 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
         $result = @file_put_contents($path, $json, LOCK_EX);
 
-        return $result !== false;
+        return $result === strlen($json);
+    }
+
+    private function ensureDirectory(string $directory): bool
+    {
+        return is_dir($directory) || @mkdir($directory, 0755, true) || is_dir($directory);
     }
 
     private function writeFileOrFail(string $path, mixed $data): void
     {
         if (!$this->writeFile($path, $data)) {
-            throw new \RuntimeException('Unable to write File index storage at: ' . $path);
+            throw new \RuntimeException('Unable to write required File index storage.');
         }
     }
 
@@ -1995,7 +2021,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         }
 
         if (!@unlink($path)) {
-            throw new \RuntimeException('Unable to delete File index storage at: ' . $path);
+            throw new \RuntimeException('Unable to delete required File index storage.');
         }
     }
 
@@ -2145,27 +2171,35 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     private function updateJsonFile(string $path, callable $update): bool
     {
         $dir = dirname($path);
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0755, true);
+        if (!$this->ensureDirectory($dir)) {
+            return false;
         }
 
+        $existed = file_exists($path) || is_link($path);
         $handle = @fopen($path, 'c+');
         if ($handle === false) {
             return false;
         }
 
+        $locked = false;
         try {
             if (!flock($handle, LOCK_EX)) {
                 return false;
             }
+            $locked = true;
 
-            $contents = stream_get_contents($handle);
+            $contents = @stream_get_contents($handle);
+            if ($contents === false || ($existed && $contents === '')) {
+                return false;
+            }
+
             $current = null;
-            if (is_string($contents) && $contents !== '') {
+            if ($contents !== '') {
                 $decoded = json_decode($contents, true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $current = $decoded;
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return false;
                 }
+                $current = $decoded;
             }
 
             $json = json_encode($update($current), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -2173,12 +2207,29 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
                 return false;
             }
 
-            rewind($handle);
-            ftruncate($handle, 0);
-            return fwrite($handle, $json) !== false;
+            if (!rewind($handle)) {
+                return false;
+            }
+            if (!ftruncate($handle, 0)) {
+                return false;
+            }
+
+            return fwrite($handle, $json) === strlen($json);
         } finally {
-            flock($handle, LOCK_UN);
+            if ($locked) {
+                flock($handle, LOCK_UN);
+            }
             fclose($handle);
+        }
+    }
+
+    /**
+     * @param callable(mixed): mixed $update
+     */
+    private function updateJsonFileOrFail(string $path, callable $update): void
+    {
+        if (!$this->updateJsonFile($path, $update)) {
+            throw new \RuntimeException('Unable to update required File index storage.');
         }
     }
 
@@ -2244,7 +2295,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         }
 
         if (str_starts_with($term, self::HASHED_FILENAME_PREFIX)) {
-            $metadata = $this->readFile($this->basePath . '/keys/' . $term . '.dat');
+            $metadata = $this->readFile($this->basePath . '/keys/' . $term . '.dat', true);
             if (is_array($metadata) && isset($metadata['value']) && is_string($metadata['value'])) {
                 return $metadata['value'];
             }
@@ -2318,7 +2369,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     {
         $ngramCount = count($ngrams);
         foreach (array_values(array_unique($ngrams)) as $ngram) {
-            $this->updateJsonFile(
+            $this->updateJsonFileOrFail(
                 $this->getNgramBucketPath($siteId, (string)$ngram),
                 static function(mixed $current) use ($term, $ngramCount): array {
                     $bucket = is_array($current) ? $current : [];
@@ -2334,7 +2385,7 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     {
         foreach (array_values(array_unique($ngrams)) as $ngram) {
             $path = $this->getNgramBucketPath($siteId, (string)$ngram);
-            $this->updateJsonFile(
+            if (!$this->updateJsonFile(
                 $path,
                 static function(mixed $current) use ($term): array {
                     $bucket = is_array($current) ? $current : [];
@@ -2342,7 +2393,9 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
 
                     return $bucket;
                 },
-            );
+            )) {
+                throw new \RuntimeException('Unable to update required File ngram bucket storage.');
+            }
         }
     }
 
@@ -2492,7 +2545,12 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         }
 
         $languages = [];
-        foreach (array_diff(scandir($dir) ?: [], ['.', '..']) as $languageDir) {
+        $entries = scandir($dir);
+        if (!is_array($entries)) {
+            throw new \RuntimeException('Unable to enumerate existing File compound index storage.');
+        }
+
+        foreach (array_diff($entries, ['.', '..']) as $languageDir) {
             if (is_dir($dir . '/' . $languageDir)) {
                 $languages[] = $this->extractTermFromFilename($languageDir);
             }
