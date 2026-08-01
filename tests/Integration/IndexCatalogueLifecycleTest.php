@@ -17,18 +17,23 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use craft\web\Request;
 use craft\web\View;
+use lindemannrock\searchmanager\backends\MySqlBackend;
 use lindemannrock\searchmanager\controllers\ApiKeysController;
 use lindemannrock\searchmanager\controllers\IndicesController;
+use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
+use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\ConfigIndexValidator;
 use lindemannrock\searchmanager\services\DependencyService;
 use lindemannrock\searchmanager\tests\TestCase;
+use lindemannrock\searchmanager\variables\SearchManagerVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -235,6 +240,129 @@ final class IndexCatalogueLifecycleTest extends TestCase
         self::assertArrayNotHasKey('label', $catalogue[$handle]);
         self::assertCount(1, $options);
         self::assertSame("Effective Config Name ({$handle})", $options[0]['label']);
+    }
+
+    public function testAvailableIndexProjectionPreservesModelsOrderingAndCatalogueEligibility(): void
+    {
+        $database = self::PREFIX . '-available-database';
+        $disabled = self::PREFIX . '-available-disabled';
+        $collision = self::PREFIX . '-available-collision';
+        $healthy = self::PREFIX . '-available-healthy';
+        $warning = self::PREFIX . '-available-warning';
+        $error = self::PREFIX . '-available-error';
+        $dependencyError = self::PREFIX . '-available-dependency-error';
+        $unresolved = self::PREFIX . '-available-unresolved';
+
+        $this->insertIndex($database, 'Available Database');
+        $this->insertIndex($disabled, 'Disabled Database', false);
+        $this->insertIndex($collision, 'Shadowed Database');
+        $this->setSearchManagerConfig([
+            'indices' => [
+                $healthy => [
+                    'name' => 'Healthy Config',
+                    'elementType' => Entry::class,
+                    'enabled' => true,
+                ],
+                $warning => [
+                    'name' => 'Warning Config',
+                    'elementType' => Entry::class,
+                    'enabled' => true,
+                ],
+                $error => [
+                    'name' => 'Error Config',
+                    'elementType' => Entry::class,
+                    'enabled' => true,
+                ],
+                $dependencyError => [
+                    'name' => 'Dependency Error Config',
+                    'elementType' => \stdClass::class,
+                    'enabled' => true,
+                ],
+                $unresolved => 'not-an-index-definition',
+                $collision => [
+                    'name' => 'Effective Config',
+                    'elementType' => Entry::class,
+                    'enabled' => true,
+                ],
+            ],
+        ]);
+
+        $validation = new ConfigIndexValidationResult(ConfigIndexValidationResult::STATUS_PRESENT);
+        $validation->addFinding(
+            $warning,
+            ConfigIndexValidationResult::SEVERITY_WARNING,
+            'name',
+            'Synthetic warning-only configuration.',
+        );
+        $validation->addFinding(
+            $error,
+            ConfigIndexValidationResult::SEVERITY_ERROR,
+            'criteria',
+            'Synthetic configuration error.',
+        );
+        $this->swapPluginComponent(
+            'search-manager',
+            'configIndexValidator',
+            new FixedCatalogueConfigIndexValidator($validation),
+        );
+        $backendService = new AvailableIndicesRecordingBackendService();
+        $this->swapPluginComponent('search-manager', 'backend', $backendService);
+        $this->clearCatalogue();
+
+        $allIndices = SearchIndex::findAll();
+        $catalogue = SearchManager::$plugin->dependencies->getIndexCatalogue();
+        $expectedAvailable = array_values(array_filter(
+            $allIndices,
+            static fn(SearchIndex $index): bool => ($catalogue[$index->handle]['available'] ?? false)
+                && ($catalogue[$index->handle]['referenceable'] ?? false),
+        ));
+        $available = SearchManager::$plugin->dependencies->getAvailableIndices();
+        $variable = new SearchManagerVariable();
+
+        self::assertSame($allIndices, $variable->getIndices());
+        self::assertSame($expectedAvailable, $available);
+        self::assertSame($available, $variable->getAvailableIndices());
+        self::assertContainsOnlyInstancesOf(SearchIndex::class, $available);
+
+        $availableHandles = array_map(
+            static fn(SearchIndex $index): string => $index->handle,
+            $available,
+        );
+        self::assertSame(
+            $availableHandles,
+            array_column(SearchManager::$plugin->dependencies->getTestIndexChoices()['choices'], 'value'),
+        );
+        self::assertContains($healthy, $availableHandles);
+        self::assertContains($warning, $availableHandles);
+        self::assertContains($database, $availableHandles);
+        self::assertContains($collision, $availableHandles);
+        self::assertNotContains($disabled, $availableHandles);
+        self::assertNotContains($error, $availableHandles);
+        self::assertNotContains($dependencyError, $availableHandles);
+        self::assertNotContains($unresolved, $availableHandles);
+        self::assertSame([], $backendService->backend->calls);
+
+        $effectiveCollision = array_values(array_filter(
+            $available,
+            static fn(SearchIndex $index): bool => $index->handle === $collision,
+        ));
+        self::assertCount(1, $effectiveCollision);
+        self::assertSame('config', $effectiveCollision[0]->source);
+        self::assertSame('Effective Config', $effectiveCollision[0]->name);
+
+        $projectionSource = $this->methodSource(DependencyService::class, 'getAvailableIndices');
+        self::assertStringContainsString('$this->getIndexCatalogue()', $projectionSource);
+        self::assertStringContainsString('SearchIndex::findAll()', $projectionSource);
+        self::assertStringNotContainsString('listIndices(', $projectionSource);
+        self::assertStringNotContainsString('isAvailable(', $projectionSource);
+        self::assertStringNotContainsString('getStatus(', $projectionSource);
+
+        $variableSource = $this->methodSource(SearchManagerVariable::class, 'getAvailableIndices');
+        self::assertStringContainsString(
+            'return SearchManager::$plugin->dependencies->getAvailableIndices();',
+            $variableSource,
+        );
+        self::assertStringNotContainsString('SearchIndex::findAll()', $variableSource);
     }
 
     public function testChoiceOptionsShareCanonicalLabelsAndRetainOnlySelectedUnavailableHandles(): void
@@ -744,6 +872,21 @@ final class IndexCatalogueLifecycleTest extends TestCase
 
         return $source;
     }
+
+    private function methodSource(string $class, string $method): string
+    {
+        $reflection = new \ReflectionMethod($class, $method);
+        $filename = $reflection->getFileName();
+        self::assertIsString($filename);
+        $lines = file($filename);
+        self::assertIsArray($lines);
+
+        return implode('', array_slice(
+            $lines,
+            $reflection->getStartLine() - 1,
+            $reflection->getEndLine() - $reflection->getStartLine() + 1,
+        ));
+    }
 }
 
 /**
@@ -761,5 +904,61 @@ final class FixedCatalogueConfigIndexValidator extends ConfigIndexValidator
     public function validate(): ConfigIndexValidationResult
     {
         return $this->result;
+    }
+}
+
+/**
+ * @since 5.54.0
+ */
+final class AvailableIndicesRecordingBackendService extends BackendService
+{
+    public AvailableIndicesProbeBackend $backend;
+
+    public function init(): void
+    {
+        parent::init();
+        $this->backend = new AvailableIndicesProbeBackend();
+    }
+
+    public function createBackendFromConfig(ConfiguredBackend $configuredBackend): ?BackendInterface
+    {
+        return $this->backend;
+    }
+}
+
+/**
+ * @since 5.54.0
+ */
+final class AvailableIndicesProbeBackend extends MySqlBackend
+{
+    /** @var list<string> */
+    public array $calls = [];
+
+    public function getName(): string
+    {
+        $this->calls[] = __FUNCTION__;
+
+        return parent::getName();
+    }
+
+    public function isAvailable(): bool
+    {
+        $this->calls[] = __FUNCTION__;
+
+        return parent::isAvailable();
+    }
+
+    public function getStatus(): array
+    {
+        $this->calls[] = __FUNCTION__;
+
+        return parent::getStatus();
+    }
+
+    public function listIndices(): array
+    {
+        $this->calls[] = __FUNCTION__;
+
+        return parent::listIndices();
     }
 }

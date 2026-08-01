@@ -103,6 +103,98 @@ final class Pr1Debt7SmokeAmendmentRegressionTest extends TestCase
         self::assertStringNotContainsString('craft.app.sites.getSiteById', $template);
     }
 
+    public function testProjectDevelopmentTemplatesUseOnlyAvailableConfiguredIndices(): void
+    {
+        $workspaceRoot = dirname(__DIR__, 4);
+        $templates = [
+            'templates/test-search.twig',
+            'templates/test-search-datastar.twig',
+            'templates/test-search-widget.twig',
+        ];
+
+        foreach ($templates as $path) {
+            $filename = $workspaceRoot . '/' . $path;
+            if (!is_file($filename)) {
+                self::markTestSkipped('Project development templates are unavailable in this checkout.');
+            }
+
+            $template = file_get_contents($filename);
+            self::assertIsString($template);
+            self::assertStringContainsString(
+                'craft.searchManager.getAvailableIndices()',
+                $template,
+                $path,
+            );
+            self::assertStringNotContainsString('craft.searchManager.getIndices()', $template, $path);
+            self::assertStringContainsString(
+                'indexRecords|map(index => index.handle)',
+                $template,
+                $path,
+            );
+        }
+
+        foreach (['templates/test-search.twig', 'templates/test-search-datastar.twig'] as $path) {
+            $template = file_get_contents($workspaceRoot . '/' . $path);
+            self::assertIsString($template);
+            self::assertStringContainsString(
+                "'all-sites' in indexHandles ? 'all-sites' : (indexHandles[0] ?? '')",
+                $template,
+            );
+            self::assertStringContainsString(
+                "activeIndex == '__all' or activeIndex in indexHandles ? activeIndex : initialIndex",
+                $template,
+            );
+            self::assertStringContainsString(
+                'craft.searchManager.searchMultiple(indexHandles,',
+                $template,
+            );
+        }
+
+        $widget = file_get_contents($workspaceRoot . '/templates/test-search-widget.twig');
+        self::assertIsString($widget);
+        self::assertStringContainsString("initialScope = indexHandles|length ? '__all' : ''", $widget);
+        self::assertStringContainsString(
+            "requestedScope == '__all' or requestedScope in indexHandles ? requestedScope : initialScope",
+            $widget,
+        );
+        self::assertStringContainsString(
+            "widgetScope == '__all' ? [] : (widgetScope ? [widgetScope] : [])",
+            $widget,
+        );
+        self::assertStringNotContainsString("widgetScope == '__all' ? indexHandles", $widget);
+        self::assertSame(3, substr_count($widget, 'indexHandles: customIndexHandles,'));
+    }
+
+    public function testProjectDevelopmentTemplatesRenderWithoutAQueryOrBackendWork(): void
+    {
+        $workspaceRoot = dirname(__DIR__, 4);
+        if (!is_file($workspaceRoot . '/templates/test-search.twig')) {
+            self::markTestSkipped('Project development templates are unavailable in this checkout.');
+        }
+
+        $this->withRequest('GET');
+        Craft::$app->getRequest()->setQueryParams([]);
+        $backend = $this->installStubBackend();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
+
+        foreach (['test-search', 'test-search-datastar'] as $template) {
+            $html = Craft::$app->getView()->renderTemplate(
+                $template,
+                [],
+                View::TEMPLATE_MODE_SITE,
+            );
+            self::assertStringContainsString('<!doctype html>', $html, $template);
+        }
+
+        $widgetSource = file_get_contents($workspaceRoot . '/templates/test-search-widget.twig');
+        self::assertIsString($widgetSource);
+        $twig = Craft::$app->getView()->getTwig();
+        $twig->parse($twig->tokenize(new \Twig\Source($widgetSource, 'test-search-widget')));
+        self::addToAssertionCount(1);
+
+        self::assertSame([], $backend->calls);
+    }
+
     public function testCanonicalTestChoiceProjectionCoversEffectiveEligibilityAndSiteScope(): void
     {
         $sites = Craft::$app->getSites()->getAllSites();

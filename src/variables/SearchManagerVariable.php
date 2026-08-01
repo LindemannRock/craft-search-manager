@@ -14,6 +14,7 @@ use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\helpers\TwigSearchOptionsHelper;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\web\assets\highlighter\SearchHighlighterAsset;
 
@@ -172,6 +173,17 @@ class SearchManagerVariable
     public function getIndices(): array
     {
         return \lindemannrock\searchmanager\models\SearchIndex::findAll();
+    }
+
+    /**
+     * Get configured indices available to normal consumers.
+     *
+     * @return list<SearchIndex>
+     * @since 5.54.0
+     */
+    public function getAvailableIndices(): array
+    {
+        return SearchManager::$plugin->dependencies->getAvailableIndices();
     }
 
     /**

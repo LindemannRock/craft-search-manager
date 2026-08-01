@@ -62,15 +62,57 @@ Search across multiple indices at once. Results are merged using the backend rel
 
 **Returns:** `array` with presented `hits` (each tagged with `index`), `total`, and `indices` count breakdown. Snippet options, `retrievableFields`, `analyticsSource`, `debugEnabled`, and `raw: true` behave the same as `search()`.
 
+## Index discovery
+
+Choose the index list that matches what you are building. Site selectors normally want `getAvailableIndices()`. Administration and diagnostics may need every effective configuration from `getIndices()`, while backend inventory tools use `listIndices()`.
+
+| Method | Returns | Provider contact |
+|--------|---------|------------------|
+| `getIndices()` | Every effective configured `SearchIndex` model | No |
+| `getAvailableIndices()` | Enabled, structurally available and referenceable configured `SearchIndex` models | No |
+| `listIndices()` | Physical indices or collections reported by the active backend | Possible |
+
 ### `getIndices()`
 
-Get all configured indices.
+Get every effective configured Search Manager index, including config-file and database-managed definitions. Config-file definitions win when the same handle also exists in the database. Disabled or structurally unavailable definitions can still appear, so use this method when you need the complete configuration rather than a user-selectable list.
 
 ```twig
-{% set indices = craft.searchManager.getIndices() %}
+{% for index in craft.searchManager.getIndices() %}
+    <li>{{ index.name }} ({{ index.handle }})</li>
+{% endfor %}
 ```
 
-**Returns:** `array` of index configuration data.
+**Returns:** `SearchIndex[]` in Search Manager's canonical configuration order. This method does not discover or contact provider indices.
+
+### `getAvailableIndices()` @since(5.54.0)
+
+Get the configured indices that normal search consumers can select. The result contains only enabled indices that Search Manager's canonical catalogue classifies as available and referenceable. Warning-only definitions remain included; disabled definitions, configuration errors, missing plugin dependencies, and unresolved definitions are excluded.
+
+```twig
+{% set availableIndices = craft.searchManager.getAvailableIndices() %}
+{% set availableHandles = availableIndices|map(index => index.handle) %}
+
+{% for index in availableIndices %}
+    <option value="{{ index.handle }}">{{ index.name }}</option>
+{% endfor %}
+```
+
+**Returns:** `SearchIndex[]`, preserving the same effective ordering and config-over-database precedence as `getIndices()`.
+
+> [!NOTE]
+> Available means Search Manager's catalogue regards the configured definition and its class dependencies as structurally usable. It is not a hosted-provider liveness check and does not contact the provider.
+
+### `listIndices()`
+
+List physical indices or collections reported by the active backend. This is a backend inventory operation, not a configured-index selector, and hosted implementations may contact their provider.
+
+```twig
+{% for index in craft.searchManager.listIndices() %}
+    <li>{{ index.name }} ({{ index.entries }} entries)</li>
+{% endfor %}
+```
+
+**Returns:** `array`; each row follows the selected backend's inventory shape.
 
 ## Autocomplete
 
@@ -268,18 +310,6 @@ Generate a backend-specific filter string from a key-value array.
 ```
 
 **Returns:** `string` — the filter in your backend's syntax.
-
-### `listIndices()`
-
-List all indices available in the backend.
-
-```twig
-{% for index in craft.searchManager.listIndices() %}
-    <li>{{ index.name }} ({{ index.entries }} entries)</li>
-{% endfor %}
-```
-
-**Returns:** `array`
 
 ### `withBackend(backendHandle)` @since(5.28.0)
 

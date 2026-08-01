@@ -624,6 +624,26 @@ class DependencyService extends Component
     }
 
     /**
+     * Return the configured indices available to normal consumers.
+     *
+     * @return list<SearchIndex>
+     * @since 5.54.0
+     */
+    public function getAvailableIndices(): array
+    {
+        $catalogue = $this->getIndexCatalogue();
+
+        return array_values(array_filter(
+            SearchIndex::findAll(),
+            static function(SearchIndex $index) use ($catalogue): bool {
+                $record = $catalogue[$index->handle] ?? null;
+
+                return $record !== null && $record['available'] && $record['referenceable'];
+            },
+        ));
+    }
+
+    /**
      * Build the CP Test selector from the canonical effective catalogue.
      *
      * Only enabled, referenceable indices are exposed. The companion site map
@@ -638,12 +658,12 @@ class DependencyService extends Component
      */
     public function getTestIndexChoices(): array
     {
+        $catalogue = $this->getIndexCatalogue();
         $choices = [];
         $indexSiteIds = [];
-        foreach ($this->getIndexCatalogue() as $handle => $record) {
-            if (!$record['available'] || !$record['referenceable']) {
-                continue;
-            }
+        foreach ($this->getAvailableIndices() as $index) {
+            $handle = $index->handle;
+            $record = $catalogue[$handle];
 
             $siteIds = $record['siteIds'];
             $choices[] = [
