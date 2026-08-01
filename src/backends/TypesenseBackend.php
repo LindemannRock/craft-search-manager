@@ -476,16 +476,19 @@ class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterfa
             $offset = $options['offset'] ?? null;
             $page = $options['page'] ?? null;
 
-            if ($limit !== null && (int) $limit > 0) {
-                $searchParams['per_page'] = (int) $limit;
-            }
+            unset($searchParams['limit'], $searchParams['offset'], $searchParams['page']);
+
             if ($page !== null) {
+                if ($limit !== null && (int) $limit > 0) {
+                    $searchParams['per_page'] = (int) $limit;
+                }
                 $searchParams['page'] = max(1, (int) $page + 1);
             } elseif ($offset !== null && $limit !== null && (int) $limit > 0) {
-                $searchParams['page'] = max(1, (int) floor(((int) $offset) / (int) $limit) + 1);
+                $searchParams['offset'] = (int) $offset;
+                $searchParams['limit'] = (int) $limit;
+            } elseif ($limit !== null && (int) $limit > 0) {
+                $searchParams['per_page'] = (int) $limit;
             }
-
-            unset($searchParams['limit'], $searchParams['offset'], $searchParams['page']);
 
             $results = $client->collections[$fullIndexName]->documents->search($searchParams);
 

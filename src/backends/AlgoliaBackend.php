@@ -453,16 +453,19 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             $offset = $options['offset'] ?? null;
             $page = $options['page'] ?? null;
 
-            if ($limit !== null && (int) $limit > 0) {
-                $searchParams['hitsPerPage'] = (int) $limit;
-            }
+            unset($searchParams['limit'], $searchParams['offset'], $searchParams['page']);
+
             if ($page !== null) {
+                if ($limit !== null && (int) $limit > 0) {
+                    $searchParams['hitsPerPage'] = (int) $limit;
+                }
                 $searchParams['page'] = (int) $page;
             } elseif ($offset !== null && $limit !== null && (int) $limit > 0) {
-                $searchParams['page'] = (int) floor(((int) $offset) / (int) $limit);
+                $searchParams['offset'] = (int) $offset;
+                $searchParams['length'] = (int) $limit;
+            } elseif ($limit !== null && (int) $limit > 0) {
+                $searchParams['hitsPerPage'] = (int) $limit;
             }
-
-            unset($searchParams['limit'], $searchParams['offset'], $searchParams['page']);
 
             $results = $client->searchSingleIndex($fullIndexName, $searchParams);
 
