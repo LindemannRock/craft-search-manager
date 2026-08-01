@@ -29,6 +29,10 @@ use lindemannrock\searchmanager\models\SearchIndex;
  */
 class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface, IndexCountBackendInterface
 {
+    private const TASK_MAX_RETRIES = 50;
+    private const TASK_RETRY_DELAY_MS = 100;
+    private const BATCH_FAILURE_CLASSIFICATION = 'Algolia batch task did not complete.';
+
     /**
      * Search Manager options that must not be forwarded to Algolia.
      */
@@ -128,7 +132,10 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             try {
                 $existed = $this->algoliaObjectExists($fullIndexName, $objectId);
 
-                $client->saveObject($fullIndexName, $data);
+                $response = $client->saveObject($fullIndexName, $data);
+                if (!$this->waitForTask($client, $fullIndexName, $response)) {
+                    throw new \RuntimeException('Algolia indexing task did not complete.');
+                }
                 $this->logDebug('Document indexed in Algolia', ['index' => $fullIndexName, 'id' => $objectId]);
                 return [
                     'success' => true,
@@ -161,12 +168,18 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             // Create composite objectID for multi-site uniqueness
             $items = array_map(fn($item) => $this->prepareDocument($indexName, $item), $items);
 
-            $client->saveObjects($fullIndexName, $items);
+            $responses = $client->saveObjects($fullIndexName, $items);
+            if (!$this->waitForTasks($client, $fullIndexName, $responses)) {
+                throw new \RuntimeException(self::BATCH_FAILURE_CLASSIFICATION);
+            }
             $this->logInfo('Batch indexed in Algolia', ['index' => $fullIndexName, 'count' => count($items)]);
             return true;
-        } catch (\Throwable $e) {
-            $this->logError('Failed to batch index in Algolia', ['error' => $e->getMessage()]);
-            $this->recordAlgoliaBatchFailures($fullIndexName, $items, $e->getMessage());
+        } catch (\Throwable) {
+            $this->logError('Failed to batch index in Algolia', [
+                'index' => $fullIndexName,
+                'count' => count($items),
+            ]);
+            $this->recordAlgoliaBatchFailures($items);
             return false;
         }
     }
@@ -183,7 +196,8 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
         $fullIndexName = $this->getFullIndexName($indexName);
 
         try {
-            $responses = $this->getClient()->deleteObjects($fullIndexName, $backendIds);
+            $client = $this->getClient();
+            $responses = $client->deleteObjects($fullIndexName, $backendIds);
             if (!is_array($responses) || $responses === []) {
                 $this->logError('Algolia batch deletion returned no task response', [
                     'index' => $fullIndexName,
@@ -192,14 +206,12 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
                 return false;
             }
 
-            foreach ($responses as $response) {
-                if (!is_array($response) || !isset($response['taskID'])) {
-                    $this->logError('Algolia batch deletion returned an invalid task response', [
-                        'index' => $fullIndexName,
-                    ]);
+            if (!$this->waitForTasks($client, $fullIndexName, $responses)) {
+                $this->logError('Algolia batch deletion task did not complete', [
+                    'index' => $fullIndexName,
+                ]);
 
-                    return false;
-                }
+                return false;
             }
 
             $this->logInfo('Batch deleted from Algolia', [
@@ -208,10 +220,9 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             ]);
 
             return $normalized['valid'];
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             $this->logError('Failed to batch delete from Algolia', [
                 'index' => $fullIndexName,
-                'error' => $e->getMessage(),
             ]);
 
             return false;
@@ -221,25 +232,13 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
     /**
      * @param list<array<string, mixed>> $items
      */
-    private function recordAlgoliaBatchFailures(string $fullIndexName, array $items, string $batchError): void
+    private function recordAlgoliaBatchFailures(array $items): void
     {
-        try {
-            $client = $this->getClient();
-            foreach ($items as $item) {
-                try {
-                    $client->saveObject($fullIndexName, $item);
-                } catch (\Throwable $e) {
-                    $this->recordIndexingFailure($item, $e->getMessage());
-                }
-            }
-        } catch (\Throwable) {
-            // Fall through to the batch-level failure records below.
-        }
-
-        if ($this->lastIndexingFailures === []) {
-            foreach ($items as $item) {
-                $this->recordIndexingFailure($item, $batchError);
-            }
+        foreach ($items as $item) {
+            $this->recordIndexingFailure([
+                'backendId' => $item['objectID'] ?? null,
+                'elementId' => $item['elementId'] ?? null,
+            ], self::BATCH_FAILURE_CLASSIFICATION);
         }
     }
 
@@ -303,7 +302,10 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
                 ];
             }
 
-            $client->deleteObject($fullIndexName, $documentId);
+            $response = $client->deleteObject($fullIndexName, $documentId);
+            if (!$this->waitForTask($client, $fullIndexName, $response)) {
+                throw new \RuntimeException('Algolia deletion task did not complete.');
+            }
             $this->logDebug('Document deleted from Algolia', ['index' => $fullIndexName, 'id' => $documentId]);
             return [
                 'success' => true,
@@ -336,7 +338,13 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
     protected function deleteByBackendId(string $indexName, string $backendId): bool
     {
         try {
-            $this->getClient()->deleteObject($this->getFullIndexName($indexName), $backendId);
+            $client = $this->getClient();
+            $fullIndexName = $this->getFullIndexName($indexName);
+            $response = $client->deleteObject($fullIndexName, $backendId);
+
+            if (!$this->waitForTask($client, $fullIndexName, $response)) {
+                return false;
+            }
 
             return true;
         } catch (NotFoundException) {
@@ -410,8 +418,6 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
         try {
             $client = $this->getSearchClient();
             $fullIndexName = $this->getFullIndexName($indexName);
-
-            $this->ensureFilterableAttributes($fullIndexName);
 
             // Filter out Search Manager internal options that Algolia doesn't understand.
             $searchParams = array_diff_key($options, array_flip(self::INTERNAL_SEARCH_OPTIONS));
@@ -675,7 +681,10 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
-            $client->clearObjects($fullIndexName);
+            $response = $client->clearObjects($fullIndexName);
+            if (!$this->waitForTask($client, $fullIndexName, $response)) {
+                return false;
+            }
             $this->logInfo('Cleared Algolia index', ['index' => $fullIndexName]);
             return true;
         } catch (\Throwable $e) {
@@ -866,8 +875,14 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
         try {
             $client = $this->getClient();
 
-            // Get current settings
-            $currentSettings = $client->getSettings($indexName);
+            // A settings update provisions a missing Algolia index. Treat
+            // confirmed absence as empty settings so first-write bootstrap is
+            // ordered before the dependent document mutation.
+            try {
+                $currentSettings = $client->getSettings($indexName);
+            } catch (NotFoundException) {
+                $currentSettings = [];
+            }
             $currentFacets = $currentSettings['attributesForFaceting'] ?? [];
             $cleanedFacets = array_values(array_filter(
                 $currentFacets,
@@ -916,7 +931,10 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             }
 
             if ($settingsUpdate !== []) {
-                $client->setSettings($indexName, $settingsUpdate);
+                $response = $client->setSettings($indexName, $settingsUpdate);
+                if (!$this->waitForTask($client, $indexName, $response)) {
+                    throw new \RuntimeException('Algolia settings task did not complete.');
+                }
             }
 
             $this->_configuredIndices[$indexName] = true;
@@ -934,8 +952,6 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
     {
         try {
             $fullIndexName = $this->getFullIndexName($indexName);
-            $this->ensureFilterableAttributes($fullIndexName);
-
             $params = [
                 'query' => '',
                 'hitsPerPage' => 0,
@@ -966,6 +982,56 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
 
             return null;
         }
+    }
+
+    private function waitForTask(SearchClient $client, string $indexName, mixed $response): bool
+    {
+        $taskId = $this->taskValue($response, 'taskID');
+        if ((!is_int($taskId) && !is_string($taskId)) || !ctype_digit((string)$taskId)) {
+            return false;
+        }
+
+        try {
+            $result = $client->waitForTask(
+                $indexName,
+                (int)$taskId,
+                [],
+                self::TASK_MAX_RETRIES,
+                self::TASK_RETRY_DELAY_MS,
+            );
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $this->taskValue($result, 'status') === 'published';
+    }
+
+    private function waitForTasks(SearchClient $client, string $indexName, mixed $responses): bool
+    {
+        if (!is_array($responses) || $responses === []) {
+            return false;
+        }
+
+        foreach ($responses as $response) {
+            if (!$this->waitForTask($client, $indexName, $response)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function taskValue(mixed $response, string $key): mixed
+    {
+        if (is_array($response)) {
+            return $response[$key] ?? null;
+        }
+
+        if ($response instanceof \ArrayAccess) {
+            return $response->offsetExists($key) ? $response[$key] : null;
+        }
+
+        return null;
     }
 
     /**

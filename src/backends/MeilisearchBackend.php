@@ -30,6 +30,10 @@ use Meilisearch\Contracts\SearchQuery;
  */
 class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInterface, IndexCountBackendInterface
 {
+    private const TASK_TIMEOUT_MS = 5000;
+    private const TASK_POLL_INTERVAL_MS = 50;
+    private const BATCH_FAILURE_CLASSIFICATION = 'Meilisearch batch task did not complete.';
+
     private ?Client $_adminClient = null;
     private ?Client $_searchClient = null;
 
@@ -117,7 +121,10 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
 
             try {
                 $existed = $this->meilisearchDocumentExists($index, $objectId);
-                $index->addDocuments([$data], 'objectID');
+                $response = $index->addDocuments([$data], 'objectID');
+                if (!$this->waitForTask($client, $response)) {
+                    throw new \RuntimeException('Meilisearch indexing task did not complete.');
+                }
 
                 $this->logDebug('Document indexed in Meilisearch', [
                     'index' => $fullIndexName,
@@ -158,7 +165,10 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             $items = array_map(fn($item) => $this->prepareDocument($indexName, $item), $items);
 
             $index = $client->index($fullIndexName);
-            $index->addDocuments($items, 'objectID');
+            $response = $index->addDocuments($items, 'objectID');
+            if (!$this->waitForTask($client, $response)) {
+                throw new \RuntimeException(self::BATCH_FAILURE_CLASSIFICATION);
+            }
 
             $this->logInfo('Batch indexed in Meilisearch', [
                 'index' => $fullIndexName,
@@ -166,11 +176,12 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             ]);
 
             return true;
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             $this->logError('Failed to batch index in Meilisearch', [
-                'error' => $e->getMessage(),
+                'index' => $fullIndexName,
+                'count' => count($items),
             ]);
-            $this->recordMeilisearchBatchFailures($fullIndexName, $items, $e->getMessage());
+            $this->recordMeilisearchBatchFailures($items);
             return false;
         }
     }
@@ -187,11 +198,12 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
         $fullIndexName = $this->getFullIndexName($indexName);
 
         try {
-            $response = $this->getAdminClient()
+            $client = $this->getAdminClient();
+            $response = $client
                 ->index($fullIndexName)
                 ->deleteDocuments($backendIds);
-            if (!isset($response['taskUid'])) {
-                $this->logError('Meilisearch batch deletion returned an invalid task response', [
+            if (!$this->waitForTask($client, $response)) {
+                $this->logError('Meilisearch batch deletion task did not complete', [
                     'index' => $fullIndexName,
                 ]);
 
@@ -204,10 +216,9 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             ]);
 
             return $normalized['valid'];
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             $this->logError('Failed to batch delete from Meilisearch', [
                 'index' => $fullIndexName,
-                'error' => $e->getMessage(),
             ]);
 
             return false;
@@ -217,25 +228,13 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
     /**
      * @param list<array<string, mixed>> $items
      */
-    private function recordMeilisearchBatchFailures(string $fullIndexName, array $items, string $batchError): void
+    private function recordMeilisearchBatchFailures(array $items): void
     {
-        try {
-            $index = $this->getAdminClient()->index($fullIndexName);
-            foreach ($items as $item) {
-                try {
-                    $index->addDocuments([$item], 'objectID');
-                } catch (\Throwable $e) {
-                    $this->recordIndexingFailure($item, $e->getMessage());
-                }
-            }
-        } catch (\Throwable) {
-            // Fall through to the batch-level failure records below.
-        }
-
-        if ($this->lastIndexingFailures === []) {
-            foreach ($items as $item) {
-                $this->recordIndexingFailure($item, $batchError);
-            }
+        foreach ($items as $item) {
+            $this->recordIndexingFailure([
+                'backendId' => $item['objectID'] ?? null,
+                'elementId' => $item['elementId'] ?? null,
+            ], self::BATCH_FAILURE_CLASSIFICATION);
         }
     }
 
@@ -301,7 +300,10 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
                 ];
             }
 
-            $index->deleteDocument($documentId);
+            $response = $index->deleteDocument($documentId);
+            if (!$this->waitForTask($client, $response)) {
+                throw new \RuntimeException('Meilisearch deletion task did not complete.');
+            }
 
             $this->logDebug('Document deleted from Meilisearch', [
                 'index' => $fullIndexName,
@@ -345,9 +347,14 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
     protected function deleteByBackendId(string $indexName, string $backendId): bool
     {
         try {
-            $this->getAdminClient()
+            $client = $this->getAdminClient();
+            $response = $client
                 ->index($this->getFullIndexName($indexName))
                 ->deleteDocument($backendId);
+
+            if (!$this->waitForTask($client, $response)) {
+                return false;
+            }
 
             return true;
         } catch (\Meilisearch\Exceptions\ApiException $e) {
@@ -421,8 +428,6 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
         try {
             $client = $this->getSearchClient();
             $fullIndexName = $this->getFullIndexName($indexName);
-
-            $this->ensureFilterableAttributes($fullIndexName);
 
             // Build Meilisearch-compatible search options
             $searchParams = [
@@ -510,7 +515,6 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
     {
         try {
             $fullIndexName = $this->getFullIndexName($indexName);
-            $this->ensureFilterableAttributes($fullIndexName);
             $index = $this->getAdminClient()->index($fullIndexName);
 
             if ($siteId === null) {
@@ -594,11 +598,23 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             $fullIndexName = $this->getFullIndexName($indexName);
 
             $index = $client->index($fullIndexName);
-            $index->deleteAllDocuments();
+            $response = $index->deleteAllDocuments();
+            if (!$this->waitForTask($client, $response)) {
+                return false;
+            }
 
             $this->logInfo('Cleared Meilisearch index', ['index' => $fullIndexName]);
 
             return true;
+        } catch (\Meilisearch\Exceptions\ApiException $e) {
+            if ($e->httpStatus === 404) {
+                return true;
+            }
+
+            $this->logError('Failed to clear Meilisearch index', [
+                'error' => $e->getMessage(),
+            ]);
+            return false;
         } catch (\Throwable $e) {
             $this->logError('Failed to clear Meilisearch index', [
                 'error' => $e->getMessage(),
@@ -974,13 +990,29 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
 
         try {
             $client = $this->getAdminClient();
-            $index = $client->index($indexName);
+            $created = false;
+            try {
+                $index = $client->getIndex($indexName);
+            } catch (\Meilisearch\Exceptions\ApiException $e) {
+                if ($e->httpStatus !== 404) {
+                    throw $e;
+                }
 
-            // Get current filterable attributes
-            $currentFilterable = $index->getFilterableAttributes();
+                $response = $client->createIndex($indexName, ['primaryKey' => 'objectID']);
+                if (!$this->waitForTask($client, $response)) {
+                    throw new \RuntimeException('Meilisearch index creation task did not complete.');
+                }
+
+                $index = $client->index($indexName);
+                $created = true;
+            }
+
+            // A newly created index has provider defaults, so no settings read
+            // may precede its completed creation task.
+            $currentFilterable = $created ? [] : $index->getFilterableAttributes();
             $cleanedFilterable = array_values(array_filter(
                 $currentFilterable,
-                static fn($attribute): bool => $attribute !== 'elementType',
+                static fn($attribute): bool => !is_string($attribute) || $attribute !== 'elementType',
             ));
 
             // Required filterable attributes for Search Manager
@@ -988,12 +1020,23 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
             $requiredSearchable = SearchRecordProjectionHelper::providerSearchableAttributes();
 
             // Check if already configured
-            $missingAttributes = array_diff($requiredFilterable, $cleanedFilterable);
+            $missingAttributes = array_filter(
+                $requiredFilterable,
+                static fn(string $required): bool => !in_array($required, $cleanedFilterable, true),
+            );
 
             if (!empty($missingAttributes) || $cleanedFilterable !== $currentFilterable) {
                 // Add missing attributes while preserving existing ones
-                $newFilterable = array_values(array_unique(array_merge($cleanedFilterable, $requiredFilterable)));
-                $index->updateFilterableAttributes($newFilterable);
+                $newFilterable = $cleanedFilterable;
+                foreach ($requiredFilterable as $required) {
+                    if (!in_array($required, $newFilterable, true)) {
+                        $newFilterable[] = $required;
+                    }
+                }
+                $response = $index->updateFilterableAttributes($newFilterable);
+                if (!$this->waitForTask($client, $response)) {
+                    throw new \RuntimeException('Meilisearch filterable settings task did not complete.');
+                }
 
                 $this->logInfo('Configured Meilisearch filterable attributes', [
                     'index' => $indexName,
@@ -1001,8 +1044,12 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
                 ]);
             }
 
-            if ($index->getSearchableAttributes() !== $requiredSearchable) {
-                $index->updateSearchableAttributes($requiredSearchable);
+            $currentSearchable = $created ? [] : $index->getSearchableAttributes();
+            if ($currentSearchable !== $requiredSearchable) {
+                $response = $index->updateSearchableAttributes($requiredSearchable);
+                if (!$this->waitForTask($client, $response)) {
+                    throw new \RuntimeException('Meilisearch searchable settings task did not complete.');
+                }
 
                 $this->logInfo('Configured Meilisearch searchable attributes', [
                     'index' => $indexName,
@@ -1025,7 +1072,6 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
     {
         try {
             $fullIndexName = $this->getFullIndexName($indexName);
-            $this->ensureFilterableAttributes($fullIndexName);
             $adminIndex = $this->getAdminClient()->index($fullIndexName);
             $searchParams = [
                 'page' => 1,
@@ -1068,6 +1114,30 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
 
             return null;
         }
+    }
+
+    private function waitForTask(Client $client, mixed $response): bool
+    {
+        if (!is_array($response)) {
+            return false;
+        }
+
+        $taskUid = $response['taskUid'] ?? null;
+        if ((!is_int($taskUid) && !is_string($taskUid)) || !ctype_digit((string)$taskUid)) {
+            return false;
+        }
+
+        try {
+            $result = $client->waitForTask(
+                (int)$taskUid,
+                self::TASK_TIMEOUT_MS,
+                self::TASK_POLL_INTERVAL_MS,
+            );
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return ($result['status'] ?? null) === 'succeeded';
     }
 
     /**

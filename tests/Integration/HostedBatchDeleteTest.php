@@ -132,6 +132,10 @@ final class HostedBatchDeleteTest extends TestCase
             ->method('deleteObjects')
             ->with($fullIndexName, ['101_2', '102_2_section', '103_2_heading'])
             ->willReturn([['taskID' => 123]]);
+        $client->expects(self::once())
+            ->method('waitForTask')
+            ->with($fullIndexName, 123, [], 50, 100)
+            ->willReturn(['status' => 'published']);
         $client->expects(self::never())->method('deleteObject');
         $client->expects(self::never())->method('getObject');
         $this->setPrivateProperty($backend, AlgoliaBackend::class, '_client', $client);
@@ -153,6 +157,10 @@ final class HostedBatchDeleteTest extends TestCase
             ->willReturn(['taskUid' => 456]);
         $index->expects(self::never())->method('deleteDocument');
         $index->expects(self::never())->method('getDocument');
+        $client->expects(self::once())
+            ->method('waitForTask')
+            ->with(456, 5000, 50)
+            ->willReturn(['status' => 'succeeded']);
         $this->setPrivateProperty($backend, MeilisearchBackend::class, '_adminClient', $client);
 
         self::assertFalse($backend->batchDelete('docs', $this->mixedDeleteItems()));
