@@ -33,6 +33,221 @@
         window.smCharts = window.smCharts || {};
         let currentDateRange = config.dateRange || 'last7days';
         let currentSiteId = config.siteId || '';
+        let currentContent = null;
+        let requestGeneration = 0;
+        let requestSequence = 0;
+        const requestStates = new Map();
+        const successfulConsumers = new Set();
+        const requestFamilies = {
+            overview: {
+                flag: 'overviewLoaded',
+                members: ['overview-trend', 'overview-query-analysis', 'overview-intent', 'overview-source', 'overview-peak-hours', 'overview-trending'],
+            },
+            searches: { flag: 'recentSearchesLoaded', members: ['searches-recent'] },
+            'content-gaps': { flag: 'contentGapsRecentLoaded', members: ['content-gaps-clusters', 'content-gaps-recent'] },
+            performance: { flag: 'performanceLoaded', members: ['performance-cache', 'performance-trend', 'performance-top', 'performance-worst'] },
+            'traffic-devices': { flag: 'trafficDevicesLoaded', members: ['traffic-hourly', 'traffic-devices', 'traffic-agents'] },
+            geographic: { flag: 'geographicLoaded', members: ['geographic-countries', 'geographic-cities'] },
+            'query-rules': { flag: 'queryRulesLoaded', members: ['query-rules-top', 'query-rules-types', 'query-rules-queries'] },
+            promotions: { flag: 'promotionsLoaded', members: ['promotions-top', 'promotions-positions', 'promotions-queries'] },
+        };
+
+        function resetRequestGeneration() {
+            requestGeneration += 1;
+            requestStates.clear();
+            successfulConsumers.clear();
+            Object.values(requestFamilies).forEach(family => {
+                window[family.flag] = false;
+            });
+            document.querySelectorAll('.lr-analytics-request-error').forEach(el => el.remove());
+            document.querySelectorAll('.lr-analytics-request-errors').forEach(el => el.remove());
+        }
+
+        function updateFamilyLoaded(familyName) {
+            const family = requestFamilies[familyName];
+            if (!family) return;
+            window[family.flag] = family.members.every(consumer => successfulConsumers.has(consumer));
+        }
+
+        function getRequestTarget(selector) {
+            if (typeof selector !== 'string') return null;
+            if (selector.charAt(0) === '#' && !selector.includes(' ') && !selector.includes(',')) {
+                return document.getElementById(selector.substring(1));
+            }
+            return document.querySelector(selector);
+        }
+
+        function setTargetsBusy(selectors, busy) {
+            (selectors || []).forEach(selector => {
+                const target = getRequestTarget(selector);
+                if (!target) return;
+                if (busy) {
+                    target.setAttribute('aria-busy', 'true');
+                } else {
+                    target.removeAttribute('aria-busy');
+                }
+            });
+        }
+
+        function getErrorHost(tabId) {
+            const tab = document.getElementById(tabId);
+            if (!tab) return null;
+            let host = Array.from(tab.children).find(child => child.classList && child.classList.contains('lr-analytics-request-errors'));
+            if (!host) {
+                host = document.createElement('div');
+                host.className = 'lr-analytics-request-errors';
+                tab.prepend(host);
+            }
+            return host;
+        }
+
+        function getConsumerError(host, consumer) {
+            return Array.from(host.children).find(child => child.dataset && child.dataset.analyticsRequestError === consumer) || null;
+        }
+
+        function removeRequestError(consumer, tabId) {
+            const tab = document.getElementById(tabId);
+            if (!tab) return;
+            const host = Array.from(tab.children).find(child => child.classList && child.classList.contains('lr-analytics-request-errors'));
+            if (!host) return;
+            const error = getConsumerError(host, consumer);
+            if (error) error.remove();
+            if (host.children.length === 0) host.remove();
+        }
+
+        function presentRequestError(options, retry) {
+            const host = getErrorHost(options.tab);
+            if (!host) return;
+            let error = getConsumerError(host, options.consumer);
+            if (!error) {
+                error = document.createElement('div');
+                error.className = 'lr-info-box lr-info-box--error lr-info-box--subtle lr-info-box--margin-bottom lr-analytics-request-error';
+                error.dataset.analyticsRequestError = options.consumer;
+                error.setAttribute('role', 'alert');
+                error.setAttribute('aria-live', 'assertive');
+
+                const inner = document.createElement('div');
+                inner.className = 'lr-info-box__inner';
+                const message = document.createElement('span');
+                message.className = 'lr-info-box__message';
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn small';
+                button.addEventListener('click', function() {
+                    if (typeof error.retryRequest === 'function') {
+                        error.retryRequest();
+                    }
+                });
+                inner.appendChild(message);
+                inner.appendChild(button);
+                error.appendChild(inner);
+                host.appendChild(error);
+            }
+
+            const message = error.querySelector('.lr-info-box__message');
+            const button = error.querySelector('button');
+            message.textContent = strings.analyticsLoadError || '';
+            button.textContent = strings.retry || '';
+            button.setAttribute('aria-label', strings.retry || '');
+            button.disabled = false;
+            button.classList.remove('loading');
+            error.retryRequest = retry;
+        }
+
+        function setRequestRetrying(consumer, tabId) {
+            const tab = document.getElementById(tabId);
+            if (!tab) return;
+            const host = Array.from(tab.children).find(child => child.classList && child.classList.contains('lr-analytics-request-errors'));
+            const error = host ? getConsumerError(host, consumer) : null;
+            if (!error) return;
+            const message = error.querySelector('.lr-info-box__message');
+            const button = error.querySelector('button');
+            message.textContent = strings.loading || '';
+            button.disabled = true;
+            button.classList.add('loading');
+        }
+
+        function clearChart(canvasId) {
+            destroyChartByCanvasId(canvasId);
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const parent = canvas.parentElement || canvas.parentNode;
+            if (parent) {
+                parent.querySelectorAll('.zilch').forEach(el => el.remove());
+            }
+            canvas.style.display = 'none';
+        }
+
+        function analyticsRequest(options, force) {
+            const existing = requestStates.get(options.consumer);
+            if (!force && existing && existing.generation === requestGeneration && (existing.inFlight || successfulConsumers.has(options.consumer))) {
+                return existing.request || null;
+            }
+
+            const generation = requestGeneration;
+            const sequence = ++requestSequence;
+            const state = { generation: generation, sequence: sequence, inFlight: true, request: null };
+            requestStates.set(options.consumer, state);
+            successfulConsumers.delete(options.consumer);
+            updateFamilyLoaded(options.family);
+            setTargetsBusy(options.targets, true);
+            setRequestRetrying(options.consumer, options.tab);
+
+            function isCurrent() {
+                const active = requestStates.get(options.consumer);
+                return generation === requestGeneration && active && active.sequence === sequence;
+            }
+
+            function fail() {
+                if (!isCurrent()) return;
+                state.inFlight = false;
+                setTargetsBusy(options.targets, false);
+                successfulConsumers.delete(options.consumer);
+                updateFamilyLoaded(options.family);
+                if (typeof options.onFailure === 'function') {
+                    options.onFailure();
+                }
+                presentRequestError(options, function() {
+                    analyticsRequest(Object.assign({}, options, {
+                        dateRange: currentDateRange,
+                        siteId: currentSiteId,
+                    }), true);
+                });
+            }
+
+            state.request = $.ajax({
+                url: dataEndpoint,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    dateRange: options.dateRange,
+                    siteId: options.siteId,
+                    type: options.data.type,
+                    [csrfName]: csrfToken,
+                },
+                success: function(res) {
+                    if (!isCurrent()) return;
+                    if (!res || res.success !== true) {
+                        fail();
+                        return;
+                    }
+                    try {
+                        options.onSuccess(res.data);
+                    } catch (error) {
+                        fail();
+                        return;
+                    }
+                    if (!isCurrent()) return;
+                    state.inFlight = false;
+                    setTargetsBusy(options.targets, false);
+                    removeRequestError(options.consumer, options.tab);
+                    successfulConsumers.add(options.consumer);
+                    updateFamilyLoaded(options.family);
+                },
+                error: fail,
+            });
+            return state.request;
+        }
 
         // Map known intent enums to translated labels; capitalize unknown/custom values.
         // Shared by the searches table column and the intent chart legend.
@@ -109,16 +324,17 @@
         Object.values(window.smCharts).forEach(c => c.destroy());
         window.smCharts = {};
 
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
-
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: currentDateRange, siteId: currentSiteId, type: 'chart', [csrfName]: csrfToken },
-            success: function(res) {
-                const chartData = res && res.success ? res.data.chartData : null;
+        analyticsRequest({
+            consumer: 'overview-trend',
+            family: 'overview',
+            tab: 'overview',
+            targets: ['#404-trend-chart'],
+            data: { type: 'chart' },
+            dateRange: currentDateRange,
+            siteId: currentSiteId,
+            onFailure: function() { clearChart('404-trend-chart'); },
+            onSuccess: function(data) {
+                const chartData = data.chartData;
                 const ctx = document.getElementById('404-trend-chart');
                 if (!ctx) return;
                 const hasTrend = Array.isArray(chartData) && chartData.some(d => Number(d.withResults) > 0 || Number(d.zeroResults) > 0);
@@ -138,23 +354,25 @@
                     },
                     options: { responsive: true, maintainAspectRatio: false }
                 });
-            }
+            },
         });
 
     }
 
     function handleAnalyticsInit(config) {
         const resolved = config || (window.lrAnalyticsConfig || {});
-        currentDateRange = resolved.dateRange || currentDateRange;
-        currentSiteId = resolved.siteId || '';
+        const nextDateRange = resolved.dateRange || currentDateRange;
+        const nextSiteId = resolved.siteId || '';
+        const nextContent = document.getElementById('lr-analytics-content');
+        if (requestGeneration > 0 && nextContent === currentContent && nextDateRange === currentDateRange && nextSiteId === currentSiteId) {
+            loadTabData(getActiveTabId());
+            return;
+        }
 
-        window.recentSearchesLoaded = false;
-        window.contentGapsRecentLoaded = false;
-        window.performanceLoaded = false;
-        window.trafficDevicesLoaded = false;
-        window.geographicLoaded = false;
-        window.queryRulesLoaded = false;
-        window.promotionsLoaded = false;
+        currentDateRange = nextDateRange;
+        currentSiteId = nextSiteId;
+        currentContent = nextContent;
+        resetRequestGeneration();
 
         loadInitialCharts();
         const activeTab = getActiveTabId();
@@ -179,9 +397,9 @@
             'content-gaps': 'content-gaps'
         };
 
-        if (tabName === 'overview' && $('#word-cloud-container').children().length > 0) return;
+        if (tabName === 'overview' && window.overviewLoaded) return;
         if (tabName === 'searches' && window.recentSearchesLoaded) return;
-        if (tabName === 'content-gaps' && $('#content-gaps-body tr').length > 1 && window.contentGapsRecentLoaded) return;
+        if (tabName === 'content-gaps' && window.contentGapsRecentLoaded) return;
         if (tabName === 'performance' && window.performanceLoaded) return;
         if (tabName === 'traffic-devices' && window.trafficDevicesLoaded) return;
         if (tabName === 'geographic' && window.geographicLoaded) return;
@@ -218,32 +436,34 @@
             return;
         }
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: {
-                dateRange: currentDateRange,
-                siteId: currentSiteId,
-                type: mapping[tabName],
-                [csrfName]: csrfToken
-            },
-            success: function(res) {
-                if (res.success) {
-                    if (tabName === 'overview') {
-                        renderQueryAnalysis(res.data.queryAnalysis);
-                        loadBreakdownCharts(currentDateRange, currentSiteId);
-                        loadSearchActivityData(currentDateRange, currentSiteId);
-                    }
-                    if (tabName === 'content-gaps') {
-                        renderContentGaps(res.data.contentGaps);
-                        loadRecentUnhandledData(currentDateRange, currentSiteId);
-                    }
+        analyticsRequest({
+            consumer: tabName === 'overview' ? 'overview-query-analysis' : 'content-gaps-clusters',
+            family: tabName,
+            tab: tabName,
+            targets: tabName === 'overview' ? ['#query-length-chart', '#word-cloud-container'] : ['#content-gaps-body'],
+            data: { type: mapping[tabName] },
+            dateRange: currentDateRange,
+            siteId: currentSiteId,
+            onFailure: function() {
+                if (tabName === 'overview') {
+                    clearChart('query-length-chart');
+                    $('#query-length-legend').empty();
+                    $('#word-cloud-container').empty();
+                } else {
+                    $('#content-gaps-body').empty();
                 }
             },
-            error: function() {
-                console.error('Failed to load tab data');
-            }
+            onSuccess: function(data) {
+                if (tabName === 'overview') {
+                    renderQueryAnalysis(data.queryAnalysis);
+                    loadBreakdownCharts(currentDateRange, currentSiteId);
+                    loadSearchActivityData(currentDateRange, currentSiteId);
+                }
+                if (tabName === 'content-gaps') {
+                    renderContentGaps(data.contentGaps);
+                    loadRecentUnhandledData(currentDateRange, currentSiteId);
+                }
+            },
         });
     }
 
@@ -253,27 +473,22 @@
     }
 
     function loadTrafficDevicesData(dateRange, siteId) {
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
         const chartColors = ['#0d78f2', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6'];
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'hourly', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderHourlyChart(res.data);
-            }
+        analyticsRequest({
+            consumer: 'traffic-hourly', family: 'traffic-devices', tab: 'traffic-devices', targets: ['#hourly-chart'],
+            data: { type: 'hourly' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { clearChart('hourly-chart'); },
+            onSuccess: renderHourlyChart,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'device-stats', [csrfName]: csrfToken },
-            success: function(res) {
-                const stats = res && res.success ? res.data.deviceStats : null;
+        analyticsRequest({
+            consumer: 'traffic-devices', family: 'traffic-devices', tab: 'traffic-devices',
+            targets: ['#bot-chart', '#device-chart', '#browser-chart', '#os-chart'],
+            data: { type: 'device-stats' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { ['bot-chart', 'device-chart', 'browser-chart', 'os-chart'].forEach(clearChart); },
+            onSuccess: function(data) {
+                const stats = data.deviceStats;
                 const deviceBreakdown = stats ? stats.deviceBreakdown : null;
                 const browserBreakdown = stats ? stats.browserBreakdown : null;
                 const osBreakdown = stats ? stats.osBreakdown : null;
@@ -354,44 +569,31 @@
                 } else if (osCtx) {
                     renderEmptyChart(osCtx, strings.noOs);
                 }
-            }
+            },
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'bot-stats', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderBotStats(res.data);
-                window.trafficDevicesLoaded = true;
-            }
+        analyticsRequest({
+            consumer: 'traffic-agents', family: 'traffic-devices', tab: 'traffic-devices',
+            targets: ['#bot-percentage-label', '#top-bots-body'],
+            data: { type: 'bot-stats' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#bot-percentage-label').empty(); $('#top-bots-body').empty(); },
+            onSuccess: renderBotStats,
         });
     }
 
     function loadGeographicData(dateRange, siteId) {
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
-
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'countries', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderCountries(res.data);
-            }
+        analyticsRequest({
+            consumer: 'geographic-countries', family: 'geographic', tab: 'geographic', targets: ['#countries-body'],
+            data: { type: 'countries' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#countries-body').empty(); },
+            onSuccess: renderCountries,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'cities', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderCities(res.data);
-                window.geographicLoaded = true;
-            }
+        analyticsRequest({
+            consumer: 'geographic-cities', family: 'geographic', tab: 'geographic', targets: ['#cities-body'],
+            data: { type: 'cities' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#cities-body').empty(); },
+            onSuccess: renderCities,
         });
     }
 
@@ -429,6 +631,7 @@
         }
 
         if (window.smCharts.hourly) window.smCharts.hourly.destroy();
+        resetChartContainer(ctx);
 
         window.smCharts.hourly = new Chart(ctx, {
             type: 'bar',
@@ -460,7 +663,9 @@
                 window.smCharts.length.destroy();
                 delete window.smCharts.length;
             }
-            window.smCharts.length = new Chart(document.getElementById('query-length-chart'), {
+            const lengthCtx = document.getElementById('query-length-chart');
+            resetChartContainer(lengthCtx);
+            window.smCharts.length = new Chart(lengthCtx, {
                 type: 'pie',
                 data: {
                     labels: data.lengthDistribution.labels,
@@ -518,34 +723,20 @@
     }
 
     function loadRecentSearchesData(dateRange, siteId) {
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
-
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'recent-searches', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderRecentSearches(res.data);
-                window.recentSearchesLoaded = true;
-            }
+        analyticsRequest({
+            consumer: 'searches-recent', family: 'searches', tab: 'searches', targets: ['#recent-searches-body'],
+            data: { type: 'recent-searches' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#recent-searches-body').empty(); },
+            onSuccess: renderRecentSearches,
         });
     }
 
     function loadRecentUnhandledData(dateRange, siteId) {
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
-
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'recent-unhandled', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderRecentUnhandled(res.data);
-                window.contentGapsRecentLoaded = true;
-            }
+        analyticsRequest({
+            consumer: 'content-gaps-recent', family: 'content-gaps', tab: 'content-gaps', targets: ['#recent-unhandled-body'],
+            data: { type: 'recent-unhandled' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#recent-unhandled-body').empty(); },
+            onSuccess: renderRecentUnhandled,
         });
     }
 
@@ -668,52 +859,34 @@
     }
 
     function loadBreakdownCharts(dateRange, siteId) {
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
-
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'intent', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderIntentChart(res.data);
-            }
+        analyticsRequest({
+            consumer: 'overview-intent', family: 'overview', tab: 'overview', targets: ['#intent-chart'],
+            data: { type: 'intent' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { clearChart('intent-chart'); },
+            onSuccess: renderIntentChart,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'source', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderSourceChart(res.data);
-            }
+        analyticsRequest({
+            consumer: 'overview-source', family: 'overview', tab: 'overview', targets: ['#source-chart'],
+            data: { type: 'source' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { clearChart('source-chart'); },
+            onSuccess: renderSourceChart,
         });
     }
 
     function loadSearchActivityData(dateRange, siteId) {
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
-
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'hourly', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderPeakHoursChart(res.data);
-            }
+        analyticsRequest({
+            consumer: 'overview-peak-hours', family: 'overview', tab: 'overview', targets: ['#peak-hours-chart', '#peak-hour-label'],
+            data: { type: 'hourly' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { clearChart('peak-hours-chart'); $('#peak-hour-label').empty(); },
+            onSuccess: renderPeakHoursChart,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'trending', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderTrendingQueries(res.data);
-            }
+        analyticsRequest({
+            consumer: 'overview-trending', family: 'overview', tab: 'overview', targets: ['#trending-queries-body'],
+            data: { type: 'trending' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#trending-queries-body').empty(); },
+            onSuccess: renderTrendingQueries,
         });
     }
 
@@ -731,6 +904,7 @@
             return;
         }
 
+        resetChartContainer(ctx);
         window.smCharts.peakHours = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -823,50 +997,36 @@
     }
 
     function loadPerformanceData(dateRange, siteId) {
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
-
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'cache-stats', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderCacheStats(res.data);
-            }
+        analyticsRequest({
+            consumer: 'performance-cache', family: 'performance', tab: 'performance',
+            targets: ['#cache-hit-rate', '#cache-hits', '#cache-misses', '#total-searches-perf'],
+            data: { type: 'cache-stats' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() {
+                $('#cache-hit-rate .lr-unified-card-value, #cache-hits .lr-unified-card-value, #cache-misses .lr-unified-card-value, #total-searches-perf .lr-unified-card-value').text('—');
+            },
+            onSuccess: renderCacheStats,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'performance', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderPerformanceChart(res.data);
-            }
+        analyticsRequest({
+            consumer: 'performance-trend', family: 'performance', tab: 'performance', targets: ['#performance-chart'],
+            data: { type: 'performance' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { clearChart('performance-chart'); },
+            onSuccess: renderPerformanceChart,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'top-queries', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderTopQueries(res.data);
-            }
+        analyticsRequest({
+            consumer: 'performance-top', family: 'performance', tab: 'performance', targets: ['#top-queries-body'],
+            data: { type: 'top-queries' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#top-queries-body').empty(); },
+            onSuccess: renderTopQueries,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'worst-queries', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderWorstQueries(res.data);
-            }
+        analyticsRequest({
+            consumer: 'performance-worst', family: 'performance', tab: 'performance', targets: ['#worst-queries-body'],
+            data: { type: 'worst-queries' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#worst-queries-body').empty(); },
+            onSuccess: renderWorstQueries,
         });
-
-        window.performanceLoaded = true;
     }
 
     function renderCacheStats(data) {
@@ -939,6 +1099,7 @@
             return;
         }
 
+        resetChartContainer(ctx);
         const colors = ['#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e74c3c'];
         window.smCharts.intent = new Chart(ctx, {
             type: 'doughnut',
@@ -970,6 +1131,7 @@
             return;
         }
 
+        resetChartContainer(ctx);
         const colors = ['#27ae60', '#3498db', '#e67e22', '#9b59b6', '#1abc9c', '#e74c3c'];
         window.smCharts.source = new Chart(ctx, {
             type: 'doughnut',
@@ -1001,6 +1163,7 @@
             return;
         }
 
+        resetChartContainer(ctx);
         window.smCharts.performance = new Chart(ctx, {
             type: 'line',
             data: {
@@ -1030,38 +1193,25 @@
     }
 
     function loadQueryRulesData(dateRange, siteId) {
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
-
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'query-rules-top', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderTopRules(res.data);
-            }
+        analyticsRequest({
+            consumer: 'query-rules-top', family: 'query-rules', tab: 'query-rules', targets: ['#top-rules-body'],
+            data: { type: 'query-rules-top' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#top-rules-body').empty(); },
+            onSuccess: renderTopRules,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'query-rules-by-type', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderRulesByType(res.data);
-            }
+        analyticsRequest({
+            consumer: 'query-rules-types', family: 'query-rules', tab: 'query-rules', targets: ['#rules-by-type-chart'],
+            data: { type: 'query-rules-by-type' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { clearChart('rules-by-type-chart'); },
+            onSuccess: renderRulesByType,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'query-rules-queries', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderRuleQueries(res.data);
-                window.queryRulesLoaded = true;
-            }
+        analyticsRequest({
+            consumer: 'query-rules-queries', family: 'query-rules', tab: 'query-rules', targets: ['#rule-queries-body'],
+            data: { type: 'query-rules-queries' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#rule-queries-body').empty(); },
+            onSuccess: renderRuleQueries,
         });
     }
 
@@ -1111,6 +1261,7 @@
         // fall back to title-casing the raw enum for unknown/custom types
         const actionTypeLabels = config.actionTypeLabels || {};
 
+        resetChartContainer(ctx);
         window.smCharts.rulesByType = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -1149,38 +1300,25 @@
     }
 
     function loadPromotionsData(dateRange, siteId) {
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
-
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'promotions-top', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderTopPromotions(res.data);
-            }
+        analyticsRequest({
+            consumer: 'promotions-top', family: 'promotions', tab: 'promotions', targets: ['#top-promotions-body'],
+            data: { type: 'promotions-top' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#top-promotions-body').empty(); },
+            onSuccess: renderTopPromotions,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'promotions-by-position', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderPromotionsByPosition(res.data);
-            }
+        analyticsRequest({
+            consumer: 'promotions-positions', family: 'promotions', tab: 'promotions', targets: ['#promotions-by-position-chart'],
+            data: { type: 'promotions-by-position' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { clearChart('promotions-by-position-chart'); },
+            onSuccess: renderPromotionsByPosition,
         });
 
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'promotions-queries', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderPromotionQueries(res.data);
-                window.promotionsLoaded = true;
-            }
+        analyticsRequest({
+            consumer: 'promotions-queries', family: 'promotions', tab: 'promotions', targets: ['#promotion-queries-body'],
+            data: { type: 'promotions-queries' }, dateRange: dateRange, siteId: siteId,
+            onFailure: function() { $('#promotion-queries-body').empty(); },
+            onSuccess: renderPromotionQueries,
         });
     }
 
@@ -1215,6 +1353,7 @@
             return;
         }
 
+        resetChartContainer(ctx);
         window.smCharts.promosByPosition = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -1249,6 +1388,24 @@
                 <td>${q.count.toLocaleString()}</td>
             </tr>`);
         });
+    }
+
+    if (config.testMode === true) {
+        window.lrSearchAnalyticsTestHooks = {
+            analyticsRequest: analyticsRequest,
+            handleAnalyticsInit: handleAnalyticsInit,
+            loadInitialCharts: loadInitialCharts,
+            loadTabData: loadTabData,
+            resetRequestGeneration: resetRequestGeneration,
+            state: function() {
+                return {
+                    dateRange: currentDateRange,
+                    siteId: currentSiteId,
+                    generation: requestGeneration,
+                    successfulConsumers: Array.from(successfulConsumers),
+                };
+            },
+        };
     }
 
     // If analytics was initialized before we bound, run immediately.

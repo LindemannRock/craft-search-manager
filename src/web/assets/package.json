@@ -5,6 +5,7 @@
   "description": "Build tools for Search Manager asset packages",
   "scripts": {
     "build": "npm run build:analytics && npm run build:widgetpreview && npm run build:widgetconfig && npm run build:testtool",
+    "test:analytics": "node analytics/test.js",
     "build:analytics": "mkdir -p analytics/dist && terser analytics/src/analytics.js -o analytics/dist/analytics.js -c -m",
     "build:widgetpreview": "mkdir -p widgetpreview/dist && terser widgetpreview/src/widget-preview.js -o widgetpreview/dist/widget-preview.js -c -m",
     "build:widgetconfig": "mkdir -p widgetconfig/dist && terser widgetconfig/src/widget-config.js -o widgetconfig/dist/widget-config.js -c -m",
