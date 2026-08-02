@@ -24,6 +24,21 @@ Before changing templates or client code, reproduce the same index and query in 
 - Enable debug logging: set `logLevel` to `'debug'` in your config
 - If using `replaceNativeSearch`, verify it only works with built-in backends (MySQL, PostgreSQL, Redis, File)
 
+## Dashboard redirects to another section or shows access denied
+
+**Symptom:** A delegated operator opens **Search Manager** or `/admin/search-manager` but lands on another Search Manager section or receives an access-denied response.
+
+**Cause:** The Dashboard appears only when at least one backend is configured and the user can access an applicable Dashboard card. Indices requires `searchManager:manageIndices`; Pro Promotions and Query Rules require their matching manage permission; Pro Analytics requires analytics to be enabled plus `searchManager:viewAnalytics`. A child permission such as `createPromotions` does not grant its parent card or section.
+
+**Fix / checks:**
+
+- Confirm at least one backend is configured and enabled.
+- Grant the parent permission for the card the operator needs. Grant create, edit, delete, or other child permissions separately for the actions they need.
+- Confirm the site is on Pro for Promotions, Query Rules, or Analytics, and confirm analytics is enabled for the Analytics card.
+- A user with only `searchManager:manageBackends` is expected to land directly on **Backends**. If no Dashboard card or other section is accessible, Craft returns its normal access-denied response.
+
+See [Permissions](../developers/permissions.md#dashboard-access) for the complete card matrix.
+
 ## Multi-word query returns nothing (or "related results")
 
 **Symptom:** A multi-word query like `testing tool` returns fewer results than expected, or you want to understand when broader results appear.

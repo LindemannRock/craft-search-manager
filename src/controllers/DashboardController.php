@@ -10,10 +10,12 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use craft\web\User;
 use lindemannrock\base\helpers\CpNavHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use yii\web\ForbiddenHttpException;
 use yii\web\Response;
 
 /**
@@ -34,24 +36,72 @@ class DashboardController extends Controller
 
     public function actionIndex(): Response
     {
-        $user = Craft::$app->getUser();
+        $user = $this->getCpUser();
         $settings = SearchManager::$plugin->getSettings();
-        $isPro = SearchManager::$plugin->isPro();
+        $dashboardCards = $this->getDashboardCardAccess();
 
-        // If user doesn't have manageIndices permission, redirect to first accessible section
-        if (!$user->checkPermission('searchManager:manageIndices')) {
+        if (!in_array(true, $dashboardCards, true)) {
             $sections = SearchManager::$plugin->getCpSections($settings, false, true);
             $route = CpNavHelper::firstAccessibleRoute($user, $settings, $sections);
             if ($route) {
                 return $this->redirect($route);
             }
 
-            // No access at all - require permission (will show 403)
-            $this->requirePermission('searchManager:manageIndices');
+            throw new ForbiddenHttpException();
         }
-        $indices = SearchIndex::findAll();
 
-        // Count totals
+        $variables = [
+            'settings' => $settings,
+            'dashboardCards' => $dashboardCards,
+            'indices' => [],
+            'totalDocuments' => 0,
+            'enabledIndices' => 0,
+            'promotionsCount' => 0,
+            'enabledPromotions' => 0,
+            'queryRulesCount' => 0,
+            'enabledQueryRules' => 0,
+            'searchesToday' => 0,
+            'searchesYesterday' => 0,
+            'topSearches' => [],
+            'recentZeroResults' => [],
+        ];
+
+        if ($dashboardCards['indices']) {
+            $variables = array_replace($variables, $this->loadIndexCardData());
+        }
+        if ($dashboardCards['promotions']) {
+            $variables = array_replace($variables, $this->loadPromotionCardData());
+        }
+        if ($dashboardCards['queryRules']) {
+            $variables = array_replace($variables, $this->loadQueryRuleCardData());
+        }
+        if ($dashboardCards['analytics']) {
+            $variables = array_replace($variables, $this->loadAnalyticsCardData());
+        }
+
+        return $this->renderTemplate('search-manager/dashboard/index', $variables);
+    }
+
+    /**
+     * @return array{indices: bool, promotions: bool, queryRules: bool, analytics: bool}
+     */
+    protected function getDashboardCardAccess(): array
+    {
+        return SearchManager::$plugin->getDashboardCardAccess(
+            SearchManager::$plugin->getSettings(),
+            $this->getCpUser(),
+        );
+    }
+
+    protected function getCpUser(): User
+    {
+        return Craft::$app->getUser();
+    }
+
+    /** @return array{indices: array, totalDocuments: int, enabledIndices: int} */
+    protected function loadIndexCardData(): array
+    {
+        $indices = SearchIndex::findAll();
         $totalDocuments = 0;
         $enabledIndices = 0;
         foreach ($indices as $index) {
@@ -61,49 +111,45 @@ class DashboardController extends Controller
             }
         }
 
-        $promotionsCount = 0;
-        $enabledPromotions = 0;
-        $queryRulesCount = 0;
-        $enabledQueryRules = 0;
-        if ($isPro) {
-            $promotionsCount = SearchManager::$plugin->promotions->getPromotionCount();
-            $enabledPromotions = SearchManager::$plugin->promotions->getPromotionCount(true);
-            $queryRulesCount = SearchManager::$plugin->queryRules->getQueryRuleCount();
-            $enabledQueryRules = SearchManager::$plugin->queryRules->getQueryRuleCount(true);
-        }
-
-        // Get analytics stats if enabled
-        $searchesToday = 0;
-        $searchesYesterday = 0;
-        $topSearches = [];
-        $recentZeroResults = [];
-        if ($isPro && $settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics')) {
-            $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-            $todaySummary = SearchManager::$plugin->analytics->getAnalyticsSummary($editableSiteIds, 'today');
-            $yesterdaySummary = SearchManager::$plugin->analytics->getAnalyticsSummary($editableSiteIds, 'yesterday');
-            $searchesToday = $todaySummary['totalSearches'];
-            $searchesYesterday = $yesterdaySummary['totalSearches'];
-            $topSearches = SearchManager::$plugin->analytics->getMostCommonSearches($editableSiteIds, 5, 'last7days');
-            $recentZeroResults = SearchManager::$plugin->analytics->getRecentSearches($editableSiteIds, 5, false, 'last7days');
-        }
-
-        // Get editable sites for reference
-        $sites = Craft::$app->getSites()->getEditableSites();
-
-        return $this->renderTemplate('search-manager/dashboard/index', [
-            'settings' => $settings,
+        return [
             'indices' => $indices,
             'totalDocuments' => $totalDocuments,
             'enabledIndices' => $enabledIndices,
-            'promotionsCount' => $promotionsCount,
-            'enabledPromotions' => $enabledPromotions,
-            'queryRulesCount' => $queryRulesCount,
-            'enabledQueryRules' => $enabledQueryRules,
-            'searchesToday' => $searchesToday,
-            'searchesYesterday' => $searchesYesterday,
-            'topSearches' => $topSearches,
-            'recentZeroResults' => $recentZeroResults,
-            'sites' => $sites,
-        ]);
+        ];
+    }
+
+    /** @return array{promotionsCount: int, enabledPromotions: int} */
+    protected function loadPromotionCardData(): array
+    {
+        return [
+            'promotionsCount' => SearchManager::$plugin->promotions->getPromotionCount(),
+            'enabledPromotions' => SearchManager::$plugin->promotions->getPromotionCount(true),
+        ];
+    }
+
+    /** @return array{queryRulesCount: int, enabledQueryRules: int} */
+    protected function loadQueryRuleCardData(): array
+    {
+        return [
+            'queryRulesCount' => SearchManager::$plugin->queryRules->getQueryRuleCount(),
+            'enabledQueryRules' => SearchManager::$plugin->queryRules->getQueryRuleCount(true),
+        ];
+    }
+
+    /** @return array{searchesToday: int, searchesYesterday: int, topSearches: array, recentZeroResults: array} */
+    protected function loadAnalyticsCardData(): array
+    {
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+        $todaySummary = SearchManager::$plugin->analytics->getAnalyticsSummary($editableSiteIds, 'today');
+        $yesterdaySummary = SearchManager::$plugin->analytics->getAnalyticsSummary($editableSiteIds, 'yesterday');
+
+        return [
+            'searchesToday' => $todaySummary['totalSearches'],
+            'searchesYesterday' => $yesterdaySummary['totalSearches'],
+            'topSearches' => SearchManager::$plugin->analytics
+                ->getMostCommonSearches($editableSiteIds, 5, 'last7days'),
+            'recentZeroResults' => SearchManager::$plugin->analytics
+                ->getRecentSearches($editableSiteIds, 5, false, 'last7days'),
+        ];
     }
 }

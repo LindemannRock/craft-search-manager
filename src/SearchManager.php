@@ -35,6 +35,7 @@ use craft\services\Utilities;
 use craft\utilities\ClearCaches;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
+use craft\web\User;
 use craft\web\View;
 use GraphQL\Language\AST\FieldNode;
 use GraphQL\Language\AST\FragmentDefinitionNode;
@@ -1259,8 +1260,11 @@ class SearchManager extends Plugin
                 'key' => 'dashboard',
                 'label' => Craft::t('search-manager', 'Dashboard'),
                 'url' => 'search-manager',
-                'permissionsAll' => ['searchManager:manageIndices'],
-                'when' => $hasBackends,
+                'when' => fn(?Model $_settings, User $user): bool => in_array(
+                    true,
+                    $this->getDashboardCardAccess($settings, $user, $hasBackends),
+                    true,
+                ),
             ];
         }
 
@@ -1356,6 +1360,43 @@ class SearchManager extends Plugin
         ];
 
         return $sections;
+    }
+
+    /**
+     * Get the applicable Dashboard cards for a CP user.
+     *
+     * @param Settings $settings
+     * @param User $user
+     * @param bool|null $hasBackends Optional resolved Backend-presence state
+     * @return array{indices: bool, promotions: bool, queryRules: bool, analytics: bool}
+     * @since 5.54.0
+     */
+    public function getDashboardCardAccess(
+        Settings $settings,
+        User $user,
+        ?bool $hasBackends = null,
+    ): array {
+        $hasBackends ??= !empty(\lindemannrock\searchmanager\models\ConfiguredBackend::findAllEnabled());
+
+        if (!$hasBackends) {
+            return [
+                'indices' => false,
+                'promotions' => false,
+                'queryRules' => false,
+                'analytics' => false,
+            ];
+        }
+
+        $isPro = $this->isPro();
+
+        return [
+            'indices' => $user->checkPermission('searchManager:manageIndices'),
+            'promotions' => $isPro && $user->checkPermission('searchManager:managePromotions'),
+            'queryRules' => $isPro && $user->checkPermission('searchManager:manageQueryRules'),
+            'analytics' => $isPro
+                && $settings->enableAnalytics
+                && $user->checkPermission('searchManager:viewAnalytics'),
+        ];
     }
 
     /**

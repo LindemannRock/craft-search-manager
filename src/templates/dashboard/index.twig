@@ -5,25 +5,23 @@
     selectedSubnavItem: selectedSubnavItem,
 })|trim %}
 {% set errorSummary = setupIncompleteSummary %}
-{% set isPro = craft.searchManager.plugin.isPro() %}
-
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
 ] %}
 
-{# Permission checks #}
-{% set canManageIndices = currentUser.can('searchManager:manageIndices') %}
-{% set canManagePromotions = isPro and currentUser.can('searchManager:managePromotions') %}
-{% set canManageQueryRules = isPro and currentUser.can('searchManager:manageQueryRules') %}
-{% set canViewAnalytics = isPro and currentUser.can('searchManager:viewAnalytics') %}
-{% set canCreateIndices = currentUser.can('searchManager:createIndices') %}
-{% set canCreatePromotions = isPro and currentUser.can('searchManager:createPromotions') %}
-{% set canCreateQueryRules = isPro and currentUser.can('searchManager:createQueryRules') %}
+{# Server-projected Dashboard card access and destination permissions #}
+{% set canManageIndices = dashboardCards.indices %}
+{% set canManagePromotions = dashboardCards.promotions %}
+{% set canManageQueryRules = dashboardCards.queryRules %}
+{% set canViewAnalytics = dashboardCards.analytics %}
+{% set canCreateIndices = canManageIndices and currentUser.can('searchManager:createIndices') %}
+{% set canCreatePromotions = canManagePromotions and currentUser.can('searchManager:createPromotions') %}
+{% set canCreateQueryRules = canManageQueryRules and currentUser.can('searchManager:createQueryRules') %}
 {% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
 {% set canManageWidgetConfigs = currentUser.can('searchManager:manageWidgetConfigs') %}
 
 {% block actionButton %}
-    {% set hasAnyQuickAction = canCreateIndices or canCreatePromotions or canCreateQueryRules or canManageWidgetConfigs or canManageSettings or (settings.enableAnalytics and canViewAnalytics) %}
+    {% set hasAnyQuickAction = canCreateIndices or canCreatePromotions or canCreateQueryRules or canManageWidgetConfigs or canManageSettings or canViewAnalytics %}
     {% if hasAnyQuickAction %}
         <div class="btngroup">
             <button type="button" class="btn menubtn">{{ "Quick Actions"|t('search-manager') }}</button>
@@ -38,7 +36,7 @@
                     {% if canCreateQueryRules %}
                         <li><a href="{{ url('search-manager/query-rules/create') }}">{{ "New Query Rule"|t('search-manager') }}</a></li>
                     {% endif %}
-                    {% if settings.enableAnalytics and canViewAnalytics %}
+                    {% if canViewAnalytics %}
                         <li><a href="{{ url('search-manager/analytics') }}">{{ "View Analytics"|t('search-manager') }}</a></li>
                     {% endif %}
                     {% if canManageWidgetConfigs %}
@@ -94,7 +92,7 @@
     {% endif %}
 
     {# Searches Today Card #}
-    {% if settings.enableAnalytics and canViewAnalytics %}
+    {% if canViewAnalytics %}
         {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Searches Today'|t('search-manager'),
             color: lrPaletteColor('sky').color,
@@ -106,7 +104,7 @@
 </div>
 
 {# Two Column Layout for Lists #}
-{% if settings.enableAnalytics and canViewAnalytics %}
+{% if canViewAnalytics %}
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 32px;">
 
     {# Top Searches (Last 7 Days) #}

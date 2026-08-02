@@ -13,6 +13,19 @@ Permissions for Pro-only features — view analytics, and the manage groups for 
 > [!NOTE]
 > Craft removes assignments of unregistered permissions when a user or user group is re-saved. If you edit and save a user group while the site is on Standard, any Pro permission assignments that group had are dropped and must be re-granted after upgrading to Pro again.
 
+## Dashboard access
+
+The Search Manager Dashboard is a composite overview. It appears when at least one backend is configured and the current user can access at least one applicable card:
+
+- **Indices:** `searchManager:manageIndices`
+- **Promotions:** Pro plus `searchManager:managePromotions`
+- **Query Rules:** Pro plus `searchManager:manageQueryRules`
+- **Analytics:** Pro, analytics enabled, plus `searchManager:viewAnalytics`
+
+Each card loads only the data its permission allows. A card's parent permission does not grant its create or other write actions; those still require the matching child permission. Administrators retain access to every card available in the current edition and configuration.
+
+If no card applies, Search Manager opens the user's first accessible section instead. For example, a user with only `searchManager:manageBackends` goes directly to **Backends**. A user with no accessible section receives Craft's normal access-denied response.
+
 ### Backends
 
 | Permission | Description |
@@ -26,7 +39,7 @@ Permissions for Pro-only features — view analytics, and the manage groups for 
 
 | Permission | Description |
 |------------|-------------|
-| **`searchManager:manageIndices`** | Access the indices section (view and access) |
+| **`searchManager:manageIndices`** | Access the indices section and its Dashboard card |
 | └─ `searchManager:createIndices` | Create new indices |
 | └─ `searchManager:editIndices` | Edit existing indices |
 | └─ `searchManager:deleteIndices` | Delete indices |
@@ -45,7 +58,7 @@ Permissions for Pro-only features — view analytics, and the manage groups for 
 
 | Permission | Description |
 |------------|-------------|
-| **`searchManager:managePromotions`** | Access the promotions section (view and access) |
+| **`searchManager:managePromotions`** | Access the promotions section and its Pro Dashboard card |
 | └─ `searchManager:createPromotions` | Create new promotions |
 | └─ `searchManager:editPromotions` | Edit existing promotions |
 | └─ `searchManager:deletePromotions` | Delete promotions |
@@ -54,7 +67,7 @@ Permissions for Pro-only features — view analytics, and the manage groups for 
 
 | Permission | Description |
 |------------|-------------|
-| **`searchManager:manageQueryRules`** | Access the query rules section (view and access) |
+| **`searchManager:manageQueryRules`** | Access the query rules section and its Pro Dashboard card |
 | └─ `searchManager:createQueryRules` | Create new query rules |
 | └─ `searchManager:editQueryRules` | Edit existing query rules |
 | └─ `searchManager:deleteQueryRules` | Delete query rules |
@@ -94,7 +107,7 @@ These are three independent permissions (not a parent/child group). `viewAnalyti
 
 | Permission | Description |
 |------------|-------------|
-| `searchManager:viewAnalytics` | View the analytics dashboard (Pro only) |
+| `searchManager:viewAnalytics` | View the Pro analytics workspace and, while analytics is enabled, its Dashboard card |
 | `searchManager:exportAnalytics` | Export analytics data |
 | `searchManager:clearAnalytics` | Clear analytics data for sites the user can edit (administrators retain all-site access) |
 
