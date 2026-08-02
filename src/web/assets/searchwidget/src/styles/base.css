@@ -854,3 +854,15 @@
         border-radius: 4px;
     }
 }
+
+/* Honor the user's motion preference without changing loading visibility or
+   any of the widget's theme variables. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        scroll-behavior: auto !important;
+        transition: none !important;
+    }
+}

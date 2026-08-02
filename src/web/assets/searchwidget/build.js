@@ -1,5 +1,6 @@
 const esbuild = require('esbuild');
 const fs = require('fs');
+const path = require('path');
 
 // Plugin to load CSS as text string
 const cssTextPlugin = {
@@ -15,12 +16,9 @@ const cssTextPlugin = {
     },
 };
 
-const isWatch = process.argv.includes('--watch');
-const isDev = process.argv.includes('--dev');
-
 // Build options for SearchModalWidget
 const modalOptions = {
-    entryPoints: ['src/widgets/SearchModalWidget.js'],
+    entryPoints: [path.join(__dirname, 'src/widgets/SearchModalWidget.js')],
     bundle: true,
     format: 'iife',
     globalName: 'SearchModalWidget',
@@ -32,9 +30,8 @@ const modalOptions = {
 };
 
 // Build options for standalone Highlighter utility
-const highlighterDir = '../highlighter/dist';
 const highlighterOptions = {
-    entryPoints: ['src/modules/Highlighter.js'],
+    entryPoints: [path.join(__dirname, 'src/modules/Highlighter.js')],
     bundle: true,
     format: 'iife',
     globalName: 'SearchManagerHighlighter',
@@ -56,70 +53,86 @@ const highlighterOptions = {
     },
 };
 
-async function build() {
-    // Ensure highlighter dist directory exists
-    if (!fs.existsSync(highlighterDir)) {
-        fs.mkdirSync(highlighterDir, { recursive: true });
-    }
+function getOutputPaths(outputRoot = path.resolve(__dirname, '..')) {
+    return {
+        modal: path.join(outputRoot, 'searchwidget/dist/SearchModalWidget.js'),
+        highlighter: path.join(outputRoot, 'highlighter/dist/SearchManagerHighlighter.js'),
+    };
+}
 
-    try {
-        if (isWatch) {
-            const [modalCtx, hlCtx] = await Promise.all([
-                esbuild.context({
-                    ...modalOptions,
-                    outfile: 'dist/SearchModalWidget.js',
-                    minify: false,
-                    sourcemap: true,
-                }),
-                esbuild.context({
-                    ...highlighterOptions,
-                    outfile: `${highlighterDir}/SearchManagerHighlighter.js`,
-                    minify: false,
-                    sourcemap: true,
-                }),
-            ]);
-            await Promise.all([modalCtx.watch(), hlCtx.watch()]);
-            console.log('Watching for changes...');
-        } else if (isDev) {
-            await Promise.all([
-                esbuild.build({
-                    ...modalOptions,
-                    outfile: 'dist/SearchModalWidget.js',
-                    minify: false,
-                    sourcemap: true,
-                }),
-                esbuild.build({
-                    ...highlighterOptions,
-                    outfile: `${highlighterDir}/SearchManagerHighlighter.js`,
-                    minify: false,
-                    sourcemap: true,
-                }),
-            ]);
-            console.log('Dev build complete!');
-        } else {
-            // Production build - single shipped artifact per output
-            await Promise.all([
-                esbuild.build({
-                    ...modalOptions,
-                    outfile: 'dist/SearchModalWidget.js',
-                    minify: true,
-                    sourcemap: false,
-                }),
-                esbuild.build({
-                    ...highlighterOptions,
-                    outfile: `${highlighterDir}/SearchManagerHighlighter.js`,
-                    minify: true,
-                    sourcemap: false,
-                }),
-            ]);
+async function build({
+    mode = process.argv.includes('--watch') ? 'watch' : (process.argv.includes('--dev') ? 'dev' : 'production'),
+    outputRoot = path.resolve(__dirname, '..'),
+    quiet = false,
+} = {}) {
+    const outputPaths = getOutputPaths(outputRoot);
+    fs.mkdirSync(path.dirname(outputPaths.modal), { recursive: true });
+    fs.mkdirSync(path.dirname(outputPaths.highlighter), { recursive: true });
+
+    if (mode === 'watch') {
+        const [modalCtx, hlCtx] = await Promise.all([
+            esbuild.context({
+                ...modalOptions,
+                outfile: outputPaths.modal,
+                minify: false,
+                sourcemap: true,
+            }),
+            esbuild.context({
+                ...highlighterOptions,
+                outfile: outputPaths.highlighter,
+                minify: false,
+                sourcemap: true,
+            }),
+        ]);
+        await Promise.all([modalCtx.watch(), hlCtx.watch()]);
+        if (!quiet) console.log('Watching for changes...');
+    } else if (mode === 'dev') {
+        await Promise.all([
+            esbuild.build({
+                ...modalOptions,
+                outfile: outputPaths.modal,
+                minify: false,
+                sourcemap: true,
+            }),
+            esbuild.build({
+                ...highlighterOptions,
+                outfile: outputPaths.highlighter,
+                minify: false,
+                sourcemap: true,
+            }),
+        ]);
+        if (!quiet) console.log('Dev build complete!');
+    } else {
+        // Production build - single shipped artifact per output
+        await Promise.all([
+            esbuild.build({
+                ...modalOptions,
+                outfile: outputPaths.modal,
+                minify: true,
+                sourcemap: false,
+            }),
+            esbuild.build({
+                ...highlighterOptions,
+                outfile: outputPaths.highlighter,
+                minify: true,
+                sourcemap: false,
+            }),
+        ]);
+        if (!quiet) {
             console.log('Production build complete!');
             console.log('  - SearchModalWidget.js');
             console.log('  - SearchManagerHighlighter.js');
         }
-    } catch (error) {
-        console.error('Build failed:', error);
-        process.exit(1);
     }
+
+    return outputPaths;
 }
 
-build();
+if (require.main === module) {
+    build().catch((error) => {
+        console.error('Build failed:', error);
+        process.exitCode = 1;
+    });
+}
+
+module.exports = { build, getOutputPaths };

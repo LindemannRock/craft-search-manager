@@ -144,10 +144,15 @@ export function scrollIntoViewIfNeeded(element, container) {
     const elementRect = element.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
 
+    const reduceMotion = typeof window !== 'undefined'
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const behavior = reduceMotion ? 'auto' : 'smooth';
+
     if (elementRect.top < containerRect.top) {
-        element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        element.scrollIntoView({ block: 'nearest', behavior });
     } else if (elementRect.bottom > containerRect.bottom) {
-        element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        element.scrollIntoView({ block: 'nearest', behavior });
     }
 }
 
@@ -194,7 +199,10 @@ export function trapFocus(event, container, shadowRoot) {
     const last = focusable[focusable.length - 1];
     const active = shadowRoot.activeElement;
 
-    if (event.shiftKey && active === first) {
+    if (!active || !container.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && active === first) {
         event.preventDefault();
         last.focus();
     } else if (!event.shiftKey && active === last) {

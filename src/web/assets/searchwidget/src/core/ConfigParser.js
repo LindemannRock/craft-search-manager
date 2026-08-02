@@ -373,7 +373,7 @@ export function getObservedAttributes(widgetType = 'modal') {
     // Base attributes (all widget types)
     // Note: endpoint attributes are internal and not included here
     const baseAttrs = [
-        'index-handles', 'placeholder', 'theme',
+        'index-handles', 'placeholder', 'theme', 'api-key', 'snippet-defaults',
         'results-limit', 'search-debounce-ms', 'search-min-chars', 'recently-viewed-enabled',
         'recently-viewed-limit', 'results-grouping-enabled', 'site-id',
         'analytics-idle-timeout-ms', 'analytics-source',

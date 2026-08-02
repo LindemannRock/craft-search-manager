@@ -262,7 +262,7 @@ export function trackSearch({ endpoint, query, indexHandles = [], resultsCount =
  * @returns {Object} - Results grouped by field value
  */
 export function groupResultsByType(results) {
-    const groups = {};
+    const groups = Object.create(null);
     results.forEach(result => {
         const type = result.source || result.entrySection || result.type || 'Results';
         if (!groups[type]) {
@@ -280,7 +280,7 @@ export function groupResultsByType(results) {
  * @returns {Object} - Results grouped by field value
  */
 export function groupResultsByField(results, field) {
-    const groups = {};
+    const groups = Object.create(null);
     results.forEach(result => {
         const key = (field ? result[field] : null) || result.source || result.entrySection || result.type || 'Results';
         if (!groups[key]) {

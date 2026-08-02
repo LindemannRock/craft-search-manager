@@ -8,6 +8,7 @@ const path = require('path');
 const os = require('os');
 const esbuild = require('esbuild');
 const { chromium } = require('@playwright/test');
+const { build, getOutputPaths } = require('./build.js');
 
 const DIST_DIR = path.join(__dirname, 'dist');
 const SRC_DIR = path.join(__dirname, 'src');
@@ -155,6 +156,89 @@ function loadSearchServiceModule() {
         logLevel: 'silent',
     });
     return require(outfile);
+}
+
+try {
+    const { groupResultsByType, groupResultsByField } = loadSearchServiceModule();
+    const reservedKeys = ['__proto__', 'constructor', 'toString', 'hasOwnProperty'];
+    const reservedResults = reservedKeys.map((value, index) => ({
+        id: index + 1,
+        title: `Reserved ${value}`,
+        source: value,
+        category: value,
+    }));
+    const ordinaryResults = [
+        { id: 10, title: 'First docs', source: 'Docs', category: 'Guides' },
+        { id: 11, title: 'Fallback', type: 'Entry' },
+        { id: 12, title: 'Second docs', source: 'Docs', category: 'Guides' },
+    ];
+    const flatGroups = groupResultsByType([...reservedResults, ...ordinaryResults]);
+    const fieldGroups = groupResultsByField([...reservedResults, ...ordinaryResults], 'category');
+    const renderableReserved = reservedResults.map(result => ({
+        ...result,
+        backendId: String(result.id),
+        elementId: result.id,
+        url: `/reserved-${result.id}`,
+    }));
+    const { renderResults } = loadRendererModule();
+    const flatReservedHtml = renderResults(renderableReserved, 'reserved', {
+        resultsGroupingEnabled: true,
+        listboxId: 'reserved-flat',
+    });
+    const hierarchicalReservedHtml = renderResults(renderableReserved, 'reserved', {
+        resultsLayout: 'hierarchical',
+        hierarchyGroupBy: 'category',
+        listboxId: 'reserved-hierarchical',
+    });
+
+    test('Flat grouping preserves every inherited-key label and member',
+        reservedKeys.every((key, index) => flatGroups[key]?.[0] === reservedResults[index]));
+    test('Configured grouping preserves every inherited-key label and member',
+        reservedKeys.every((key, index) => fieldGroups[key]?.[0] === reservedResults[index]));
+    test('Flat grouping preserves first-seen order, repeated members, and fallback labels',
+        Object.keys(flatGroups).slice(-2).join(',') === 'Docs,Entry'
+        && flatGroups.Docs.length === 2
+        && flatGroups.Entry[0] === ordinaryResults[1]);
+    test('Configured grouping preserves first-seen order, repeated members, and fallback labels',
+        Object.keys(fieldGroups).slice(-2).join(',') === 'Guides,Entry'
+        && fieldGroups.Guides.length === 2
+        && fieldGroups.Entry[0] === ordinaryResults[1]);
+    test('Flat renderer emits every reserved group without losing result membership',
+        reservedKeys.every((key, index) => flatReservedHtml.includes(`aria-label="${key}"`)
+            && flatReservedHtml.includes(`Reserved ${reservedKeys[index]}`)));
+    test('Hierarchical renderer emits every configured reserved group without losing result membership',
+        reservedKeys.every((key, index) => hierarchicalReservedHtml.includes(`aria-label="${key}"`)
+            && hierarchicalReservedHtml.includes(`Reserved ${reservedKeys[index]}`)));
+} catch (error) {
+    console.error(error);
+    test('Reserved-key grouping tests execute', false);
+}
+
+async function runBuildParityTests() {
+    const firstRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-widget-build-one-'));
+    const secondRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-widget-build-two-'));
+
+    try {
+        const tracked = getOutputPaths();
+        const first = await build({ outputRoot: firstRoot, quiet: true });
+        const second = await build({ outputRoot: secondRoot, quiet: true });
+
+        for (const artifact of ['modal', 'highlighter']) {
+            const trackedBytes = fs.readFileSync(tracked[artifact]);
+            const firstBytes = fs.readFileSync(first[artifact]);
+            const secondBytes = fs.readFileSync(second[artifact]);
+            const label = path.basename(tracked[artifact]);
+
+            test(`${label} matches a fresh canonical production build`, trackedBytes.equals(firstBytes));
+            test(`${label} is byte-identical across isolated production builds`, firstBytes.equals(secondBytes));
+        }
+    } catch (error) {
+        console.error(error);
+        test('Canonical build parity tests execute', false);
+    } finally {
+        fs.rmSync(firstRoot, { recursive: true, force: true });
+        fs.rmSync(secondRoot, { recursive: true, force: true });
+    }
 }
 
 try {
@@ -736,6 +820,373 @@ async function runWidgetInstanceBehaviorTests() {
         });
         states = await getWidgetStates(page, ['live-widget', 'registry-widget']);
         test('Single-instance replace behavior still works after attribute-driven re-render', states['live-widget'].open && !states['registry-widget'].open && states.bodyOverflow === 'hidden');
+
+        // Focus containment across conditional controls and modal lifecycle.
+        await page.setContent(`
+            <!doctype html>
+            <html>
+                <body>
+                    <button id="background" type="button">Background</button>
+                    <search-modal id="focus-widget" search-min-chars="1" search-debounce-ms="0" recently-viewed-enabled="false"></search-modal>
+                    <search-modal id="replacement-widget" trigger-hotkey="j"></search-modal>
+                </body>
+            </html>
+        `);
+        await waitForWidgets(page, ['focus-widget', 'replacement-widget']);
+        await page.evaluate(() => {
+            window.fetch = async () => ({
+                ok: true,
+                async json() {
+                    return {
+                        results: [{ id: 1, elementId: 1, title: 'Alpha result', url: '/alpha', source: 'Docs', index: 'docs' }],
+                        meta: { cached: false, took: 2 },
+                    };
+                },
+            });
+            document.getElementById('background').focus();
+            document.getElementById('focus-widget').open({ source: 'test' });
+        });
+        await page.waitForTimeout(20);
+        let focusState = await page.evaluate(() => {
+            const widget = document.getElementById('focus-widget');
+            return widget.shadowRoot.activeElement === widget.shadowRoot.querySelector('.sm-input');
+        });
+        test('Modal open moves initial focus to the search input', focusState);
+
+        await page.evaluate(() => {
+            const widget = document.getElementById('focus-widget');
+            const input = widget.shadowRoot.querySelector('.sm-input');
+            input.value = 'alpha';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        await page.waitForFunction(() => document.getElementById('focus-widget').shadowRoot.querySelector('.sm-result-item'));
+        await page.keyboard.press('Shift+Tab');
+        focusState = await page.evaluate(() => {
+            const root = document.getElementById('focus-widget').shadowRoot;
+            return root.activeElement === root.querySelector('.sm-footer-brand a')
+                && root.querySelector('.sm-clear').hidden === false
+                && Boolean(root.querySelector('.sm-result-item'));
+        });
+        test('Shift+Tab wraps first to last with clear, result, and footer controls present', focusState);
+
+        await page.keyboard.press('Tab');
+        focusState = await page.evaluate(() => {
+            const root = document.getElementById('focus-widget').shadowRoot;
+            return root.activeElement === root.querySelector('.sm-input');
+        });
+        test('Tab wraps last to first inside the open modal', focusState);
+
+        focusState = await page.evaluate(() => {
+            const background = document.getElementById('background');
+            const widget = document.getElementById('focus-widget');
+            background.focus();
+            const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+            document.dispatchEvent(event);
+            return event.defaultPrevented
+                && widget.shadowRoot.activeElement === widget.shadowRoot.querySelector('.sm-input');
+        });
+        test('Open modal prevents background focus escape', focusState);
+
+        await page.keyboard.press('Escape');
+        focusState = await page.evaluate(() => {
+            const widget = document.getElementById('focus-widget');
+            const background = document.getElementById('background');
+            const closedEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+            document.dispatchEvent(closedEvent);
+            return widget.state.get('isOpen') === false
+                && document.activeElement === background
+                && closedEvent.defaultPrevented === false;
+        });
+        test('Escape closes, restores focus, and leaves closed focus handling inert', focusState);
+
+        focusState = await page.evaluate(() => {
+            const first = document.getElementById('focus-widget');
+            const replacement = document.getElementById('replacement-widget');
+            first.open({ source: 'test' });
+            replacement.open({ source: 'test' });
+            document.getElementById('background').focus();
+            const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+            document.dispatchEvent(event);
+            const replacementOwnsFocus = replacement.shadowRoot.activeElement === replacement.shadowRoot.querySelector('.sm-input');
+            replacement.close({ source: 'test', restoreFocus: false });
+            first.remove();
+            document.getElementById('background').focus();
+            const disconnectedEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+            document.dispatchEvent(disconnectedEvent);
+            return !first.state.get('isOpen')
+                && replacementOwnsFocus
+                && disconnectedEvent.defaultPrevented === false;
+        });
+        test('Replacement and disconnection leave focus ownership with only the active widget', focusState);
+
+        // Query ownership, live configuration, request headers, and analytics.
+        await page.setContent(`
+            <!doctype html>
+            <html>
+                <body>
+                    <button id="query-trigger" type="button">Search</button>
+                    <search-modal
+                        id="query-widget"
+                        trigger-enabled="false"
+                        trigger-selector="#query-trigger"
+                        search-min-chars="2"
+                        search-debounce-ms="0"
+                        analytics-idle-timeout-ms="60000"
+                        api-key="old-key"
+                        snippet-defaults='{"snippetMode":"early","snippetMaxLength":120}'
+                    ></search-modal>
+                </body>
+            </html>
+        `);
+        await waitForWidgets(page, ['query-widget']);
+        await page.evaluate(() => {
+            window.__smRequests = [];
+            window.fetch = (url, options = {}) => {
+                const request = {
+                    url: String(url),
+                    headers: { ...(options.headers || {}) },
+                    body: options.body || null,
+                    signal: options.signal,
+                };
+                window.__smRequests.push(request);
+
+                if (!request.url.includes('/api/search')) {
+                    return Promise.resolve({ ok: true, async json() { return { success: true }; } });
+                }
+
+                return new Promise((resolve, reject) => {
+                    request.succeed = (title = 'Result') => resolve({
+                        ok: true,
+                        async json() {
+                            return {
+                                results: [{ id: title, elementId: title, title, url: `/${title}`, source: 'Docs', index: 'docs' }],
+                                meta: { cached: false, took: 3 },
+                            };
+                        },
+                    });
+                    request.fail = (message = 'Deferred failure') => reject(new Error(message));
+                });
+            };
+            document.getElementById('query-trigger').click();
+        });
+        await page.waitForTimeout(20);
+
+        const inputQuery = async (value) => {
+            await page.evaluate((nextValue) => {
+                const input = document.getElementById('query-widget').shadowRoot.querySelector('.sm-input');
+                input.value = nextValue;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }, value);
+            await page.waitForTimeout(10);
+        };
+        const resolveSearch = async (index, title) => {
+            await page.evaluate(({ requestIndex, resultTitle }) => {
+                window.__smRequests.filter(request => request.url.includes('/api/search'))[requestIndex].succeed(resultTitle);
+            }, { requestIndex: index, resultTitle: title });
+            await page.waitForTimeout(10);
+        };
+        const rejectSearch = async (index) => {
+            await page.evaluate((requestIndex) => {
+                window.__smRequests.filter(request => request.url.includes('/api/search'))[requestIndex].fail();
+            }, index);
+            await page.waitForTimeout(10);
+        };
+
+        await inputQuery('seed');
+        await resolveSearch(0, 'Seed');
+        await inputQuery('older');
+        let queryState = await page.evaluate(() => {
+            const widget = document.getElementById('query-widget');
+            return widget.state.get('query') === 'older'
+                && widget.state.get('results').length === 0
+                && widget.state.get('meta') === null
+                && widget.state.get('error') === null
+                && widget.shadowRoot.querySelectorAll('.sm-result-item').length === 0
+                && window.__smRequests.filter(request => !request.url.includes('/api/search')).length === 0;
+        });
+        test('New debounced query removes stale links and attribution before its request settles', queryState);
+        await inputQuery('');
+        queryState = await page.evaluate(() => {
+            const widget = document.getElementById('query-widget');
+            return {
+                query: widget.state.get('query'),
+                results: widget.state.get('results').length,
+                meta: widget.state.get('meta'),
+                error: widget.state.get('error'),
+                loading: widget.state.get('loading'),
+                selectedIndex: widget.state.get('selectedIndex'),
+                linkCount: widget.shadowRoot.querySelectorAll('.sm-result-item').length,
+                analyticsTimer: widget.analyticsIdleTimer,
+                cacheState: widget.lastSearchCacheState,
+                trackingCount: window.__smRequests.filter(request => !request.url.includes('/api/search')).length,
+            };
+        });
+        test('Empty input clears prior-query UI, metadata, selection, loading, and analytics intent',
+            queryState.query === '' && queryState.results === 0 && queryState.meta === null
+            && queryState.error === null && queryState.loading === false && queryState.selectedIndex === -1
+            && queryState.linkCount === 0 && queryState.analyticsTimer === null
+            && queryState.cacheState === null && queryState.trackingCount === 0);
+        await resolveSearch(1, 'Late empty success');
+        queryState = await page.evaluate(() => {
+            const widget = document.getElementById('query-widget');
+            return widget.state.get('query') === ''
+                && widget.state.get('results').length === 0
+                && widget.shadowRoot.querySelectorAll('.sm-result-item').length === 0;
+        });
+        test('Late success cannot resurrect results after empty input', queryState);
+
+        await inputQuery('failure');
+        await inputQuery('x');
+        await rejectSearch(2);
+        queryState = await page.evaluate(() => {
+            const widget = document.getElementById('query-widget');
+            return widget.state.get('query') === 'x'
+                && widget.state.get('results').length === 0
+                && widget.state.get('error') === null
+                && widget.state.get('loading') === false
+                && widget.shadowRoot.querySelectorAll('.sm-result-item').length === 0;
+        });
+        test('Below-minimum input clears ownership and ignores a late failure', queryState);
+
+        await inputQuery('older-valid');
+        await inputQuery('newer-valid');
+        await resolveSearch(4, 'Newer');
+        await resolveSearch(3, 'Older');
+        queryState = await page.evaluate(() => {
+            const widget = document.getElementById('query-widget');
+            const requests = window.__smRequests.filter(request => request.url.includes('/api/search'));
+            return widget.state.get('query') === 'newer-valid'
+                && widget.state.get('results')[0]?.title === 'Newer'
+                && widget.shadowRoot.querySelector('.sm-result-item')?.textContent.includes('Newer')
+                && requests.every(request => request.signal === undefined);
+        });
+        test('Newer debounced request retains ownership without AbortController cancellation', queryState);
+
+        const liveConfig = await page.evaluate(async () => {
+            const widget = document.getElementById('query-widget');
+            const input = widget.shadowRoot.querySelector('.sm-input');
+            input.focus();
+            const beforeCount = window.__smRequests.filter(request => request.url.includes('/api/search')).length;
+            widget.setAttribute('api-key', 'new-key');
+            await new Promise(resolve => setTimeout(resolve, 5));
+            const afterKey = window.__smRequests.filter(request => request.url.includes('/api/search'));
+            const keyRequest = afterKey[afterKey.length - 1];
+            keyRequest.succeed('New key result');
+            await new Promise(resolve => setTimeout(resolve, 5));
+            widget.setAttribute('snippet-defaults', JSON.stringify({
+                snippetIncludeCodeBlocks: true,
+                snippetMode: 'deep',
+                snippetMaxLength: 240,
+                snippetCleanMarkdown: true,
+            }));
+            await new Promise(resolve => setTimeout(resolve, 5));
+            const afterSnippet = window.__smRequests.filter(request => request.url.includes('/api/search'));
+            const snippetRequest = afterSnippet[afterSnippet.length - 1];
+            snippetRequest.succeed('Configured result');
+            await new Promise(resolve => setTimeout(resolve, 5));
+            const preserved = {
+                sameInput: input === widget.shadowRoot.querySelector('.sm-input'),
+                open: widget.state.get('isOpen') && !widget.shadowRoot.querySelector('.sm-backdrop').hidden,
+                query: widget.state.get('query'),
+                focused: widget.shadowRoot.activeElement === input,
+                overflow: document.body.style.overflow,
+            };
+            const resultItem = widget.shadowRoot.querySelector('.sm-result-item');
+            resultItem.addEventListener('click', event => event.preventDefault(), { once: true });
+            resultItem.click();
+            await new Promise(resolve => setTimeout(resolve, 5));
+            const trackingRequests = window.__smRequests.filter(request => !request.url.includes('/api/search'));
+            document.getElementById('query-trigger').click();
+
+            return {
+                keyRequestDelta: afterKey.length - beforeCount,
+                snippetRequestDelta: afterSnippet.length - afterKey.length,
+                keyHeader: keyRequest.headers['X-Search-Manager-Key'],
+                snippetHeader: snippetRequest.headers['X-Search-Manager-Key'],
+                snippetUrl: snippetRequest.url,
+                ...preserved,
+                externalTriggerOpen: widget.state.get('isOpen'),
+                trackingHeaders: trackingRequests.map(request => request.headers['X-Search-Manager-Key']),
+                noAbort: afterSnippet.every(request => request.signal === undefined),
+            };
+        });
+        test('Live api-key mutation refreshes exactly once with the new search header',
+            liveConfig.keyRequestDelta === 1 && liveConfig.keyHeader === 'new-key');
+        test('Live snippet-defaults mutation refreshes exactly once with derived snippet options',
+            liveConfig.snippetRequestDelta === 1
+            && liveConfig.snippetUrl.includes('snippetIncludeCodeBlocks=1')
+            && liveConfig.snippetUrl.includes('snippetMode=deep')
+            && liveConfig.snippetUrl.includes('snippetMaxLength=240')
+            && liveConfig.snippetUrl.includes('snippetCleanMarkdown=1'));
+        test('Live configuration preserves modal DOM, query, focus, scroll lock, and no-abort contract',
+            liveConfig.sameInput && liveConfig.open && liveConfig.query === 'newer-valid'
+            && liveConfig.focused && liveConfig.overflow === 'hidden'
+            && liveConfig.externalTriggerOpen && liveConfig.noAbort);
+        test('Live api-key mutation reaches best-effort click and search analytics headers',
+            liveConfig.trackingHeaders.length === 2
+            && liveConfig.trackingHeaders.every(header => header === 'new-key')
+            && liveConfig.snippetHeader === 'new-key');
+
+        // Reduced motion keeps the loading indicator functional and changes
+        // scrolling only when the media preference asks for reduction.
+        await inputQuery('motion');
+        await resolveSearch(7, 'Motion result');
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        const reducedMotion = await page.evaluate(() => {
+            const widget = document.getElementById('query-widget');
+            const root = widget.shadowRoot;
+            const loading = root.querySelector('.sm-loading');
+            loading.hidden = false;
+            const item = root.querySelector('.sm-result-item');
+            const results = root.querySelector('.sm-results');
+            results.getBoundingClientRect = () => ({ top: 0, bottom: 10 });
+            item.getBoundingClientRect = () => ({ top: 20, bottom: 30 });
+            let scrollBehavior = null;
+            item.scrollIntoView = (options) => { scrollBehavior = options.behavior; };
+            widget.state.set({ selectedIndex: -1 });
+            widget.state.set({ selectedIndex: 0 });
+
+            return {
+                backdropAnimation: getComputedStyle(root.querySelector('.sm-backdrop')).animationName,
+                modalAnimation: getComputedStyle(root.querySelector('.sm-modal')).animationName,
+                spinnerAnimation: getComputedStyle(root.querySelector('.sm-spinner')).animationName,
+                resultTransition: getComputedStyle(item).transitionDuration,
+                loadingVisible: getComputedStyle(loading).display !== 'none',
+                scrollBehavior,
+            };
+        });
+        test('Reduced motion neutralizes modal, spinner, and transition motion while keeping loading visible',
+            reducedMotion.backdropAnimation === 'none'
+            && reducedMotion.modalAnimation === 'none'
+            && reducedMotion.spinnerAnimation === 'none'
+            && reducedMotion.resultTransition === '0s'
+            && reducedMotion.loadingVisible);
+        test('Reduced motion uses non-smooth result scrolling', reducedMotion.scrollBehavior === 'auto');
+
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        const defaultMotion = await page.evaluate(() => {
+            const widget = document.getElementById('query-widget');
+            const root = widget.shadowRoot;
+            const item = root.querySelector('.sm-result-item');
+            const results = root.querySelector('.sm-results');
+            results.getBoundingClientRect = () => ({ top: 0, bottom: 10 });
+            item.getBoundingClientRect = () => ({ top: 20, bottom: 30 });
+            let scrollBehavior = null;
+            item.scrollIntoView = (options) => { scrollBehavior = options.behavior; };
+            widget.state.set({ selectedIndex: -1 });
+            widget.state.set({ selectedIndex: 0 });
+            return {
+                backdropAnimation: getComputedStyle(root.querySelector('.sm-backdrop')).animationName,
+                spinnerAnimation: getComputedStyle(root.querySelector('.sm-spinner')).animationName,
+                resultTransition: getComputedStyle(item).transitionDuration,
+                scrollBehavior,
+            };
+        });
+        test('Default motion preserves modal, spinner, transition, and smooth-scroll behavior',
+            defaultMotion.backdropAnimation === 'sm-fade-in'
+            && defaultMotion.spinnerAnimation === 'sm-spin'
+            && defaultMotion.resultTransition !== '0s'
+            && defaultMotion.scrollBehavior === 'smooth');
     } catch (error) {
         console.error(error);
         test('Widget instance behavior tests execute', false);
@@ -747,6 +1198,7 @@ async function runWidgetInstanceBehaviorTests() {
 }
 
 (async () => {
+    await runBuildParityTests();
     await runWidgetInstanceBehaviorTests();
 
     // Summary

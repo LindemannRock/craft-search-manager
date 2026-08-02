@@ -384,32 +384,44 @@ class SearchWidgetBase extends HTMLElement {
      */
     handleInput(e) {
         const query = e.target.value;
+        const previousQuery = this.state.get('query');
 
         // Sync the clear button (present in the modal widget)
         if (this.elements && this.elements.clear) {
             this.elements.clear.hidden = !query;
         }
 
-        // Update state
-        this.state.set({
-            query,
-            selectedIndex: -1,
-        });
+        // Ignore duplicate input events without cancelling a valid pending
+        // debounce for the same query.
+        if (query === previousQuery) {
+            return;
+        }
+
+        // Every effective query change retires ownership of the previous
+        // request before any empty/minimum-length/debounce return. Requests are
+        // deliberately not aborted; late responses are discarded by sequence.
+        this.searchSequence++;
 
         // Clear pending search
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
+            this.debounceTimer = null;
         }
 
-        // Cancel analytics idle timer (user is still typing)
-        if (this.analyticsIdleTimer) {
-            clearTimeout(this.analyticsIdleTimer);
-            this.analyticsIdleTimer = null;
-        }
+        // Retire all state and analytics intent owned by the previous query so
+        // stale links cannot remain visible or be attributed to the new input.
+        this.resetAnalyticsTracking();
+        this.state.set({
+            query,
+            results: [],
+            meta: null,
+            error: null,
+            loading: false,
+            selectedIndex: -1,
+        });
 
         // If query is empty, just re-render (shows recently viewed or empty state)
         if (!query.trim()) {
-            this.state.set({ results: [] });
             return;
         }
 

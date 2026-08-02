@@ -30,6 +30,7 @@
 
 import SearchWidgetBase from '../core/SearchWidgetBase.js';
 import { getObservedAttributes, parseConfig } from '../core/ConfigParser.js';
+import { trapFocus } from '../modules/A11yUtils.js';
 import { escapeHtml } from '../modules/Highlighter.js';
 import { t } from '../modules/Translations.js';
 import baseStyles from '../styles/base.css';
@@ -122,10 +123,27 @@ class SearchModalWidget extends SearchWidgetBase {
             return;
         }
 
-        if (name === 'theme') {
+        if (name === 'theme' || name === 'api-key' || name === 'snippet-defaults') {
             this.config = parseConfig(this, this.widgetType);
-            this.shadowRoot.host.setAttribute('data-theme', this.config.theme);
-            this.applyCustomStyles();
+            if (name === 'theme') {
+                this.shadowRoot.host.setAttribute('data-theme', this.config.theme);
+                this.applyCustomStyles();
+                return;
+            }
+
+            const query = this.state.get('query') || '';
+            if (
+                this.state.get('isOpen')
+                && query.trim()
+                && query.length >= this.config.searchMinChars
+            ) {
+                if (this.debounceTimer) {
+                    clearTimeout(this.debounceTimer);
+                    this.debounceTimer = null;
+                }
+                this.resetAnalyticsTracking();
+                this.executeSearch(query);
+            }
             return;
         }
 
@@ -422,6 +440,9 @@ class SearchModalWidget extends SearchWidgetBase {
         this.state.set({
             query: '',
             results: [],
+            meta: null,
+            error: null,
+            loading: false,
             selectedIndex: -1,
         });
 
@@ -448,7 +469,15 @@ class SearchModalWidget extends SearchWidgetBase {
     close(options = {}) {
         const wasOpen = this.state.get('isOpen');
 
-        this.state.set({ isOpen: false });
+        // Closing retires the current modal session. Any request already on the
+        // wire may finish normally, but it no longer owns UI or analytics state.
+        this.searchSequence++;
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = null;
+        }
+
+        this.state.set({ isOpen: false, loading: false });
         this.elements.backdrop.hidden = true;
         this.elements.trigger.setAttribute('aria-expanded', 'false');
         this.unregisterOpenWidget();
@@ -522,6 +551,16 @@ class SearchModalWidget extends SearchWidgetBase {
      * @param {KeyboardEvent} e - Keyboard event
      */
     handleGlobalKeydown(e) {
+        if (
+            e.key === 'Tab'
+            && this.isConnected
+            && this.state.get('isOpen')
+            && this.elements.modal
+        ) {
+            trapFocus(e, this.elements.modal, this.shadowRoot);
+            return;
+        }
+
         const hotkey = this.config.triggerHotkey.toLowerCase();
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const modifier = isMac ? e.metaKey : e.ctrlKey;
