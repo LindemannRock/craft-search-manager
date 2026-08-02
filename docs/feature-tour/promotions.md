@@ -1,6 +1,6 @@
 # Promotions @since(5.10.0)
 
-Pin a specific product, entry, or page to a fixed spot in your search results — bypassing normal relevance scoring — so it shows up exactly where you want it, every time a query matches. Promotions are built for merchandising, editorial control, and making sure important content wins over whatever the ranking algorithm would otherwise pick.
+Pin a specific product, entry, or page to a fixed spot in your search results — bypassing normal relevance scoring — so it shows up exactly where you want it when the query, index, site, and result type all match. Promotions are built for merchandising, editorial control, and making sure important content wins over whatever the ranking algorithm would otherwise pick.
 
 Promotions require Pro. In Standard, stored promotions remain intact but are not inserted into search results.
 
@@ -63,6 +63,8 @@ Promotions are applied from the index that is being searched. When a promotion m
 
 - If the promoted element has an indexed document, that document is inserted at the configured position.
 - If the promoted element is not indexed in the searched index/site, the promotion is skipped.
+- A valid promoted document can supply a result even when the backend returns no organic hits.
+- A request's supported `type` filter also applies to promoted documents. A promoted document whose indexed `type` is filtered out is not shown.
 - Public hit fields such as `title`, `url`, `type`, `snippet`, and metadata come from the indexed document, not from a live Craft element lookup.
 - Split-section indices promote the indexed intro or first section document for the target element. If no split document exists, the promotion is skipped.
 
@@ -76,6 +78,12 @@ Example:
 ```
 
 This keeps promotions aligned with normal search results: both trust the backend index as the source of truth at search time. Rebuild the affected index after changing promotion targets, URL-bearing fields, category/product metadata, or split-section content that should appear in promoted results.
+
+## Overlapping promotions
+
+A global promotion, a site-specific promotion, and several matching query patterns can all select the same element for one search. Search Manager presents that searched-site element only once. The promotion with the earliest configured position wins; when positions are equal, the earlier-created promotion wins. Promotions for distinct elements remain separate and keep deterministic position order.
+
+This precedence applies only to overlapping promotions for the same searched-site element. It does not collapse different promoted elements, even when they use the same position.
 
 ## Bulk actions
 
@@ -145,8 +153,12 @@ Promoted items appear in search results with `promoted: true` and `score: null`:
 }
 ```
 
+`meta.promotionsMatched` keeps its existing response name for compatibility, but contains only promotions represented by the final returned hits. Missing indexed targets, overlapping duplicates, and promoted documents removed by the request's type filter are excluded. Cache hits and fresh searches use the same rule.
+
+The top-level `total` remains the backend's organic total; injected promotions do not increase it. A response can therefore contain a promoted hit while reporting `total: 0` when the backend found no organic results.
+
 Promoted hits use the same metadata contract as indexed hits because they are copied from indexed documents. Entries include `entrySection`, `entrySectionHandle`, and `entrySectionType` when those fields were indexed; SourceDoc and custom source-backed hits can include `source` and `docCategory`; Assets include `volume` and `volumeHandle`; Categories include `categoryGroup` and `categoryGroupHandle`; Commerce Products and Variants include `productType` and `productTypeHandle`; Users do not include fake source or Entry section metadata. When the indexed document has hierarchy context, promoted hits can also include `ancestors`, Entry/Category `level`, and public Asset `folderPath`.
 
 ## Analytics
 
-When analytics is enabled, Search Manager tracks promotion impressions, positions, and which queries triggered each promotion. This data appears in the Analytics > Promotions tab. See [Analytics](analytics.md).
+When analytics is enabled, Search Manager tracks impressions, positions, and triggering queries only for promotions represented by the final returned hits. Skipped targets, overlapping duplicates, and type-filtered promotions do not count as shown; a presented promotion also prevents that search action from being classified as a content gap. This data appears in the Analytics > Promotions tab. See [Analytics](analytics.md).

@@ -609,17 +609,16 @@ class BackendService extends Component
             $cached = $this->_getFromCache($indexName, $query, $options);
             if ($cached !== null) {
                 // Apply promotions fresh (not from cache) so disabled promotions are excluded
-                if (!empty($cached['hits'])) {
-                    $cached['hits'] = SearchManager::$plugin->promotions->applyPromotions(
-                        $cached['hits'],
-                        $query,
-                        $indexName,
-                        $siteId,
-                        $matchedPromotions,
-                    );
-
-                    $cached['hits'] = $this->filterHitsByType($cached['hits'], $options['type'] ?? null);
-                }
+                $promotionOutcome = SearchManager::$plugin->promotions->applyPromotionsWithOutcome(
+                    $cached['hits'] ?? [],
+                    $query,
+                    $indexName,
+                    $siteId,
+                    $matchedPromotions,
+                    fn(array $hits): array => $this->filterHitsByType($hits, $options['type'] ?? null),
+                );
+                $cached['hits'] = $promotionOutcome['hits'];
+                $presentedPromotions = $promotionOutcome['presentedPromotions'];
 
                 // Still track analytics for cached results
                 if (!$skipAnalytics) {
@@ -633,10 +632,10 @@ class BackendService extends Component
                         array_merge($analyticsOptions, [
                             'synonymsExpanded' => $useSynonyms,
                             'rulesMatched' => count($matchedRules),
-                            'promotionsShown' => count($matchedPromotions),
+                            'promotionsShown' => count($presentedPromotions),
                             'wasRedirected' => false,
                             'matchedRules' => $matchedRules,
-                            'matchedPromotions' => $matchedPromotions,
+                            'matchedPromotions' => $presentedPromotions,
                         ]),
                         $sessionId,
                     );
@@ -665,7 +664,7 @@ class BackendService extends Component
                             'elementId' => $promo->elementId,
                             'position' => $promo->position,
                         ];
-                    }, $matchedPromotions),
+                    }, $presentedPromotions),
                 ];
 
                 // Cache stores RAW backend results, so the local-engine debug
@@ -739,17 +738,16 @@ class BackendService extends Component
         // Promotions are applied fresh each time, not cached, so disabled
         // promotions are immediately excluded from results.
         // =====================================================================
-        if (!empty($results['hits'])) {
-            $results['hits'] = SearchManager::$plugin->promotions->applyPromotions(
-                $results['hits'],
-                $query,
-                $indexName,
-                $siteId,
-                $matchedPromotions,
-            );
-
-            $results['hits'] = $this->filterHitsByType($results['hits'], $options['type'] ?? null);
-        }
+        $promotionOutcome = SearchManager::$plugin->promotions->applyPromotionsWithOutcome(
+            $results['hits'] ?? [],
+            $query,
+            $indexName,
+            $siteId,
+            $matchedPromotions,
+            fn(array $hits): array => $this->filterHitsByType($hits, $options['type'] ?? null),
+        );
+        $results['hits'] = $promotionOutcome['hits'];
+        $presentedPromotions = $promotionOutcome['presentedPromotions'];
 
         // 4. Track analytics
         if (!$skipAnalytics) {
@@ -763,10 +761,10 @@ class BackendService extends Component
                 array_merge($analyticsOptions, [
                     'synonymsExpanded' => $useSynonyms,
                     'rulesMatched' => count($matchedRules),
-                    'promotionsShown' => count($matchedPromotions),
+                    'promotionsShown' => count($presentedPromotions),
                     'wasRedirected' => false,
                     'matchedRules' => $matchedRules,
-                    'matchedPromotions' => $matchedPromotions,
+                    'matchedPromotions' => $presentedPromotions,
                 ]),
                 $sessionId,
             );
@@ -799,7 +797,7 @@ class BackendService extends Component
                     'elementId' => $promo->elementId,
                     'position' => $promo->position,
                 ];
-            }, $matchedPromotions),
+            }, $presentedPromotions),
         ];
 
         $this->_mergeSearchDebugIntoMeta($results);

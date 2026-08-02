@@ -45,14 +45,14 @@ final class AuditConfirmingScanRegressionTest extends TestCase
     {
         $source = $this->methodBody(
             $this->readPluginSource('src/services/PromotionService.php'),
-            'applyPromotions',
+            'applyPromotionsWithOutcome',
             'public',
         );
 
         self::assertStringContainsString('$indexedDocuments = $this->indexedPromotionDocuments($promotions, $indexHandle, $siteId);', $source);
         self::assertStringContainsString('$promotedItem = $indexedDocuments[$elementId] ?? null;', $source);
         self::assertStringContainsString('Skipping promotion because target document is not indexed', $source);
-        self::assertStringNotContainsString('promotionIdentity', $source);
+        self::assertStringContainsString('$this->promotionIdentity($elementId, $siteId)', $source);
         self::assertStringNotContainsString('siteIdsByPromotion', $source);
     }
 

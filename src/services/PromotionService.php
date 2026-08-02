@@ -164,11 +164,44 @@ class PromotionService extends Component
         ?int $siteId = null,
         ?array $matchedPromotions = null,
     ): array {
+        return $this->applyPromotionsWithOutcome(
+            $results,
+            $query,
+            $indexHandle,
+            $siteId,
+            $matchedPromotions,
+        )['hits'];
+    }
+
+    /**
+     * Apply promotions and return the exact promotions represented in the
+     * final hit list.
+     *
+     * @param array<int, mixed> $results
+     * @param Promotion[]|null $matchedPromotions
+     * @param callable(array<int, mixed>): array<int, mixed>|null $finalizeHits
+     * @return array{hits: array<int, mixed>, presentedPromotions: list<Promotion>}
+     * @internal
+     * @since 5.54.0
+     */
+    public function applyPromotionsWithOutcome(
+        array $results,
+        string $query,
+        string $indexHandle,
+        ?int $siteId = null,
+        ?array $matchedPromotions = null,
+        ?callable $finalizeHits = null,
+    ): array {
         $promotions = $matchedPromotions ?? $this->getPromotedElements($query, $indexHandle, $siteId);
 
         if (empty($promotions)) {
-            return $results;
+            return [
+                'hits' => $finalizeHits !== null ? $finalizeHits($results) : $results,
+                'presentedPromotions' => [],
+            ];
         }
+
+        $promotions = $this->prioritizedPromotions($promotions, $siteId);
 
         $this->logDebug('Applying promotions', [
             'query' => $query,
@@ -187,10 +220,11 @@ class PromotionService extends Component
             }
         }
 
-        // Insert promoted elements at their positions (already sorted by position from findMatching)
+        // Insert promoted elements using the deterministic priority order.
         $finalResults = $filteredResults;
+        $promotionByIdentity = [];
+        $lastPromotionInsertPos = -1;
         foreach ($promotions as $promotion) {
-            $insertPos = max(0, $promotion->position - 1);
             $elementId = (int)$promotion->elementId;
             $promotedItem = $indexedDocuments[$elementId] ?? null;
 
@@ -211,10 +245,39 @@ class PromotionService extends Component
             if ($promotion->elementType !== null) {
                 $promotedItem['_elementType'] = $promotion->elementType;
             }
+
+            $insertPos = max(0, $promotion->position - 1, $lastPromotionInsertPos + 1);
             array_splice($finalResults, $insertPos, 0, [$promotedItem]);
+            $promotionByIdentity[$this->promotionIdentity($elementId, $siteId)] = $promotion;
+            $lastPromotionInsertPos = $insertPos;
         }
 
-        return $finalResults;
+        if ($finalizeHits !== null) {
+            $finalResults = $finalizeHits($finalResults);
+        }
+
+        $presentedPromotions = [];
+        foreach ($finalResults as $hit) {
+            if (!is_array($hit) || ($hit['promoted'] ?? false) !== true) {
+                continue;
+            }
+
+            $elementId = SearchHitIdentityHelper::elementId($hit);
+            if ($elementId === null) {
+                continue;
+            }
+
+            $identity = $this->promotionIdentity($elementId, $siteId);
+            if (isset($promotionByIdentity[$identity])) {
+                $presentedPromotions[] = $promotionByIdentity[$identity];
+                unset($promotionByIdentity[$identity]);
+            }
+        }
+
+        return [
+            'hits' => $finalResults,
+            'presentedPromotions' => $presentedPromotions,
+        ];
     }
 
     /**
@@ -263,6 +326,58 @@ class PromotionService extends Component
             array_map(static fn(Promotion $promotion): int => (int)$promotion->elementId, $promotions),
             static fn(int $elementId): bool => $elementId > 0,
         )));
+    }
+
+    /**
+     * @param array<int, Promotion> $promotions
+     * @return list<Promotion>
+     */
+    private function prioritizedPromotions(array $promotions, ?int $siteId): array
+    {
+        $prioritized = [];
+        foreach (array_values($promotions) as $order => $promotion) {
+            $prioritized[] = [
+                'promotion' => $promotion,
+                'order' => $order,
+            ];
+        }
+
+        usort($prioritized, static function(array $a, array $b): int {
+            /** @var Promotion $promotionA */
+            $promotionA = $a['promotion'];
+            /** @var Promotion $promotionB */
+            $promotionB = $b['promotion'];
+
+            return $promotionA->position <=> $promotionB->position
+                ?: ($promotionA->id ?? PHP_INT_MAX) <=> ($promotionB->id ?? PHP_INT_MAX)
+                ?: $a['order'] <=> $b['order'];
+        });
+
+        $seen = [];
+        $deduplicated = [];
+        foreach ($prioritized as $candidate) {
+            /** @var Promotion $promotion */
+            $promotion = $candidate['promotion'];
+            $elementId = (int)$promotion->elementId;
+            if ($elementId <= 0) {
+                continue;
+            }
+
+            $identity = $this->promotionIdentity($elementId, $siteId);
+            if (isset($seen[$identity])) {
+                continue;
+            }
+
+            $seen[$identity] = true;
+            $deduplicated[] = $promotion;
+        }
+
+        return $deduplicated;
+    }
+
+    private function promotionIdentity(int $elementId, ?int $siteId): string
+    {
+        return $elementId . ':' . ($siteId ?? 'all');
     }
 
     // =========================================================================

@@ -38,7 +38,7 @@ final class AuditPass30RegressionTest extends TestCase
         $promotion->elementId = 42;
         $promotion->position = 1;
 
-        $service = new class extends PromotionService {
+        $service = new class() extends PromotionService {
             public int $fetches = 0;
 
             public function getPromotedElements(string $query, string $indexHandle, ?int $siteId = null): array
@@ -124,7 +124,7 @@ final class AuditPass30RegressionTest extends TestCase
     {
         $promotionSource = $this->methodSource(
             $this->readPluginFile('src/services/PromotionService.php'),
-            'public function applyPromotions',
+            'public function applyPromotionsWithOutcome',
         );
         $liveComparisonSource = $this->readPluginFile('src/services/LiveComparisonService.php');
         $presenterSource = $this->readPluginFile('src/helpers/SearchHitPresenter.php');
@@ -154,8 +154,9 @@ final class AuditPass30RegressionTest extends TestCase
         $source = $this->readPluginFile('src/services/BackendService.php');
 
         self::assertStringContainsString('$matchedPromotions = \lindemannrock\searchmanager\models\Promotion::findMatching', $source);
-        preg_match_all('/applyPromotions\([^)]+\$matchedPromotions,/s', $source, $matches);
+        preg_match_all('/applyPromotionsWithOutcome\([^)]+\$matchedPromotions,/s', $source, $matches);
         self::assertCount(2, $matches[0]);
+        self::assertSame(2, substr_count($source, "'matchedPromotions' => \$presentedPromotions"));
     }
 
     public function testActionTestQueryRulesUsesTranslatedActionDescriptionPath(): void
