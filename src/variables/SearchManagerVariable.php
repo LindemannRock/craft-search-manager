@@ -300,11 +300,12 @@ class SearchManagerVariable
      * @since 5.25.0
      * @param int $ruleId The query rule ID
      * @param string $dateRange Date range filter
+     * @param int|array|null $siteId Site scope; null preserves global compatibility
      * @return array Analytics data
      */
-    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
+    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days', int|array|null $siteId = null): array
     {
-        return SearchManager::$plugin->analytics->getRuleAnalytics($ruleId, $dateRange);
+        return SearchManager::$plugin->analytics->getRuleAnalytics($ruleId, $dateRange, $siteId);
     }
 
     /**
@@ -313,11 +314,12 @@ class SearchManagerVariable
      * @since 5.25.0
      * @param int $promotionId The promotion ID
      * @param string $dateRange Date range filter
+     * @param int|array|null $siteId Site scope; null preserves global compatibility
      * @return array Analytics data
      */
-    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
+    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days', int|array|null $siteId = null): array
     {
-        return SearchManager::$plugin->analytics->getPromotionAnalytics($promotionId, $dateRange);
+        return SearchManager::$plugin->analytics->getPromotionAnalytics($promotionId, $dateRange, $siteId);
     }
 
     // =========================================================================

@@ -3,7 +3,7 @@
 {% set dateRange = craft.app.request.getQueryParam('range') ?? lrDefaultDateRange(pluginHandle) %}
 
 {# Get analytics data for this rule #}
-{% set analytics = craft.searchManager.getRuleAnalytics(rule.id, dateRange) %}
+{% set analytics = craft.searchManager.getRuleAnalytics(rule.id, dateRange, craft.app.sites.getEditableSiteIds()) %}
 
 {% embed 'lindemannrock-base/_partials/analytics-panel' with {
     config: {

@@ -135,9 +135,10 @@ class AnalyticsController extends Controller
 
         // Overview tab data only — all other tabs lazy-load via AJAX
         $mostCommon = SearchManager::$plugin->analytics->getMostCommonSearches($effectiveSiteId, 15, $dateRange);
-        $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, null, $dateRange);
-        $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, true, $dateRange);
-        $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, false, $dateRange);
+        $summary = SearchManager::$plugin->analytics->getAnalyticsSummary($effectiveSiteId, $dateRange);
+        $totalCount = $summary['totalSearches'];
+        $unhandledCount = $summary['zeroResults'];
+        $handledCount = $totalCount - $unhandledCount;
 
         // API key attribution breakdown (slice 5). Empty data set on installs
         // that never enable requireApiKey — the overview only renders the table
@@ -606,9 +607,10 @@ class AnalyticsController extends Controller
 
             // Summary Stats (Header)
             if ($type === 'summary') {
-                $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, null, $dateRange);
-                $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, true, $dateRange);
-                $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, false, $dateRange);
+                $summary = SearchManager::$plugin->analytics->getAnalyticsSummary($effectiveSiteId, $dateRange);
+                $totalCount = $summary['totalSearches'];
+                $unhandledCount = $summary['zeroResults'];
+                $handledCount = $totalCount - $unhandledCount;
                 $mostCommon = $this->formatMostCommonSearchRows(
                     SearchManager::$plugin->analytics->getMostCommonSearches($effectiveSiteId, 15, $dateRange)
                 );

@@ -79,8 +79,10 @@ class DashboardController extends Controller
         $recentZeroResults = [];
         if ($isPro && $settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics')) {
             $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-            $searchesToday = SearchManager::$plugin->analytics->getAnalyticsCount($editableSiteIds, null, 'today');
-            $searchesYesterday = SearchManager::$plugin->analytics->getAnalyticsCount($editableSiteIds, null, 'yesterday');
+            $todaySummary = SearchManager::$plugin->analytics->getAnalyticsSummary($editableSiteIds, 'today');
+            $yesterdaySummary = SearchManager::$plugin->analytics->getAnalyticsSummary($editableSiteIds, 'yesterday');
+            $searchesToday = $todaySummary['totalSearches'];
+            $searchesYesterday = $yesterdaySummary['totalSearches'];
             $topSearches = SearchManager::$plugin->analytics->getMostCommonSearches($editableSiteIds, 5, 'last7days');
             $recentZeroResults = SearchManager::$plugin->analytics->getRecentSearches($editableSiteIds, 5, false, 'last7days');
         }

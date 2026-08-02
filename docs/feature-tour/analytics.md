@@ -142,18 +142,18 @@ Analytics can be enabled or disabled per index. This is useful for excluding int
 
 Search Manager assigns the source at the entry point that started the search. It does not infer source from the request's `Referer` header.
 
-| Entry point | Default source |
-|-------------|----------------|
-| Modal widget | `widget-modal` |
-| Search-page widget | `widget-page` |
-| Inline widget | `widget-inline` |
-| Twig `craft.searchManager.search()` / `searchMultiple()` | `twig` |
-| REST search | `rest` |
-| GraphQL search | `graphql` |
-| Control Panel Test search | `cp-test` |
-| Direct/internal tracking without an entry-point default | `unknown` |
+| Entry point | Stored/exported source | Breakdown label |
+|-------------|------------------------|-----------------|
+| Modal widget | `widget-modal` | Modal Widget |
+| Search-page widget | `widget-page` | Page Widget |
+| Inline widget | `widget-inline` | Inline Widget |
+| Twig `craft.searchManager.search()` / `searchMultiple()` | `twig` | Twig |
+| REST search | `rest` | REST |
+| GraphQL search | `graphql` | GraphQL |
+| Control Panel Test search | `cp-test` | Control Panel Test |
+| Direct/internal tracking without an entry-point default | `unknown` | Unknown |
 
-The referrer is still captured as separate analytics metadata when the request supplies one. Existing historical source values such as `frontend`, `cp`, and `api` remain visible in breakdowns and exports.
+The friendly labels are presentation-only: stored rows and exports keep the raw identifiers. The referrer is still captured as separate analytics metadata when the request supplies one. Existing historical source values such as `frontend`, `cp`, and `api` remain visible as Frontend, Control Panel, and API in breakdowns while retaining their raw values in exports. Custom sources keep their dynamic, title-capitalized fallback label.
 
 You can also pass a custom source for mobile apps or integrations:
 

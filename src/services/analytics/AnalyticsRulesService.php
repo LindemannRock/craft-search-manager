@@ -134,9 +134,10 @@ class AnalyticsRulesService
      *
      * @param int $ruleId The query rule ID
      * @param string $dateRange Date range filter
+     * @param int|array|null $siteId Site scope; null preserves global compatibility
      * @return array Analytics data
      */
-    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
+    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days', int|array|null $siteId = null): array
     {
         $localDateExpr = DateFormatHelper::localDateExpression('dateCreated');
 
@@ -145,6 +146,8 @@ class AnalyticsRulesService
             ->where(['queryRuleId' => $ruleId]);
 
         $this->applyDateRangeFilter($query, $dateRange);
+
+        $this->applySiteScope($query, $siteId);
 
         // Get summary stats
         $totalTriggers = (int)(clone $query)->count();
@@ -304,9 +307,10 @@ class AnalyticsRulesService
      *
      * @param int $promotionId The promotion ID
      * @param string $dateRange Date range filter
+     * @param int|array|null $siteId Site scope; null preserves global compatibility
      * @return array Analytics data
      */
-    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
+    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days', int|array|null $siteId = null): array
     {
         $localDateExpr = DateFormatHelper::localDateExpression('dateCreated');
 
@@ -315,6 +319,8 @@ class AnalyticsRulesService
             ->where(['promotionId' => $promotionId]);
 
         $this->applyDateRangeFilter($query, $dateRange);
+
+        $this->applySiteScope($query, $siteId);
 
         // Get summary stats
         $totalImpressions = (int)(clone $query)->count();

@@ -72,6 +72,15 @@ final class AnalyticsSessionDedupTest extends TestCase
             ->where(['siteId' => self::TEST_SITE_ID])
             ->count();
         $this->assertSame(4, $rawRowCount, 'Sanity: four rows seeded.');
+        $this->assertSame(
+            4,
+            SearchManager::$plugin->analytics->getAnalyticsCount(self::TEST_SITE_ID, null, 'last30days'),
+            'The recent-log pagination authority remains a raw row count.',
+        );
+        $this->assertCount(
+            4,
+            SearchManager::$plugin->analytics->getRecentSearches(self::TEST_SITE_ID, 10, null, 'last30days'),
+        );
 
         $summary = SearchManager::$plugin->analytics->getAnalyticsSummary(self::TEST_SITE_ID, 'last30days');
 

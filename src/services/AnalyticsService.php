@@ -298,7 +298,7 @@ class AnalyticsService extends Component
     /**
      * @since 5.25.0
      */
-    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
+    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days', int|array|null $siteId = null): array
     {
         return $this->readProDetailAnalytics(
             [
@@ -309,7 +309,7 @@ class AnalyticsService extends Component
                 'dailyTriggers' => [],
                 'recentTriggers' => [],
             ],
-            fn(): array => $this->_rules->getRuleAnalytics($ruleId, $dateRange),
+            fn(): array => $this->_rules->getRuleAnalytics($ruleId, $dateRange, $siteId),
         );
     }
 
@@ -340,7 +340,7 @@ class AnalyticsService extends Component
     /**
      * @since 5.25.0
      */
-    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
+    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days', int|array|null $siteId = null): array
     {
         return $this->readProDetailAnalytics(
             [
@@ -351,7 +351,7 @@ class AnalyticsService extends Component
                 'dailyImpressions' => [],
                 'recentImpressions' => [],
             ],
-            fn(): array => $this->_rules->getPromotionAnalytics($promotionId, $dateRange),
+            fn(): array => $this->_rules->getPromotionAnalytics($promotionId, $dateRange, $siteId),
         );
     }
 

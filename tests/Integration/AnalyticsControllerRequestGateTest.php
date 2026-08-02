@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\controllers\AnalyticsController;
+use lindemannrock\searchmanager\controllers\DashboardController;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -18,6 +19,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
  * @since 5.53.0
  */
 #[CoversClass(AnalyticsController::class)]
+#[CoversClass(DashboardController::class)]
 final class AnalyticsControllerRequestGateTest extends TestCase
 {
     public function testAjaxJsonEndpointsRequireAcceptsJsonBeforePermission(): void
@@ -118,5 +120,47 @@ final class AnalyticsControllerRequestGateTest extends TestCase
             $source,
         );
         self::assertStringContainsString('return $editableSiteIds;', $source);
+    }
+
+    public function testActionLabelledOverviewAndDashboardCountsUseTheActionSummaryAuthority(): void
+    {
+        $analyticsSource = file_get_contents(dirname(__DIR__, 2) . '/src/controllers/AnalyticsController.php');
+        $dashboardSource = file_get_contents(dirname(__DIR__, 2) . '/src/controllers/DashboardController.php');
+        $this->assertIsString($analyticsSource);
+        $this->assertIsString($dashboardSource);
+
+        foreach (['actionIndex', 'actionGetData'] as $method) {
+            preg_match(
+                '/public function ' . preg_quote($method, '/') . '\(\): Response\s+\{(?<body>.*?)(?:\n    \}|\n    public function )/s',
+                $analyticsSource,
+                $matches,
+            );
+            $body = $matches['body'] ?? '';
+            self::assertNotSame('', $body, $method . ' body should be captured.');
+            self::assertStringContainsString('getAnalyticsSummary(', $body);
+            self::assertStringNotContainsString('getAnalyticsCount(', $body);
+            self::assertStringContainsString("\$handledCount = \$totalCount - \$unhandledCount;", $body);
+        }
+
+        self::assertStringContainsString("getAnalyticsSummary(\$editableSiteIds, 'today')", $dashboardSource);
+        self::assertStringContainsString("getAnalyticsSummary(\$editableSiteIds, 'yesterday')", $dashboardSource);
+        self::assertStringNotContainsString('getAnalyticsCount(', $dashboardSource);
+
+        $queryInsights = file_get_contents(dirname(__DIR__, 2) . '/src/services/analytics/AnalyticsQueryInsightsService.php');
+        $this->assertIsString($queryInsights);
+        self::assertStringContainsString('public function getAnalyticsCount(', $queryInsights);
+        self::assertStringContainsString('return (int)$query->count();', $queryInsights);
+    }
+
+    public function testControlPanelDetailTemplatesPassEditableSiteScopes(): void
+    {
+        foreach ([
+            'query-rules/_partials/analytics.twig' => 'getRuleAnalytics(rule.id, dateRange, craft.app.sites.getEditableSiteIds())',
+            'promotions/_partials/analytics.twig' => 'getPromotionAnalytics(promotion.id, dateRange, craft.app.sites.getEditableSiteIds())',
+        ] as $template => $expectedCall) {
+            $source = file_get_contents(dirname(__DIR__, 2) . '/src/templates/' . $template);
+            $this->assertIsString($source);
+            self::assertStringContainsString($expectedCall, $source, $template);
+        }
     }
 }

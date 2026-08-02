@@ -283,6 +283,14 @@ class AnalyticsBreakdownService
                 'frontend' => Craft::t('search-manager', 'Frontend'),
                 'cp' => Craft::t('search-manager', 'Control Panel'),
                 'api' => 'API',
+                'widget-modal' => Craft::t('search-manager', 'Modal Widget'),
+                'widget-page' => Craft::t('search-manager', 'Page Widget'),
+                'widget-inline' => Craft::t('search-manager', 'Inline Widget'),
+                'twig' => Craft::t('search-manager', 'Twig'),
+                'rest' => Craft::t('search-manager', 'REST'),
+                'graphql' => Craft::t('search-manager', 'GraphQL'),
+                'cp-test' => Craft::t('search-manager', 'Control Panel Test'),
+                'unknown' => Craft::t('search-manager', 'Unknown'),
                 default => ucfirst($row['source']),
             };
 

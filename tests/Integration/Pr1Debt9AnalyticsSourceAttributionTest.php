@@ -497,6 +497,65 @@ final class Pr1Debt9AnalyticsSourceAttributionTest extends TestCase
         self::assertSame($before, $after);
     }
 
+    public function testCanonicalHistoricalAndCustomSourcesKeepRawIdentityWhileChartsUseLabels(): void
+    {
+        $handle = $this->requireAnalyticsIndexHandle();
+        $this->installWebRequest([], 'https://sources.example.test/search');
+        $expectedLabels = [
+            'widget-modal' => 'Modal Widget',
+            'widget-page' => 'Page Widget',
+            'widget-inline' => 'Inline Widget',
+            'twig' => 'Twig',
+            'rest' => 'REST',
+            'graphql' => 'GraphQL',
+            'cp-test' => 'Control Panel Test',
+            'unknown' => 'Unknown',
+            'frontend' => 'Frontend',
+            'cp' => 'Control Panel',
+            'api' => 'API',
+            'customsource' => 'Customsource',
+        ];
+
+        foreach (array_keys($expectedLabels) as $source) {
+            SearchManager::$plugin->analytics->trackSearch(
+                $handle,
+                self::QUERY_PREFIX . 'presentation-' . $source,
+                1,
+                1.0,
+                'test',
+                $this->testSiteId(),
+                ['source' => $source],
+            );
+        }
+
+        $before = array_column($this->analyticsRowsLike(self::QUERY_PREFIX . 'presentation-'), 'source');
+        $breakdown = SearchManager::$plugin->analytics->getSourceBreakdown($this->testSiteId(), 'all');
+        $labelsBySource = array_column($breakdown['data'], 'label', 'source');
+        $export = SearchManager::$plugin->analytics->exportAnalytics($this->testSiteId(), 'all');
+        $exportedSources = [];
+        foreach ($export['rows'] as $row) {
+            if (str_starts_with((string)$row['query'], self::QUERY_PREFIX . 'presentation-')) {
+                $exportedSources[] = $row['source'];
+            }
+        }
+        $after = array_column($this->analyticsRowsLike(self::QUERY_PREFIX . 'presentation-'), 'source');
+
+        foreach ($expectedLabels as $source => $label) {
+            self::assertSame($label, $labelsBySource[$source] ?? null, $source);
+        }
+        self::assertSame(array_column($breakdown['data'], 'label'), $breakdown['labels']);
+        self::assertSame(array_map('intval', array_column($breakdown['data'], 'count')), $breakdown['values']);
+        self::assertEqualsCanonicalizing(array_keys($expectedLabels), $before);
+        self::assertEqualsCanonicalizing(array_keys($expectedLabels), $exportedSources);
+        self::assertSame($before, $after);
+
+        $chartSource = file_get_contents(dirname(__DIR__, 2) . '/src/web/assets/analytics/src/analytics.js');
+        $this->assertIsString($chartSource);
+        self::assertStringContainsString('function renderSourceChart(data)', $chartSource);
+        self::assertStringContainsString('labels: data.labels', $chartSource);
+        self::assertStringContainsString('data: data.values', $chartSource);
+    }
+
     /**
      * @return iterable<string, array{string, mixed, string, string}>
      */

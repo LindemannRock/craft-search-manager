@@ -3,7 +3,7 @@
 {% set dateRange = craft.app.request.getQueryParam('range') ?? lrDefaultDateRange(pluginHandle) %}
 
 {# Get analytics data for this promotion #}
-{% set analytics = craft.searchManager.getPromotionAnalytics(promotion.id, dateRange) %}
+{% set analytics = craft.searchManager.getPromotionAnalytics(promotion.id, dateRange, craft.app.sites.getEditableSiteIds()) %}
 
 {% embed 'lindemannrock-base/_partials/analytics-panel' with {
     config: {

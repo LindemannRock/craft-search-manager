@@ -205,7 +205,7 @@ Generate context snippets with highlighted terms.
 
 ## Analytics
 
-### `getRuleAnalytics(ruleId, dateRange)` @since(5.10.0)
+### `getRuleAnalytics(ruleId, dateRange, siteId)` @since(5.10.0)
 
 Get analytics for a specific query rule. In Pro, `dateRange` keeps the normal
 analytics date semantics and the method returns `totalTriggers`,
@@ -214,7 +214,13 @@ analytics date semantics and the method returns `totalTriggers`,
 
 ```twig
 {% set analytics = craft.searchManager.getRuleAnalytics(5, 'last30days') %}
+{% set scopedAnalytics = craft.searchManager.getRuleAnalytics(5, 'last30days', [1, 2]) %}
 ```
+
+`siteId` is an optional site ID or array of site IDs. Omitting it, or passing
+`null`, preserves the global result for existing trusted templates. Pass the
+current user's editable-site IDs for permission-aware output; an empty array
+intentionally returns no analytics rather than falling back to global data.
 
 **Returns:** In Pro, the current rule analytics. In Standard, an exact neutral
 shape without reading retained Pro detail rows:
@@ -230,7 +236,7 @@ shape without reading retained Pro detail rows:
 }
 ```
 
-### `getPromotionAnalytics(promotionId, dateRange)` @since(5.10.0)
+### `getPromotionAnalytics(promotionId, dateRange, siteId)` @since(5.10.0)
 
 Get analytics for a specific promotion. In Pro, `dateRange` keeps the normal
 analytics date semantics and the method returns `totalImpressions`,
@@ -239,7 +245,12 @@ analytics date semantics and the method returns `totalImpressions`,
 
 ```twig
 {% set analytics = craft.searchManager.getPromotionAnalytics(1, 'last7days') %}
+{% set scopedAnalytics = craft.searchManager.getPromotionAnalytics(1, 'last7days', [1, 2]) %}
 ```
+
+`siteId` follows the same optional scope contract as rule analytics: `null`
+or an omitted argument is global, a site ID or ID array limits every summary
+and recent row, and an empty array returns no analytics.
 
 **Returns:** In Pro, the current promotion analytics. In Standard, an exact
 neutral shape without reading retained Pro detail rows:

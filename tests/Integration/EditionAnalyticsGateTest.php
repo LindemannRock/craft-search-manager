@@ -233,7 +233,7 @@ final class EditionAnalyticsGateTest extends TestCase
             'topQueries' => [],
             'dailyTriggers' => [],
             'recentTriggers' => [],
-        ], $analytics->getRuleAnalytics(42, 'today'));
+        ], $analytics->getRuleAnalytics(42, 'today', [1]));
         self::assertSame([
             'totalImpressions' => 0,
             'uniqueQueries' => 0,
@@ -241,16 +241,16 @@ final class EditionAnalyticsGateTest extends TestCase
             'topQueries' => [],
             'dailyImpressions' => [],
             'recentImpressions' => [],
-        ], $analytics->getPromotionAnalytics(84, 'last7days'));
+        ], $analytics->getPromotionAnalytics(84, 'last7days', []));
         self::assertSame([], $rules->calls);
 
         $this->forcePluginEdition(SearchManager::EDITION_PRO);
 
         self::assertSame($rules->ruleResponse, $analytics->getRuleAnalytics(42, 'today'));
-        self::assertSame($rules->promotionResponse, $analytics->getPromotionAnalytics(84, 'last7days'));
+        self::assertSame($rules->promotionResponse, $analytics->getPromotionAnalytics(84, 'last7days', [1, 2]));
         self::assertSame([
-            ['method' => 'rule', 'id' => 42, 'dateRange' => 'today'],
-            ['method' => 'promotion', 'id' => 84, 'dateRange' => 'last7days'],
+            ['method' => 'rule', 'id' => 42, 'dateRange' => 'today', 'siteId' => null],
+            ['method' => 'promotion', 'id' => 84, 'dateRange' => 'last7days', 'siteId' => [1, 2]],
         ], $rules->calls);
     }
 
@@ -621,7 +621,7 @@ final class EditionAnalyticsGateTest extends TestCase
 
 final class EditionAnalyticsRecordingRulesService extends AnalyticsRulesService
 {
-    /** @var list<array{method: string, id: int, dateRange: string}> */
+    /** @var list<array{method: string, id: int, dateRange: string, siteId: int|list<int>|null}> */
     public array $calls = [];
 
     /** @var array<string, mixed> */
@@ -644,16 +644,16 @@ final class EditionAnalyticsRecordingRulesService extends AnalyticsRulesService
         'recentImpressions' => [['query' => 'seeded promotion']],
     ];
 
-    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
+    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days', int|array|null $siteId = null): array
     {
-        $this->calls[] = ['method' => 'rule', 'id' => $ruleId, 'dateRange' => $dateRange];
+        $this->calls[] = ['method' => 'rule', 'id' => $ruleId, 'dateRange' => $dateRange, 'siteId' => $siteId];
 
         return $this->ruleResponse;
     }
 
-    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
+    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days', int|array|null $siteId = null): array
     {
-        $this->calls[] = ['method' => 'promotion', 'id' => $promotionId, 'dateRange' => $dateRange];
+        $this->calls[] = ['method' => 'promotion', 'id' => $promotionId, 'dateRange' => $dateRange, 'siteId' => $siteId];
 
         return $this->promotionResponse;
     }

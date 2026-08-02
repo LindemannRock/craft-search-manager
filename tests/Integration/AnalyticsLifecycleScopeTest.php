@@ -152,7 +152,7 @@ final class AnalyticsLifecycleScopeTest extends TestCase
             'AnalyticsQueryInsightsService.php' => 10,
             'AnalyticsBreakdownService.php' => 10,
             'AnalyticsPerformanceService.php' => 6,
-            'AnalyticsRulesService.php' => 6,
+            'AnalyticsRulesService.php' => 8,
             'AnalyticsExportService.php' => 3,
         ];
 
