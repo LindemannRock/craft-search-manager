@@ -414,9 +414,11 @@ Manual rebuilds, clears, and backend count refreshes still update index stats im
 
 #### How document counts stay current
 
-The **Indexed** column on the Indices page (and the **Documents** count on an index's detail view) reflects the true backend-document total from the latest full rebuild, completed sync batch, or explicit count refresh. Automatic save/delete sync refreshes this counter once per affected index after the batch completes; it does not probe the backend once per queued element.
+On the Indices page, **Craft** is the number of eligible Craft elements and **Indexed** is the comparable represented-element count. Page-mode indices represent one element per backend document, while Split Sections indices count distinct parent elements represented by their section documents. This keeps the adjacent health comparison meaningful; per-element heading changes are handled by normal content sync rather than treated as stale coverage.
 
-The adjacent expected/actual comparison uses document counts in page mode, while Split Sections compares eligible Craft elements with distinct parent element IDs represented in the backend; the displayed Indexed/Documents value remains the true backend-document count in both modes. Per-element heading changes are handled by normal content sync rather than treated as stale coverage. This does not change analytics totals: `resultsCount` remains backend-native, so a split-index search counts matching section documents.
+When the displayed list includes at least one Split Sections index, a hideable **Documents** column appears. It shows each row's actual backend-document total, so a split index can have more Documents than Indexed parent elements. The same backend-document total appears as **Documents** on an index's detail view and is refreshed after the latest full rebuild, completed sync batch, or explicit count refresh. Automatic save/delete sync refreshes it once per affected index after the batch completes; it does not probe the backend once per queued element.
+
+This distinction does not change analytics totals: `resultsCount` remains backend-native, so a split-index search counts matching section documents.
 
 During high-volume activity such as a large Feed Me run or bulk import, the displayed count can lag while queued work is still draining. The completed batch refresh brings it back in line with the backend.
 

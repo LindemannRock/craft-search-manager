@@ -13,7 +13,9 @@
 })|trim %}
 {% set errorSummary = setupIncompleteSummary %}
 
-{# Build columns array — Analytics column is conditional on the global toggle. #}
+{% set hasSplitSectionIndices = indices|filter(item => item.usesSplitSections())|length > 0 %}
+
+{# Build columns array — Documents and Analytics are conditional. #}
 {% set columns = [
     {key: 'name', label: 'Name'|t('search-manager'), sortable: true},
     {key: 'handle', label: 'Handle'|t('search-manager'), sortable: true, hideable: true},
@@ -22,10 +24,17 @@
     {key: 'type', label: 'Type'|t('search-manager'), hideable: true},
     {key: 'craft', label: 'Craft'|t('search-manager'), hideable: true},
     {key: 'indexed', label: 'Indexed'|t('search-manager'), hideable: true},
+] %}
+
+{% if hasSplitSectionIndices %}
+    {% set columns = columns|merge([{key: 'documents', label: 'Documents'|t('search-manager'), hideable: true}]) %}
+{% endif %}
+
+{% set columns = columns|merge([
     {key: 'lastIndexed', label: 'Last Indexed'|t('search-manager'), hideable: true},
     {key: 'source', label: 'Source'|t('search-manager'), sortable: true, hideable: true},
     {key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
-] %}
+]) %}
 
 {% if isPro and globalSettings.enableAnalytics %}
     {% set columns = columns|merge([{key: 'analytics', label: 'Analytics'|t('search-manager'), hideable: true}]) %}
@@ -210,19 +219,26 @@
         {{ expected|number_format }}
     </td>
 
-    {# Indexed (document count) #}
+    {# Indexed (comparable represented-element count) #}
     <td data-column="indexed">
         {% set comparison = item.comparisonCount %}
         {% if comparison is null %}
-            <span>{{ item.documentCount|number_format }}</span>
+            <span class="light">—</span>
         {% elseif comparison == expected %}
-            <span class="lr-text-green">{{ item.documentCount|number_format }}</span>
+            <span class="lr-text-green">{{ comparison|number_format }}</span>
         {% elseif comparison < expected %}
-            <span class="lr-text-amber" title="{{ (expected - comparison)|number_format }} {{ 'missing'|t('search-manager') }}">{{ item.documentCount|number_format }}</span>
+            <span class="lr-text-amber" title="{{ (expected - comparison)|number_format }} {{ 'missing'|t('search-manager') }}">{{ comparison|number_format }}</span>
         {% else %}
-            <span class="lr-text-red" title="{{ (comparison - expected)|number_format }} {{ 'stale'|t('search-manager') }}">{{ item.documentCount|number_format }}</span>
+            <span class="lr-text-red" title="{{ (comparison - expected)|number_format }} {{ 'stale'|t('search-manager') }}">{{ comparison|number_format }}</span>
         {% endif %}
     </td>
+
+    {# Documents (actual backend-document count; split listings only) #}
+    {% if hasSplitSectionIndices %}
+        <td data-column="documents">
+            {{ item.documentCount|number_format }}
+        </td>
+    {% endif %}
 
     {# Last Indexed #}
     <td data-column="lastIndexed">
