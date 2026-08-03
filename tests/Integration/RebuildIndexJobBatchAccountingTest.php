@@ -45,6 +45,22 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
     /** @var list<int> */
     private array $createdEntryIds = [];
 
+    public function testExpectedCountSkipUrlPathDoesNotLoadAllElements(): void
+    {
+        $countSource = $this->readPluginSource('src/models/SearchIndex.php');
+        $body = $this->sourceMethodBody($countSource, 'getExpectedCount', 'public');
+        $helperSource = $this->readPluginSource('src/helpers/SearchIndexQueryHelper.php');
+        $helperBody = $this->sourceMethodBody($helperSource, 'buildSiteQueries', 'public static');
+
+        self::assertStringContainsString('SearchIndexQueryHelper::buildSiteQueries($this)', $body);
+        self::assertSame(1, substr_count($helperBody, 'if ($index->skipEntriesWithoutUrl && $elementType === Entry::class)'));
+        self::assertStringContainsString('Expected count result (skip URL)', $body);
+        self::assertStringNotContainsString('Expected count result (skip URL non-entry)', $body);
+        self::assertStringContainsString("->andWhere(['not', ['elements_sites.uri' => null]])", $helperBody);
+        self::assertStringContainsString("->andWhere(['<>', 'elements_sites.uri', ''])", $helperBody);
+        self::assertStringNotContainsString('foreach ($query->all() as $element)', $body);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -326,6 +342,28 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
                 ->execute();
         }
         SearchIndex::clearCache();
+    }
+
+    private function readPluginSource(string $relativePath): string
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/' . $relativePath);
+        self::assertIsString($source);
+
+        return $source;
+    }
+
+    private function sourceMethodBody(string $source, string $method, string $visibility = 'private'): string
+    {
+        preg_match(
+            '/' . preg_quote($visibility, '/') . ' function ' . preg_quote($method, '/') . '\(.*?^    \}/ms',
+            $source,
+            $matches,
+        );
+
+        $body = $matches[0] ?? '';
+        self::assertNotSame('', $body, $method . ' source should be captured.');
+
+        return $body;
     }
 }
 

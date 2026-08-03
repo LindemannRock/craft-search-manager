@@ -183,6 +183,17 @@ final class ApiKeysConsoleControllerTest extends TestCase
         $this->assertStringContainsString('Warning: this enabled public key has no referrer restrictions.', $output);
     }
 
+    public function testApiKeysConsoleUnknownIndexHandlesUsesCanonicalCatalogue(): void
+    {
+        $source = $this->readPluginSource('src/console/controllers/ApiKeysController.php');
+        $body = $this->sourceMethodBody($source, 'unknownIndexHandles');
+
+        self::assertStringContainsString('dependencies->getIndexCatalogue($handles)', $body);
+        self::assertStringContainsString("['referenceable']", $body);
+        self::assertStringNotContainsString('SearchIndex::findAll()', $body);
+        self::assertStringNotContainsString('SearchIndex::findByHandle(', $body);
+    }
+
     /**
      * @return array{0: int, 1: string}
      */
@@ -215,6 +226,28 @@ final class ApiKeysConsoleControllerTest extends TestCase
             ->createCommand()
             ->delete('{{%searchmanager_api_keys}}', ['like', 'name', self::TEST_KEY_NAME_PREFIX . '%', false])
             ->execute();
+    }
+
+    private function readPluginSource(string $relativePath): string
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/' . $relativePath);
+        self::assertIsString($source);
+
+        return $source;
+    }
+
+    private function sourceMethodBody(string $source, string $method, string $visibility = 'private'): string
+    {
+        preg_match(
+            '/' . preg_quote($visibility, '/') . ' function ' . preg_quote($method, '/') . '\(.*?^    \}/ms',
+            $source,
+            $matches,
+        );
+
+        $body = $matches[0] ?? '';
+        self::assertNotSame('', $body, $method . ' source should be captured.');
+
+        return $body;
     }
 }
 

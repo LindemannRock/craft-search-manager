@@ -48,6 +48,21 @@ final class RebuildIndexJobPreflightTest extends TestCase
 
     private mixed $originalConfigCache = null;
 
+    public function testRebuildAllIndicesPassesPreloadedIndexIntoSingleRebuild(): void
+    {
+        $source = $this->readPluginSource('src/jobs/RebuildIndexJob.php');
+        $singleBody = $this->sourceMethodBody($source, 'rebuildSingleIndex');
+        $preflightBody = $this->sourceMethodBody($source, 'preflightIndexRebuild');
+        $allBody = $this->sourceMethodBody($source, 'rebuildAllIndices');
+
+        self::assertStringContainsString('?SearchIndex $preloadedIndex = null', $source);
+        self::assertStringContainsString('$this->preflightIndexRebuild($indexHandle, $preloadedIndex)', $singleBody);
+        self::assertStringContainsString('$index = $preloadedIndex ?? SearchIndex::findByHandle($indexHandle);', $preflightBody);
+        self::assertStringContainsString('$this->rebuildSingleIndex(', $allBody);
+        self::assertStringContainsString('$currentIndices[$indexHandle] ?? null,', $allBody);
+        self::assertStringContainsString('foreach (SearchIndex::findAll() as $index)', $allBody);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -594,6 +609,28 @@ final class RebuildIndexJobPreflightTest extends TestCase
         SearchIndex::clearCache();
 
         return $id;
+    }
+
+    private function readPluginSource(string $relativePath): string
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/' . $relativePath);
+        self::assertIsString($source);
+
+        return $source;
+    }
+
+    private function sourceMethodBody(string $source, string $method, string $visibility = 'private'): string
+    {
+        preg_match(
+            '/' . preg_quote($visibility, '/') . ' function ' . preg_quote($method, '/') . '\(.*?^    \}/ms',
+            $source,
+            $matches,
+        );
+
+        $body = $matches[0] ?? '';
+        self::assertNotSame('', $body, $method . ' source should be captured.');
+
+        return $body;
     }
 }
 

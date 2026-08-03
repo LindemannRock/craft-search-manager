@@ -20,6 +20,15 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(PendingSyncProcessor::class)]
 final class PendingSyncProcessorBatchingTest extends TestCase
 {
+    public function testBatchSyncCountRefreshUsesFindAllOnce(): void
+    {
+        $source = $this->readPluginSource('src/jobs/BatchSyncJob.php');
+        $body = $this->methodBody($source, 'refreshSyncedIndexCounts');
+
+        self::assertStringContainsString('SearchIndex::findAll()', $body);
+        self::assertStringNotContainsString('SearchIndex::findByHandle(', $body);
+    }
+
     public function testProcessIndexRowsUsesBatchedElementPreloadForUpserts(): void
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/src/services/sync/PendingSyncProcessor.php');
@@ -118,6 +127,14 @@ final class PendingSyncProcessorBatchingTest extends TestCase
     private function readPluginFile(string $path): string
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);
+        self::assertIsString($source);
+
+        return $source;
+    }
+
+    private function readPluginSource(string $relativePath): string
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/' . $relativePath);
         self::assertIsString($source);
 
         return $source;
