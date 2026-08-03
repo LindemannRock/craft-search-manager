@@ -229,6 +229,6 @@ final class PendingSyncsRepositoryQueryTest extends TestCase
             ->insert('{{%searchmanager_pending_syncs}}', $data)
             ->execute();
 
-        return (int) Craft::$app->getDb()->getLastInsertID();
+        return (int)Craft::$app->getDb()->getLastInsertID();
     }
 }

@@ -182,7 +182,7 @@ final class EditionCacheWarmingGateTest extends TestCase
     private function cacheWarmQueueCount(): int
     {
         return (int) (new Query())
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', CacheWarmJob::class])
             ->andWhere(['like', 'job', self::INDEX_HANDLE])
             ->count();
@@ -209,7 +209,7 @@ final class EditionCacheWarmingGateTest extends TestCase
             ->delete('{{%searchmanager_analytics}}', ['indexHandle' => self::INDEX_HANDLE])
             ->execute();
         Craft::$app->getDb()->createCommand()
-            ->delete('{{%queue}}', [
+            ->delete($this->queueTable(), [
                 'and',
                 ['like', 'job', CacheWarmJob::class],
                 ['like', 'job', self::INDEX_HANDLE],

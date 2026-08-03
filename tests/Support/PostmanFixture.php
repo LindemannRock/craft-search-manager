@@ -151,6 +151,10 @@ function setupFixture(string $stateFile, string $environmentFile): array
         $state = [
             'settingsRow' => $settingsRow,
             'settingsHash' => stableHash($settingsRow),
+            'settingsOriginal' => managedSettings($settingsRow),
+            'settingsApplied' => managedSettings($settingsRow),
+            'settingsPreviousApplied' => managedSettings($settingsRow),
+            'settingsApplyPending' => false,
             'siteId' => $siteId,
             'indexIds' => $indexIds,
             'publicKeyId' => $publicKey->id,
@@ -159,14 +163,13 @@ function setupFixture(string $stateFile, string $environmentFile): array
             'ratePlaintext' => $ratePlaintext,
         ];
 
-        file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), LOCK_EX);
-        chmod($stateFile, 0600);
+        writeState($stateFile, $state);
         $editionMode = SearchManager::$plugin->getEditionHandle();
         if (!in_array($editionMode, [SearchManager::EDITION_STANDARD, SearchManager::EDITION_PRO], true)) {
             throw new RuntimeException("Unsupported Search Manager edition: {$editionMode}.");
         }
         writeEnvironment($environmentFile, $state, 'anonymous', $editionMode);
-        applyApiModeSettings('anonymous');
+        applyApiModeSettings('anonymous', $stateFile, $state);
         clearRateLimitCounters((int)$rateKey->id);
 
         $transaction->commit();
@@ -210,7 +213,7 @@ function setFixtureMode(string $stateFile, string $environmentFile, string $apiM
         );
     }
 
-    applyApiModeSettings($apiMode);
+    applyApiModeSettings($apiMode, $stateFile, $state);
     if ($apiMode === 'rate-limit') {
         clearRateLimitCounters((int)$state['rateKeyId']);
     }
@@ -284,9 +287,7 @@ function cleanupFixture(string $stateFile, string $environmentFile): array
             $db->createCommand()->delete('{{%queue}}', ['like', 'job', '__sm_postman_fixture_%', false])->execute();
         }
 
-        $settingsRow = $state['settingsRow'];
-        unset($settingsRow['id']);
-        $db->createCommand()->update('{{%searchmanager_settings}}', $settingsRow, ['id' => 1])->execute();
+        restoreManagedSettings($state);
 
         clearRateLimitCounters((int)$state['publicKeyId']);
         clearRateLimitCounters((int)$state['rateKeyId']);
@@ -298,7 +299,7 @@ function cleanupFixture(string $stateFile, string $environmentFile): array
     }
 
     $counts = markerCounts();
-    $settingsRestored = currentSettingsHash() === (string)$state['settingsHash'];
+    $settingsRestored = managedSettings(currentSettingsRow()) === managedSettings($state['settingsOriginal']);
     if (array_sum($counts) !== 0 || !$settingsRestored) {
         throw new RuntimeException('Fixture cleanup or settings restoration verification failed.');
     }
@@ -355,16 +356,35 @@ function createFixtureKey(string $handle, array $allowedIndices, ?int $rateLimit
     return [$key, $generated['plaintext']];
 }
 
-function applyApiModeSettings(string $apiMode): void
+/** @param array<string, mixed> $state */
+function applyApiModeSettings(string $apiMode, string $stateFile, array &$state): void
 {
-    Craft::$app->getDb()->createCommand()->update('{{%searchmanager_settings}}', [
+    $applied = [
         'requireApiKey' => $apiMode === 'anonymous' ? 0 : 1,
         'enableAnalytics' => 1,
         'enableGeoDetection' => 0,
         'enableCache' => 0,
         'enableAutocompleteCache' => 0,
         'dateUpdated' => Db::prepareDateForDb(new DateTime('now', new DateTimeZone('UTC'))),
-    ], ['id' => 1])->execute();
+    ];
+    $applied = managedSettings($applied);
+    $previous = managedSettings($state['settingsApplied']);
+    $state['settingsPreviousApplied'] = $previous;
+    $state['settingsApplied'] = $applied;
+    $state['settingsApplyPending'] = true;
+    writeState($stateFile, $state);
+
+    $updated = Craft::$app->getDb()->createCommand()->update(
+        '{{%searchmanager_settings}}',
+        $applied,
+        ['and', ['id' => 1], $previous],
+    )->execute();
+    if ($updated !== 1 && managedSettings(currentSettingsRow()) !== $applied) {
+        throw new RuntimeException('Postman fixture refused to overwrite concurrently changed managed settings.');
+    }
+
+    $state['settingsApplyPending'] = false;
+    writeState($stateFile, $state);
 }
 
 /**
@@ -487,6 +507,93 @@ function readState(string $stateFile): array
     return $state;
 }
 
+/** @param array<string, mixed> $state */
+function writeState(string $stateFile, array $state): void
+{
+    file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), LOCK_EX);
+    chmod($stateFile, 0600);
+}
+
+/** @return array<string, mixed> */
+function currentSettingsRow(): array
+{
+    $row = (new Query())
+        ->from('{{%searchmanager_settings}}')
+        ->where(['id' => 1])
+        ->one();
+    if ($row === false) {
+        throw new RuntimeException('Search Manager settings row id=1 was not found.');
+    }
+
+    return $row;
+}
+
+/**
+ * @param array<string, mixed> $row
+ * @return array<string, mixed>
+ */
+function managedSettings(array $row): array
+{
+    $managed = array_intersect_key($row, array_flip([
+        'requireApiKey',
+        'enableAnalytics',
+        'enableGeoDetection',
+        'enableCache',
+        'enableAutocompleteCache',
+        'dateUpdated',
+    ]));
+    ksort($managed);
+
+    return $managed;
+}
+
+/** @param array<string, mixed> $state */
+function restoreManagedSettings(array $state): void
+{
+    $current = managedSettings(currentSettingsRow());
+    $expected = managedSettings($state['settingsApplied']);
+    if (($state['settingsApplyPending'] ?? false) && $current === managedSettings($state['settingsPreviousApplied'])) {
+        $expected = managedSettings($state['settingsPreviousApplied']);
+    }
+    if ($current !== $expected) {
+        throw new RuntimeException(
+            'Postman fixture cleanup refused to overwrite concurrently changed managed settings: '
+            . json_encode(managedSettingsMismatchEvidence($current, $expected), JSON_THROW_ON_ERROR),
+        );
+    }
+
+    $updated = Craft::$app->getDb()->createCommand()->update(
+        '{{%searchmanager_settings}}',
+        managedSettings($state['settingsOriginal']),
+        ['and', ['id' => 1], $expected],
+    )->execute();
+    if ($updated !== 1 && managedSettings(currentSettingsRow()) !== managedSettings($state['settingsOriginal'])) {
+        throw new RuntimeException('Postman fixture managed settings restoration failed.');
+    }
+}
+
+/**
+ * @param array<string, mixed> $current
+ * @param array<string, mixed> $expected
+ * @return array{currentSha256: string, expectedSha256: string, changedKeys: list<string>}
+ */
+function managedSettingsMismatchEvidence(array $current, array $expected): array
+{
+    $currentHashInput = $current;
+    $expectedHashInput = $expected;
+    ksort($currentHashInput);
+    ksort($expectedHashInput);
+
+    return [
+        'currentSha256' => hash('sha256', json_encode($currentHashInput, JSON_THROW_ON_ERROR)),
+        'expectedSha256' => hash('sha256', json_encode($expectedHashInput, JSON_THROW_ON_ERROR)),
+        'changedKeys' => array_values(array_unique(array_merge(
+            array_keys(array_diff_assoc($current, $expected)),
+            array_keys(array_diff_assoc($expected, $current)),
+        ))),
+    ];
+}
+
 function clearRateLimitCounters(int $keyId): void
 {
     if ($keyId <= 0) {
@@ -512,13 +619,5 @@ function stableHash(array $value): string
 
 function currentSettingsHash(): string
 {
-    $row = (new Query())
-        ->from('{{%searchmanager_settings}}')
-        ->where(['id' => 1])
-        ->one();
-    if ($row === false) {
-        throw new RuntimeException('Search Manager settings row id=1 was not found.');
-    }
-
-    return stableHash($row);
+    return stableHash(currentSettingsRow());
 }

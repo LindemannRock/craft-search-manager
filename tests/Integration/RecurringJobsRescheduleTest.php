@@ -181,7 +181,7 @@ final class RecurringJobsRescheduleTest extends TestCase
         self::assertTrue(SearchManager::$plugin->{$statusMethod}());
 
         Craft::$app->getDb()->createCommand()
-            ->update('{{%queue}}', ['fail' => true], [
+            ->update($this->queueTable(), ['fail' => true], [
                 'and',
                 ['like', 'job', 'searchmanager'],
                 ['like', 'job', $jobClass],
@@ -191,7 +191,7 @@ final class RecurringJobsRescheduleTest extends TestCase
         self::assertFalse(SearchManager::$plugin->{$statusMethod}());
 
         Craft::$app->getDb()->createCommand()
-            ->update('{{%queue}}', [
+            ->update($this->queueTable(), [
                 'fail' => false,
                 'timeUpdated' => date('Y-m-d H:i:s'),
             ], [
@@ -255,7 +255,7 @@ final class RecurringJobsRescheduleTest extends TestCase
         $this->assertSame(1, $this->countQueueRows('BatchSyncJob'));
 
         Craft::$app->getDb()->createCommand()
-            ->update('{{%queue}}', ['fail' => true], [
+            ->update($this->queueTable(), ['fail' => true], [
                 'and',
                 ['like', 'job', 'searchmanager'],
                 ['like', 'job', 'BatchSyncJob'],
@@ -276,7 +276,7 @@ final class RecurringJobsRescheduleTest extends TestCase
     private function countQueueRows(string $jobClass): int
     {
         return (int) (new \craft\db\Query())
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', $jobClass])
             ->count();
@@ -288,7 +288,7 @@ final class RecurringJobsRescheduleTest extends TestCase
     private function latestQueueRow(string $jobClass): ?array
     {
         $row = (new \craft\db\Query())
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', $jobClass])
             ->orderBy(['id' => SORT_DESC])
@@ -301,7 +301,7 @@ final class RecurringJobsRescheduleTest extends TestCase
     {
         $rows = (new \craft\db\Query())
             ->select(['timePushed', 'delay'])
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', $jobClass])
             ->andWhere(['fail' => false, 'timeUpdated' => null])
@@ -333,7 +333,7 @@ final class RecurringJobsRescheduleTest extends TestCase
     {
         Craft::$app->getDb()
             ->createCommand()
-            ->delete('{{%queue}}', ['like', 'job', 'searchmanager'])
+            ->delete($this->queueTable(), ['like', 'job', 'searchmanager'])
             ->execute();
     }
 }

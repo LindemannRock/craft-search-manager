@@ -54,10 +54,16 @@ final class TermResolverPolicyTest extends TestCase
 
     public static function tearDownAfterClass(): void
     {
-        self::deleteRowsForIndexStatic();
         self::$seeded = false;
 
         parent::tearDownAfterClass();
+    }
+
+    protected function tearDown(): void
+    {
+        self::$seeded = false;
+
+        parent::tearDown();
     }
 
     public function testExactMatchTokenStillGetsTopKFuzzyExpansion(): void

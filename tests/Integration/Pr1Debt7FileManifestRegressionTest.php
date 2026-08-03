@@ -30,16 +30,6 @@ final class Pr1Debt7FileManifestRegressionTest extends TestCase
 
     private ?string $basePath = null;
 
-    protected function tearDown(): void
-    {
-        if ($this->basePath !== null) {
-            $this->deleteDirectory($this->basePath);
-            @unlink($this->basePath . '/' . self::INDEX_HANDLE . '.manifest.lock');
-        }
-
-        parent::tearDown();
-    }
-
     public function testNewEmptyFileIndexStartsWithReadyAuthoritativeManifest(): void
     {
         $this->makeStorage();
@@ -346,7 +336,7 @@ final class Pr1Debt7FileManifestRegressionTest extends TestCase
     public function testUnavailableManifestStatesFailClosedAndLogOneRebuildAction(string $state, string $reason): void
     {
         if ($state === 'legacy') {
-            $this->basePath = Craft::getAlias('@storage/search-manager-test-' . StringHelper::UUID());
+            $this->assignBasePath();
             $legacyIndexPath = $this->indexPath();
             mkdir($legacyIndexPath . '/docs', 0755, true);
             file_put_contents($legacyIndexPath . '/docs/1_101.dat', '{"_length":7,"_language":"en"}');
@@ -486,6 +476,7 @@ final class Pr1Debt7FileManifestRegressionTest extends TestCase
         $documentPath = $this->indexPath() . '/docs/1_101.dat';
         $documentHandle = fopen($documentPath, 'c+');
         self::assertIsResource($documentHandle);
+        $this->registerOwnedStream($documentHandle);
         self::assertTrue(flock($documentHandle, LOCK_EX));
 
         [$process, $pipes, $script] = $this->startFileStorageWorker('store-document', [
@@ -522,6 +513,7 @@ final class Pr1Debt7FileManifestRegressionTest extends TestCase
         $documentPath = $this->indexPath() . '/docs/1_101.dat';
         $documentHandle = fopen($documentPath, 'c+');
         self::assertIsResource($documentHandle);
+        $this->registerOwnedStream($documentHandle);
         self::assertTrue(flock($documentHandle, LOCK_EX));
 
         [$storeProcess, $storePipes, $storeScript] = $this->startFileStorageWorker('store-document', [
@@ -533,6 +525,7 @@ final class Pr1Debt7FileManifestRegressionTest extends TestCase
         $sawInProgress = $this->waitForManifestReadiness('updating');
 
         $clearDonePath = $this->basePath . '/clear-site-done-' . StringHelper::UUID() . '.tmp';
+        $this->trackOwnedTempPath($clearDonePath);
         [$clearProcess, $clearPipes, $clearScript] = $this->startFileStorageWorker('clear-site', [
             '1',
             $clearDonePath,
@@ -580,6 +573,7 @@ final class Pr1Debt7FileManifestRegressionTest extends TestCase
         $documentPath = $this->indexPath() . '/docs/1_101.dat';
         $documentHandle = fopen($documentPath, 'c+');
         self::assertIsResource($documentHandle);
+        $this->registerOwnedStream($documentHandle);
         self::assertTrue(flock($documentHandle, LOCK_EX));
 
         [$process, $pipes, $script] = $this->startFileStorageWorker('store-document', [
@@ -679,9 +673,19 @@ final class Pr1Debt7FileManifestRegressionTest extends TestCase
 
     private function makeStorage(): FileStorage
     {
-        $this->basePath = Craft::getAlias('@storage/search-manager-test-' . StringHelper::UUID());
+        $this->assignBasePath();
 
         return new FileStorage(self::INDEX_HANDLE, $this->basePath);
+    }
+
+    private function assignBasePath(): void
+    {
+        if ($this->basePath !== null) {
+            throw new \LogicException('This test already owns a File storage root.');
+        }
+
+        $path = $this->createOwnedStorageDirectory('file-manifest');
+        $this->basePath = $path;
     }
 
     /**
@@ -739,6 +743,7 @@ final class Pr1Debt7FileManifestRegressionTest extends TestCase
     {
         self::assertIsString($this->basePath);
         $script = $this->basePath . '/file-storage-worker-' . StringHelper::UUID() . '.php';
+        $this->trackOwnedTempPath($script);
         file_put_contents($script, <<<'PHP'
 <?php
 declare(strict_types=1);
@@ -779,6 +784,7 @@ PHP);
             2 => ['pipe', 'w'],
         ], $pipes);
         self::assertIsResource($process, 'Unable to start FileStorage worker process.');
+        $this->registerOwnedProcess($process, $pipes);
 
         return [$process, $pipes, $script];
     }
@@ -820,12 +826,7 @@ PHP);
      */
     private function finishTerminatedProcess($process, array $pipes): void
     {
-        fclose($pipes[0]);
-        stream_get_contents($pipes[1]);
-        stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        proc_close($process);
+        $this->finishOwnedProcess($process, $pipes, true);
     }
 
     /**
@@ -844,18 +845,7 @@ PHP);
      */
     private function finishPhpProcessWithExitCode($process, array $pipes): int
     {
-        fclose($pipes[0]);
-        $output = stream_get_contents($pipes[1]);
-        $error = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-
-        $exitCode = proc_close($process);
-        if ($exitCode !== 0 && trim($output . $error) === '') {
-            return $exitCode;
-        }
-
-        return $exitCode;
+        return $this->finishOwnedProcess($process, $pipes)['exitCode'];
     }
 
     private function indexPath(): string
@@ -879,21 +869,4 @@ PHP);
         return $body;
     }
 
-    private function deleteDirectory(string $directory): void
-    {
-        if (!is_dir($directory)) {
-            return;
-        }
-
-        foreach (array_diff(scandir($directory) ?: [], ['.', '..']) as $entry) {
-            $path = $directory . '/' . $entry;
-            if (is_dir($path)) {
-                $this->deleteDirectory($path);
-            } else {
-                @unlink($path);
-            }
-        }
-
-        @rmdir($directory);
-    }
 }

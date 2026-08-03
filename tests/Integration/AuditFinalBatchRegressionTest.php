@@ -52,10 +52,6 @@ final class AuditFinalBatchRegressionTest extends TestCase
 
         $this->truncateAnalytics();
 
-        if ($this->fileStorageBasePath !== null) {
-            $this->deleteDirectory($this->fileStorageBasePath);
-        }
-
         parent::tearDown();
     }
 
@@ -155,27 +151,12 @@ final class AuditFinalBatchRegressionTest extends TestCase
 
     private function makeFileStorage(): FileStorage
     {
-        $this->fileStorageBasePath = Craft::getAlias('@storage/search-manager-test-' . StringHelper::UUID());
+        if ($this->fileStorageBasePath !== null) {
+            throw new \LogicException('This test already owns a File storage root.');
+        }
+        $path = $this->createOwnedStorageDirectory('audit-final-file-storage');
+        $this->fileStorageBasePath = $path;
 
         return new FileStorage('audit-final-batch', $this->fileStorageBasePath);
-    }
-
-    private function deleteDirectory(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-
-        $files = array_diff(scandir($dir) ?: [], ['.', '..']);
-        foreach ($files as $file) {
-            $path = $dir . '/' . $file;
-            if (is_dir($path)) {
-                $this->deleteDirectory($path);
-            } else {
-                @unlink($path);
-            }
-        }
-
-        @rmdir($dir);
     }
 }

@@ -131,12 +131,12 @@ final class Pr158PendingSyncWakeupTest extends TestCase
     {
         $failedId = Craft::$app->getQueue()->delay(0)->push(new BatchSyncJob());
         Craft::$app->getDb()->createCommand()
-            ->update('{{%queue}}', ['fail' => true], ['id' => $failedId])
+            ->update($this->queueTable(), ['fail' => true], ['id' => $failedId])
             ->execute();
 
         $completedId = Craft::$app->getQueue()->delay(0)->push(new BatchSyncJob());
         Craft::$app->getDb()->createCommand()
-            ->update('{{%queue}}', ['timeUpdated' => time()], ['id' => $completedId])
+            ->update($this->queueTable(), ['timeUpdated' => time()], ['id' => $completedId])
             ->execute();
 
         $this->seedRow(PendingSyncRepository::STATUS_PENDING, ['elementId' => 158009]);
@@ -180,10 +180,15 @@ final class Pr158PendingSyncWakeupTest extends TestCase
     public function testOriginalExceptionEscapesWhenRecoverySchedulingAlsoFails(): void
     {
         $this->seedRow(PendingSyncRepository::STATUS_PENDING, ['elementId' => 158012]);
-        $processor = new class extends PendingSyncProcessor {
+        $originalException = new \RuntimeException('Synthetic original processing failure: private-marker');
+        $processor = new class($originalException) extends PendingSyncProcessor {
+            public function __construct(private readonly \RuntimeException $exception)
+            {
+            }
+
             public function process(array $rows): array
             {
-                throw new \RuntimeException('Synthetic original processing failure: private-marker');
+                throw $this->exception;
             }
         };
         $repository = new class extends PendingSyncRepository {
@@ -196,29 +201,60 @@ final class Pr158PendingSyncWakeupTest extends TestCase
         $this->swapPluginComponent('search-manager', 'pendingSyncs', $repository);
 
         $logger = Craft::getLogger();
-        $messagesBefore = count($logger->messages);
+        $initialMessages = $logger->messages;
+        $initialFlushInterval = $logger->flushInterval;
 
         try {
-            (new BatchSyncJob())->execute(Craft::$app->queue);
-            self::fail('The original processor exception must escape the queue job.');
-        } catch (\RuntimeException $e) {
-            self::assertSame('Synthetic original processing failure: private-marker', $e->getMessage());
+            $logger->messages = [];
+            $logger->flushInterval = 3;
+            $logger->log('PR1.58 adjacent threshold one', Logger::LEVEL_INFO, 'pr158-test');
+            $logger->log('PR1.58 adjacent threshold two', Logger::LEVEL_INFO, 'pr158-test');
+            $adjacentThresholdMessages = $logger->messages;
+
+            $normalMessages = [];
+            $normalResult = $this->captureLoggerMessages(static function() use ($logger): string {
+                $logger->log('PR1.58 normal capture', Logger::LEVEL_INFO, 'pr158-test');
+
+                return 'normal-capture';
+            }, $normalMessages);
+            self::assertSame('normal-capture', $normalResult);
+            self::assertSame([
+                ['PR1.58 normal capture', Logger::LEVEL_INFO, 'pr158-test'],
+            ], array_map(static fn(array $message): array => array_slice($message, 0, 3), $normalMessages));
+            self::assertSame([$adjacentThresholdMessages, 3], [$logger->messages, $logger->flushInterval]);
+
+            $capturedMessages = [];
+            try {
+                $this->captureLoggerMessages(
+                    static fn() => (new BatchSyncJob())->execute(Craft::$app->queue),
+                    $capturedMessages,
+                );
+                self::fail('The original processor exception must escape the queue job.');
+            } catch (\RuntimeException $e) {
+                self::assertSame($originalException, $e);
+            }
+            self::assertSame([$adjacentThresholdMessages, 3], [$logger->messages, $logger->flushInterval]);
+
+            $recoveryErrors = array_values(array_filter(
+                $capturedMessages,
+                static fn(array $message): bool => ($message[1] ?? null) === Logger::LEVEL_ERROR
+                    && ($message[2] ?? null) === 'search-manager'
+                    && str_contains((string)($message[0] ?? ''), 'Unable to schedule pending-sync recovery after job failure'),
+            ));
+            self::assertCount(1, $recoveryErrors);
+
+            $loggedMessage = (string)$recoveryErrors[0][0];
+            self::assertStringContainsString('Synthetic recovery scheduling failure', $loggedMessage);
+            self::assertStringContainsString(\RuntimeException::class, $loggedMessage);
+            self::assertStringNotContainsString('private-marker', $loggedMessage);
+            self::assertStringNotContainsString('claimToken', $loggedMessage);
+            self::assertStringNotContainsString('trace', $loggedMessage);
+        } finally {
+            $logger->messages = $initialMessages;
+            $logger->flushInterval = $initialFlushInterval;
         }
 
-        $recoveryErrors = array_values(array_filter(
-            array_slice($logger->messages, $messagesBefore),
-            static fn(array $message): bool => ($message[1] ?? null) === Logger::LEVEL_ERROR
-                && ($message[2] ?? null) === 'search-manager'
-                && str_contains((string)($message[0] ?? ''), 'Unable to schedule pending-sync recovery after job failure'),
-        ));
-        self::assertCount(1, $recoveryErrors);
-
-        $loggedMessage = (string)$recoveryErrors[0][0];
-        self::assertStringContainsString('Synthetic recovery scheduling failure', $loggedMessage);
-        self::assertStringContainsString(\RuntimeException::class, $loggedMessage);
-        self::assertStringNotContainsString('private-marker', $loggedMessage);
-        self::assertStringNotContainsString('claimToken', $loggedMessage);
-        self::assertStringNotContainsString('trace', $loggedMessage);
+        self::assertSame([$initialMessages, $initialFlushInterval], [$logger->messages, $logger->flushInterval]);
     }
 
     public function testRecordingNonDbQueueUsesNoDbTableAssumptionAndAllowsSafeDuplicates(): void
@@ -280,13 +316,36 @@ final class Pr158PendingSyncWakeupTest extends TestCase
     }
 
     /**
+     * @template T
+     * @param callable(): T $operation
+     * @param array<mixed> $capturedMessages
+     * @return T
+     */
+    private function captureLoggerMessages(callable $operation, array &$capturedMessages): mixed
+    {
+        $logger = Craft::getLogger();
+        $messages = $logger->messages;
+        $flushInterval = $logger->flushInterval;
+        $logger->messages = [];
+        $logger->flushInterval = 0;
+
+        try {
+            return $operation();
+        } finally {
+            $capturedMessages = $logger->messages;
+            $logger->messages = $messages;
+            $logger->flushInterval = $flushInterval;
+        }
+    }
+
+    /**
      * @return list<int>
      */
     private function pendingBatchRunTimes(): array
     {
         $rows = (new Query())
             ->select(['timePushed', 'delay'])
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', 'BatchSyncJob'])
             ->andWhere(['fail' => false, 'timeUpdated' => null])
@@ -303,7 +362,7 @@ final class Pr158PendingSyncWakeupTest extends TestCase
     {
         Craft::$app->getDb()
             ->createCommand()
-            ->delete('{{%queue}}', [
+            ->delete($this->queueTable(), [
                 'and',
                 ['like', 'job', 'searchmanager'],
                 ['like', 'job', 'BatchSyncJob'],

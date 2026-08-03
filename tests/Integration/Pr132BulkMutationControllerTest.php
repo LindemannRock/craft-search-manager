@@ -584,7 +584,7 @@ final class Pr132BulkMutationControllerTest extends TestCase
     private function purgeMarkedRows(): void
     {
         Craft::$app->getDb()->createCommand()
-            ->delete('{{%queue}}', ['like', 'job', self::PREFIX, false])
+            ->delete($this->queueTable(), ['like', 'job', self::PREFIX, false])
             ->execute();
 
         foreach ([

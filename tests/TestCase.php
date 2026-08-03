@@ -12,15 +12,21 @@ namespace lindemannrock\searchmanager\tests;
 
 use Craft;
 use craft\base\ElementInterface;
+use craft\cache\FileCache;
 use craft\db\Query;
+use craft\queue\Queue;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\testing\IntegrationTestCase;
 use lindemannrock\searchmanager\models\SearchIndex;
-use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\Stubs\StubBackend;
+use lindemannrock\searchmanager\tests\Support\OwnedProcessRegistry;
+use lindemannrock\searchmanager\tests\Support\ProcessRunOwner;
+use Throwable;
+use yii\db\Connection;
+use yii\db\Transaction;
 use yii\web\ForbiddenHttpException;
 
 /**
@@ -29,56 +35,98 @@ use yii\web\ForbiddenHttpException;
  * Extends the shared {@see IntegrationTestCase} for component snapshot/restore
  * and generic Query helpers, and layers plugin-specific shorthand on top:
  *  - direct accessors for the sync services
- *  - per-test buffer truncation so prior runs can't crowd a target row out of
- *    the BatchSyncJob claim window
+ *  - per-test transaction, queue, runtime/cache, and pending-sync ownership
+ *    boundaries
  *  - {@see installStubBackend()} convenience wrapper
  *  - {@see findWorkingIndexAndElement()} live-data discovery helper
  *
  * Subclasses can override `setUp()` for additional fixture work but should
- * call `parent::setUp()` to keep buffer isolation.
+ * call `parent::setUp()` to keep those boundaries active.
  *
  * @since 5.46.0
  */
 abstract class TestCase extends IntegrationTestCase
 {
+    private static ?self $activeTest = null;
+
     protected PendingSyncRepository $repository;
     protected PendingSyncProcessor $processor;
 
-    /**
-     * @var array<int, array{documentCount: mixed, lastIndexed: mixed, dateUpdated: mixed}>
-     */
-    private array $searchIndexStatsSnapshot = [];
-
-    /**
-     * @var array<string, mixed>|null
-     */
-    private ?array $settingsRowSnapshot = null;
-
+    /** @var array<string, mixed>|null */
+    private ?array $settingsAttributesSnapshot = null;
     private ?string $pluginEditionSnapshot = null;
+    private ?Transaction $testTransaction = null;
+    private ?object $originalQueue = null;
+    private ?object $originalCache = null;
+    private ?string $originalRuntimePath = null;
+    private ?string $testQueueTable = null;
+    private ?string $testQueueRawTable = null;
+    private ?string $testQueueShadowTable = null;
+    private ?string $testPendingSyncTable = null;
+    private ?string $testPendingSyncShadowTable = null;
+    /** @var list<string> */
+    private array $testStorageTables = [];
+    /** @var list<string> */
+    private array $testStorageShadowTables = [];
+    private bool $isolationFinished = false;
+    private bool $baseStateInitialised = false;
+    private ?OwnedProcessRegistry $processRegistry = null;
+    /** @var list<string> */
+    private array $ownedTempPaths = [];
+    /** @var array<int, resource> */
+    private array $ownedStreams = [];
+    /** @var list<callable(): void> */
+    private array $ownedCleanupCallbacks = [];
+    /** @var array<string, object> */
+    private array $originalAppComponents = [];
 
     protected function setUp(): void
     {
-        parent::setUp();
-        SearchIndex::clearCache();
-        $this->snapshotSearchIndexStats();
-        $this->snapshotSettingsRow();
-        $this->repository = SearchManager::$plugin->pendingSyncs;
-        $this->processor = SearchManager::$plugin->pendingSyncProcessor;
-        $this->truncateBuffer();
+        self::$activeTest = $this;
+        $this->isolationFinished = false;
+        $this->processRegistry = new OwnedProcessRegistry();
+
+        try {
+            parent::setUp();
+            $this->baseStateInitialised = true;
+            $this->snapshotAppComponents();
+            $this->settingsAttributesSnapshot = SearchManager::$plugin->getSettings()->getAttributes();
+            $this->isolateRuntimeAndCache();
+            $this->isolatePendingSyncTable();
+            $this->isolateQueue();
+            $this->isolateSearchStorageTables();
+            $this->testTransaction = Craft::$app->getDb()->beginTransaction();
+
+            $this->repository = SearchManager::$plugin->pendingSyncs;
+            $this->processor = SearchManager::$plugin->pendingSyncProcessor;
+            SearchIndex::clearCache();
+        } catch (Throwable $exception) {
+            try {
+                $this->finishIsolation();
+            } catch (Throwable $cleanupException) {
+                fwrite(STDERR, 'Search Manager setup cleanup failed: ' . $cleanupException->getMessage() . PHP_EOL);
+            }
+
+            throw $exception;
+        }
     }
 
     protected function tearDown(): void
     {
-        try {
-            $this->truncateBuffer();
-            $this->restoreSearchIndexStats();
-            $this->restoreSettingsRow();
-            SearchIndex::clearCache();
-        } finally {
-            $this->restorePluginEdition();
-            // Parent restores swapped components (including any StubBackend)
-            // after our plugin-local cleanup runs against the real DB.
-            parent::tearDown();
+        $this->finishIsolation();
+    }
+
+    /**
+     * Runner fallback for child tearDown methods that fail before reaching
+     * parent::tearDown().
+     *
+     * @since 5.54.0
+     */
+    public static function finishActiveTestIsolation(): void
+    {
+        $active = self::$activeTest;
+        if ($active !== null) {
+            $active->finishIsolation();
         }
     }
 
@@ -111,18 +159,101 @@ abstract class TestCase extends IntegrationTestCase
         return $stub;
     }
 
-    /**
-     * Wipe `searchmanager_pending_syncs` between tests. The buffer is
-     * transient — production rows live there only for the brief window
-     * between a save event and the next BatchSyncJob drain — so a
-     * truncate-all here doesn't risk eating real CP data.
-     */
-    protected function truncateBuffer(): void
+    protected function queueTable(): string
     {
-        Craft::$app->getDb()
-            ->createCommand()
-            ->delete('{{%searchmanager_pending_syncs}}', '1=1')
-            ->execute();
+        if ($this->testQueueTable === null) {
+            throw new \LogicException('The per-test queue table has not been initialised.');
+        }
+
+        return $this->testQueueTable;
+    }
+
+    /**
+     * @param resource $process
+     * @param array<int, resource> $pipes
+     */
+    protected function registerOwnedProcess($process, array $pipes, string $label = 'test-child'): void
+    {
+        $this->processRegistry?->register($process, $pipes, $label);
+    }
+
+    /**
+     * @param resource $process
+     * @param array<int, resource> $pipes
+     * @return array{exitCode: int, output: string, error: string, pid: int, signaled: bool, termSignal: int}
+     */
+    protected function finishOwnedProcess($process, array $pipes, bool $terminate = false): array
+    {
+        if ($this->processRegistry === null) {
+            throw new \LogicException('The per-test process registry has not been initialised.');
+        }
+
+        return $this->processRegistry->finish($process, $pipes, $terminate);
+    }
+
+    protected function trackOwnedTempPath(string $path): void
+    {
+        ProcessRunOwner::registerPath($path);
+        if (!in_array($path, $this->ownedTempPaths, true)) {
+            $this->ownedTempPaths[] = $path;
+        }
+        $this->trackTempPath($path);
+    }
+
+    protected function reserveOwnedTempPath(string $label): string
+    {
+        $path = ProcessRunOwner::reservePath($label);
+        $this->trackOwnedTempPath($path);
+
+        return $path;
+    }
+
+    protected function createOwnedTempDirectory(string $label): string
+    {
+        $path = ProcessRunOwner::createDirectory($label);
+        $this->trackOwnedTempPath($path);
+
+        return $path;
+    }
+
+    protected function createOwnedStorageDirectory(string $label): string
+    {
+        $path = ProcessRunOwner::createStorageDirectory($label);
+        $this->trackOwnedTempPath($path);
+
+        return $path;
+    }
+
+    protected function registerRollbackPendingRow(string $uid): void
+    {
+        ProcessRunOwner::registerRollbackRow('searchmanager_pending_syncs', $uid);
+    }
+
+    /** @param resource $stream */
+    protected function registerOwnedStream($stream): void
+    {
+        $this->ownedStreams[get_resource_id($stream)] = $stream;
+    }
+
+    protected function registerOwnedCleanup(callable $cleanup): void
+    {
+        array_unshift($this->ownedCleanupCallbacks, $cleanup);
+    }
+
+    protected function createIndependentDatabaseConnection(): Connection
+    {
+        $db = Craft::$app->getDb();
+        $connection = new Connection([
+            'dsn' => $db->dsn,
+            'username' => $db->username,
+            'password' => $db->password,
+            'charset' => $db->charset,
+            'tablePrefix' => $db->tablePrefix,
+            'attributes' => $db->attributes,
+        ]);
+        $connection->open();
+
+        return $connection;
     }
 
     protected function fetchSearchIndexStatsByHandle(string $handle): ?array
@@ -234,55 +365,118 @@ abstract class TestCase extends IntegrationTestCase
         }
     }
 
-    private function snapshotSearchIndexStats(): void
+    private function isolateRuntimeAndCache(): void
     {
-        $rows = (new Query())
-            ->select(['id', 'documentCount', 'lastIndexed', 'dateUpdated'])
-            ->from('{{%searchmanager_indices}}')
-            ->all();
+        $this->originalRuntimePath = Craft::$app->getRuntimePath();
+        $this->originalCache = Craft::$app->getCache();
 
-        $this->searchIndexStatsSnapshot = [];
-        foreach ($rows as $row) {
-            $this->searchIndexStatsSnapshot[(int)$row['id']] = [
-                'documentCount' => $row['documentCount'],
-                'lastIndexed' => $row['lastIndexed'],
-                'dateUpdated' => $row['dateUpdated'],
-            ];
-        }
+        $runtimePath = $this->createOwnedTempDirectory('runtime');
+        Craft::$app->setRuntimePath($runtimePath);
+        Craft::$app->set('cache', new FileCache([
+            'cachePath' => $runtimePath . DIRECTORY_SEPARATOR . 'cache',
+            'keyPrefix' => 'search-manager-test-' . bin2hex(random_bytes(8)),
+        ]));
     }
 
-    private function restoreSearchIndexStats(): void
+    /**
+     * Shadow the permanent pending-sync table for this connection only.
+     *
+     * MySQL resolves a same-name temporary table before its permanent sibling,
+     * so production repository SQL runs unchanged while owner rows remain
+     * invisible and unreachable to every query, claim, retry, purge, and
+     * delete issued by the test connection.
+     */
+    private function isolatePendingSyncTable(): void
     {
-        foreach ($this->searchIndexStatsSnapshot as $id => $row) {
-            Craft::$app->getDb()
-                ->createCommand()
-                ->update('{{%searchmanager_indices}}', $row, ['id' => $id])
-                ->execute();
-        }
-    }
-
-    private function snapshotSettingsRow(): void
-    {
-        $this->settingsRowSnapshot = $this->fetchSettingsRow();
-    }
-
-    private function restoreSettingsRow(): void
-    {
-        if ($this->settingsRowSnapshot === null) {
-            return;
+        $db = Craft::$app->getDb();
+        if ($db->getDriverName() !== 'mysql') {
+            throw new \RuntimeException('A12-1 pending-sync isolation currently requires MySQL. PostgreSQL coverage belongs to A12-4.');
         }
 
-        $row = $this->settingsRowSnapshot;
-        unset($row['id']);
+        $this->testPendingSyncTable = $db->getSchema()->getRawTableName('{{%searchmanager_pending_syncs}}');
+        $this->testPendingSyncShadowTable = $this->testPendingSyncTable . '_a12_' . bin2hex(random_bytes(8));
+        $db->createCommand(sprintf(
+            'CREATE TEMPORARY TABLE %s LIKE %s',
+            $db->quoteTableName($this->testPendingSyncShadowTable),
+            $db->quoteTableName($this->testPendingSyncTable),
+        ))->execute();
+        $db->createCommand(sprintf(
+            'ALTER TABLE %s RENAME TO %s',
+            $db->quoteTableName($this->testPendingSyncShadowTable),
+            $db->quoteTableName($this->testPendingSyncTable),
+        ))->execute();
+        $this->testPendingSyncShadowTable = null;
+    }
 
-        Craft::$app->getDb()
-            ->createCommand()
-            ->update('{{%searchmanager_settings}}', $row, ['id' => 1])
-            ->execute();
+    private function isolateQueue(): void
+    {
+        $original = Craft::$app->getQueue();
+        if (!$original instanceof Queue) {
+            throw new \RuntimeException('Search Manager integration tests require Craft\'s database queue.');
+        }
 
-        $settings = SearchManager::$plugin->getSettings();
-        $freshSettings = Settings::loadFromDatabase();
-        $settings->setAttributes($freshSettings->getAttributes(), false);
+        $this->originalQueue = $original;
+        $db = Craft::$app->getDb();
+        $this->testQueueTable = $original->tableName;
+        $this->testQueueRawTable = $db->getSchema()->getRawTableName($original->tableName);
+        $this->testQueueShadowTable = $this->testQueueRawTable . '_a12_' . bin2hex(random_bytes(8));
+        $db->createCommand(sprintf(
+            'CREATE TEMPORARY TABLE %s LIKE %s',
+            $db->quoteTableName($this->testQueueShadowTable),
+            $db->quoteTableName($this->testQueueRawTable),
+        ))->execute();
+        $db->createCommand(sprintf(
+            'ALTER TABLE %s RENAME TO %s',
+            $db->quoteTableName($this->testQueueShadowTable),
+            $db->quoteTableName($this->testQueueRawTable),
+        ))->execute();
+        $this->testQueueShadowTable = null;
+
+        Craft::$app->set('queue', new Queue([
+            'db' => $db,
+            'mutex' => $original->mutex,
+            'tableName' => $this->testQueueTable,
+            'channel' => $original->channel,
+            'mutexTimeout' => $original->mutexTimeout,
+        ]));
+    }
+
+    /**
+     * Shadow production MySQL search storage for this connection only.
+     *
+     * Production storage methods execute unchanged while test indexing,
+     * searching, clearing, and class fixtures remain unable to see or mutate
+     * permanent owner documents.
+     */
+    private function isolateSearchStorageTables(): void
+    {
+        $db = Craft::$app->getDb();
+        foreach ([
+            '{{%searchmanager_search_documents}}',
+            '{{%searchmanager_search_terms}}',
+            '{{%searchmanager_search_titles}}',
+            '{{%searchmanager_search_ngrams}}',
+            '{{%searchmanager_search_ngram_counts}}',
+            '{{%searchmanager_search_metadata}}',
+            '{{%searchmanager_search_elements}}',
+            '{{%searchmanager_search_compounds}}',
+        ] as $tableName) {
+            $table = $db->getSchema()->getRawTableName($tableName);
+            $shadow = $table . '_a12_' . bin2hex(random_bytes(8));
+            $this->testStorageShadowTables[] = $shadow;
+            $db->createCommand(sprintf(
+                'CREATE TEMPORARY TABLE %s LIKE %s',
+                $db->quoteTableName($shadow),
+                $db->quoteTableName($table),
+            ))->execute();
+            $db->createCommand(sprintf(
+                'ALTER TABLE %s RENAME TO %s',
+                $db->quoteTableName($shadow),
+                $db->quoteTableName($table),
+            ))->execute();
+            array_pop($this->testStorageShadowTables);
+            $this->testStorageTables[] = $table;
+        }
     }
 
     private function restorePluginEdition(): void
@@ -294,6 +488,196 @@ abstract class TestCase extends IntegrationTestCase
         SearchManager::$plugin->edition = $this->pluginEditionSnapshot;
         $this->pluginEditionSnapshot = null;
         Craft::$app->getUserPermissions()->reset();
+    }
+
+    private function snapshotAppComponents(): void
+    {
+        foreach (['db', 'request', 'response', 'user', 'config', 'mutex', 'elements'] as $id) {
+            if (Craft::$app->has($id)) {
+                $component = Craft::$app->get($id);
+                if (is_object($component)) {
+                    $this->originalAppComponents[$id] = $component;
+                }
+            }
+        }
+    }
+
+    private function restoreAppComponents(): void
+    {
+        foreach ($this->originalAppComponents as $id => $component) {
+            Craft::$app->set($id, $component);
+        }
+        $this->originalAppComponents = [];
+    }
+
+    private function finishIsolation(): void
+    {
+        if ($this->isolationFinished) {
+            return;
+        }
+        $this->isolationFinished = true;
+
+        $errors = [];
+        $this->runCleanupStep($errors, fn() => $this->restoreAppComponents());
+        $this->runCleanupStep($errors, fn() => $this->restorePluginEdition());
+        $this->runCleanupStep($errors, function(): void {
+            if ($this->settingsAttributesSnapshot !== null) {
+                SearchManager::$plugin->getSettings()->setAttributes($this->settingsAttributesSnapshot, false);
+                $this->settingsAttributesSnapshot = null;
+            }
+        });
+        $this->runCleanupStep($errors, static fn() => SearchIndex::clearCache());
+        $this->runCleanupStep($errors, function(): void {
+            $this->processRegistry?->cleanup();
+            $this->processRegistry = null;
+        });
+        $this->runCleanupStep($errors, function(): void {
+            foreach ($this->ownedStreams as $id => $stream) {
+                if (is_resource($stream)) {
+                    @flock($stream, LOCK_UN);
+                    fclose($stream);
+                }
+                unset($this->ownedStreams[$id]);
+            }
+        });
+        foreach ($this->ownedCleanupCallbacks as $cleanup) {
+            $this->runCleanupStep($errors, $cleanup);
+        }
+        $this->ownedCleanupCallbacks = [];
+        $this->runCleanupStep($errors, function(): void {
+            foreach ($this->ownedTempPaths as $path) {
+                $this->makeOwnedPathWritable($path);
+            }
+        });
+
+        if ($this->baseStateInitialised) {
+            $this->runBaseCleanupSteps($errors);
+            $this->baseStateInitialised = false;
+        }
+        $this->runCleanupStep($errors, function(): void {
+            foreach ($this->ownedTempPaths as $path) {
+                if (file_exists($path) || is_link($path)) {
+                    throw new \RuntimeException("Owned temporary path was not removed: {$path}");
+                }
+            }
+            $this->ownedTempPaths = [];
+        });
+
+        $this->runCleanupStep($errors, function(): void {
+            if ($this->originalQueue !== null) {
+                Craft::$app->set('queue', $this->originalQueue);
+                $this->originalQueue = null;
+            }
+        });
+        $this->runCleanupStep($errors, function(): void {
+            if ($this->originalCache !== null) {
+                Craft::$app->set('cache', $this->originalCache);
+                $this->originalCache = null;
+            }
+        });
+        $this->runCleanupStep($errors, function(): void {
+            if ($this->originalRuntimePath !== null) {
+                Craft::$app->setRuntimePath($this->originalRuntimePath);
+                $this->originalRuntimePath = null;
+            }
+        });
+        $this->runCleanupStep($errors, function(): void {
+            if ($this->testTransaction !== null && $this->testTransaction->getIsActive()) {
+                $this->testTransaction->rollBack();
+            }
+            $this->testTransaction = null;
+        });
+        $this->runCleanupStep($errors, function(): void {
+            $db = Craft::$app->getDb();
+            foreach ([$this->testQueueRawTable, $this->testQueueShadowTable] as $table) {
+                if ($table !== null) {
+                    $db->createCommand('DROP TEMPORARY TABLE IF EXISTS ' . $db->quoteTableName($table))->execute();
+                }
+            }
+            $this->testQueueTable = null;
+            $this->testQueueRawTable = null;
+            $this->testQueueShadowTable = null;
+        });
+        $this->runCleanupStep($errors, function(): void {
+            $db = Craft::$app->getDb();
+            foreach ([$this->testPendingSyncTable, $this->testPendingSyncShadowTable] as $table) {
+                if ($table !== null) {
+                    $db->createCommand('DROP TEMPORARY TABLE IF EXISTS ' . $db->quoteTableName($table))->execute();
+                }
+            }
+            $this->testPendingSyncTable = null;
+            $this->testPendingSyncShadowTable = null;
+        });
+        $this->runCleanupStep($errors, function(): void {
+            $db = Craft::$app->getDb();
+            foreach (array_merge($this->testStorageTables, $this->testStorageShadowTables) as $table) {
+                $db->createCommand('DROP TEMPORARY TABLE IF EXISTS ' . $db->quoteTableName($table))->execute();
+            }
+            $this->testStorageTables = [];
+            $this->testStorageShadowTables = [];
+        });
+        self::$activeTest = null;
+
+        if ($errors !== []) {
+            $messages = array_map(
+                static fn(Throwable $error): string => $error::class . ': ' . $error->getMessage(),
+                $errors,
+            );
+            throw new \RuntimeException(
+                'Search Manager test isolation cleanup failed: ' . implode(' | ', $messages),
+                0,
+                $errors[0],
+            );
+        }
+    }
+
+    /** @param list<Throwable> $errors */
+    private function runBaseCleanupSteps(array &$errors): void
+    {
+        $this->runCleanupStep($errors, fn() => $this->cleanupExternalState());
+        foreach ([
+            'restoreActingUser',
+            'cleanupTrackedUsers',
+            'cleanupTrackedElements',
+            'cleanupTrackedTempPaths',
+            'restoreSwappedComponents',
+        ] as $methodName) {
+            $this->runCleanupStep($errors, function() use ($methodName): void {
+                $method = new \ReflectionMethod(IntegrationTestCase::class, $methodName);
+                $method->invoke($this);
+            });
+        }
+
+        $this->runCleanupStep($errors, function(): void {
+            $property = new \ReflectionProperty(IntegrationTestCase::class, 'testMarkerCounter');
+            $property->setValue($this, 0);
+        });
+    }
+
+    /** @param list<Throwable> $errors */
+    private function runCleanupStep(array &$errors, callable $cleanup): void
+    {
+        try {
+            $cleanup();
+        } catch (Throwable $exception) {
+            $errors[] = $exception;
+        }
+    }
+
+    private function makeOwnedPathWritable(string $path): void
+    {
+        if (!file_exists($path) || is_link($path)) {
+            return;
+        }
+        if (is_dir($path)) {
+            @chmod($path, 0700);
+            foreach (array_diff(scandir($path) ?: [], ['.', '..']) as $entry) {
+                $this->makeOwnedPathWritable($path . DIRECTORY_SEPARATOR . $entry);
+            }
+            return;
+        }
+
+        @chmod($path, 0600);
     }
 
     /**

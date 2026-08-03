@@ -217,7 +217,7 @@ final class ConfigClosureCriteriaRebuildTest extends TestCase
             ->delete('{{%searchmanager_indices}}', ['handle' => self::INDEX_HANDLE])
             ->execute();
         Craft::$app->getDb()->createCommand()
-            ->delete('{{%queue}}', ['like', 'job', self::INDEX_HANDLE])
+            ->delete($this->queueTable(), ['like', 'job', self::INDEX_HANDLE])
             ->execute();
         Craft::$app->getDb()->createCommand()
             ->delete('{{%searchmanager_backends}}', ['handle' => self::BACKEND_HANDLE])

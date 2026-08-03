@@ -58,7 +58,7 @@ final class SyncBufferAutoIndexTest extends TestCase
                 'elementId' => (int) $element->id,
                 'siteId' => (int) $element->siteId,
             ]),
-            'Buffer must be empty before the save event fires (setUp truncates).',
+            'The isolated buffer must be empty before the save event fires.',
         );
 
         $this->withAutoIndex(true, function() use ($element): void {
@@ -177,7 +177,7 @@ final class SyncBufferAutoIndexTest extends TestCase
     private function countQueueRows(string $jobClass): int
     {
         return (int) (new \craft\db\Query())
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', $jobClass])
             ->andWhere(['fail' => false])

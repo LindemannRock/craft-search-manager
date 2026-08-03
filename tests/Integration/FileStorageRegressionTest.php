@@ -24,15 +24,6 @@ final class FileStorageRegressionTest extends TestCase
 {
     private ?string $basePath = null;
 
-    protected function tearDown(): void
-    {
-        if ($this->basePath !== null) {
-            $this->deleteDirectory($this->basePath);
-        }
-
-        parent::tearDown();
-    }
-
     public function testElementSuggestionsPreserveStoredSiteIdOnAllSitesSearch(): void
     {
         $storage = $this->makeStorage();
@@ -825,7 +816,11 @@ final class FileStorageRegressionTest extends TestCase
 
     private function makeStorage(): FileStorage
     {
-        $this->basePath = Craft::getAlias('@storage/search-manager-test-' . StringHelper::UUID());
+        if ($this->basePath !== null) {
+            throw new \LogicException('This test already owns a File storage root.');
+        }
+        $path = $this->createOwnedStorageDirectory('file-storage-regression');
+        $this->basePath = $path;
 
         return new FileStorage('file-storage-regression', $this->basePath);
     }
@@ -849,6 +844,8 @@ final class FileStorageRegressionTest extends TestCase
 
         $readyPath = $this->indexPath() . '/lock-ready-' . StringHelper::UUID() . '.tmp';
         $releasePath = $this->indexPath() . '/lock-release-' . StringHelper::UUID() . '.tmp';
+        $this->trackOwnedTempPath($readyPath);
+        $this->trackOwnedTempPath($releasePath);
         $lockScript = $this->writePhpScript('lock-holder', <<<'PHP'
 <?php
 [$script, $lockedPath, $readyPath, $releasePath] = $argv;
@@ -940,6 +937,7 @@ PHP);
     private function writePhpScript(string $name, string $source): string
     {
         $path = $this->indexPath() . '/' . $name . '-' . StringHelper::UUID() . '.php';
+        $this->trackOwnedTempPath($path);
         $this->writeFile($path, $source);
 
         return $path;
@@ -972,6 +970,7 @@ PHP);
         ], $pipes);
 
         self::assertIsResource($process, 'Unable to start FileStorage worker process.');
+        $this->registerOwnedProcess($process, $pipes);
 
         return [$process, $pipes];
     }
@@ -982,13 +981,8 @@ PHP);
      */
     private function finishPhpProcess($process, array $pipes, string $message): void
     {
-        fclose($pipes[0]);
-        $output = stream_get_contents($pipes[1]);
-        $error = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-
-        self::assertSame(0, proc_close($process), trim($message . ' ' . $output . ' ' . $error));
+        $result = $this->finishOwnedProcess($process, $pipes);
+        self::assertSame(0, $result['exitCode'], trim($message . ' ' . $result['output'] . ' ' . $result['error']));
     }
 
     /**
@@ -1028,22 +1022,4 @@ PHP);
         return $body;
     }
 
-    private function deleteDirectory(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-
-        $files = array_diff(scandir($dir) ?: [], ['.', '..']);
-        foreach ($files as $file) {
-            $path = $dir . '/' . $file;
-            if (is_dir($path)) {
-                $this->deleteDirectory($path);
-            } else {
-                @unlink($path);
-            }
-        }
-
-        @rmdir($dir);
-    }
 }

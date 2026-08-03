@@ -13,6 +13,8 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use Craft;
 use craft\db\Query;
 use craft\elements\Entry;
+use craft\helpers\Db;
+use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\jobs\BatchSyncJob;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -46,29 +48,37 @@ final class SyncBufferHappyPathTest extends TestCase
         $pair = $this->findWorkingIndexAndElement();
         $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
 
-        [$index, $element] = $pair;
-        $this->repository->queueForElement($element, PendingSyncRepository::OP_UPSERT);
+        [$sourceIndex, $element] = $pair;
+        $index = $this->createIsolatedDatabaseIndex($sourceIndex, (int)$element->siteId);
 
-        // Drain in a loop so that any pre-existing backlog can't crowd our row
-        // out of the first batch. Cap iterations so a real bug can't hang the
-        // test.
-        $maxIterations = 50;
-        $iterations = 0;
-        while ($this->fetchPendingRow($index->handle, (int) $element->id, (int) $element->siteId) !== null) {
-            $job = new BatchSyncJob();
-            $job->execute(Craft::$app->queue);
-            $iterations++;
-            $this->assertLessThanOrEqual($maxIterations, $iterations, 'BatchSyncJob did not drain the target row within the iteration cap.');
+        try {
+            $this->withOnlySearchIndices([$index], function() use ($index, $element): void {
+                SearchManager::$plugin->dependencies->clearIndexCatalogue();
+                $this->repository->queueForElement($element, PendingSyncRepository::OP_UPSERT);
+
+                // The isolated pending table contains only this test's rows,
+                // but retain the cap so a processing regression cannot hang.
+                $maxIterations = 50;
+                $iterations = 0;
+                while ($this->fetchPendingRow($index->handle, (int)$element->id, (int)$element->siteId) !== null) {
+                    (new BatchSyncJob())->execute(Craft::$app->queue);
+                    $iterations++;
+                    $this->assertLessThanOrEqual($maxIterations, $iterations, 'BatchSyncJob did not drain the target row within the iteration cap.');
+                }
+
+                $this->assertNull(
+                    $this->fetchPendingRow($index->handle, (int)$element->id, (int)$element->siteId),
+                    'Pending row should be drained after BatchSyncJob runs.',
+                );
+                $this->assertTrue(
+                    SearchManager::$plugin->backend->documentExists($index->handle, (int)$element->id, (int)$element->siteId),
+                    'The production MySQL backend should persist and read back the owned document after BatchSyncJob runs.',
+                );
+            });
+        } finally {
+            SearchManager::$plugin->dependencies->clearIndexCatalogue();
+            SearchIndex::clearCache();
         }
-
-        $this->assertNull(
-            $this->fetchPendingRow($index->handle, (int) $element->id, (int) $element->siteId),
-            'Pending row should be drained after BatchSyncJob runs.',
-        );
-        $this->assertTrue(
-            SearchManager::$plugin->backend->documentExists($index->handle, (int) $element->id, (int) $element->siteId),
-            'Backend should contain the document after a successful batch sync.',
-        );
     }
 
     public function testRapidQueueForElementCallsCollapseToOneRow(): void
@@ -96,6 +106,7 @@ final class SyncBufferHappyPathTest extends TestCase
         $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
 
         [$index, $element] = $pair;
+        $stub = $this->installStubBackend();
         $originalCount = $index->documentCount;
         try {
             $index->updateStats(0);
@@ -103,7 +114,7 @@ final class SyncBufferHappyPathTest extends TestCase
 
             (new BatchSyncJob())->execute(Craft::$app->queue);
 
-            $backendCount = SearchManager::$plugin->backend->getDocumentCount($index->handle);
+            $backendCount = $stub->getDocumentCount($index->handle);
             $refreshed = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($index->handle);
             $this->assertNotNull($backendCount);
             $this->assertNotNull($refreshed);
@@ -188,7 +199,7 @@ final class SyncBufferHappyPathTest extends TestCase
             if ($newQueueIds !== []) {
                 Craft::$app->getDb()
                     ->createCommand()
-                    ->delete('{{%queue}}', ['id' => $newQueueIds])
+                    ->delete($this->queueTable(), ['id' => $newQueueIds])
                     ->execute();
             }
         }
@@ -203,7 +214,7 @@ final class SyncBufferHappyPathTest extends TestCase
             'intval',
             (new Query())
                 ->select(['id'])
-                ->from('{{%queue}}')
+                ->from($this->queueTable())
                 ->where(['like', 'job', 'searchmanager'])
                 ->andWhere(['like', 'job', 'BatchSyncJob'])
                 ->column(),
@@ -214,7 +225,7 @@ final class SyncBufferHappyPathTest extends TestCase
     {
         $rows = (new Query())
             ->select(['timePushed', 'delay'])
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', 'BatchSyncJob'])
             ->andWhere(['fail' => false, 'timeUpdated' => null])
@@ -227,5 +238,54 @@ final class SyncBufferHappyPathTest extends TestCase
         }
 
         return false;
+    }
+
+    private function createIsolatedDatabaseIndex(SearchIndex $source, int $siteId): SearchIndex
+    {
+        $suffix = bin2hex(random_bytes(6));
+        $backendHandle = 'a12mysql' . $suffix;
+        $indexHandle = 'a12sync' . $suffix;
+        $now = Db::prepareDateForDb(new \DateTimeImmutable());
+        $db = Craft::$app->getDb();
+        $db->createCommand()->insert('{{%searchmanager_backends}}', [
+            'name' => 'A12 isolated MySQL ' . $suffix,
+            'handle' => $backendHandle,
+            'backendType' => 'mysql',
+            'settings' => '{}',
+            'enabled' => 1,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+        $db->createCommand()->insert('{{%searchmanager_indices}}', [
+            'name' => 'A12 isolated sync ' . $suffix,
+            'handle' => $indexHandle,
+            'elementType' => Entry::class,
+            'siteId' => $siteId,
+            'criteria' => '{}',
+            'transformerClass' => (string)$source->transformerClass,
+            'headingLevels' => $source->headingLevels === null ? null : json_encode($source->headingLevels, JSON_THROW_ON_ERROR),
+            'language' => $source->language,
+            'backend' => $backendHandle,
+            'enabled' => 1,
+            'enableAnalytics' => 0,
+            'disableStopWords' => (int)$source->disableStopWords,
+            'skipEntriesWithoutUrl' => 0,
+            'splitSections' => 0,
+            'retrievableFields' => json_encode(['*'], JSON_THROW_ON_ERROR),
+            'source' => 'database',
+            'lastIndexed' => null,
+            'documentCount' => 0,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+        SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
+
+        $index = SearchIndex::findByHandle($indexHandle);
+        self::assertNotNull($index);
+
+        return $index;
     }
 }

@@ -114,7 +114,7 @@ final class NestedEntryIndexingTest extends TestCase
         self::assertSame([], $backend->indexedElementIds($index->handle));
         self::assertSame([(int)$nested->id], $backend->deletedElementIds($index->handle));
 
-        $this->truncateBuffer();
+        $this->repository->deleteByIds(array_map('intval', array_column($nestedRows, 'id')));
         $backend->resetCalls();
 
         $this->triggerElementEvent(Elements::EVENT_AFTER_SAVE_ELEMENT, $owner, $index);
@@ -313,7 +313,7 @@ final class NestedEntryIndexingTest extends TestCase
             ->delete('{{%searchmanager_indices}}', ['handle' => self::INDEX_HANDLE])
             ->execute();
         Craft::$app->getDb()->createCommand()
-            ->delete('{{%queue}}', ['like', 'job', self::INDEX_HANDLE])
+            ->delete($this->queueTable(), ['like', 'job', self::INDEX_HANDLE])
             ->execute();
         SearchIndex::clearCache();
     }

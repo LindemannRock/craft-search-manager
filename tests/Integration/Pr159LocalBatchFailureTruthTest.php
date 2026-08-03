@@ -535,7 +535,7 @@ final class Pr159LocalBatchFailureTruthTest extends TestCase
 
     private function deleteBatchQueueRows(): void
     {
-        Craft::$app->getDb()->createCommand()->delete('{{%queue}}', [
+        Craft::$app->getDb()->createCommand()->delete($this->queueTable(), [
             'and',
             ['like', 'job', 'searchmanager'],
             ['like', 'job', 'BatchSyncJob'],

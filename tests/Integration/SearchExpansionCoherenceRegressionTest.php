@@ -64,10 +64,16 @@ final class SearchExpansionCoherenceRegressionTest extends TestCase
 
     public static function tearDownAfterClass(): void
     {
-        self::deleteRowsForIndexes();
         self::$seeded = false;
 
         parent::tearDownAfterClass();
+    }
+
+    protected function tearDown(): void
+    {
+        self::$seeded = false;
+
+        parent::tearDown();
     }
 
     public function testTestingToolFindsTestingToolsRankedFirstWithoutRelaxing(): void

@@ -648,7 +648,7 @@ final class A4StoredIdentityPersistenceTest extends TestCase
         self::assertSame(
             0,
             (int)(new Query())
-                ->from('{{%queue}}')
+                ->from($this->queueTable())
                 ->where(['like', 'job', self::PREFIX . '-cached-index'])
                 ->count(),
         );
@@ -955,7 +955,7 @@ final class A4StoredIdentityPersistenceTest extends TestCase
     {
         return (new Query())
             ->select(['id', 'job', 'description', 'fail', 'timeUpdated'])
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', self::PREFIX])
             ->orderBy(['id' => SORT_ASC])
             ->all();
@@ -1154,7 +1154,7 @@ final class A4StoredIdentityPersistenceTest extends TestCase
         }
 
         Craft::$app->getDb()->createCommand()
-            ->delete('{{%queue}}', ['like', 'job', self::PREFIX])
+            ->delete($this->queueTable(), ['like', 'job', self::PREFIX])
             ->execute();
         Craft::$app->getDb()->createCommand()
             ->delete('{{%searchmanager_pending_syncs}}', ['like', 'indexHandle', self::PREFIX . '%', false])

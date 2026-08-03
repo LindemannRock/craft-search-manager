@@ -599,7 +599,7 @@ final class Pr169IndexActionCapabilityTest extends TestCase
     private function queuedJobsFor(string $handle): int
     {
         return (int)(new Query())
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', $handle])
             ->count();
     }
@@ -775,7 +775,7 @@ final class Pr169IndexActionCapabilityTest extends TestCase
                 ->execute();
         }
         Craft::$app->getDb()->createCommand()
-            ->delete('{{%queue}}', ['like', 'job', self::PREFIX])
+            ->delete($this->queueTable(), ['like', 'job', self::PREFIX])
             ->execute();
         SearchIndex::clearCache();
         SearchManager::$plugin->dependencies->clearIndexCatalogue();

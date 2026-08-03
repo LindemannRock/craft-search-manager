@@ -322,7 +322,7 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
             ->execute();
         foreach ($handles as $handle) {
             Craft::$app->getDb()->createCommand()
-                ->delete('{{%queue}}', ['like', 'job', $handle])
+                ->delete($this->queueTable(), ['like', 'job', $handle])
                 ->execute();
         }
         SearchIndex::clearCache();

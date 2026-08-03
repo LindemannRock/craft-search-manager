@@ -554,7 +554,7 @@ final class AuditHousekeepingRegressionTest extends TestCase
             ->delete('{{%searchmanager_backends}}', ['like', 'handle', self::PREFIX . '%', false])
             ->execute();
         Craft::$app->getDb()->createCommand()
-            ->delete('{{%queue}}', ['like', 'job', self::PREFIX])
+            ->delete($this->queueTable(), ['like', 'job', self::PREFIX])
             ->execute();
         SearchIndex::clearCache();
     }
@@ -567,7 +567,7 @@ final class AuditHousekeepingRegressionTest extends TestCase
     private function countRebuildQueueRows(string $handle): int
     {
         return (int)(new Query())
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', 'RebuildIndexJob'])
             ->andWhere(['like', 'job', $handle])
             ->andWhere(['fail' => false])

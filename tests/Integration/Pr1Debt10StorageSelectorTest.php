@@ -149,7 +149,7 @@ final class Pr1Debt10StorageSelectorTest extends TestCase
 
     public function testFileCountingUsesAnIsolatedTemporaryPath(): void
     {
-        $path = Craft::$app->getPath()->getTempPath() . '/search-manager-pr1-debt-10-' . bin2hex(random_bytes(6));
+        $path = $this->createOwnedTempDirectory('storage-selector');
         FileHelper::createDirectory($path . '/nested');
 
         try {

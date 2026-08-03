@@ -77,13 +77,13 @@ final class AuditItem388AllSitesLanguageTest extends TestCase
     protected function tearDown(): void
     {
         SearchManager::$plugin->getSettings()->enableAutocompleteCache = $this->originalEnableAutocompleteCache;
+        self::$seeded = false;
 
         parent::tearDown();
     }
 
     public static function tearDownAfterClass(): void
     {
-        self::deleteRowsForIndex();
         self::$seeded = false;
 
         parent::tearDownAfterClass();

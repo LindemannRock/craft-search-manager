@@ -84,7 +84,7 @@ final class SyncBufferFailureTest extends TestCase
 
         Craft::$app->getDb()
             ->createCommand()
-            ->delete('{{%queue}}', [
+            ->delete($this->queueTable(), [
                 'and',
                 ['like', 'job', 'searchmanager'],
                 ['like', 'job', 'BatchSyncJob'],
@@ -101,7 +101,7 @@ final class SyncBufferFailureTest extends TestCase
         $this->assertSame(
             1,
             (int) (new Query())
-                ->from('{{%queue}}')
+                ->from($this->queueTable())
                 ->where(['like', 'job', 'searchmanager'])
                 ->andWhere(['like', 'job', 'BatchSyncJob'])
                 ->andWhere(['fail' => false, 'timeUpdated' => null])
@@ -132,8 +132,7 @@ final class SyncBufferFailureTest extends TestCase
         // batchMaxAttempts = 2 (from setUp). Two failed attempts → abandoned.
         // Reset the backoff window between drains so we don't have to wait.
         // queueForElement can produce rows for multiple (index, site) pairs;
-        // the truncate in setUp guarantees the buffer holds only our rows, so
-        // a buffer-wide nextAttemptAt reset is safe.
+        // capture their exact IDs from the isolated buffer before resetting.
         $this->executeNextScheduledBatchJob();
         $this->resetAllBackoff();
         $this->executeNextScheduledBatchJob();
@@ -198,6 +197,14 @@ final class SyncBufferFailureTest extends TestCase
 
     private function resetAllBackoff(): void
     {
+        $rowIds = array_map(
+            'intval',
+            (new Query())->select(['id'])->from('{{%searchmanager_pending_syncs}}')->column(),
+        );
+        if ($rowIds === []) {
+            return;
+        }
+
         Craft::$app->getDb()
             ->createCommand()
             ->update(
@@ -205,7 +212,7 @@ final class SyncBufferFailureTest extends TestCase
                 [
                     'nextAttemptAt' => Db::prepareDateForDb((new \DateTime())->modify('-1 second')),
                 ],
-                '1=1',
+                ['id' => $rowIds],
             )
             ->execute();
     }
@@ -214,7 +221,7 @@ final class SyncBufferFailureTest extends TestCase
     {
         $id = (new Query())
             ->select(['id'])
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', 'BatchSyncJob'])
             ->andWhere(['fail' => false, 'timeUpdated' => null])
@@ -223,7 +230,7 @@ final class SyncBufferFailureTest extends TestCase
         self::assertNotFalse($id, 'A scheduled BatchSyncJob must exist.');
 
         Craft::$app->getDb()->createCommand()
-            ->update('{{%queue}}', [
+            ->update($this->queueTable(), [
                 'timePushed' => time() - 1,
                 'delay' => 0,
             ], ['id' => $id])
@@ -236,7 +243,7 @@ final class SyncBufferFailureTest extends TestCase
     {
         Craft::$app->getDb()
             ->createCommand()
-            ->delete('{{%queue}}', [
+            ->delete($this->queueTable(), [
                 'and',
                 ['like', 'job', 'searchmanager'],
                 ['like', 'job', 'BatchSyncJob'],
@@ -247,7 +254,7 @@ final class SyncBufferFailureTest extends TestCase
     private function pendingBatchQueueCount(): int
     {
         return (int)(new Query())
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', 'BatchSyncJob'])
             ->andWhere(['fail' => false, 'timeUpdated' => null])

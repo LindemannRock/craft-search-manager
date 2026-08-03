@@ -12,6 +12,9 @@
             <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
+    <extensions>
+        <bootstrap class="lindemannrock\searchmanager\tests\Support\TestCleanupExtension"/>
+    </extensions>
     <source>
         <include>
             <directory>src</directory>

@@ -441,7 +441,7 @@ final class A5IndexingFailureTruthTest extends TestCase
             ->delete('{{%searchmanager_indices}}', ['like', 'handle', self::HANDLE_PREFIX . '%', false])
             ->execute();
         Craft::$app->getDb()->createCommand()
-            ->delete('{{%queue}}', ['like', 'job', self::HANDLE_PREFIX])
+            ->delete($this->queueTable(), ['like', 'job', self::HANDLE_PREFIX])
             ->execute();
         SearchIndex::clearCache();
         SearchManager::$plugin->dependencies->clearIndexCatalogue();
@@ -450,7 +450,7 @@ final class A5IndexingFailureTruthTest extends TestCase
     private function deleteBatchQueueRows(): void
     {
         Craft::$app->getDb()->createCommand()
-            ->delete('{{%queue}}', [
+            ->delete($this->queueTable(), [
                 'and',
                 ['like', 'job', 'searchmanager'],
                 ['like', 'job', 'BatchSyncJob'],
@@ -461,7 +461,7 @@ final class A5IndexingFailureTruthTest extends TestCase
     private function pendingBatchQueueCount(): int
     {
         return (int)(new \craft\db\Query())
-            ->from('{{%queue}}')
+            ->from($this->queueTable())
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', 'BatchSyncJob'])
             ->andWhere(['fail' => false, 'timeUpdated' => null])

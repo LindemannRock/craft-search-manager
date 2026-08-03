@@ -18,6 +18,7 @@ use lindemannrock\searchmanager\jobs\CacheWarmJob;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
+use lindemannrock\searchmanager\tests\Support\OwnedAnalyticsTracker;
 
 /**
  * Regression coverage for analytics queries that feed search caching and cache warming.
@@ -32,6 +33,7 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
     private int $originalAnalyticsRetention = 90;
     private ?string $indexHandle = null;
     private ?object $originalRequest = null;
+    private ?OwnedAnalyticsTracker $analyticsTracker = null;
 
     /** @var list<string> */
     private array $testQueries = [];
@@ -42,6 +44,7 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
         $this->forcePluginEdition(SearchManager::EDITION_PRO);
 
         $this->originalRequest = Craft::$app->getRequest();
+        $this->analyticsTracker = OwnedAnalyticsTracker::forQueryPrefix('__sm_analytics_cache_');
 
         $settings = SearchManager::$plugin->getSettings();
         $this->originalEnableCache = $settings->enableCache;
@@ -68,13 +71,16 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
             SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
-        $this->deleteTestAnalyticsRows();
-
         if ($this->originalRequest !== null) {
             Craft::$app->set('request', $this->originalRequest);
         }
 
         parent::tearDown();
+    }
+
+    protected function cleanupExternalState(): void
+    {
+        $this->analyticsTracker?->cleanupOwnedRows();
     }
 
     public function testAnalyticsTrackingPreservesDisplayQueryAndStoresNormalizedQuery(): void
@@ -208,20 +214,4 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
         }
     }
 
-    private function deleteTestAnalyticsRows(): void
-    {
-        Craft::$app->getDb()
-            ->createCommand()
-            ->delete('{{%searchmanager_analytics}}', ['backend' => self::TEST_BACKEND])
-            ->execute();
-
-        if ($this->testQueries === []) {
-            return;
-        }
-
-        Craft::$app->getDb()
-            ->createCommand()
-            ->delete('{{%searchmanager_analytics}}', ['query' => $this->testQueries])
-            ->execute();
-    }
 }

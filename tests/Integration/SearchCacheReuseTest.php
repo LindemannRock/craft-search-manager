@@ -25,6 +25,7 @@ use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
 use lindemannrock\searchmanager\tests\TestCase;
+use lindemannrock\searchmanager\tests\Support\OwnedAnalyticsTracker;
 use PHPUnit\Framework\Attributes\DataProvider;
 use yii\caching\ArrayCache;
 
@@ -49,6 +50,7 @@ final class SearchCacheReuseTest extends TestCase
     private bool $originalEnableCache = true;
     private ?string $indexHandle = null;
     private ?object $originalRequest = null;
+    private ?OwnedAnalyticsTracker $analyticsTracker = null;
 
     /** @var list<string> */
     private array $testQueries = [];
@@ -58,6 +60,7 @@ final class SearchCacheReuseTest extends TestCase
         parent::setUp();
 
         $this->originalRequest = Craft::$app->getRequest();
+        $this->analyticsTracker = OwnedAnalyticsTracker::forQueryPrefix('__smcachetest_');
 
         $settings = SearchManager::$plugin->getSettings();
         $this->originalEnableCache = $settings->enableCache;
@@ -81,13 +84,16 @@ final class SearchCacheReuseTest extends TestCase
             SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
-        $this->deleteTestAnalyticsRows();
-
         if ($this->originalRequest !== null) {
             Craft::$app->set('request', $this->originalRequest);
         }
 
         parent::tearDown();
+    }
+
+    protected function cleanupExternalState(): void
+    {
+        $this->analyticsTracker?->cleanupOwnedRows();
     }
 
     private function firstEnabledIndexHandle(): ?string
@@ -128,18 +134,6 @@ final class SearchCacheReuseTest extends TestCase
     private function search(string $handle, string $query, array $options): array
     {
         return SearchManager::$plugin->backend->search($handle, $query, $options + ['skipAnalytics' => true]);
-    }
-
-    private function deleteTestAnalyticsRows(): void
-    {
-        if ($this->testQueries === []) {
-            return;
-        }
-
-        Craft::$app->getDb()
-            ->createCommand()
-            ->delete('{{%searchmanager_analytics}}', ['query' => $this->testQueries])
-            ->execute();
     }
 
     // 1. Cache is written on first search and reused on the identical repeat.

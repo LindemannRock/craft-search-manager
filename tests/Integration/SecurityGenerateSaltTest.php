@@ -25,27 +25,6 @@ final class SecurityGenerateSaltTest extends TestCase
 {
     private ?string $fixtureDirectory = null;
 
-    protected function tearDown(): void
-    {
-        if ($this->fixtureDirectory !== null && is_dir($this->fixtureDirectory)) {
-            foreach (glob($this->fixtureDirectory . DIRECTORY_SEPARATOR . '*') ?: [] as $path) {
-                if (is_file($path)) {
-                    unlink($path);
-                }
-            }
-
-            foreach (glob($this->fixtureDirectory . DIRECTORY_SEPARATOR . '.*') ?: [] as $path) {
-                if (is_file($path)) {
-                    unlink($path);
-                }
-            }
-
-            rmdir($this->fixtureDirectory);
-        }
-
-        parent::tearDown();
-    }
-
     public function testMissingEnvPrintsManualAssignmentAndSucceedsWithoutCreatingTemporaryFile(): void
     {
         $controller = new RecordingSecurityController('security', SearchManager::$plugin);
@@ -237,7 +216,7 @@ final class SecurityGenerateSaltTest extends TestCase
 
     private function createFixtureDirectory(): string
     {
-        $this->fixtureDirectory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . '__sm_security_salt_' . bin2hex(random_bytes(8));
+        $this->fixtureDirectory = $this->reserveOwnedTempPath('security-salt');
         mkdir($this->fixtureDirectory, 0700);
 
         return $this->fixtureDirectory;

@@ -27,6 +27,7 @@ use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\tests\TestCase;
+use lindemannrock\searchmanager\tests\Support\OwnedAnalyticsTracker;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -42,6 +43,7 @@ final class Pr1Debt9AnalyticsSourceAttributionTest extends TestCase
     private ?object $originalRequest = null;
     private ?object $originalResponse = null;
     private ?string $originalRequestMethod = null;
+    private ?OwnedAnalyticsTracker $analyticsTracker = null;
 
     protected function setUp(): void
     {
@@ -50,7 +52,7 @@ final class Pr1Debt9AnalyticsSourceAttributionTest extends TestCase
         $this->originalRequest = Craft::$app->getRequest();
         $this->originalResponse = Craft::$app->getResponse();
         $this->originalRequestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $this->deleteTestRows();
+        $this->analyticsTracker = OwnedAnalyticsTracker::forQueryPrefix(self::QUERY_PREFIX);
     }
 
     protected function tearDown(): void
@@ -64,8 +66,12 @@ final class Pr1Debt9AnalyticsSourceAttributionTest extends TestCase
         if ($this->originalRequestMethod !== null) {
             $_SERVER['REQUEST_METHOD'] = $this->originalRequestMethod;
         }
-        $this->deleteTestRows();
         parent::tearDown();
+    }
+
+    protected function cleanupExternalState(): void
+    {
+        $this->analyticsTracker?->cleanupOwnedRows();
     }
 
     #[DataProvider('sourceResolutionProvider')]
@@ -841,13 +847,6 @@ final class Pr1Debt9AnalyticsSourceAttributionTest extends TestCase
         return Craft::$app->getSites()->getPrimarySite()->id;
     }
 
-    private function deleteTestRows(): void
-    {
-        Craft::$app->getDb()
-            ->createCommand()
-            ->delete('{{%searchmanager_analytics}}', ['like', 'query', self::QUERY_PREFIX . '%', false])
-            ->execute();
-    }
 }
 
 /**
