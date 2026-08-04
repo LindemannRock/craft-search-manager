@@ -10,11 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use lindemannrock\searchmanager\controllers\ApiController;
 use lindemannrock\searchmanager\controllers\SearchController;
-use lindemannrock\searchmanager\gql\queries\SearchQuery;
-use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
-use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**

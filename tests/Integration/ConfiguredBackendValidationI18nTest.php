@@ -11,11 +11,7 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
-use lindemannrock\searchmanager\backends\AbstractSearchEngineBackend;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
-use lindemannrock\searchmanager\search\SearchEngine;
-use lindemannrock\searchmanager\search\storage\StorageInterface;
-use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**

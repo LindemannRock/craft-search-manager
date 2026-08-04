@@ -18,7 +18,6 @@ use craft\helpers\StringHelper;
 use craft\web\Request;
 use craft\web\Response;
 use craft\web\View;
-use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\searchmanager\controllers\IndicesController;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\QueryRule;
@@ -248,7 +247,7 @@ final class IndexReferenceLifecycleTest extends TestCase
         $this->withPostJson(['indexIds' => [$usedIndexId, $unusedIndexId]]);
 
         $originalMaintenance = SearchManager::$plugin->indexMaintenance;
-        SearchManager::$plugin->set('indexMaintenance', new class extends IndexMaintenanceService {
+        SearchManager::$plugin->set('indexMaintenance', new class() extends IndexMaintenanceService {
             protected function clearBackendStorage(SearchIndex $index, string $operation = 'clear'): bool
             {
                 return true;

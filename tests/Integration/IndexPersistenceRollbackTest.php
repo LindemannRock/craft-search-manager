@@ -12,11 +12,8 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
 use craft\elements\Entry;
-use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\SearchIndex;
-use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\TestCase;
-use yii\queue\Queue;
 
 /**
  * Regression coverage for audit Batch 5 findings.

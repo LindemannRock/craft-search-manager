@@ -15,8 +15,8 @@ use craft\db\Query;
 use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
-use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
+use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -240,7 +240,6 @@ final class ConfigClosureCriteriaRebuildTest extends TestCase
         ])->execute();
         SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
-
 }
 
 final class ConfigClosureCriteriaRecordingBackendService extends BackendService

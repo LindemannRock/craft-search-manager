@@ -53,8 +53,8 @@ final class WidgetTimestampHydrationTest extends TestCase
         self::assertNotNull($config);
         self::assertSame('UTC', $config->dateCreated?->getTimezone()->getName());
         self::assertSame('UTC', $config->dateUpdated?->getTimezone()->getName());
-        self::assertSame('2026-07-12 08:30:00', $config->dateCreated?->format('Y-m-d H:i:s'));
-        self::assertSame('2026-07-12 09:45:00', $config->dateUpdated?->format('Y-m-d H:i:s'));
+        self::assertSame('2026-07-12 08:30:00', $config->dateCreated->format('Y-m-d H:i:s'));
+        self::assertSame('2026-07-12 09:45:00', $config->dateUpdated->format('Y-m-d H:i:s'));
     }
 
     public function testWidgetStyleDatesHydrateAsUtc(): void
@@ -67,8 +67,8 @@ final class WidgetTimestampHydrationTest extends TestCase
         self::assertNotNull($style);
         self::assertSame('UTC', $style->dateCreated?->getTimezone()->getName());
         self::assertSame('UTC', $style->dateUpdated?->getTimezone()->getName());
-        self::assertSame('2026-07-12 10:15:00', $style->dateCreated?->format('Y-m-d H:i:s'));
-        self::assertSame('2026-07-12 11:20:00', $style->dateUpdated?->format('Y-m-d H:i:s'));
+        self::assertSame('2026-07-12 10:15:00', $style->dateCreated->format('Y-m-d H:i:s'));
+        self::assertSame('2026-07-12 11:20:00', $style->dateUpdated->format('Y-m-d H:i:s'));
     }
 
     private function insertWidgetConfig(string $handle, string $dateCreated, string $dateUpdated): void

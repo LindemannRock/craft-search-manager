@@ -64,12 +64,12 @@ final class OwnedProcessRegistry
         unset($this->processes[$id]);
 
         return [
-            'exitCode' => (int)(($status['exitcode'] ?? -1) >= 0 ? $status['exitcode'] : $exitCode),
+            'exitCode' => (int)($status['exitcode'] >= 0 ? $status['exitcode'] : $exitCode),
             'output' => $output,
             'error' => $error,
             'pid' => $identity['pid'],
-            'signaled' => (bool)($status['signaled'] ?? false),
-            'termSignal' => (int)($status['termsig'] ?? 0),
+            'signaled' => $status['signaled'],
+            'termSignal' => $status['termsig'],
         ];
     }
 
@@ -102,7 +102,7 @@ final class OwnedProcessRegistry
     private function terminate($process): void
     {
         $status = proc_get_status($process);
-        if (!($status['running'] ?? false)) {
+        if (!$status['running']) {
             return;
         }
 
@@ -111,9 +111,9 @@ final class OwnedProcessRegistry
         do {
             usleep(10000);
             $status = proc_get_status($process);
-        } while (($status['running'] ?? false) && microtime(true) < $deadline);
+        } while ($status['running'] && microtime(true) < $deadline);
 
-        if ($status['running'] ?? false) {
+        if ($status['running']) {
             proc_terminate($process, 9);
         }
     }

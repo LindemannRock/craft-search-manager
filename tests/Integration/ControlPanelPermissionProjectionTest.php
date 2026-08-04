@@ -320,23 +320,23 @@ final class ControlPanelPermissionProjectionTest extends TestCase
         ]);
 
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))
                 ->actionEdit($this->databaseIndexId),
         );
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))
                 ->actionEditStyle($this->databaseStyleId),
         );
 
         $_SERVER['REQUEST_METHOD'] = 'POST';
         Craft::$app->getRequest()->setBodyParams(['indexId' => $this->databaseIndexId]);
         $this->assertForbiddenAction(
-            fn(): ?Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))
+            fn(): ?\yii\web\Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))
                 ->actionSave(),
         );
         Craft::$app->getRequest()->setBodyParams(['styleId' => $this->databaseStyleId]);
         $this->assertForbiddenAction(
-            fn(): ?Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))
+            fn(): ?\yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))
                 ->actionSaveStyle(),
         );
 
@@ -403,15 +403,15 @@ final class ControlPanelPermissionProjectionTest extends TestCase
         SearchManager::$plugin->set('backend', $originalBackend);
 
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))
                 ->actionView(self::DATABASE_BACKEND),
         );
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))
                 ->actionEdit(),
         );
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionSettingsController('settings', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionSettingsController('settings', SearchManager::$plugin))
                 ->actionLanguage(),
         );
 
@@ -491,24 +491,24 @@ final class ControlPanelPermissionProjectionTest extends TestCase
             ->actionIndex()->data['variables'] ?? [];
         $this->assertAnalyticsCtas($analyticsVariables, false, false, false);
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionSettingsController('settings', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionSettingsController('settings', SearchManager::$plugin))
                 ->actionGeneral(),
         );
 
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))
                 ->actionEdit(),
         );
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))
                 ->actionEdit(),
         );
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionPromotionsController('promotions', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionPromotionsController('promotions', SearchManager::$plugin))
                 ->actionEdit(),
         );
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionQueryRulesController('query-rules', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionQueryRulesController('query-rules', SearchManager::$plugin))
                 ->actionEdit(),
         );
 
@@ -668,7 +668,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
         self::assertSame('search-manager/widgets', $adminWorkspace['landingRoute'] ?? null);
         self::assertSame(
             ['configurations', 'styles'],
-            array_keys($adminWorkspace['tabs'] ?? []),
+            array_keys($adminWorkspace['tabs']),
         );
     }
 
@@ -695,7 +695,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
             $this->renderCaptured($widgets->actionViewStyle(self::DATABASE_STYLE)),
             'search-manager/widgets/styles',
         );
-        $this->assertForbiddenAction(fn(): Response => $widgets->actionIndex());
+        $this->assertForbiddenAction(fn(): \yii\web\Response => $widgets->actionIndex());
 
         $this->actWithPermissions([
             'searchManager:manageWidgetStyles',
@@ -735,7 +735,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
         $this->actWithPermissions(['searchManager:manageWidgetStyles'], false, 'standard-style');
         self::assertNull(SearchManager::$plugin->getWidgetWorkspaceNavigation());
         $this->assertForbiddenAction(
-            fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))
                 ->actionStylesIndex(),
         );
     }
@@ -778,14 +778,14 @@ final class ControlPanelPermissionProjectionTest extends TestCase
 
         $resolvedPending = $this->renderFiltered(
             ['search' => self::PREFIX, 'status' => PendingSyncRepository::STATUS_ABANDONED],
-            fn(): Response => (new PermissionActionProjectionPendingSyncsController('pending-syncs', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionActionProjectionPendingSyncsController('pending-syncs', SearchManager::$plugin))
                 ->actionIndex(),
         );
         $this->assertTableActionProjection($resolvedPending, true, 'Pending Syncs resolved View Element');
         self::assertStringContainsString('View element', $resolvedPending);
         $mixedPending = $this->renderFiltered(
             ['search' => self::PREFIX],
-            fn(): Response => (new PermissionActionProjectionPendingSyncsController('pending-syncs', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new PermissionActionProjectionPendingSyncsController('pending-syncs', SearchManager::$plugin))
                 ->actionIndex(),
         );
         $this->assertTableActionProjection($mixedPending, true, 'Pending Syncs mixed resolvability');
@@ -846,111 +846,111 @@ final class ControlPanelPermissionProjectionTest extends TestCase
         $individualCases = [
             'API Keys edit' => [
                 ['searchManager:manageApiKeys', 'searchManager:editApiKeys'],
-                fn(): Response => (new PermissionActionProjectionApiKeysController('api-keys', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionActionProjectionApiKeysController('api-keys', SearchManager::$plugin))->actionIndex(),
                 'Edit',
                 [],
             ],
             'API Keys revoke' => [
                 ['searchManager:manageApiKeys', 'searchManager:revokeApiKeys'],
-                fn(): Response => (new PermissionActionProjectionApiKeysController('api-keys', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionActionProjectionApiKeysController('api-keys', SearchManager::$plugin))->actionIndex(),
                 'Revoke',
                 [],
             ],
             'Backends edit' => [
                 ['searchManager:manageBackends', 'searchManager:editBackends'],
-                fn(): Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))->actionIndex(),
                 'Edit',
                 [],
             ],
             'Backends delete' => [
                 ['searchManager:manageBackends', 'searchManager:deleteBackends'],
-                fn(): Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))->actionIndex(),
                 'Delete',
                 [],
             ],
             'Indices edit' => [
                 ['searchManager:manageIndices', 'searchManager:editIndices'],
-                fn(): Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
                 'Edit',
                 [],
             ],
             'Indices rebuild' => [
                 ['searchManager:manageIndices', 'searchManager:rebuildIndices'],
-                fn(): Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
                 'Sync Count from Backend',
                 [],
             ],
             'Indices clear' => [
                 ['searchManager:manageIndices', 'searchManager:clearIndices'],
-                fn(): Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
                 'Clear Index Data',
                 [],
             ],
             'Indices delete' => [
                 ['searchManager:manageIndices', 'searchManager:deleteIndices'],
-                fn(): Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
                 'Delete Index',
                 [],
             ],
             'Indices cache clear' => [
                 ['searchManager:manageIndices', 'searchManager:clearCache'],
-                fn(): Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
                 'Clear Index Cache',
                 [],
             ],
             'Pending Syncs retry' => [
                 ['searchManager:managePendingSyncs', 'searchManager:retryPendingSyncs'],
-                fn(): Response => (new PermissionActionProjectionPendingSyncsController('pending-syncs', SearchManager::$plugin))
+                fn(): \yii\web\Response => (new PermissionActionProjectionPendingSyncsController('pending-syncs', SearchManager::$plugin))
                     ->actionIndex(),
                 'Retry now',
                 ['status' => PendingSyncRepository::STATUS_FAILED],
             ],
             'Pending Syncs purge' => [
                 ['searchManager:managePendingSyncs', 'searchManager:purgePendingSyncs'],
-                fn(): Response => (new PermissionActionProjectionPendingSyncsController('pending-syncs', SearchManager::$plugin))
+                fn(): \yii\web\Response => (new PermissionActionProjectionPendingSyncsController('pending-syncs', SearchManager::$plugin))
                     ->actionIndex(),
                 'Delete from buffer',
                 ['status' => PendingSyncRepository::STATUS_FAILED],
             ],
             'Promotions duplicate' => [
                 ['searchManager:managePromotions', 'searchManager:createPromotions'],
-                fn(): Response => (new PermissionProjectionPromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionPromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
                 'Duplicate',
                 [],
             ],
             'Promotions edit' => [
                 ['searchManager:managePromotions', 'searchManager:editPromotions'],
-                fn(): Response => (new PermissionProjectionPromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionPromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
                 'Edit',
                 [],
             ],
             'Promotions delete' => [
                 ['searchManager:managePromotions', 'searchManager:deletePromotions'],
-                fn(): Response => (new PermissionProjectionPromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionPromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
                 'Delete',
                 [],
             ],
             'Query Rules duplicate' => [
                 ['searchManager:manageQueryRules', 'searchManager:createQueryRules'],
-                fn(): Response => (new PermissionProjectionQueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionQueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
                 'Duplicate',
                 [],
             ],
             'Query Rules edit' => [
                 ['searchManager:manageQueryRules', 'searchManager:editQueryRules'],
-                fn(): Response => (new PermissionProjectionQueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionQueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
                 'Edit',
                 [],
             ],
             'Query Rules delete' => [
                 ['searchManager:manageQueryRules', 'searchManager:deleteQueryRules'],
-                fn(): Response => (new PermissionProjectionQueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionQueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
                 'Delete',
                 [],
             ],
             'Widget Configs edit' => [
                 ['searchManager:manageWidgetConfigs', 'searchManager:editWidgetConfigs'],
-                fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
                 'Edit',
                 [],
             ],
@@ -960,7 +960,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
                     'searchManager:createWidgetConfigs',
                     'searchManager:editWidgetConfigs',
                 ],
-                fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
                 'Duplicate',
                 [],
             ],
@@ -970,13 +970,13 @@ final class ControlPanelPermissionProjectionTest extends TestCase
                     'searchManager:editWidgetConfigs',
                     'searchManager:deleteWidgetConfigs',
                 ],
-                fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
                 'Delete',
                 [],
             ],
             'Widget Styles edit' => [
                 ['searchManager:manageWidgetStyles', 'searchManager:editWidgetStyles'],
-                fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
                 'Edit',
                 [],
             ],
@@ -986,7 +986,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
                     'searchManager:createWidgetStyles',
                     'searchManager:editWidgetStyles',
                 ],
-                fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
                 'Duplicate',
                 [],
             ],
@@ -996,7 +996,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
                     'searchManager:editWidgetStyles',
                     'searchManager:deleteWidgetStyles',
                 ],
-                fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
                 'Delete',
                 [],
             ],
@@ -1088,43 +1088,43 @@ final class ControlPanelPermissionProjectionTest extends TestCase
         return [
             'apiKeys' => $this->renderFiltered(
                 ['search' => $search],
-                fn(): Response => (new PermissionActionProjectionApiKeysController('api-keys', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionActionProjectionApiKeysController('api-keys', SearchManager::$plugin))->actionIndex(),
             ),
             'backends' => $this->renderFiltered(
                 ['search' => $search],
-                fn(): Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionBackendsController('backends', SearchManager::$plugin))->actionIndex(),
             ),
             'indices' => $this->renderFiltered(
                 ['search' => $search],
-                fn(): Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionIndicesController('indices', SearchManager::$plugin))->actionIndex(),
             ),
             'pendingSyncs' => $this->renderFiltered(
                 ['search' => $search, 'status' => PendingSyncRepository::STATUS_FAILED],
-                fn(): Response => (new PermissionActionProjectionPendingSyncsController('pending-syncs', SearchManager::$plugin))
+                fn(): \yii\web\Response => (new PermissionActionProjectionPendingSyncsController('pending-syncs', SearchManager::$plugin))
                     ->actionIndex(),
             ),
             'promotions' => $this->renderFiltered(
                 ['search' => $search],
-                fn(): Response => (new PermissionProjectionPromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionPromotionsController('promotions', SearchManager::$plugin))->actionIndex(),
             ),
             'queryRules' => $this->renderFiltered(
                 ['search' => $search],
-                fn(): Response => (new PermissionProjectionQueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionQueryRulesController('query-rules', SearchManager::$plugin))->actionIndex(),
             ),
             'widgetConfigs' => $this->renderFiltered(
                 ['search' => $search],
-                fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionIndex(),
             ),
             'widgetStyles' => $this->renderFiltered(
                 ['search' => $search],
-                fn(): Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
+                fn(): \yii\web\Response => (new PermissionProjectionWidgetsController('widgets', SearchManager::$plugin))->actionStylesIndex(),
             ),
         ];
     }
 
     /**
      * @param array<string, scalar> $queryParams
-     * @param callable(): Response $action
+     * @param callable(): \yii\web\Response $action
      */
     private function renderFiltered(array $queryParams, callable $action): string
     {
@@ -1335,7 +1335,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
         $this->grantPermissions($user, array_merge(['accessCp'], $permissions));
         $this->actingAs($user);
 
-        $renderUser = new class extends \craft\console\User {
+        $renderUser = new class() extends \craft\console\User {
             public function getRemainingSessionTime(): int
             {
                 return -1;
@@ -1371,7 +1371,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
         return $user;
     }
 
-    private function renderCaptured(Response $response): string
+    private function renderCaptured(\yii\web\Response $response): string
     {
         $template = $response->data['template'] ?? null;
         $variables = $response->data['variables'] ?? null;
@@ -1394,7 +1394,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
         );
     }
 
-    private function indexListResponse(): Response
+    private function indexListResponse(): \yii\web\Response
     {
         $request = Craft::$app->getRequest();
         $queryParams = $request->getQueryParams();
@@ -1421,8 +1421,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
         bool $promotionExpected,
         bool $queryRuleExpected,
         bool $settingsExpected,
-    ): void
-    {
+    ): void {
         $promotionHtml = $this->renderPartial(
             'search-manager/analytics/_partials/promotions',
             array_merge($variables, ['promotionsExist' => false]),
@@ -1773,7 +1772,7 @@ final class ControlPanelPermissionProjectionTest extends TestCase
 
 final class PermissionProjectionIndicesController extends IndicesController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         return PermissionProjectionResponseFactory::captured($template, $variables);
     }
@@ -1781,7 +1780,7 @@ final class PermissionProjectionIndicesController extends IndicesController
 
 final class PermissionProjectionWidgetsController extends WidgetsController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         return PermissionProjectionResponseFactory::captured($template, $variables);
     }
@@ -1789,7 +1788,7 @@ final class PermissionProjectionWidgetsController extends WidgetsController
 
 final class PermissionProjectionPromotionsController extends PromotionsController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         return PermissionProjectionResponseFactory::captured($template, $variables);
     }
@@ -1797,7 +1796,7 @@ final class PermissionProjectionPromotionsController extends PromotionsControlle
 
 final class PermissionProjectionQueryRulesController extends QueryRulesController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         return PermissionProjectionResponseFactory::captured($template, $variables);
     }
@@ -1805,7 +1804,7 @@ final class PermissionProjectionQueryRulesController extends QueryRulesControlle
 
 final class PermissionProjectionBackendsController extends BackendsController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         return PermissionProjectionResponseFactory::captured($template, $variables);
     }
@@ -1813,7 +1812,7 @@ final class PermissionProjectionBackendsController extends BackendsController
 
 final class PermissionProjectionSettingsController extends SettingsController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         return PermissionProjectionResponseFactory::captured($template, $variables);
     }
@@ -1821,7 +1820,7 @@ final class PermissionProjectionSettingsController extends SettingsController
 
 final class PermissionProjectionAnalyticsController extends AnalyticsController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         return PermissionProjectionResponseFactory::captured($template, $variables);
     }
@@ -1829,7 +1828,7 @@ final class PermissionProjectionAnalyticsController extends AnalyticsController
 
 final class PermissionActionProjectionApiKeysController extends ApiKeysController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         return PermissionProjectionResponseFactory::captured($template, $variables);
     }
@@ -1837,7 +1836,7 @@ final class PermissionActionProjectionApiKeysController extends ApiKeysControlle
 
 final class PermissionActionProjectionPendingSyncsController extends PendingSyncsController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         return PermissionProjectionResponseFactory::captured($template, $variables);
     }
@@ -1848,7 +1847,7 @@ final class PermissionProjectionResponseFactory
     /**
      * @param array<string, mixed> $variables
      */
-    public static function captured(string $template, array $variables): Response
+    public static function captured(string $template, array $variables): \yii\web\Response
     {
         $response = new Response();
         $response->data = [

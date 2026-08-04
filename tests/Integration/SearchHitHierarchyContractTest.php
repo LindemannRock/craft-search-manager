@@ -10,13 +10,12 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use craft\base\ElementInterface;
 use craft\elements\Asset;
 use craft\elements\Category;
+use craft\elements\db\ElementQueryInterface;
 use craft\elements\ElementCollection;
 use craft\elements\Entry;
 use craft\elements\User;
-use craft\elements\db\ElementQueryInterface;
 use craft\models\CategoryGroup;
 use craft\models\FieldLayout;
 use craft\models\Section;
@@ -290,17 +289,6 @@ final class SearchHitHierarchyContractTest extends TestCase
         return $category;
     }
 
-    /**
-     * @param array<int, mixed> $arguments
-     */
-    private function invokePrivate(object $object, string $methodName, array $arguments): mixed
-    {
-        $method = new \ReflectionMethod($object, $methodName);
-        $method->setAccessible(true);
-
-        return $method->invokeArgs($object, $arguments);
-    }
-
     private function readPluginFile(string $path): string
     {
         $contents = file_get_contents(dirname(__DIR__, 2) . '/' . ltrim($path, '/'));
@@ -314,7 +302,7 @@ final class SearchHierarchyTestEntry extends Entry
 {
     public Section $testSection;
 
-    /** @var ElementCollection<int, ElementInterface> */
+    /** @var ElementCollection<int, Entry> */
     public ElementCollection $testAncestors;
 
     public function getSection(): ?Section
@@ -337,7 +325,7 @@ final class SearchHierarchyTestCategory extends Category
 {
     public CategoryGroup $testGroup;
 
-    /** @var ElementCollection<int, ElementInterface> */
+    /** @var ElementCollection<int, Category> */
     public ElementCollection $testAncestors;
 
     public function getGroup(): CategoryGroup

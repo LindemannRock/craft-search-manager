@@ -660,7 +660,7 @@ final class IndexMaintenanceCapabilityTest extends TestCase
             'searchManager:clearCache',
         ]);
         $this->actingAs($user);
-        $renderUser = new class extends \craft\console\User {
+        $renderUser = new class() extends \craft\console\User {
             public function getRemainingSessionTime(): int
             {
                 return -1;
@@ -675,7 +675,7 @@ final class IndexMaintenanceCapabilityTest extends TestCase
         Craft::$app->set('user', $renderUser);
     }
 
-    private function indexListResponse(string $handle): Response
+    private function indexListResponse(string $handle): \yii\web\Response
     {
         $request = Craft::$app->getRequest();
         $queryParams = $request->getQueryParams();
@@ -688,7 +688,7 @@ final class IndexMaintenanceCapabilityTest extends TestCase
         }
     }
 
-    private function renderCaptured(Response $response): string
+    private function renderCaptured(\yii\web\Response $response): string
     {
         $template = $response->data['template'] ?? null;
         $variables = $response->data['variables'] ?? null;
@@ -784,7 +784,7 @@ final class IndexMaintenanceCapabilityTest extends TestCase
 
 final class IndexMaintenanceIndicesController extends IndicesController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         return new Response(['data' => compact('template', 'variables')]);
     }

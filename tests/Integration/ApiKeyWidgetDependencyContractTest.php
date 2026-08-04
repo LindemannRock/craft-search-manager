@@ -492,7 +492,7 @@ final class ApiKeyWidgetDependencyContractTest extends TestCase
         $emptyHandle = self::PREFIX . 'sentinel-empty';
         $this->withPostParams($this->widgetSaveParams($emptyHandle, ''));
         $this->runCpSave(
-            static fn(): ?Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionSave(),
+            static fn(): ?\yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionSave(),
         );
 
         $emptyWidget = SearchManager::$plugin->widgetConfigs->getByHandle($emptyHandle);
@@ -503,7 +503,7 @@ final class ApiKeyWidgetDependencyContractTest extends TestCase
         $checkedHandle = self::PREFIX . 'sentinel-checked';
         $this->withPostParams($this->widgetSaveParams($checkedHandle, [$indexHandle]));
         $this->runCpSave(
-            static fn(): ?Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionSave(),
+            static fn(): ?\yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionSave(),
         );
 
         $checkedWidget = SearchManager::$plugin->widgetConfigs->getByHandle($checkedHandle);
@@ -522,7 +522,7 @@ final class ApiKeyWidgetDependencyContractTest extends TestCase
         $this->withPostParams($this->widgetSaveParams($handle, 'forged-index'));
 
         $this->runCpSave(
-            static fn(): ?Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionSave(),
+            static fn(): ?\yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionSave(),
         );
 
         self::assertNull(SearchManager::$plugin->widgetConfigs->getByHandle($handle));
@@ -538,7 +538,7 @@ final class ApiKeyWidgetDependencyContractTest extends TestCase
         $disabledHandle = self::PREFIX . 'sentinel-disabled-key';
         $this->withPostParams($this->apiKeySaveParams($disabledHandle, false, ''));
         $this->runCpSave(
-            static fn(): ?Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
+            static fn(): ?\yii\web\Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
         );
 
         $disabledKey = ApiKey::findByHandle($disabledHandle);
@@ -548,7 +548,7 @@ final class ApiKeyWidgetDependencyContractTest extends TestCase
         $enabledHandle = self::PREFIX . 'sentinel-enabled-key';
         $this->withPostParams($this->apiKeySaveParams($enabledHandle, true, ''));
         $this->runCpSave(
-            static fn(): ?Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
+            static fn(): ?\yii\web\Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
         );
 
         self::assertNull(ApiKey::findByHandle($enabledHandle));
@@ -564,7 +564,7 @@ final class ApiKeyWidgetDependencyContractTest extends TestCase
         $forgedHandle = self::PREFIX . 'sentinel-forged-key';
         $this->withPostParams($this->apiKeySaveParams($forgedHandle, false, 'forged-index'));
         $this->runCpSave(
-            static fn(): ?Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
+            static fn(): ?\yii\web\Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
         );
 
         self::assertNull(ApiKey::findByHandle($forgedHandle));
@@ -573,7 +573,7 @@ final class ApiKeyWidgetDependencyContractTest extends TestCase
         $checkedHandle = self::PREFIX . 'sentinel-checked-key';
         $this->withPostParams($this->apiKeySaveParams($checkedHandle, true, [$indexHandle]));
         $this->runCpSave(
-            static fn(): ?Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
+            static fn(): ?\yii\web\Response => (new ApiKeysController('api-keys', SearchManager::$plugin))->actionSave(),
         );
 
         self::assertSame([$indexHandle], ApiKey::findByHandle($checkedHandle)?->allowedIndices);
@@ -647,7 +647,7 @@ final class ApiKeyWidgetDependencyContractTest extends TestCase
      * after the behavior under test. The integration harness is a console app,
      * so that final notification is the only expected exception.
      *
-     * @param callable(): (?Response) $callback
+     * @param callable(): (?\yii\web\Response) $callback
      */
     private function runCpSave(callable $callback): void
     {
@@ -701,6 +701,7 @@ final class ApiKeyWidgetDependencyContractTest extends TestCase
             'enableAnalytics' => 1,
             'disableStopWords' => 0,
             'skipEntriesWithoutUrl' => 0,
+            'retrievableFields' => '["*"]',
             'source' => 'database',
             'backend' => null,
             'lastIndexed' => null,

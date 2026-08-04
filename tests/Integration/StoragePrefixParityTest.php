@@ -11,10 +11,8 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
-use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\search\storage\MySqlStorage;
 use lindemannrock\searchmanager\search\storage\PostgreSqlStorage;
-use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**

@@ -22,6 +22,7 @@ use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\Support\OwnedAnalyticsTracker;
 use lindemannrock\searchmanager\tests\Support\OwnedProcessRegistry;
 use lindemannrock\searchmanager\tests\Support\ProcessRunOwner;
+use lindemannrock\searchmanager\tests\Support\TestProjectBoundary;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use yii\db\Connection;
@@ -37,14 +38,15 @@ final class TestRuntimeIsolationTest extends TestCase
     {
         $ownerDb = $this->createIndependentDatabaseConnection();
         $ownerTransaction = $ownerDb->beginTransaction();
-        $protectedId = null;
-        $this->registerOwnedCleanup(static function() use ($ownerDb, $ownerTransaction, &$protectedId): void {
+        $protectedState = new \stdClass();
+        $protectedState->id = null;
+        $this->registerOwnedCleanup(static function() use ($ownerDb, $ownerTransaction, $protectedState): void {
             try {
                 if ($ownerTransaction->getIsActive()) {
                     $ownerTransaction->rollBack();
                 }
-                if ($protectedId !== null && (int)(new Query())->from('{{%searchmanager_pending_syncs}}')->where(['id' => $protectedId])->count('*', $ownerDb) !== 0) {
-                    throw new \RuntimeException("Protected pending-sync row {$protectedId} survived transaction rollback.");
+                if ($protectedState->id !== null && (int)(new Query())->from('{{%searchmanager_pending_syncs}}')->where(['id' => $protectedState->id])->count('*', $ownerDb) !== 0) {
+                    throw new \RuntimeException("Protected pending-sync row {$protectedState->id} survived transaction rollback.");
                 }
             } finally {
                 $ownerDb->close();
@@ -53,10 +55,10 @@ final class TestRuntimeIsolationTest extends TestCase
 
         $protectedUid = StringHelper::UUID();
         $this->registerRollbackPendingRow($protectedUid);
-        $protectedId = $this->insertPendingRow($ownerDb, '__sm_a12_protected__', 12_001, $protectedUid);
+        $protectedState->id = $this->insertPendingRow($ownerDb, '__sm_a12_protected__', 12_001, $protectedUid);
         $protectedBefore = (new Query())
             ->from('{{%searchmanager_pending_syncs}}')
-            ->where(['id' => $protectedId])
+            ->where(['id' => $protectedState->id])
             ->one($ownerDb);
         $this->repository->upsertRows([[
             'indexHandle' => '__sm_a12_owned__',
@@ -77,7 +79,7 @@ final class TestRuntimeIsolationTest extends TestCase
         self::assertSame([$ownedId], array_map('intval', array_column($claimed, 'id')));
         $protected = (new Query())
             ->from('{{%searchmanager_pending_syncs}}')
-            ->where(['id' => $protectedId])
+            ->where(['id' => $protectedState->id])
             ->one($ownerDb);
         self::assertSame($protectedBefore, $protected);
         self::assertIsArray($protected);
@@ -408,13 +410,14 @@ final class TestRuntimeIsolationTest extends TestCase
     /** @return array{process: resource, pipes: array<int, resource>, command: list<string>, startup: array<string, mixed>, stderr: string, startedAt: float} */
     private function startProbe(string $mode): array
     {
-        $pluginRoot = dirname(__DIR__, 2);
+        $boundary = TestProjectBoundary::resolve();
+        $pluginRoot = $boundary->packageRoot;
         $command = [
             '/usr/bin/env',
             'SM_A12_PROCESS_OWNER_TRACE=1',
             'SM_A12_PROBE_MODE=' . $mode,
             PHP_BINARY,
-            dirname($pluginRoot, 2) . '/vendor/bin/phpunit',
+            $boundary->vendorRoot . '/bin/phpunit',
             '--configuration',
             $pluginRoot . '/phpunit.xml.dist',
             $pluginRoot . '/tests/Fixtures/ProcessInterruptionProbeTest.php',

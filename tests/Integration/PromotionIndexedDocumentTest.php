@@ -12,8 +12,6 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
 use lindemannrock\searchmanager\models\Promotion;
-use lindemannrock\searchmanager\search\storage\MySqlStorage;
-use lindemannrock\searchmanager\search\storage\PostgreSqlStorage;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -25,8 +23,6 @@ use lindemannrock\searchmanager\tests\TestCase;
 final class PromotionIndexedDocumentTest extends TestCase
 {
     private const MYSQL_INDEX_HANDLE = 'test_audit_confirming_scan';
-    private const TEST_SITE_ID = 1;
-
     protected function tearDown(): void
     {
         Craft::$app->getDb()

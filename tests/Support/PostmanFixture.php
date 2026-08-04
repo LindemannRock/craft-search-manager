@@ -395,8 +395,7 @@ function writeEnvironment(
     array $state,
     string $apiMode,
     string $editionMode,
-): void
-{
+): void {
     $templateFile = dirname(__DIR__, 2) . '/postman/Search-Manager.postman_environment.json';
     $environment = json_decode((string)file_get_contents($templateFile), true, 512, JSON_THROW_ON_ERROR);
     $values = [

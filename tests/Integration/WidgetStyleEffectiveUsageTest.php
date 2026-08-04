@@ -119,7 +119,7 @@ final class WidgetStyleEffectiveUsageTest extends TestCase
 
         $configOnlyResponse = $this->postJson(
             ['styleId' => $configOnlyStyleId],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle(),
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle(),
         );
         self::assertSame(false, $configOnlyResponse->data['success'] ?? true);
         self::assertStringContainsString('Config Only Widget', (string)($configOnlyResponse->data['error'] ?? ''));
@@ -127,7 +127,7 @@ final class WidgetStyleEffectiveUsageTest extends TestCase
 
         $disabledResponse = $this->postJson(
             ['styleId' => $disabledStyleId],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle(),
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle(),
         );
         self::assertSame(false, $disabledResponse->data['success'] ?? true);
         self::assertStringContainsString('Disabled Config Widget', (string)($disabledResponse->data['error'] ?? ''));
@@ -135,21 +135,21 @@ final class WidgetStyleEffectiveUsageTest extends TestCase
 
         $shadowedResponse = $this->postJson(
             ['styleId' => $shadowedStyleId],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle(),
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle(),
         );
         self::assertSame(true, $shadowedResponse->data['success'] ?? false);
         self::assertSame(0, $this->countStyle($shadowedStyleId));
 
         $unusedResponse = $this->postJson(
             ['styleId' => $unusedStyleId],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle(),
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionDeleteStyle(),
         );
         self::assertSame(true, $unusedResponse->data['success'] ?? false);
         self::assertSame(0, $this->countStyle($unusedStyleId));
 
         $bulkResponse = $this->postJson(
             ['styleIds' => [$bulkUsedStyleId, $bulkUnusedStyleId]],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionBulkDeleteStyle(),
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))->actionBulkDeleteStyle(),
         );
         self::assertSame(false, $bulkResponse->data['success'] ?? true);
         self::assertStringContainsString(
@@ -290,7 +290,7 @@ final class WidgetStyleEffectiveUsageTest extends TestCase
             $this->originalUser = Craft::$app->getUser();
         }
 
-        $renderUser = new class extends \craft\console\User {
+        $renderUser = new class() extends \craft\console\User {
             public function getRemainingSessionTime(): int
             {
                 return -1;
@@ -307,9 +307,9 @@ final class WidgetStyleEffectiveUsageTest extends TestCase
 
     /**
      * @param array<string, mixed> $params
-     * @param callable(): Response $callback
+     * @param callable(): \yii\web\Response $callback
      */
-    private function postJson(array $params, callable $callback): Response
+    private function postJson(array $params, callable $callback): \yii\web\Response
     {
         $this->withWebRequest('POST');
         Craft::$app->getRequest()->setBodyParams($params);
@@ -447,7 +447,7 @@ final class WidgetStyleEffectiveUsageTest extends TestCase
 
 final class CapturingWidgetStylesController extends WidgetsController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         $response = new Response();
         $response->data = [

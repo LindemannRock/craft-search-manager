@@ -11,9 +11,7 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\interfaces\BackendInterface;
-use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\services\analytics\AnalyticsQueryTrait;
-use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**

@@ -10,10 +10,6 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use Craft;
-use craft\db\Query;
-use craft\elements\Entry;
-use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\tests\TestCase;

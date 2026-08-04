@@ -66,7 +66,7 @@ final class PendingSyncCriteriaBatchOutcomeTest extends TestCase
                 'name' => 'Pending Criteria Batch Regression',
                 'elementType' => Entry::class,
                 'siteId' => $siteId,
-                'criteria' => static function ($query) use ($includedId) {
+                'criteria' => static function($query) use ($includedId) {
                     $query->andWhere(['elements.id' => $includedId]);
                     return $query;
                 },

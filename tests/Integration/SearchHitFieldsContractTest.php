@@ -109,7 +109,7 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertArrayNotHasKey('description', $results[0]);
         self::assertArrayNotHasKey('intro', $results[0]);
         self::assertArrayNotHasKey('category', $results[0]);
-        self::assertArrayNotHasKey('_internalNote', $results[0]['fields'] ?? []);
+        self::assertArrayNotHasKey('_internalNote', $results[0]['fields']);
         self::assertSame('Metadata title', $results[0]['title'] ?? null);
         self::assertSame('https://example.test/metadata-url', $results[0]['url'] ?? null);
         self::assertSame(42.0, $results[0]['score'] ?? null);
@@ -1798,7 +1798,7 @@ final class SearchHitFieldsContractTest extends TestCase
     /**
      * @param array<string, mixed> $extraParams
      */
-    private function runApiSearch(string $indexHandle, int $siteId, string $query, array $extraParams = []): Response
+    private function runApiSearch(string $indexHandle, int $siteId, string $query, array $extraParams = []): \yii\web\Response
     {
         [$originalRequest, $originalResponse] = [Craft::$app->getRequest(), Craft::$app->getResponse()];
         Craft::$app->set('request', new Request([

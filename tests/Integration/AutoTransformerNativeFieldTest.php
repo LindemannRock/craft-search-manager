@@ -107,8 +107,8 @@ final class AutoTransformerNativeFieldTest extends TestCase
         self::assertArrayNotHasKey('section', $data);
         self::assertArrayNotHasKey('sectionHandle', $data);
         self::assertArrayNotHasKey('sectionType', $data);
-        self::assertNotSame($section->handle, $data['type'] ?? null);
-        self::assertNotSame($section->type, $data['type'] ?? null);
+        self::assertNotSame($section->handle, $data['type']);
+        self::assertNotSame($section->type, $data['type']);
     }
 
     public function testEntrySearchableAttributesDoNotCreateUnderscoreMirrorFields(): void

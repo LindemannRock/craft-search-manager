@@ -11,14 +11,10 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
-use craft\db\Query;
-use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
-use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\DeviceDetectionService;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -33,8 +29,6 @@ final class SettingsCacheInvalidationOrderTest extends TestCase
 {
     private const PREFIX = 'audit-housekeeping';
     private const CONFIG_BACKEND = self::PREFIX . '-config-backend';
-
-    private static ?array $settingsRowBeforeSave = null;
 
     private mixed $originalConfigCache = null;
 

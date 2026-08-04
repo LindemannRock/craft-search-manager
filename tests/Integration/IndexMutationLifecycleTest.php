@@ -34,8 +34,6 @@ final class IndexMutationLifecycleTest extends TestCase
     private const PREFIX = 'audit-housekeeping';
     private const CONFIG_BACKEND = self::PREFIX . '-config-backend';
 
-    private static ?array $settingsRowBeforeSave = null;
-
     private mixed $originalConfigCache = null;
 
     protected function setUp(): void

@@ -548,8 +548,7 @@ final class CraftSearchAdapterRegressionTest extends TestCase
         ?string $backend = null,
         mixed $criteria = [],
         string $source = 'database',
-    ): SearchIndex
-    {
+    ): SearchIndex {
         $index = new SearchIndex();
         $index->handle = $handle;
         $index->name = $handle;

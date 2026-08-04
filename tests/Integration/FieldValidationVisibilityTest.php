@@ -14,16 +14,7 @@ use Craft;
 use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
-use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
-use lindemannrock\searchmanager\console\controllers\IndexController;
-use lindemannrock\searchmanager\console\controllers\MaintenanceController;
-use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
-use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\SearchIndex;
-use lindemannrock\searchmanager\services\AutocompleteService;
-use lindemannrock\searchmanager\services\WidgetConfigService;
-use lindemannrock\searchmanager\services\WidgetStyleService;
-use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**

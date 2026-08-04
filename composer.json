@@ -44,6 +44,8 @@
         "typesense/typesense-php": "^4.0"
     },
     "require-dev": {
+        "craftcms/ckeditor": "^5.0",
+        "craftcms/commerce": "^5.0",
         "craftcms/ecs": "dev-main",
         "craftcms/phpstan": "dev-main",
         "phpunit/phpunit": "^11.0",

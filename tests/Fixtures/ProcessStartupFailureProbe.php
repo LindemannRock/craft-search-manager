@@ -9,9 +9,12 @@
 declare(strict_types=1);
 
 use lindemannrock\searchmanager\tests\Support\ProcessRunOwner;
+use lindemannrock\searchmanager\tests\Support\TestProjectBoundary;
 
 define('PHPUNIT_COMPOSER_INSTALL', true);
-require dirname(__DIR__, 4) . '/vendor/autoload.php';
+require dirname(__DIR__) . '/Support/TestProjectBoundary.php';
+$projectBoundary = TestProjectBoundary::resolve();
+require $projectBoundary->vendorAutoload();
 
 /** @return array<string, array<string, int|string>> */
 function processOwnerJournalFingerprint(string $root): array
@@ -47,7 +50,7 @@ function processOwnerJournalFingerprint(string $root): array
     return $fingerprint;
 }
 
-$journalRoot = dirname(__DIR__, 2) . '/.phpunit.cache/a12-process-owners';
+$journalRoot = $projectBoundary->packageRoot . '/.phpunit.cache/a12-process-owners';
 $before = processOwnerJournalFingerprint($journalRoot);
 $exception = null;
 try {

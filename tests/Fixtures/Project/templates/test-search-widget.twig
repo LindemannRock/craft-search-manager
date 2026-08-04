@@ -1,0 +1,12 @@
+{# Package-owned Search Manager widget page. #}
+{% set indexRecords = craft.searchManager.getAvailableIndices() %}
+{% set indexHandles = indexRecords|map(index => index.handle) %}
+{% set initialScope = indexHandles|length ? '__all' : '' %}
+{% set requestedScope = craft.app.request.getParam('widgetScope') ?? initialScope %}
+{% set widgetScope = requestedScope == '__all' or requestedScope in indexHandles ? requestedScope : initialScope %}
+{% set customIndexHandles = widgetScope == '__all' ? [] : (widgetScope ? [widgetScope] : []) %}
+{% set first = {indexHandles: customIndexHandles,} %}
+{% set second = {indexHandles: customIndexHandles,} %}
+{% set third = {indexHandles: customIndexHandles,} %}
+<!doctype html>
+<html><body>{{ first|json_encode }}{{ second|json_encode }}{{ third|json_encode }}</body></html>

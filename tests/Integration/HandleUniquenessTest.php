@@ -178,6 +178,7 @@ final class HandleUniquenessTest extends TestCase
             'enableAnalytics' => 1,
             'disableStopWords' => 0,
             'skipEntriesWithoutUrl' => 0,
+            'retrievableFields' => '["*"]',
             'source' => 'database',
             'backend' => null,
             'lastIndexed' => null,

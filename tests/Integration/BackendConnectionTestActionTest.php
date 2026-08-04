@@ -146,9 +146,9 @@ final class BackendConnectionTestActionTest extends TestCase
         self::assertSame(1, $adapter->availabilityCalls);
     }
 
-    public function testUnknownStoredBackendTypeResponseIsPreserved(): void
+    public function testStoredBackendWithoutAvailableAdapterResponseIsPreserved(): void
     {
-        $backendId = $this->insertBackend('unknown-type', [], 'not-registered');
+        $backendId = $this->insertBackend('unavailable-adapter', [], 'file');
         $service = new Pr126RecordingBackendService(null);
         $this->swapPluginComponent('search-manager', 'backend', $service);
         $this->withRequest('POST', 'application/json', ['backendId' => $backendId]);
@@ -157,9 +157,9 @@ final class BackendConnectionTestActionTest extends TestCase
 
         self::assertSame([
             'success' => false,
-            'error' => 'Unknown backend type: not-registered',
+            'error' => 'Unknown backend type: file',
         ], $response->data);
-        self::assertSame(['not-registered'], $service->requestedTypes);
+        self::assertSame(['file'], $service->requestedTypes);
     }
 
     public function testThrownExceptionNeverDisclosesProviderDetailOrSecrets(): void

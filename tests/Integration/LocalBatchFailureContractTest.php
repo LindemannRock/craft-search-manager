@@ -502,16 +502,12 @@ final class LocalBatchFailureContractTest extends TestCase
 
     private function splitEntry(): Entry
     {
-        $entry = Entry::find()
-            ->id(1087)
-            ->siteId((int)Craft::$app->getSites()->getPrimarySite()->id)
-            ->status(null)
-            ->one();
-        if (!$entry instanceof Entry || !$entry->getFieldLayout()?->getFieldByHandle('richText')) {
-            self::markTestSkipped('Requires lorem-ipsum entry 1087 with a richText field.');
+        $fixture = $this->findRichTextFixtureEntry();
+        if ($fixture === null) {
+            self::markTestSkipped('Requires the package-owned deterministic rich-text entry fixture.');
         }
 
-        return $entry;
+        return $fixture[0];
     }
 
     private function purgeTestIndices(): void

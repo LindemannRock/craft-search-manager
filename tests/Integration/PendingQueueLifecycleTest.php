@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use lindemannrock\searchmanager\helpers\AutocompleteResponseHelper;
 use lindemannrock\searchmanager\tests\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;

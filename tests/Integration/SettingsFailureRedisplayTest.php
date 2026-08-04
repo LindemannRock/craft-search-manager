@@ -41,7 +41,7 @@ final class SettingsFailureRedisplayTest extends TestCase
             'enableCsrfValidation' => false,
         ]));
         Craft::$app->set('response', new \craft\web\Response());
-        $renderUser = new class extends \craft\console\User {
+        $renderUser = new class() extends \craft\console\User {
             public function getRemainingSessionTime(): int
             {
                 return -1;

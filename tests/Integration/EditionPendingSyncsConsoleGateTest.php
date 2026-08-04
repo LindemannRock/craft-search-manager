@@ -127,5 +127,4 @@ final class EditionPendingSyncsConsoleGateTest extends TestCase
             $settings->autoIndex = $originalAutoIndex;
         }
     }
-
 }

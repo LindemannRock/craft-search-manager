@@ -11,7 +11,6 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
-use craft\db\Query;
 use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
@@ -165,5 +164,4 @@ final class MalformedIndexHydrationTest extends TestCase
             ->execute();
         SearchIndex::clearCache();
     }
-
 }

@@ -15,8 +15,8 @@ use craft\web\Request;
 use craft\web\Response;
 use lindemannrock\searchmanager\controllers\SettingsController;
 use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\tests\Stubs\StubBackend;
+use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
 /**

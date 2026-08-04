@@ -16,9 +16,9 @@ use craft\elements\User;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\helpers\QueryNormalizer;
+use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\jobs\CacheWarmJob;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
-use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\AutocompleteService;
@@ -161,7 +161,7 @@ final class EditionCacheWarmingGateTest extends TestCase
             'transformerClass' => '',
             'headingLevels' => null,
             'language' => null,
-            'backend' => 'mysql',
+            'backend' => $this->fixtureBackendHandle(),
             'enabled' => 1,
             'enableAnalytics' => 1,
             'disableStopWords' => 0,
@@ -177,6 +177,7 @@ final class EditionCacheWarmingGateTest extends TestCase
         ])->execute();
 
         SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
 
     private function cacheWarmQueueCount(): int
@@ -217,6 +218,18 @@ final class EditionCacheWarmingGateTest extends TestCase
             ->execute();
 
         SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
+    }
+
+    private function fixtureBackendHandle(): string
+    {
+        $handle = (new Query())
+            ->select(['handle'])
+            ->from('{{%searchmanager_backends}}')
+            ->where(['handle' => 'fixtureMysql'])
+            ->scalar();
+
+        return is_string($handle) ? $handle : 'mysql';
     }
 }
 

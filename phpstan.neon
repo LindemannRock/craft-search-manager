@@ -6,6 +6,9 @@ parameters:
     phpVersion: 80300
     paths:
         - src
+        - tests
+    scanFiles:
+        - tests/Stubs/BaseTestingBootstrap.php
     ignoreErrors:
         # Optional dependencies for third-party search services (may not be installed)
         # These patterns are marked reportUnmatched: false individually since packages are optional

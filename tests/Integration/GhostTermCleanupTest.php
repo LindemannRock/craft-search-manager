@@ -12,10 +12,10 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
-use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\search\NgramGenerator;
 use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\storage\MySqlStorage;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**

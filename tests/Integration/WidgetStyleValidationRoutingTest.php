@@ -14,15 +14,7 @@ use Craft;
 use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
-use craft\web\Request as WebRequest;
-use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
-use lindemannrock\searchmanager\adapters\CraftSearchAdapter;
-use lindemannrock\searchmanager\backends\FileBackend;
-use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\SearchIndex;
-use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\services\BackendService;
-use lindemannrock\searchmanager\services\ConfigIndexValidator;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -33,7 +25,6 @@ use lindemannrock\searchmanager\tests\TestCase;
 final class WidgetStyleValidationRoutingTest extends TestCase
 {
     private const BACKEND_HANDLE = '__sm_batch9_backend';
-    private const GOOD_CONFIG_BACKEND_HANDLE = '__sm_batch9_good_backend';
     private const INDEX_HANDLE = 'sm-batch9-index';
 
     private mixed $originalConfigCache = null;

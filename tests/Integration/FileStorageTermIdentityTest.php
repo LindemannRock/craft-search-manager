@@ -11,13 +11,9 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
-use craft\helpers\Db;
-use craft\helpers\StringHelper;
-use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\search\storage\FileStorage;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
-use yii\log\Logger;
 
 /**
  * Focused regressions for audit #141, #142, and #143.
@@ -27,7 +23,6 @@ use yii\log\Logger;
 final class FileStorageTermIdentityTest extends TestCase
 {
     private const TEST_SITE_ID = 999996;
-    private const OTHER_SITE_ID = 999995;
     private const TEST_BACKEND = 'test-audit-final-batch';
 
     private ?string $fileStorageBasePath = null;

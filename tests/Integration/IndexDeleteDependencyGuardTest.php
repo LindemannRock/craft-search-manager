@@ -323,5 +323,4 @@ final class IndexDeleteDependencyGuardTest extends TestCase
             ->delete('{{%searchmanager_api_keys}}', ['like', 'handle', self::PREFIX . '%', false])
             ->execute();
     }
-
 }

@@ -323,6 +323,7 @@ final class ApiKeyTrackingGateTest extends TestCase
             'elementType' => Entry::class,
             'transformerClass' => '',
             'enabled' => 1,
+            'retrievableFields' => '["*"]',
             'source' => 'database',
             'dateCreated' => Db::prepareDateForDb(new \DateTime()),
             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),

@@ -214,24 +214,24 @@ final class BackendWidgetReadOnlyPresentationTest extends TestCase
         ]);
 
         $this->assertActionForbidden(
-            fn(): Response => (new BackendPresentationBackendsController('backends', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new BackendPresentationBackendsController('backends', SearchManager::$plugin))
                 ->actionEdit($this->databaseBackendId),
         );
         $this->assertActionForbidden(
-            fn(): Response => (new BackendPresentationWidgetsController('widgets', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new BackendPresentationWidgetsController('widgets', SearchManager::$plugin))
                 ->actionEdit($this->databaseWidgetId),
         );
 
         $_SERVER['REQUEST_METHOD'] = 'POST';
         Craft::$app->getRequest()->setBodyParams(['backendId' => $this->databaseBackendId]);
         $this->assertActionForbidden(
-            fn(): Response => (new BackendPresentationBackendsController('backends', SearchManager::$plugin))
+            fn(): \yii\web\Response => (new BackendPresentationBackendsController('backends', SearchManager::$plugin))
                 ->actionSave(),
         );
 
         Craft::$app->getRequest()->setBodyParams(['configId' => $this->databaseWidgetId]);
         $this->assertActionForbidden(
-            fn(): ?Response => (new BackendPresentationWidgetsController('widgets', SearchManager::$plugin))
+            fn(): ?\yii\web\Response => (new BackendPresentationWidgetsController('widgets', SearchManager::$plugin))
                 ->actionSave(),
         );
     }
@@ -373,7 +373,7 @@ final class BackendWidgetReadOnlyPresentationTest extends TestCase
             $this->originalUser = Craft::$app->getUser();
         }
 
-        $renderUser = new class extends \craft\console\User {
+        $renderUser = new class() extends \craft\console\User {
             public function getRemainingSessionTime(): int
             {
                 return -1;
@@ -395,7 +395,7 @@ final class BackendWidgetReadOnlyPresentationTest extends TestCase
         $twig->addGlobal('currentUser', $user);
     }
 
-    private function renderCaptured(Response $response): string
+    private function renderCaptured(\yii\web\Response $response): string
     {
         $template = $response->data['template'] ?? null;
         $variables = $response->data['variables'] ?? null;
@@ -502,7 +502,7 @@ final class BackendWidgetReadOnlyPresentationTest extends TestCase
  */
 final class BackendPresentationBackendsController extends BackendsController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         $response = new Response();
         $response->data = ['template' => $template, 'variables' => $variables];
@@ -516,7 +516,7 @@ final class BackendPresentationBackendsController extends BackendsController
  */
 final class BackendPresentationWidgetsController extends WidgetsController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         $response = new Response();
         $response->data = ['template' => $template, 'variables' => $variables];
@@ -530,7 +530,7 @@ final class BackendPresentationWidgetsController extends WidgetsController
  */
 final class SettingsPresentationSettingsController extends SettingsController
 {
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         $response = new Response();
         $response->data = ['template' => $template, 'variables' => $variables];

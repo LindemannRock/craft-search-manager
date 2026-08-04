@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use lindemannrock\searchmanager\tests\Stubs\StubBackend;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**

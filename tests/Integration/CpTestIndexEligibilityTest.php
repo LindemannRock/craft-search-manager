@@ -20,6 +20,7 @@ use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\services\ConfigIndexValidator;
+use lindemannrock\searchmanager\tests\Support\TestProjectBoundary;
 use lindemannrock\searchmanager\tests\TestCase;
 use yii\web\BadRequestHttpException;
 
@@ -105,19 +106,15 @@ final class CpTestIndexEligibilityTest extends TestCase
 
     public function testProjectDevelopmentTemplatesUseOnlyAvailableConfiguredIndices(): void
     {
-        $workspaceRoot = dirname(__DIR__, 4);
+        $templatesRoot = TestProjectBoundary::resolve()->fixtureTemplatesRoot;
         $templates = [
-            'templates/test-search.twig',
-            'templates/test-search-datastar.twig',
-            'templates/test-search-widget.twig',
+            'test-search.twig',
+            'test-search-datastar.twig',
+            'test-search-widget.twig',
         ];
 
         foreach ($templates as $path) {
-            $filename = $workspaceRoot . '/' . $path;
-            if (!is_file($filename)) {
-                self::markTestSkipped('Project development templates are unavailable in this checkout.');
-            }
-
+            $filename = $templatesRoot . '/' . $path;
             $template = file_get_contents($filename);
             self::assertIsString($template);
             self::assertStringContainsString(
@@ -133,8 +130,8 @@ final class CpTestIndexEligibilityTest extends TestCase
             );
         }
 
-        foreach (['templates/test-search.twig', 'templates/test-search-datastar.twig'] as $path) {
-            $template = file_get_contents($workspaceRoot . '/' . $path);
+        foreach (['test-search.twig', 'test-search-datastar.twig'] as $path) {
+            $template = file_get_contents($templatesRoot . '/' . $path);
             self::assertIsString($template);
             self::assertStringContainsString(
                 "'all-sites' in indexHandles ? 'all-sites' : (indexHandles[0] ?? '')",
@@ -150,7 +147,7 @@ final class CpTestIndexEligibilityTest extends TestCase
             );
         }
 
-        $widget = file_get_contents($workspaceRoot . '/templates/test-search-widget.twig');
+        $widget = file_get_contents($templatesRoot . '/test-search-widget.twig');
         self::assertIsString($widget);
         self::assertStringContainsString("initialScope = indexHandles|length ? '__all' : ''", $widget);
         self::assertStringContainsString(
@@ -167,10 +164,7 @@ final class CpTestIndexEligibilityTest extends TestCase
 
     public function testProjectDevelopmentTemplatesRenderWithoutAQueryOrBackendWork(): void
     {
-        $workspaceRoot = dirname(__DIR__, 4);
-        if (!is_file($workspaceRoot . '/templates/test-search.twig')) {
-            self::markTestSkipped('Project development templates are unavailable in this checkout.');
-        }
+        $templatesRoot = TestProjectBoundary::resolve()->fixtureTemplatesRoot;
 
         $this->withRequest('GET');
         Craft::$app->getRequest()->setQueryParams([]);
@@ -178,15 +172,13 @@ final class CpTestIndexEligibilityTest extends TestCase
         SearchManager::$plugin->dependencies->clearIndexCatalogue();
 
         foreach (['test-search', 'test-search-datastar'] as $template) {
-            $html = Craft::$app->getView()->renderTemplate(
-                $template,
-                [],
-                View::TEMPLATE_MODE_SITE,
-            );
+            $source = file_get_contents($templatesRoot . '/' . $template . '.twig');
+            self::assertIsString($source);
+            $html = Craft::$app->getView()->renderString($source, [], View::TEMPLATE_MODE_SITE);
             self::assertStringContainsString('<!doctype html>', $html, $template);
         }
 
-        $widgetSource = file_get_contents($workspaceRoot . '/templates/test-search-widget.twig');
+        $widgetSource = file_get_contents($templatesRoot . '/test-search-widget.twig');
         self::assertIsString($widgetSource);
         $twig = Craft::$app->getView()->getTwig();
         $twig->parse($twig->tokenize(new \Twig\Source($widgetSource, 'test-search-widget')));
@@ -357,7 +349,8 @@ final class CpTestIndexEligibilityTest extends TestCase
             try {
                 $resolver->invoke($controller, $handle);
                 self::fail("{$handle} reached the CP Test action boundary.");
-            } catch (BadRequestHttpException $exception) {
+            } catch (\Throwable $exception) {
+                self::assertInstanceOf(BadRequestHttpException::class, $exception);
                 self::assertSame(400, $exception->statusCode);
             }
         }

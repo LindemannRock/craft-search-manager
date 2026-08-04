@@ -237,6 +237,7 @@ final class CacheKeySafetyTest extends TestCase
             BackendInterface::class,
             AutocompleteBackendInterface::class,
         ]);
+        self::assertInstanceOf(BackendInterface::class, $backend);
         $backend->method('getName')->willReturn('cache-key-test');
         $backend->method('supportsAutocomplete')->willReturn(true);
         $backend->expects(self::once())
@@ -272,6 +273,7 @@ final class CacheKeySafetyTest extends TestCase
             BackendInterface::class,
             AutocompleteBackendInterface::class,
         ]);
+        self::assertInstanceOf(BackendInterface::class, $backend);
         $backend->method('getName')->willReturn('cache-key-test');
         $backend->method('supportsAutocomplete')->willReturn(true);
         $backend->expects(self::once())

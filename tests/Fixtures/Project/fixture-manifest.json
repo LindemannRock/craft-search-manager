@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "sites": [
+    {"name": "En", "handle": "fixturePrimary", "language": "en-US", "baseUrl": "https://fixture-primary.example.test", "uid": "10000000-0000-4000-8000-000000000001"},
+    {"name": "Fixture Secondary", "handle": "fixtureSecondary", "language": "en-GB", "baseUrl": "https://fixture-secondary.example.test", "uid": "10000000-0000-4000-8000-000000000002"}
+  ],
+  "fields": [
+    {"name": "Fixture Summary", "handle": "fixtureSummary", "type": "craft\\fields\\PlainText", "uid": "20000000-0000-4000-8000-000000000001"},
+    {"name": "Fixture Rich Text", "handle": "fixtureRichText", "type": "craft\\ckeditor\\Field", "uid": "20000000-0000-4000-8000-000000000002"},
+    {"name": "Heading", "handle": "heading", "type": "craft\\fields\\PlainText", "uid": "20000000-0000-4000-8000-000000000003"},
+    {"name": "Product Description", "handle": "productDescription", "type": "craft\\fields\\PlainText", "uid": "20000000-0000-4000-8000-000000000004"},
+    {"name": "WYSIWYG", "handle": "wysiwyg", "type": "craft\\ckeditor\\Field", "uid": "20000000-0000-4000-8000-000000000005"}
+  ],
+  "sections": [
+    {"name": "Fixture Pages", "handle": "fixturePages", "entryTypeName": "Fixture Page", "entryTypeHandle": "fixturePage", "uid": "30000000-0000-4000-8000-000000000001", "entryTypeUid": "30000000-0000-4000-8000-000000000002"}
+  ],
+  "entries": [
+    {"title": "Fixture Search Guide", "slug": "fixture-search-guide", "summary": "Deterministic fixture guide.", "richText": "<p>Fixture introduction.</p><h2 id=\"overview\">Overview</h2><p>Search Manager fixture overview.</p><h3 id=\"install\">Install</h3><p>Install the deterministic fixture.</p><h2 id=\"configuration\">Configuration</h2><p>Configure the deterministic fixture.</p><h3 id=\"indexing\">Indexing</h3><p>Index deterministic fixture content.</p><h2 id=\"search\">Search</h2><p>Search the fixture index.</p><h3 id=\"autocomplete\">Autocomplete</h3><p>Suggest deterministic fixture terms.</p><h2 id=\"analytics\">Analytics</h2><p>Measure fixture searches.</p><h3 id=\"troubleshooting\">Troubleshooting</h3><p>Resolve deterministic fixture issues.</p><h2 id=\"reference\">Reference</h2><p>Review deterministic fixture identities.</p>", "uid": "40000000-0000-4000-8000-000000000001"},
+    {"title": "Fixture Second Entry", "slug": "fixture-second-entry", "summary": "Second deterministic fixture entry.", "richText": "<h2 id=\"secondary\">Secondary</h2><p>Secondary site fixture content.</p>", "uid": "40000000-0000-4000-8000-000000000002"}
+  ],
+  "assets": {
+    "filesystemHandle": "fixtureAssetsFs",
+    "filesystemUid": "50000000-0000-4000-8000-000000000001",
+    "volumeHandle": "fixtureAssets",
+    "volumeUid": "50000000-0000-4000-8000-000000000002",
+    "filename": "fixture-search.txt",
+    "assetUid": "50000000-0000-4000-8000-000000000003",
+    "content": "Deterministic Search Manager asset fixture."
+  },
+  "categories": {
+    "groupHandle": "fixtureTopics",
+    "groupUid": "60000000-0000-4000-8000-000000000001",
+    "slug": "fixture-search",
+    "categoryUid": "60000000-0000-4000-8000-000000000002"
+  },
+  "users": {
+    "username": "fixture-search-user",
+    "email": "fixture-search@example.test",
+    "uid": "70000000-0000-4000-8000-000000000001"
+  },
+  "commerce": {
+    "productTypeHandle": "fixtureProducts",
+    "productTypeUid": "80000000-0000-4000-8000-000000000001",
+    "productSlug": "fixture-eco-shirt",
+    "productUid": "80000000-0000-4000-8000-000000000002",
+    "heading": "Fixture Eco Shirt",
+    "productDescription": "Sustainable fixture apparel with deterministic variants.",
+    "wysiwyg": "<p>Fixture Eco Shirt introduction.</p><h2 id=\"eco-shirt-overview\">Eco Shirt Overview</h2><p>Fixture product overview.</p><h2 id=\"designed-for-everyday-comfort\">Designed for Everyday Comfort</h2><p>Comfortable fixture copy.</p><h3 id=\"soft-touch-fabric\">Soft Touch Fabric</h3><p>Soft deterministic fabric.</p><h3 id=\"breathability\">Breathability</h3><p>Breathable fixture content.</p><h2 id=\"sustainable-materials\">Sustainable Materials</h2><p>Sustainable fixture materials.</p><h3 id=\"organic-cotton\">Organic Cotton</h3><p>Organic cotton fixture details.</p><h3 id=\"recycled-fibers\">Recycled Fibers</h3><p>Recycled fiber fixture details.</p><h2 id=\"responsible-production\">Responsible Production</h2><p>Responsible fixture production.</p><h3 id=\"water-conscious-dyeing\">Water Conscious Dyeing</h3><p>Deterministic dyeing details.</p><h3 id=\"low-impact-finishing\">Low Impact Finishing</h3><p>Deterministic finishing details.</p><h2 id=\"fit-and-sizing\">Fit and Sizing</h2><p>Fixture sizing guidance.</p><h3 id=\"regular-fit\">Regular Fit</h3><p>Regular fixture fit.</p><h3 id=\"size-guide\">Size Guide</h3><p>Deterministic size guidance.</p><h2 id=\"care-instructions\">Care Instructions</h2><p>Fixture care guidance.</p><h3 id=\"washing\">Washing</h3><p>Deterministic washing guidance.</p><h3 id=\"drying\">Drying</h3><p>Deterministic drying guidance.</p><h2 id=\"shipping-and-returns\">Shipping and Returns</h2><p>Fixture fulfillment guidance.</p><h3 id=\"delivery-timing\">Delivery Timing</h3><p>Deterministic delivery timing.</p><h2 id=\"frequently-asked-questions\">Frequently Asked Questions</h2><p>Fixture product answers.</p>",
+    "variantSkus": ["FIXTURE-ECO-SHIRT-RED", "FIXTURE-ECO-SHIRT-BLUE"],
+    "variantUids": ["80000000-0000-4000-8000-000000000003", "80000000-0000-4000-8000-000000000004"]
+  },
+  "docsManager": {
+    "sourceHandle": "fixture-docs",
+    "sourceUid": "90000000-0000-4000-8000-000000000001",
+    "docSlug": "fixture/search-guide",
+    "docUid": "90000000-0000-4000-8000-000000000002",
+    "title": "Fixture SourceDoc Search Guide",
+    "description": "Deterministic SourceDoc fixture.",
+    "htmlContent": "<p>SourceDoc fixture introduction.</p><h2 id=\"source-overview\">Source overview</h2><p>Supported Docs Manager content.</p><h3 id=\"source-install\">Source install</h3><p>Install the source fixture.</p>"
+  },
+  "searchManagerConfig": {
+    "indexPrefix": "sm_fixture_",
+    "indices": [
+      {"handle": "fixture-valid-minimal", "name": "Fixture Valid Minimal", "elementType": "craft\\elements\\Entry", "siteId": null},
+      {"handle": "test-entries-en", "name": "Auto Transform Index", "elementType": "craft\\elements\\Entry", "siteId": 1}
+    ]
+  },
+  "backend": {"handle": "fixtureMysql", "uid": "a0000000-0000-4000-8000-000000000001", "type": "mysql"},
+  "indices": [
+    {"handle": "fixtureEntries", "uid": "a1000000-0000-4000-8000-000000000001", "elementType": "craft\\elements\\Entry", "analytics": true, "split": false},
+    {"handle": "fixtureEntrySections", "uid": "a1000000-0000-4000-8000-000000000002", "elementType": "craft\\elements\\Entry", "analytics": true, "split": true},
+    {"handle": "fixtureAssets", "uid": "a1000000-0000-4000-8000-000000000003", "elementType": "craft\\elements\\Asset", "analytics": false, "split": false},
+    {"handle": "fixtureCategories", "uid": "a1000000-0000-4000-8000-000000000004", "elementType": "craft\\elements\\Category", "analytics": false, "split": false},
+    {"handle": "fixtureUsers", "uid": "a1000000-0000-4000-8000-000000000005", "elementType": "craft\\elements\\User", "analytics": false, "split": false},
+    {"handle": "fixtureProducts", "uid": "a1000000-0000-4000-8000-000000000006", "elementType": "craft\\commerce\\elements\\Product", "analytics": true, "split": true},
+    {"handle": "fixtureSourceDocs", "uid": "a1000000-0000-4000-8000-000000000007", "elementType": "lindemannrock\\docsmanager\\elements\\SourceDoc", "analytics": true, "split": true},
+    {"handle": "fixtureVariants", "uid": "a1000000-0000-4000-8000-000000000008", "elementType": "craft\\commerce\\elements\\Variant", "analytics": false, "split": false}
+  ],
+  "templates": ["test-search.twig", "test-search-datastar.twig", "test-search-widget.twig"]
+}

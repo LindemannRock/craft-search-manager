@@ -11,9 +11,6 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
-use craft\helpers\Db;
-use craft\helpers\StringHelper;
-use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**

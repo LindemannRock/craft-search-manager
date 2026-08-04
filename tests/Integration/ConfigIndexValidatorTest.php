@@ -17,8 +17,8 @@ use craft\elements\Category;
 use craft\elements\Entry;
 use lindemannrock\searchmanager\helpers\SearchIndexCriteriaHelper;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
-use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
+use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\services\ConfigIndexValidator;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -286,7 +286,7 @@ final class ConfigIndexValidatorTest extends TestCase
     }
 
     /**
-     * @return array{severity: string, handle: string|null, key: string, message: string}
+     * @return array{severity: string, handle: string|null, key: string, message: string, emphasis?: string}
      */
     private function assertFinding(ConfigIndexValidationResult $result, string $key): array
     {

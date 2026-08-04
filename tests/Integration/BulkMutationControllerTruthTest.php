@@ -91,21 +91,21 @@ final class BulkMutationControllerTruthTest extends TestCase
 
         $data = $this->post(
             ['backendIds' => [$validId, $validId, $invalidId, self::STALE_ID]],
-            static fn(): Response => (new BackendsController('backends', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new BackendsController('backends', SearchManager::$plugin))
                 ->actionBulkDisable(),
         );
 
         $this->assertPartialContract($data, '{{%searchmanager_backends}}', $validId, $invalidId);
         $this->assertAllSuccessRoundTrip(
             ['backendIds' => [$validId, $validId, self::STALE_ID]],
-            static fn(): Response => (new BackendsController('backends', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new BackendsController('backends', SearchManager::$plugin))
                 ->actionBulkEnable(),
             '{{%searchmanager_backends}}',
             $validId,
         );
         $this->assertZeroSuccessFailure(
             ['backendIds' => [$invalidId]],
-            static fn(): Response => (new BackendsController('backends', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new BackendsController('backends', SearchManager::$plugin))
                 ->actionBulkDisable(),
             '{{%searchmanager_backends}}',
             $invalidId,
@@ -120,21 +120,21 @@ final class BulkMutationControllerTruthTest extends TestCase
 
         $data = $this->post(
             ['indexIds' => [$validId, $validId, $invalidId, self::STALE_ID]],
-            static fn(): Response => (new IndicesController('indices', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new IndicesController('indices', SearchManager::$plugin))
                 ->actionBulkDisable(),
         );
 
         $this->assertPartialContract($data, '{{%searchmanager_indices}}', $validId, $invalidId);
         $this->assertAllSuccessRoundTrip(
             ['indexIds' => [$validId, $validId, self::STALE_ID]],
-            static fn(): Response => (new IndicesController('indices', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new IndicesController('indices', SearchManager::$plugin))
                 ->actionBulkEnable(),
             '{{%searchmanager_indices}}',
             $validId,
         );
         $this->assertZeroSuccessFailure(
             ['indexIds' => [$invalidId]],
-            static fn(): Response => (new IndicesController('indices', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new IndicesController('indices', SearchManager::$plugin))
                 ->actionBulkDisable(),
             '{{%searchmanager_indices}}',
             $invalidId,
@@ -148,21 +148,21 @@ final class BulkMutationControllerTruthTest extends TestCase
 
         $data = $this->post(
             ['promotionIds' => [$validId, $validId, $invalidId, self::STALE_ID]],
-            static fn(): Response => (new PromotionsController('promotions', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new PromotionsController('promotions', SearchManager::$plugin))
                 ->actionBulkDisable(),
         );
 
         $this->assertPartialContract($data, '{{%searchmanager_promotions}}', $validId, $invalidId);
         $this->assertAllSuccessRoundTrip(
             ['promotionIds' => [$validId, $validId, self::STALE_ID]],
-            static fn(): Response => (new PromotionsController('promotions', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new PromotionsController('promotions', SearchManager::$plugin))
                 ->actionBulkEnable(),
             '{{%searchmanager_promotions}}',
             $validId,
         );
         $this->assertZeroSuccessFailure(
             ['promotionIds' => [$invalidId]],
-            static fn(): Response => (new PromotionsController('promotions', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new PromotionsController('promotions', SearchManager::$plugin))
                 ->actionBulkDisable(),
             '{{%searchmanager_promotions}}',
             $invalidId,
@@ -176,21 +176,21 @@ final class BulkMutationControllerTruthTest extends TestCase
 
         $data = $this->post(
             ['ruleIds' => [$validId, $validId, $invalidId, self::STALE_ID]],
-            static fn(): Response => (new QueryRulesController('query-rules', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new QueryRulesController('query-rules', SearchManager::$plugin))
                 ->actionBulkDisable(),
         );
 
         $this->assertPartialContract($data, '{{%searchmanager_query_rules}}', $validId, $invalidId);
         $this->assertAllSuccessRoundTrip(
             ['ruleIds' => [$validId, $validId, self::STALE_ID]],
-            static fn(): Response => (new QueryRulesController('query-rules', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new QueryRulesController('query-rules', SearchManager::$plugin))
                 ->actionBulkEnable(),
             '{{%searchmanager_query_rules}}',
             $validId,
         );
         $this->assertZeroSuccessFailure(
             ['ruleIds' => [$invalidId]],
-            static fn(): Response => (new QueryRulesController('query-rules', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new QueryRulesController('query-rules', SearchManager::$plugin))
                 ->actionBulkDisable(),
             '{{%searchmanager_query_rules}}',
             $invalidId,
@@ -204,21 +204,21 @@ final class BulkMutationControllerTruthTest extends TestCase
 
         $data = $this->post(
             ['configIds' => [$validId, $validId, $invalidId, self::STALE_ID]],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))
                 ->actionBulkDisable(),
         );
 
         $this->assertPartialContract($data, '{{%searchmanager_widget_configs}}', $validId, $invalidId);
         $this->assertAllSuccessRoundTrip(
             ['configIds' => [$validId, $validId, self::STALE_ID]],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))
                 ->actionBulkEnable(),
             '{{%searchmanager_widget_configs}}',
             $validId,
         );
         $this->assertZeroSuccessFailure(
             ['configIds' => [$invalidId]],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))
                 ->actionBulkDisable(),
             '{{%searchmanager_widget_configs}}',
             $invalidId,
@@ -232,21 +232,21 @@ final class BulkMutationControllerTruthTest extends TestCase
 
         $data = $this->post(
             ['styleIds' => [$validId, $validId, $invalidId, self::STALE_ID]],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))
                 ->actionBulkDisableStyle(),
         );
 
         $this->assertPartialContract($data, '{{%searchmanager_widget_styles}}', $validId, $invalidId);
         $this->assertAllSuccessRoundTrip(
             ['styleIds' => [$validId, $validId, self::STALE_ID]],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))
                 ->actionBulkEnableStyle(),
             '{{%searchmanager_widget_styles}}',
             $validId,
         );
         $this->assertZeroSuccessFailure(
             ['styleIds' => [$invalidId]],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))
                 ->actionBulkDisableStyle(),
             '{{%searchmanager_widget_styles}}',
             $invalidId,
@@ -262,7 +262,7 @@ final class BulkMutationControllerTruthTest extends TestCase
 
         $data = $this->post(
             ['ids' => [$validId, $validId, $failureId, self::STALE_ID]],
-            static fn(): Response => (new ApiKeysController('api-keys', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new ApiKeysController('api-keys', SearchManager::$plugin))
                 ->actionBulkDisable(),
         );
 
@@ -270,14 +270,14 @@ final class BulkMutationControllerTruthTest extends TestCase
         self::assertStringContainsString('Failing API Key', implode(' ', $data['errors']));
         $this->assertAllSuccessRoundTrip(
             ['ids' => [$validId, $validId, self::STALE_ID]],
-            static fn(): Response => (new ApiKeysController('api-keys', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new ApiKeysController('api-keys', SearchManager::$plugin))
                 ->actionBulkEnable(),
             '{{%searchmanager_api_keys}}',
             $validId,
         );
         $this->assertZeroSuccessFailure(
             ['ids' => [$failureId]],
-            static fn(): Response => (new ApiKeysController('api-keys', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new ApiKeysController('api-keys', SearchManager::$plugin))
                 ->actionBulkDisable(),
             '{{%searchmanager_api_keys}}',
             $failureId,
@@ -297,7 +297,7 @@ final class BulkMutationControllerTruthTest extends TestCase
             [$configIndex],
             fn(): array => $this->post(
                 ['indexIds' => [$configIndex->id]],
-                static fn(): Response => (new IndicesController('indices', SearchManager::$plugin))
+                static fn(): \yii\web\Response => (new IndicesController('indices', SearchManager::$plugin))
                     ->actionBulkDisable(),
             ),
         );
@@ -325,7 +325,7 @@ final class BulkMutationControllerTruthTest extends TestCase
     ): void {
         $data = $this->post(
             [$identifierParam => 'not-a-list'],
-            static fn(): Response => (new $controllerClass($controllerId, SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new $controllerClass($controllerId, SearchManager::$plugin))
                 ->runAction($action),
         );
 
@@ -351,7 +351,7 @@ final class BulkMutationControllerTruthTest extends TestCase
 
     /**
      * @param array<string, mixed> $params
-     * @param callable(): Response $action
+     * @param callable(): \yii\web\Response $action
      * @return array<string, mixed>
      */
     private function post(array $params, callable $action): array
@@ -414,7 +414,7 @@ final class BulkMutationControllerTruthTest extends TestCase
 
     /**
      * @param array<string, mixed> $params
-     * @param callable(): Response $action
+     * @param callable(): \yii\web\Response $action
      */
     private function assertAllSuccessRoundTrip(
         array $params,
@@ -434,7 +434,7 @@ final class BulkMutationControllerTruthTest extends TestCase
 
     /**
      * @param array<string, mixed> $params
-     * @param callable(): Response $action
+     * @param callable(): \yii\web\Response $action
      */
     private function assertZeroSuccessFailure(
         array $params,

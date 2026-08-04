@@ -17,8 +17,8 @@ use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\jobs\CacheWarmJob;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\tests\Support\OwnedAnalyticsTracker;
+use lindemannrock\searchmanager\tests\TestCase;
 
 /**
  * Regression coverage for analytics queries that feed search caching and cache warming.
@@ -34,9 +34,6 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
     private ?string $indexHandle = null;
     private ?object $originalRequest = null;
     private ?OwnedAnalyticsTracker $analyticsTracker = null;
-
-    /** @var list<string> */
-    private array $testQueries = [];
 
     protected function setUp(): void
     {
@@ -175,8 +172,6 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
     private function markerQuery(string $label): string
     {
         $query = '__sm_analytics_cache_' . $label . '_' . StringHelper::UUID();
-        $this->testQueries[] = $query;
-
         return $query;
     }
 
@@ -213,5 +208,4 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
             ])->execute();
         }
     }
-
 }

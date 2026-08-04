@@ -27,7 +27,7 @@ final class PostgresDialectSafetyTest extends TestCase
 {
     public function testActionIdentityExpressionBracketsSessionId(): void
     {
-        $subject = new class {
+        $subject = new class() {
             use AnalyticsQueryTrait;
         };
 
@@ -75,7 +75,7 @@ final class PostgresDialectSafetyTest extends TestCase
      */
     public function testZeroOutcomeHavingProjectsBooleansToInt(): void
     {
-        $subject = new class {
+        $subject = new class() {
             use AnalyticsQueryTrait;
 
             public function exposeZeroOutcomeHaving(): string

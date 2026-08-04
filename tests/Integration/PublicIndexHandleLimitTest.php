@@ -16,8 +16,8 @@ use craft\web\Request;
 use craft\web\Response;
 use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\searchmanager\controllers\ApiController;
-use lindemannrock\searchmanager\gql\types\AutocompleteResponseType;
 use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
+use lindemannrock\searchmanager\gql\types\AutocompleteResponseType;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -35,7 +35,7 @@ final class PublicIndexHandleLimitTest extends TestCase
     {
         $indices = $this->fakeIndices(SearchIndex::MAX_REQUESTED_INDICES + 1);
 
-        $this->withOnlySearchIndices($indices, function () use ($indices): void {
+        $this->withOnlySearchIndices($indices, function() use ($indices): void {
             [$handles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
                 implode(',', array_map(static fn(SearchIndex $index): string => $index->handle, $indices)),
             );
@@ -53,7 +53,7 @@ final class PublicIndexHandleLimitTest extends TestCase
         $indices = $this->fakeIndices(SearchIndex::MAX_REQUESTED_INDICES + 1);
         $stub = $this->installStubBackend();
 
-        $this->withOnlySearchIndices($indices, function () use ($indices): void {
+        $this->withOnlySearchIndices($indices, function() use ($indices): void {
             $response = SearchResolver::resolveSearch(null, [
                 'query' => 'coffee',
                 'indexHandles' => array_map(static fn(SearchIndex $index): string => $index->handle, $indices),
@@ -74,7 +74,7 @@ final class PublicIndexHandleLimitTest extends TestCase
         $stub = $this->installStubBackend();
         $stub->searchMultipleResponse = ['hits' => [], 'total' => 0];
 
-        $this->withOnlySearchIndices($indices, function () use ($indices): void {
+        $this->withOnlySearchIndices($indices, function() use ($indices): void {
             $response = SearchResolver::resolveSearch(null, [
                 'query' => 'coffee',
                 'indexHandles' => array_map(static fn(SearchIndex $index): string => $index->handle, $indices),
@@ -96,7 +96,7 @@ final class PublicIndexHandleLimitTest extends TestCase
 
         self::assertArrayHasKey('error', $fields);
 
-        $response = $this->withOnlySearchIndices($indices, function () use ($indices): array {
+        $response = $this->withOnlySearchIndices($indices, function() use ($indices): array {
             return SearchResolver::resolveAutocomplete(null, [
                 'query' => 'cof',
                 'indexHandles' => array_map(static fn(SearchIndex $index): string => $index->handle, $indices),
@@ -115,7 +115,7 @@ final class PublicIndexHandleLimitTest extends TestCase
 
         $response = $this->withOnlySearchIndices(
             $indices,
-            fn(): Response => $this->runApiSearch(implode(',', array_map(static fn(SearchIndex $index): string => $index->handle, $indices))),
+            fn(): \yii\web\Response => $this->runApiSearch(implode(',', array_map(static fn(SearchIndex $index): string => $index->handle, $indices))),
         );
 
         self::assertSame([], $response->data['hits']);
@@ -134,7 +134,7 @@ final class PublicIndexHandleLimitTest extends TestCase
 
         $response = $this->withOnlySearchIndices(
             $indices,
-            fn(): Response => $this->runApiSearch(implode(',', array_map(static fn(SearchIndex $index): string => $index->handle, $indices))),
+            fn(): \yii\web\Response => $this->runApiSearch(implode(',', array_map(static fn(SearchIndex $index): string => $index->handle, $indices))),
         );
 
         self::assertArrayNotHasKey('error', $response->data);
@@ -162,7 +162,7 @@ final class PublicIndexHandleLimitTest extends TestCase
         return $indices;
     }
 
-    private function runApiSearch(string $indexHandles): Response
+    private function runApiSearch(string $indexHandles): \yii\web\Response
     {
         [$originalRequest, $originalResponse] = [Craft::$app->getRequest(), Craft::$app->getResponse()];
         Craft::$app->set('request', new Request([

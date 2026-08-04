@@ -24,8 +24,8 @@ use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
-use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\tests\Support\OwnedAnalyticsTracker;
+use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use yii\caching\ArrayCache;
 
@@ -51,9 +51,6 @@ final class SearchCacheReuseTest extends TestCase
     private ?string $indexHandle = null;
     private ?object $originalRequest = null;
     private ?OwnedAnalyticsTracker $analyticsTracker = null;
-
-    /** @var list<string> */
-    private array $testQueries = [];
 
     protected function setUp(): void
     {
@@ -126,8 +123,6 @@ final class SearchCacheReuseTest extends TestCase
         // Deterministic within a test, unique across runs; matches no real
         // content/rule/promotion so only cache behaviour is exercised.
         $query = '__smcachetest_' . StringHelper::UUID();
-        $this->testQueries[] = $query;
-
         return $query;
     }
 
@@ -499,7 +494,6 @@ final class SearchCacheReuseTest extends TestCase
             $settings->enableGeoDetection = false;
             $this->forcePluginEdition(SearchManager::EDITION_PRO);
             Craft::$app->set('request', new Request());
-            $this->testQueries[] = $query;
             $sessionId = $query . '-session';
             $options = [
                 'siteId' => $this->testSiteId(),

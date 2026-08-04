@@ -8,73 +8,20 @@
 
 declare(strict_types=1);
 
-namespace lindemannrock\docsmanager\records;
-
-class SourceRecord
-{
-    /**
-     * @var array<int, string>
-     */
-    public static array $names = [];
-
-    public ?string $name = null;
-
-    public static function findOne(mixed $condition): ?self
-    {
-        if (!is_int($condition) || !isset(self::$names[$condition])) {
-            return null;
-        }
-
-        $record = new self();
-        $record->name = self::$names[$condition];
-
-        return $record;
-    }
-}
-
-namespace lindemannrock\docsmanager\elements;
-
-class SourceDoc extends \craft\base\Element
-{
-    public ?int $sourceId = null;
-    public ?string $slug = '';
-    public string $category = '';
-    public ?string $description = null;
-    public ?string $htmlContent = null;
-
-    /**
-     * @var string[]
-     */
-    public array $keywords = [];
-
-    public static function displayName(): string
-    {
-        return 'Source Doc';
-    }
-
-    public static function refHandle(): ?string
-    {
-        return 'source-doc';
-    }
-
-    public function getFieldLayout(): ?\craft\models\FieldLayout
-    {
-        return null;
-    }
-}
-
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
-use craft\base\Element;
-use craft\base\ElementInterface;
 use craft\base\Field;
+use craft\commerce\elements\Product;
+use craft\commerce\elements\Variant;
+use craft\commerce\models\ProductType;
+use craft\commerce\Plugin as Commerce;
 use craft\elements\Asset;
 use craft\elements\Category;
+use craft\elements\db\ElementQueryInterface;
 use craft\elements\ElementCollection;
 use craft\elements\Entry;
 use craft\elements\User;
-use craft\elements\db\ElementQueryInterface;
 use craft\fieldlayoutelements\CustomField;
 use craft\models\CategoryGroup;
 use craft\models\FieldLayout;
@@ -84,7 +31,6 @@ use craft\models\Volume;
 use craft\models\VolumeFolder;
 use lindemannrock\docsmanager\elements\SourceDoc;
 use lindemannrock\docsmanager\records\SourceRecord;
-use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\DocsManagerDocumentHelper;
 use lindemannrock\searchmanager\helpers\SourceDocSectionSplitter;
 use lindemannrock\searchmanager\services\TransformerService;
@@ -105,13 +51,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(SourceDocSectionSplitter::class)]
 final class TransformerCharacterizationTest extends TestCase
 {
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-        self::defineRichTextTestClass();
-        self::defineCommerceTestClasses();
-    }
-
     public function testStructureEntryDocumentDataIsByteIdentical(): void
     {
         $entry = new TransformerCharacterizationEntry();
@@ -361,15 +300,18 @@ final class TransformerCharacterizationTest extends TestCase
 
     public function testCommerceProductDocumentDataIsByteIdentical(): void
     {
-        $type = $this->productType('Shoes', 'shoes');
-        $redVariant = $this->variant('SKU-RED', 'Red Sneaker', ['Color' => 'Red', 'Size' => 'Large']);
-        $blueVariant = $this->variant('SKU-BLUE', 'Blue Sneaker', ['Color' => 'Blue']);
-        $product = $this->product($type, [$redVariant, $blueVariant], $redVariant);
+        $type = $this->realProductType();
+        $product = $this->product($type);
         $product->id = 101;
-        $product->siteId = 1;
+        $product->siteId = Craft::$app->getSites()->getPrimarySite()->id;
         $product->title = 'Trail Sneaker';
         $product->slug = 'trail-sneaker';
-        $product->fakeUrl = 'https://example.test/products/trail-sneaker';
+        $product->uri = 'products/trail-sneaker';
+        $redVariant = $this->variant('SKU-RED', 'Red Sneaker', 301, $product);
+        $blueVariant = $this->variant('SKU-BLUE', 'Blue Sneaker', 302, $product);
+        $product->setVariants([$redVariant, $blueVariant]);
+        $product->defaultVariantId = $redVariant->id;
+        $productUrl = $product->getUrl() ?? '';
 
         $this->assertDocumentSame([
             'objectID' => 101,
@@ -379,36 +321,41 @@ final class TransformerCharacterizationTest extends TestCase
             'type' => 'product',
             'title' => 'Trail Sneaker',
             'slug' => 'trail-sneaker',
-            'url' => 'https://example.test/products/trail-sneaker',
-            'siteId' => 1,
+            'url' => $productUrl,
+            'siteId' => $product->siteId,
             'dateCreated' => null,
             'dateUpdated' => null,
-            'content' => 'Trail Sneaker SKU-RED SKU-BLUE trail-sneaker Trail Sneaker Trail Sneaker trail-sneaker Shoes shoes SKU-RED SKU-BLUE Red Sneaker Blue Sneaker Color Red Size Large Color Blue SKU-RED Red Sneaker',
-            'excerpt' => 'Trail Sneaker SKU-RED SKU-BLUE trail-sneaker Trail Sneaker Trail Sneaker trail-sneaker Shoes shoes SKU-RED SKU-BLUE Red Sneaker Blue Sneaker Color Red Size Large Color Blue SKU-RED Red Sneaker',
-            'productType' => 'Shoes',
-            'productTypeHandle' => 'shoes',
+            'content' => 'Trail Sneaker SKU-RED SKU-BLUE trail-sneaker Trail Sneaker Trail Sneaker trail-sneaker ' . $type->name . ' ' . $type->handle . ' SKU-RED SKU-BLUE Red Sneaker Blue Sneaker SKU-RED Red Sneaker 25',
+            'excerpt' => 'Trail Sneaker SKU-RED SKU-BLUE trail-sneaker Trail Sneaker Trail Sneaker trail-sneaker ' . $type->name . ' ' . $type->handle . ' SKU-RED SKU-BLUE Red Sneaker Blue Sneaker SKU-RED Red Sneaker 25',
+            'productType' => $type->name,
+            'productTypeHandle' => $type->handle,
             'variantSkus' => ['SKU-RED', 'SKU-BLUE'],
             'variantTitles' => ['Red Sneaker', 'Blue Sneaker'],
-            'variantOptions' => ['Color Red', 'Size Large', 'Color Blue'],
             'defaultVariantSku' => 'SKU-RED',
             'defaultVariantTitle' => 'Red Sneaker',
-            'price' => 0,
+            'price' => 25,
         ], (new CommerceTransformer())->transform($product));
     }
 
     public function testCommerceVariantDocumentDataIsByteIdentical(): void
     {
-        $type = $this->productType('Shoes', 'shoes');
+        $type = $this->realProductType();
         $product = $this->product($type);
         $product->id = 101;
-        $product->siteId = 1;
+        $product->siteId = Craft::$app->getSites()->getPrimarySite()->id;
         $product->title = 'Trail Sneaker';
         $product->slug = 'trail-sneaker';
-        $product->fakeUrl = 'https://example.test/products/trail-sneaker';
+        $product->uri = 'products/trail-sneaker';
 
-        $variant = $this->variant('SKU-RED', 'Red Sneaker', ['Color' => 'Red', 'Size' => 'Large'], $product);
-        $variant->id = 301;
-        $variant->siteId = 1;
+        $variant = $this->variant('SKU-RED', 'Red Sneaker', 301, $product);
+        $product->setVariants([$variant]);
+        $product->defaultVariantId = $variant->id;
+        $productUrl = $product->getUrl() ?? '';
+        $variantUrl = $variant->getUrl() ?? '';
+        $autoData = (new AutoTransformer())->transform($variant);
+        self::assertIsArray($autoData);
+        $content = trim((string)$autoData['content'] . ' Red Sneaker SKU-RED Red Sneaker Trail Sneaker trail-sneaker '
+            . $type->name . ' ' . $type->handle . ' 25');
 
         $this->assertDocumentSame([
             'objectID' => 301,
@@ -418,22 +365,22 @@ final class TransformerCharacterizationTest extends TestCase
             'type' => 'variant',
             'title' => 'Red Sneaker',
             'slug' => '',
-            'url' => 'https://example.test/products/trail-sneaker',
-            'siteId' => 1,
+            'url' => $variantUrl,
+            'siteId' => $variant->siteId,
             'dateCreated' => null,
             'dateUpdated' => null,
-            'content' => 'Red Sneaker SKU-RED Red Sneaker Red Sneaker SKU-RED Red Sneaker Color Red Size Large Trail Sneaker trail-sneaker Shoes shoes',
-            'excerpt' => 'Red Sneaker SKU-RED Red Sneaker Red Sneaker SKU-RED Red Sneaker Color Red Size Large Trail Sneaker trail-sneaker Shoes shoes',
+            'content' => $content,
+            'excerpt' => $content,
             'sku' => 'SKU-RED',
             'variantTitle' => 'Red Sneaker',
-            'variantOptions' => ['Color Red', 'Size Large'],
-            'price' => 0,
-            'productType' => 'Shoes',
-            'productTypeHandle' => 'shoes',
+            'variantOptions' => [],
+            'price' => 25,
+            'productType' => $type->name,
+            'productTypeHandle' => $type->handle,
             'productId' => 101,
             'productTitle' => 'Trail Sneaker',
             'productSlug' => 'trail-sneaker',
-            'productUrl' => 'https://example.test/products/trail-sneaker',
+            'productUrl' => $productUrl,
         ], (new CommerceTransformer())->transform($variant));
     }
 
@@ -491,30 +438,36 @@ final class TransformerCharacterizationTest extends TestCase
 
     public function testSourceNameCacheRefreshesAfterItsTtlExpires(): void
     {
-        $sourceId = 701469;
+        $source = new SourceRecord();
+        $source->name = 'Original source name';
+        $source->handle = 'a12-3p-source-cache-' . bin2hex(random_bytes(4));
+        $source->kind = 'plugin';
+        $source->sourceType = 'local';
+        $source->localPath = dirname(__DIR__, 2) . '/docs';
+        $source->enabled = true;
+        self::assertTrue($source->save(false));
+        $sourceId = (int)$source->id;
         $sourceNames = new \ReflectionProperty(DocsManagerDocumentHelper::class, 'sourceNames');
         $sourceNames->setAccessible(true);
         $sourceNamesExpiresAt = new \ReflectionProperty(DocsManagerDocumentHelper::class, 'sourceNamesExpiresAt');
         $sourceNamesExpiresAt->setAccessible(true);
 
-        $originalFixtures = SourceRecord::$names;
         $originalCache = $sourceNames->getValue();
         $originalExpiresAt = $sourceNamesExpiresAt->getValue();
 
         try {
-            SourceRecord::$names[$sourceId] = 'Original source name';
             $sourceNames->setValue(null, []);
             $sourceNamesExpiresAt->setValue(null, null);
 
             self::assertSame('Original source name', DocsManagerDocumentHelper::sourceName($sourceId));
 
-            SourceRecord::$names[$sourceId] = 'Renamed source';
+            $source->name = 'Renamed source';
+            self::assertTrue($source->save(false));
             self::assertSame('Original source name', DocsManagerDocumentHelper::sourceName($sourceId));
 
             $sourceNamesExpiresAt->setValue(null, microtime(true) - 1.0);
             self::assertSame('Renamed source', DocsManagerDocumentHelper::sourceName($sourceId));
         } finally {
-            SourceRecord::$names = $originalFixtures;
             $sourceNames->setValue(null, $originalCache);
             $sourceNamesExpiresAt->setValue(null, $originalExpiresAt);
         }
@@ -810,194 +763,30 @@ final class TransformerCharacterizationTest extends TestCase
         return $layout;
     }
 
-    private static function defineRichTextTestClass(): void
+    private function realProductType(): ProductType
     {
-        if (class_exists('craft\\ckeditor\\Field')) {
-            return;
-        }
+        $type = Commerce::getInstance()->getProductTypes()->getAllProductTypes()[0] ?? null;
+        self::assertInstanceOf(ProductType::class, $type, 'The supported test fixture must install a real Commerce product type.');
 
-        eval(<<<'PHP'
-namespace craft\ckeditor;
-
-class Field extends \craft\base\Field
-{
-}
-PHP);
+        return $type;
     }
 
-    private static function defineCommerceTestClasses(): void
+    private function product(ProductType $type): Product
     {
-        if (!class_exists(CommerceElementTypeHelper::productElementType())) {
-            eval(<<<'PHP'
-namespace craft\commerce\elements;
-
-class Product extends \craft\base\Element
-{
-    public ?string $fakeUrl = null;
-    public ?object $fakeType = null;
-    public ?object $fakeDefaultVariant = null;
-    public array $fakeVariants = [];
-
-    public function getUrl(): ?string
-    {
-        return $this->fakeUrl;
-    }
-
-    public function getType(): ?object
-    {
-        return $this->fakeType;
-    }
-
-    public function getVariants(): array
-    {
-        return $this->fakeVariants;
-    }
-
-    public function getDefaultVariant(): ?object
-    {
-        return $this->fakeDefaultVariant;
-    }
-}
-
-class Variant extends \craft\base\Element
-{
-    public string $sku = '';
-    public ?string $fakeUrl = null;
-    public ?Product $fakeProduct = null;
-    public array $fakeOptions = [];
-
-    public function getUrl(): ?string
-    {
-        return $this->fakeUrl;
-    }
-
-    public function getSku(): string
-    {
-        return $this->sku;
-    }
-
-    public function setSku(string $sku): void
-    {
-        $this->sku = $sku;
-    }
-
-    public function getProduct(): ?Product
-    {
-        return $this->fakeProduct;
-    }
-
-    public function getOptions(): array
-    {
-        return $this->fakeOptions;
-    }
-}
-PHP);
-            return;
-        }
-
-        if (!class_exists(__NAMESPACE__ . '\\TransformerCharacterizationProduct')) {
-            eval(<<<'PHP'
-namespace lindemannrock\searchmanager\tests\Integration;
-
-class TransformerCharacterizationProduct extends \craft\commerce\elements\Product
-{
-    public ?string $fakeUrl = null;
-    public ?\craft\commerce\models\ProductType $fakeType = null;
-    public ?\craft\commerce\elements\Variant $fakeDefaultVariant = null;
-    public array $fakeVariants = [];
-
-    public function getUrl(): ?string
-    {
-        return $this->fakeUrl;
-    }
-
-    public function getType(): \craft\commerce\models\ProductType
-    {
-        return $this->fakeType ?? new \craft\commerce\models\ProductType(['name' => '', 'handle' => '']);
-    }
-
-    public function getVariants(?bool $includeDisabled = null): \craft\commerce\elements\VariantCollection
-    {
-        return \craft\commerce\elements\VariantCollection::make($this->fakeVariants);
-    }
-
-    public function getDefaultVariant(bool $includeDisabled = false): ?\craft\commerce\elements\Variant
-    {
-        return $this->fakeDefaultVariant;
-    }
-}
-
-class TransformerCharacterizationVariant extends \craft\commerce\elements\Variant
-{
-    public ?string $fakeUrl = null;
-    public ?\craft\commerce\elements\Product $fakeProduct = null;
-    public array $fakeOptions = [];
-
-    public function getUrl(): ?string
-    {
-        return $this->fakeUrl;
-    }
-
-    public function getProduct(): ?\craft\commerce\elements\Product
-    {
-        return $this->fakeProduct;
-    }
-
-    public function getOptions(): array
-    {
-        return $this->fakeOptions;
-    }
-}
-PHP);
-        }
-    }
-
-    private function productType(string $name, string $handle): object
-    {
-        if (class_exists('craft\\commerce\\models\\ProductType')) {
-            return new \craft\commerce\models\ProductType([
-                'name' => $name,
-                'handle' => $handle,
-            ]);
-        }
-
-        return (object)[
-            'name' => $name,
-            'handle' => $handle,
-        ];
-    }
-
-    /**
-     * @param object[] $variants
-     */
-    private function product(object $type, array $variants = [], ?object $defaultVariant = null): object
-    {
-        $class = class_exists(__NAMESPACE__ . '\\TransformerCharacterizationProduct')
-            ? __NAMESPACE__ . '\\TransformerCharacterizationProduct'
-            : CommerceElementTypeHelper::productElementType();
-
-        $product = new $class();
-        $product->fakeType = $type;
-        $product->fakeVariants = $variants;
-        $product->fakeDefaultVariant = $defaultVariant;
+        $product = new Product();
+        $product->typeId = $type->id;
 
         return $product;
     }
 
-    /**
-     * @param array<string, string> $options
-     */
-    private function variant(string $sku, string $title, array $options, ?object $product = null): object
+    private function variant(string $sku, string $title, int $id, Product $product): Variant
     {
-        $class = class_exists(__NAMESPACE__ . '\\TransformerCharacterizationVariant')
-            ? __NAMESPACE__ . '\\TransformerCharacterizationVariant'
-            : CommerceElementTypeHelper::variantElementType();
-
-        $variant = new $class();
+        $variant = new Variant();
+        $variant->id = $id;
         $variant->title = $title;
         $variant->setSku($sku);
-        $variant->fakeOptions = $options;
-        $variant->fakeProduct = $product;
+        $variant->setPrice(25.0);
+        $variant->setOwner($product);
 
         return $variant;
     }
@@ -1008,7 +797,7 @@ final class TransformerCharacterizationEntry extends Entry
     public Section $testSection;
 
     /**
-     * @var ElementCollection<int, ElementInterface>
+     * @var ElementCollection<int, Entry>
      */
     public ElementCollection $testAncestors;
 
@@ -1058,7 +847,7 @@ final class TransformerCharacterizationCategory extends Category
     public CategoryGroup $testGroup;
 
     /**
-     * @var ElementCollection<int, ElementInterface>
+     * @var ElementCollection<int, Category>
      */
     public ElementCollection $testAncestors;
 

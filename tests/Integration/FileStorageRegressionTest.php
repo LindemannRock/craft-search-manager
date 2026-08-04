@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use Craft;
 use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\storage\FileStorage;
@@ -1021,5 +1020,4 @@ PHP);
 
         return $body;
     }
-
 }

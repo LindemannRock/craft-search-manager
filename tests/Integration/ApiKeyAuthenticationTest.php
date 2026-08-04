@@ -16,8 +16,8 @@ use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 use yii\base\Action;
-use yii\web\HeaderCollection;
 use yii\web\ForbiddenHttpException;
+use yii\web\HeaderCollection;
 use yii\web\UnauthorizedHttpException;
 
 /**

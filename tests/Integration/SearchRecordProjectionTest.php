@@ -65,7 +65,7 @@ final class SearchRecordProjectionTest extends TestCase
         self::assertArrayNotHasKey('_fields', $record);
         self::assertArrayNotHasKey('excerpt', $record);
         self::assertArrayNotHasKey('sectionBody', $record);
-        self::assertStringNotContainsString('body-only-token', (string)($record['content'] ?? ''));
+        self::assertStringNotContainsString('body-only-token', (string)$record['content']);
     }
 
     public function testLocalMatchingTextIncludesBodyCleanOutsideContent(): void

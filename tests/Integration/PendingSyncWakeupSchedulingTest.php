@@ -148,7 +148,7 @@ final class PendingSyncWakeupSchedulingTest extends TestCase
     public function testUnexpectedExceptionIsPreservedAndSchedulesStaleClaimRecovery(): void
     {
         $id = $this->seedRow(PendingSyncRepository::STATUS_PENDING, ['elementId' => 158010]);
-        $processor = new class extends PendingSyncProcessor {
+        $processor = new class() extends PendingSyncProcessor {
             public function process(array $rows): array
             {
                 throw new \RuntimeException('Synthetic pending-sync wake-up processor failure');
@@ -191,7 +191,7 @@ final class PendingSyncWakeupSchedulingTest extends TestCase
                 throw $this->exception;
             }
         };
-        $repository = new class extends PendingSyncRepository {
+        $repository = new class() extends PendingSyncRepository {
             public function scheduleNextEligibleBatchJob(): void
             {
                 throw new \RuntimeException('Synthetic recovery scheduling failure');

@@ -74,7 +74,7 @@ final class ProcessInterruptionProbeTest extends TestCase
         self::assertIsResource($process);
         $this->registerOwnedProcess($process, $pipes, 'interruption-probe-worker');
         $workerStatus = proc_get_status($process);
-        $workerIdentity = ProcessRunOwner::processIdentity((int)($workerStatus['pid'] ?? 0));
+        $workerIdentity = ProcessRunOwner::processIdentity((int)$workerStatus['pid']);
         self::assertNotNull($workerIdentity);
 
         ProcessRunOwner::publishProbeState([
@@ -96,9 +96,8 @@ final class ProcessInterruptionProbeTest extends TestCase
         ]);
 
         try {
-            while (true) {
-                usleep(100000);
-            }
+            usleep(60_000_000);
+            self::fail('The interruption probe was not terminated by its owner.');
         } finally {
             if ($transaction->getIsActive()) {
                 $transaction->rollBack();

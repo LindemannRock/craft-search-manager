@@ -599,8 +599,18 @@ final class RecordingNativeRedis extends \Redis
 
 final class UnsupportedRedisConnection implements \yii\redis\ConnectionInterface
 {
-    public function open(): void {}
-    public function close(): void {}
-    public function getIsActive(): bool { return false; }
-    public function executeCommand(string $name, array $params = []): mixed { return null; }
+    public function open(): void
+    {
+    }
+    public function close(): void
+    {
+    }
+    public function getIsActive(): bool
+    {
+        return false;
+    }
+    public function executeCommand(string $name, array $params = []): mixed
+    {
+        return null;
+    }
 }

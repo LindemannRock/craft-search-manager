@@ -386,7 +386,7 @@ final class StubBackend extends BackendService
     {
         return array_values(array_filter(
             $this->calls,
-            static fn (array $c): bool => $c['method'] === $method,
+            static fn(array $c): bool => $c['method'] === $method,
         ));
     }
 

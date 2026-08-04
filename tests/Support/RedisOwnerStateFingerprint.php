@@ -27,7 +27,8 @@ $databases = [0, 1];
 $cache = Craft::$app->getCache();
 if (property_exists($cache, 'redis')) {
     try {
-        $connection = Craft::$app->get($cache->redis);
+        $redisProperty = new ReflectionProperty($cache, 'redis');
+        $connection = Craft::$app->get($redisProperty->getValue($cache));
         if (is_object($connection) && property_exists($connection, 'database')) {
             $cacheDatabase = (int)$connection->database;
             $databases[] = $cacheDatabase;

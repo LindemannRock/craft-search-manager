@@ -18,8 +18,8 @@ use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\helpers\AutoTransformerSectionSplitter;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\HtmlSectionSplitter;
-use lindemannrock\searchmanager\helpers\SearchContentCleaner;
 use lindemannrock\searchmanager\helpers\SearchContentBuilderHelper;
+use lindemannrock\searchmanager\helpers\SearchContentCleaner;
 use lindemannrock\searchmanager\helpers\SearchFieldTypeContentHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
@@ -27,6 +27,7 @@ use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\tests\Support\DeterministicFixtureManifest;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\transformers\CommerceTransformer;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -41,7 +42,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 final class CommerceSplitSectionsTest extends TestCase
 {
     private const INDEX_HANDLE = 'test_commerce_split_sections';
-    private const ECO_SHIRT_ID = 49595;
 
     protected function tearDown(): void
     {
@@ -271,7 +271,7 @@ final class CommerceSplitSectionsTest extends TestCase
         $testIndex = SearchIndex::findByHandle(self::INDEX_HANDLE);
         self::assertNotNull($testIndex);
 
-        $this->withOnlySearchIndices([$testIndex], function () use ($product, $headingFieldHandle, $original, $stub): void {
+        $this->withOnlySearchIndices([$testIndex], function() use ($product, $headingFieldHandle, $original, $stub): void {
             SearchManager::$plugin->indexing->indexElementNow($product);
             $firstKeepSet = $this->lastKeepSet($stub->calls);
             self::assertNotEmpty($firstKeepSet);
@@ -333,19 +333,30 @@ final class CommerceSplitSectionsTest extends TestCase
         }
 
         $productClass = CommerceElementTypeHelper::productElementType();
+        $manifest = DeterministicFixtureManifest::load();
+        $commerce = $manifest['commerce'] ?? null;
+        $fixtureSlug = is_array($commerce) ? ($commerce['productSlug'] ?? null) : null;
         $product = $productClass::find()
-            ->id(self::ECO_SHIRT_ID)
+            ->slug(is_string($fixtureSlug) ? $fixtureSlug : '__missing-package-fixture__')
             ->status(null)
             ->siteId((int)Craft::$app->getSites()->getPrimarySite()->id)
-            ->one()
-            ?? $productClass::find()
-                ->title('Eco Shirt 9')
-                ->status(null)
-                ->siteId((int)Craft::$app->getSites()->getPrimarySite()->id)
-                ->one();
+            ->one();
 
         if (!$product instanceof ElementInterface) {
-            self::markTestSkipped('Requires the Eco Shirt 9 Commerce product fixture.');
+            foreach ($productClass::find()
+                ->status(null)
+                ->siteId((int)Craft::$app->getSites()->getPrimarySite()->id)
+                ->limit(50)
+                ->all() as $candidate) {
+                if ($candidate instanceof ElementInterface && $this->richTextHeadingFieldHandleOrNull($candidate) !== null) {
+                    $product = $candidate;
+                    break;
+                }
+            }
+        }
+
+        if (!$product instanceof ElementInterface) {
+            self::markTestSkipped('Requires the package-owned Commerce product fixture.');
         }
 
         $this->richTextHeadingFieldHandle($product);
@@ -374,9 +385,19 @@ final class CommerceSplitSectionsTest extends TestCase
 
     private function richTextHeadingFieldHandle(ElementInterface $element): string
     {
+        $handle = $this->richTextHeadingFieldHandleOrNull($element);
+        if ($handle !== null) {
+            return $handle;
+        }
+
+        self::markTestSkipped('Requires a searchable rich-text field with h2/h3 headings.');
+    }
+
+    private function richTextHeadingFieldHandleOrNull(ElementInterface $element): ?string
+    {
         $layout = $element->getFieldLayout();
         if ($layout === null) {
-            self::markTestSkipped('Element has no field layout.');
+            return null;
         }
 
         foreach ($layout->getCustomFields() as $field) {
@@ -395,7 +416,7 @@ final class CommerceSplitSectionsTest extends TestCase
             }
         }
 
-        self::markTestSkipped('Requires a searchable rich-text field with h2/h3 headings.');
+        return null;
     }
 
     /**
@@ -446,7 +467,7 @@ final class CommerceSplitSectionsTest extends TestCase
             'transformerClass' => '',
             'headingLevels' => json_encode([2, 3], JSON_THROW_ON_ERROR),
             'language' => null,
-            'backend' => 'mysql',
+            'backend' => $this->fixtureBackendHandle(),
             'enabled' => 1,
             'enableAnalytics' => 1,
             'disableStopWords' => 0,
@@ -462,6 +483,7 @@ final class CommerceSplitSectionsTest extends TestCase
         ])->execute();
 
         SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
 
     private function deleteTestIndexByHandle(string $handle): void
@@ -484,6 +506,18 @@ final class CommerceSplitSectionsTest extends TestCase
             ->delete('{{%searchmanager_indices}}', ['handle' => $handle])
             ->execute();
         SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
+    }
+
+    private function fixtureBackendHandle(): string
+    {
+        $handle = (new Query())
+            ->select(['handle'])
+            ->from('{{%searchmanager_backends}}')
+            ->where(['handle' => 'fixtureMysql'])
+            ->scalar();
+
+        return is_string($handle) ? $handle : 'mysql';
     }
 
     /**
@@ -492,7 +526,11 @@ final class CommerceSplitSectionsTest extends TestCase
      */
     private function lastKeepSet(array $calls): array
     {
-        $orphanCalls = array_values(array_filter($calls, static fn(array $call): bool => $call['method'] === 'deleteOrphanDocuments'));
+        $orphanCalls = array_values(array_filter(
+            $calls,
+            static fn(array $call): bool => $call['method'] === 'deleteOrphanDocuments'
+                && $call['indexName'] === self::INDEX_HANDLE,
+        ));
         self::assertNotEmpty($orphanCalls);
         $last = $orphanCalls[array_key_last($orphanCalls)];
 

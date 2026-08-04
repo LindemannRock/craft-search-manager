@@ -514,7 +514,7 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
         ]);
         Craft::$app->set('request', $request);
         Craft::$app->set('response', new Response());
-        $renderUser = new class extends \craft\console\User {
+        $renderUser = new class() extends \craft\console\User {
             public function getRemainingSessionTime(): int
             {
                 return -1;

@@ -22,9 +22,9 @@ use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\services\AnalyticsService;
 use lindemannrock\searchmanager\services\analytics\AnalyticsRulesService;
 use lindemannrock\searchmanager\services\analytics\AnalyticsTrackingService;
+use lindemannrock\searchmanager\services\AnalyticsService;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\widgets\AnalyticsSummaryWidget;
 use lindemannrock\searchmanager\widgets\ContentGapsWidget;
@@ -304,8 +304,8 @@ final class EditionAnalyticsGateTest extends TestCase
         preg_match_all("/:\\s*'([^']+)'/", $mappingMatch['mapping'] ?? '', $mappingValues);
 
         $authoredTypes = array_values(array_unique(array_merge(
-            $literalMatches[1] ?? [],
-            $mappingValues[1] ?? [],
+            $literalMatches[1],
+            $mappingValues[1],
         )));
         $expectedAuthoredTypes = self::AUTHORED_ASSET_DATA_TYPES;
         sort($authoredTypes);
@@ -315,12 +315,12 @@ final class EditionAnalyticsGateTest extends TestCase
         $controllerSource = $this->methodSource(AnalyticsController::class, 'actionGetData');
         preg_match('/\\$validTypes = \\[(?<types>.*?)\\];/s', $controllerSource, $allowlistMatch);
         preg_match_all("/'([^']+)'/", $allowlistMatch['types'] ?? '', $allowlistValues);
-        self::assertSame(self::CANONICAL_DATA_TYPES, $allowlistValues[1] ?? []);
+        self::assertSame(self::CANONICAL_DATA_TYPES, $allowlistValues[1]);
         self::assertSame(['summary'], array_values(array_diff(self::CANONICAL_DATA_TYPES, self::AUTHORED_ASSET_DATA_TYPES)));
 
         foreach (['all', 'devices', 'browsers', 'os', 'bots'] as $removedType) {
             self::assertNotContains($removedType, $authoredTypes);
-            self::assertNotContains($removedType, $allowlistValues[1] ?? []);
+            self::assertNotContains($removedType, $allowlistValues[1]);
         }
     }
 

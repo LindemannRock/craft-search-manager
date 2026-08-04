@@ -27,6 +27,7 @@ use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
+use lindemannrock\searchmanager\tests\Support\DeterministicFixtureManifest;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -88,9 +89,7 @@ final class CommerceTargetElementTypesTest extends TestCase
     public function testPromotionSaveLoadAcceptsCommerceTargetRowsWhenElementsExist(): void
     {
         foreach (CommerceElementTypeHelper::availableElementTypes() as $elementType) {
-            $element = $elementType::find()
-                ->status(null)
-                ->one();
+            $element = $this->findLiveCommerceElement($elementType);
 
             if ($element === null) {
                 continue;
@@ -119,12 +118,17 @@ final class CommerceTargetElementTypesTest extends TestCase
     public function testPromotionInjectionCarriesCommerceTargetElementTypeContext(): void
     {
         $stub = $this->installStubBackend();
-        $siteId = 1;
 
         foreach (CommerceElementTypeHelper::availableElementTypes() as $elementType) {
-            $elementId = $elementType === CommerceElementTypeHelper::productElementType() ? 2147482901 : 2147482902;
+            $element = $this->findLiveCommerceElement($elementType);
+            if ($element === null) {
+                continue;
+            }
+            $elementId = (int)$element->id;
+            $siteId = (int)$element->siteId;
+            $indexHandle = $this->fixtureIndexHandle($elementType);
             $documentType = $elementType === CommerceElementTypeHelper::productElementType() ? 'product' : 'variant';
-            $stub->documentsByElementId['products:' . $elementId . ':' . $siteId] = [
+            $stub->documentsByElementId[$indexHandle . ':' . $elementId . ':' . $siteId] = [
                 'id' => $elementId,
                 'elementId' => $elementId,
                 'siteId' => $siteId,
@@ -146,7 +150,7 @@ final class CommerceTargetElementTypesTest extends TestCase
             $results = (new PromotionService())->applyPromotions(
                 [['id' => 2147483000, 'siteId' => $siteId, 'score' => 1.0]],
                 'commerce runtime',
-                'products',
+                $indexHandle,
                 $siteId,
                 [$promotion],
             );
@@ -186,7 +190,7 @@ final class CommerceTargetElementTypesTest extends TestCase
         $promotion->title = 'Variant promotion live regression';
         $promotion->query = $query;
         $promotion->matchType = 'exact';
-        $promotion->indexHandle = 'commerce-variants';
+        $promotion->indexHandle = $this->fixtureIndexHandle(CommerceElementTypeHelper::variantElementType());
         $promotion->elementId = (int)$variant->id;
         $promotion->elementType = CommerceElementTypeHelper::variantElementType();
         $promotion->position = 1;
@@ -195,7 +199,7 @@ final class CommerceTargetElementTypesTest extends TestCase
         self::assertTrue($promotion->save(), implode('; ', $promotion->getFirstErrors()));
 
         try {
-            $matches = Promotion::findMatching($query, 'commerce-variants', (int)$variant->siteId);
+            $matches = Promotion::findMatching($query, $promotion->indexHandle, (int)$variant->siteId);
 
             self::assertCount(1, $matches);
             self::assertSame((int)$promotion->id, (int)$matches[0]->id);
@@ -240,7 +244,7 @@ final class CommerceTargetElementTypesTest extends TestCase
     {
         $this->forcePluginEdition(SearchManager::EDITION_PRO);
 
-        $user = User::find()->status(User::STATUS_ACTIVE)->one();
+        $user = $this->fixtureUser();
         if (!$user instanceof User) {
             self::markTestSkipped('No active user available for user promotion coverage.');
         }
@@ -250,7 +254,7 @@ final class CommerceTargetElementTypesTest extends TestCase
         $promotion->title = 'Active user promotion regression';
         $promotion->query = $query;
         $promotion->matchType = 'exact';
-        $promotion->indexHandle = 'users';
+        $promotion->indexHandle = $this->fixtureIndexHandle(User::class);
         $promotion->elementId = (int)$user->id;
         $promotion->elementType = User::class;
         $promotion->position = 1;
@@ -258,7 +262,7 @@ final class CommerceTargetElementTypesTest extends TestCase
         self::assertTrue($promotion->save(), implode('; ', $promotion->getFirstErrors()));
 
         try {
-            $matches = Promotion::findMatching($query, 'users', (int)Craft::$app->getSites()->getPrimarySite()->id);
+            $matches = Promotion::findMatching($query, $promotion->indexHandle, $this->fixtureSiteId());
 
             self::assertCount(1, $matches);
             self::assertSame((int)$promotion->id, (int)$matches[0]->id);
@@ -270,13 +274,14 @@ final class CommerceTargetElementTypesTest extends TestCase
     public function testActiveUserPromotionInjectsPromotedHit(): void
     {
         $stub = $this->installStubBackend();
-        $user = User::find()->status(User::STATUS_ACTIVE)->one();
+        $user = $this->fixtureUser();
         if (!$user instanceof User) {
             self::markTestSkipped('No active user available for user promotion insertion coverage.');
         }
 
-        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
-        $stub->documentsByElementId['users:' . (int)$user->id . ':' . $siteId] = [
+        $siteId = $this->fixtureSiteId();
+        $indexHandle = $this->fixtureIndexHandle(User::class);
+        $stub->documentsByElementId[$indexHandle . ':' . (int)$user->id . ':' . $siteId] = [
             'id' => (int)$user->id,
             'elementId' => (int)$user->id,
             'siteId' => $siteId,
@@ -297,7 +302,7 @@ final class CommerceTargetElementTypesTest extends TestCase
         $results = SearchManager::$plugin->promotions->applyPromotions(
             [['id' => 2147483000, 'siteId' => $siteId, 'score' => 1.0]],
             'user insertion',
-            'users',
+            $indexHandle,
             $siteId,
             [$promotion],
         );
@@ -545,7 +550,7 @@ final class CommerceTargetElementTypesTest extends TestCase
                     'siteId' => (int)$element->siteId,
                     'score' => 6.0,
                 ],
-            ], 'commerce runtime', 'products', (int)$element->siteId);
+            ], 'commerce runtime', $this->fixtureIndexHandle($elementType), (int)$element->siteId);
 
             self::assertSame((int)$element->id, $results[0]['id']);
             self::assertSame(8.0, $results[0]['score']);
@@ -681,6 +686,29 @@ final class CommerceTargetElementTypesTest extends TestCase
 
     private function findLiveCommerceElement(string $elementType): ?\craft\base\ElementInterface
     {
+        $manifest = DeterministicFixtureManifest::load();
+        $commerce = $manifest['commerce'] ?? null;
+        if (is_array($commerce)) {
+            $query = $elementType::find()
+                ->siteId($this->fixtureSiteId())
+                ->status(null);
+            if ($elementType === CommerceElementTypeHelper::productElementType()) {
+                $slug = $commerce['productSlug'] ?? null;
+                if (is_string($slug)) {
+                    $query->slug($slug);
+                }
+            } else {
+                $skus = $commerce['variantSkus'] ?? null;
+                if (is_array($skus) && is_string($skus[0] ?? null)) {
+                    $query->sku($skus[0]);
+                }
+            }
+            $fixture = SearchElementAvailabilityHelper::applyToQuery($query, $elementType)->one();
+            if ($fixture instanceof \craft\base\ElementInterface) {
+                return $fixture;
+            }
+        }
+
         $siteIds = Craft::$app->getSites()->getAllSiteIds();
 
         foreach ($siteIds as $siteId) {
@@ -699,6 +727,11 @@ final class CommerceTargetElementTypesTest extends TestCase
 
     private function findPromotionLiveCommerceElement(string $elementType): ?\craft\base\ElementInterface
     {
+        $fixture = $this->findLiveCommerceElement($elementType);
+        if ($fixture !== null) {
+            return $fixture;
+        }
+
         $siteIds = Craft::$app->getSites()->getAllSiteIds();
 
         foreach ($siteIds as $siteId) {
@@ -713,5 +746,57 @@ final class CommerceTargetElementTypesTest extends TestCase
         }
 
         return null;
+    }
+
+    private function fixtureSiteId(): int
+    {
+        $manifest = DeterministicFixtureManifest::load();
+        $siteHandle = $manifest['sites'][0]['handle'] ?? null;
+        if (is_string($siteHandle)) {
+            $site = Craft::$app->getSites()->getSiteByHandle($siteHandle);
+            if ($site !== null) {
+                return (int)$site->id;
+            }
+        }
+
+        return (int)Craft::$app->getSites()->getPrimarySite()->id;
+    }
+
+    private function fixtureUser(): ?User
+    {
+        $manifest = DeterministicFixtureManifest::load();
+        $username = $manifest['users']['username'] ?? null;
+        if (is_string($username)) {
+            $user = User::find()->username($username)->status(User::STATUS_ACTIVE)->one();
+            if ($user instanceof User) {
+                return $user;
+            }
+        }
+
+        return User::find()->status(User::STATUS_ACTIVE)->one();
+    }
+
+    private function fixtureIndexHandle(string $elementType): string
+    {
+        $manifest = DeterministicFixtureManifest::load();
+        $indices = $manifest['indices'] ?? null;
+        if (is_array($indices)) {
+            foreach ($indices as $definition) {
+                if (
+                    is_array($definition)
+                    && ($definition['elementType'] ?? null) === $elementType
+                    && is_string($definition['handle'] ?? null)
+                    && SearchIndex::findByHandle($definition['handle']) instanceof SearchIndex
+                ) {
+                    return $definition['handle'];
+                }
+            }
+        }
+
+        return match ($elementType) {
+            User::class => 'users',
+            CommerceElementTypeHelper::VARIANT_ELEMENT_TYPE => 'commerce-variants',
+            default => 'products',
+        };
     }
 }

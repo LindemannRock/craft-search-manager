@@ -10,8 +10,8 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
+use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\SetupService;
 use lindemannrock\searchmanager\tests\Stubs\FixedConfigIndexValidator;

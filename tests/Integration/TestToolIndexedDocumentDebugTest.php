@@ -183,7 +183,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         $encoded = json_encode($fields, JSON_THROW_ON_ERROR);
         self::assertStringNotContainsString('secret nested token', $encoded);
         self::assertStringNotContainsString('Matrix nested hidden needle', $encoded);
-        self::assertStringNotContainsString('{', (string)($fields[0]['children'][0]['value'] ?? ''));
+        self::assertStringNotContainsString('{', (string)$fields[0]['children'][0]['value']);
     }
 
     public function testServerDebugPayloadFallsBackToFlatCustomFields(): void

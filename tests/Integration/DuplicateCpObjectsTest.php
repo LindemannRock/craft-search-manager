@@ -222,7 +222,7 @@ final class DuplicateCpObjectsTest extends TestCase
     public function testConfigBackedWidgetConfigDuplicateDoesNotSave(): void
     {
         $this->actWithPermission('searchManager:createWidgetConfigs');
-        $this->swapPluginComponent('search-manager', 'widgetConfigs', new class extends WidgetConfigService {
+        $this->swapPluginComponent('search-manager', 'widgetConfigs', new class() extends WidgetConfigService {
             public function getById(int $id): ?WidgetConfig
             {
                 $config = new WidgetConfig();
@@ -251,7 +251,7 @@ final class DuplicateCpObjectsTest extends TestCase
     {
         $this->forcePluginEdition(SearchManager::EDITION_PRO);
         $this->actWithPermission('searchManager:createWidgetStyles');
-        $this->swapPluginComponent('search-manager', 'widgetStyles', new class extends WidgetStyleService {
+        $this->swapPluginComponent('search-manager', 'widgetStyles', new class() extends WidgetStyleService {
             public function getById(int $id): ?WidgetStyle
             {
                 $style = new WidgetStyle();

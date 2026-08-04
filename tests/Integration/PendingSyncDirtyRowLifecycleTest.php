@@ -155,8 +155,7 @@ final class PendingSyncDirtyRowLifecycleTest extends TestCase
         string $claimToken,
         int $attemptCount = 1,
         bool $dirty = false,
-    ): int
-    {
+    ): int {
         $now = Db::prepareDateForDb(new \DateTime());
         Craft::$app->getDb()
             ->createCommand()

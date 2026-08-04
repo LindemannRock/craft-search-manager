@@ -13,10 +13,10 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use Craft;
 use craft\base\ElementInterface;
 use craft\base\Field;
-use craft\elements\ElementCollection;
-use craft\elements\Entry;
 use craft\elements\db\ElementQuery;
 use craft\elements\db\ElementQueryInterface;
+use craft\elements\ElementCollection;
+use craft\elements\Entry;
 use craft\fieldlayoutelements\CustomField;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
@@ -43,12 +43,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 final class EntrySplitSectionsTest extends TestCase
 {
     private const INDEX_HANDLE = 'test_entry_split_sections';
-
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-        self::defineRichTextTestClass();
-    }
 
     protected function tearDown(): void
     {
@@ -186,30 +180,27 @@ final class EntrySplitSectionsTest extends TestCase
 
     public function testFixtureEntryRichTextMirrorIsControlledOnlyByRetrievableFields(): void
     {
-        $entry = Entry::find()
-            ->id(1087)
-            ->siteId((int)Craft::$app->getSites()->getPrimarySite()->id)
-            ->status(null)
-            ->one();
-        if (!$entry instanceof Entry || !$entry->getFieldLayout()?->getFieldByHandle('richText')) {
-            self::markTestSkipped('Requires lorem-ipsum entry 1087 with a richText field.');
+        $fixture = $this->findRichTextFixtureEntry();
+        if ($fixture === null) {
+            self::markTestSkipped('Requires the package-owned deterministic rich-text entry fixture.');
         }
+        [$entry, $richTextHandle] = $fixture;
 
         $data = (new AutoTransformer())->transform($entry);
-        self::assertArrayHasKey('richText', $data['_fields'] ?? []);
+        self::assertArrayHasKey($richTextHandle, $data['_fields'] ?? []);
         self::assertArrayHasKey('_bodyClean', $data);
 
         $this->saveTestIndex(['*']);
         $record = SearchRecordProjectionHelper::externalRecord(self::INDEX_HANDLE, $data);
-        self::assertArrayHasKey('richText', $record['fields'] ?? []);
-        self::assertArrayHasKey('richText', $record['_snippetFields'] ?? []);
-        self::assertSame($data['_fields']['richText'], $record['fields']['richText']);
-        self::assertSame($data['_fields']['richText'], $record['_snippetFields']['richText']);
+        self::assertArrayHasKey($richTextHandle, $record['fields'] ?? []);
+        self::assertArrayHasKey($richTextHandle, $record['_snippetFields'] ?? []);
+        self::assertSame($data['_fields'][$richTextHandle], $record['fields'][$richTextHandle]);
+        self::assertSame($data['_fields'][$richTextHandle], $record['_snippetFields'][$richTextHandle]);
 
         $this->saveTestIndex(['intro']);
         $narrowRecord = SearchRecordProjectionHelper::externalRecord(self::INDEX_HANDLE, $data);
-        self::assertArrayNotHasKey('richText', $narrowRecord['fields'] ?? []);
-        self::assertArrayHasKey('richText', $narrowRecord['_snippetFields'] ?? []);
+        self::assertArrayNotHasKey($richTextHandle, $narrowRecord['fields'] ?? []);
+        self::assertArrayHasKey($richTextHandle, $narrowRecord['_snippetFields'] ?? []);
     }
 
     public function testProjectionAndCodeSnippetFieldsMirrorDocsSplitContract(): void
@@ -275,18 +266,15 @@ final class EntrySplitSectionsTest extends TestCase
 
     public function testEntryContentEditReslicesAndDeletesRemovedHeadingOrphans(): void
     {
-        $entry = Entry::find()
-            ->id(1087)
-            ->siteId((int)Craft::$app->getSites()->getPrimarySite()->id)
-            ->status(null)
-            ->one();
-        if (!$entry instanceof Entry || !$entry->getFieldLayout()?->getFieldByHandle('richText')) {
-            self::markTestSkipped('Requires lorem-ipsum entry 1087 with a richText field.');
+        $fixture = $this->findRichTextFixtureEntry();
+        if ($fixture === null) {
+            self::markTestSkipped('Requires the package-owned deterministic rich-text entry fixture.');
         }
+        [$entry, $richTextHandle] = $fixture;
 
-        $originalRichText = (string)$entry->getFieldValue('richText');
+        $originalRichText = (string)$entry->getFieldValue($richTextHandle);
         if (stripos($originalRichText, '<h2') === false && stripos($originalRichText, '<h3') === false) {
-            self::markTestSkipped('Entry 1087 richText has no h2/h3 headings.');
+            self::markTestSkipped('The deterministic rich-text entry has no h2/h3 headings.');
         }
 
         $stub = $this->installStubBackend();
@@ -295,7 +283,7 @@ final class EntrySplitSectionsTest extends TestCase
         self::assertNotNull($testIndex);
         $testIndex->updateStats(0);
 
-        $this->withOnlySearchIndices([$testIndex], function () use ($entry, $originalRichText, $stub): void {
+        $this->withOnlySearchIndices([$testIndex], function() use ($entry, $richTextHandle, $originalRichText, $stub): void {
             SearchManager::$plugin->indexing->indexElementNow($entry);
             $firstKeepSet = $this->lastKeepSet($stub->calls);
             self::assertNotEmpty($firstKeepSet);
@@ -310,11 +298,11 @@ final class EntrySplitSectionsTest extends TestCase
 
             $secondKeepSet = [];
             try {
-                $entry->setFieldValue('richText', '<p>Edited intro text.</p><h2>Replacement Heading</h2><p>Replacement body text.</p>');
+                $entry->setFieldValue($richTextHandle, '<p>Edited intro text.</p><h2>Replacement Heading</h2><p>Replacement body text.</p>');
                 SearchManager::$plugin->indexing->indexElementNow($entry);
                 $secondKeepSet = $this->lastKeepSet($stub->calls);
             } finally {
-                $entry->setFieldValue('richText', $originalRichText);
+                $entry->setFieldValue($richTextHandle, $originalRichText);
             }
 
             self::assertContains(SearchHitIdentityHelper::sectionDocumentId((int)$entry->id, (int)$entry->siteId, 'replacement-heading'), $secondKeepSet);
@@ -330,20 +318,17 @@ final class EntrySplitSectionsTest extends TestCase
 
     public function testCriteriaMismatchCleanupImmediatelyRefreshesSplitDocumentCount(): void
     {
-        $entry = Entry::find()
-            ->id(1087)
-            ->siteId((int)Craft::$app->getSites()->getPrimarySite()->id)
-            ->status(null)
-            ->one();
-        if (!$entry instanceof Entry || !$entry->getFieldLayout()?->getFieldByHandle('richText')) {
-            self::markTestSkipped('Requires lorem-ipsum entry 1087 with a richText field.');
+        $fixture = $this->findRichTextFixtureEntry();
+        if ($fixture === null) {
+            self::markTestSkipped('Requires the package-owned deterministic rich-text entry fixture.');
         }
+        [$entry] = $fixture;
         $stub = $this->installStubBackend();
         $this->saveTestIndex(['*']);
         $index = SearchIndex::findByHandle(self::INDEX_HANDLE);
         self::assertNotNull($index);
 
-        $this->withOnlySearchIndices([$index], function () use ($entry): void {
+        $this->withOnlySearchIndices([$index], function() use ($entry): void {
             self::assertTrue(SearchManager::$plugin->indexing->indexElementNow($entry));
         });
         $indexedCount = $stub->documentCounts[self::INDEX_HANDLE] ?? 0;
@@ -355,10 +340,10 @@ final class EntrySplitSectionsTest extends TestCase
         $index->criteria = static fn(ElementQuery $query): ElementQuery => $query->andWhere('1=0');
         self::assertFalse($index->matchesCriteria($entry));
 
-        $this->withOnlySearchIndices([$index], function () use ($entry): void {
+        $this->withOnlySearchIndices([$index], function() use ($entry): void {
             self::assertTrue(SearchManager::$plugin->indexing->indexElementNow($entry));
         });
-        self::assertSame(0, SearchIndex::findByHandle(self::INDEX_HANDLE)?->documentCount);
+        self::assertSame(0, SearchIndex::findByHandle(self::INDEX_HANDLE)->documentCount);
 
         $cleanupCalls = array_values(array_filter(
             $stub->calls,
@@ -535,21 +520,6 @@ final class EntrySplitSectionsTest extends TestCase
             ->execute();
         SearchIndex::clearCache();
         SearchManager::$plugin->dependencies->clearIndexCatalogue();
-    }
-
-    private static function defineRichTextTestClass(): void
-    {
-        if (class_exists('craft\\ckeditor\\Field')) {
-            return;
-        }
-
-        eval(<<<'PHP'
-namespace craft\ckeditor;
-
-class Field extends \craft\base\Field
-{
-}
-PHP);
     }
 }
 

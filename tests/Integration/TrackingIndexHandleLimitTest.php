@@ -72,7 +72,7 @@ final class TrackingIndexHandleLimitTest extends TestCase
     {
         $indices = $this->fakeIndices(2);
 
-        $this->withOnlySearchIndices($indices, function (): void {
+        $this->withOnlySearchIndices($indices, function(): void {
             [$handles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
                 'audit-385-index-1,audit-385-index-1,audit-385-index-2',
             );
@@ -87,7 +87,7 @@ final class TrackingIndexHandleLimitTest extends TestCase
     {
         $indices = $this->fakeIndices(1);
 
-        $this->withOnlySearchIndices($indices, function (): void {
+        $this->withOnlySearchIndices($indices, function(): void {
             [$handles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
                 implode(',', array_fill(0, SearchIndex::MAX_REQUESTED_INDICES + 1, 'audit-385-index-1')),
             );
@@ -109,7 +109,7 @@ final class TrackingIndexHandleLimitTest extends TestCase
             'indexHandles' => implode(',', array_map(static fn(SearchIndex $index): string => $index->handle, $indices)),
         ]);
 
-        $response = $this->withOnlySearchIndices($indices, fn(): Response => $this->runTrackSearch());
+        $response = $this->withOnlySearchIndices($indices, fn(): \yii\web\Response => $this->runTrackSearch());
 
         self::assertSame(['success' => false, 'error' => self::ERROR_MESSAGE], $response->data);
         self::assertSame([], $spy->trackSearchCalls, 'Overflow must fail closed before any analytics write.');
@@ -124,7 +124,7 @@ final class TrackingIndexHandleLimitTest extends TestCase
             'indexHandles' => 'audit-385-index-1,audit-385-index-1,audit-385-index-1',
         ]);
 
-        $response = $this->withOnlySearchIndices($indices, fn(): Response => $this->runTrackSearch());
+        $response = $this->withOnlySearchIndices($indices, fn(): \yii\web\Response => $this->runTrackSearch());
 
         self::assertSame(['success' => true, 'tracked' => true], $response->data);
         self::assertCount(1, $spy->trackSearchCalls, 'Duplicate handles must produce exactly one analytics write.');
@@ -155,35 +155,15 @@ final class TrackingIndexHandleLimitTest extends TestCase
      * Swap in an analytics spy that records trackSearch() calls instead of
      * writing rows. Auto-restored in tearDown by the base class.
      */
-    private function installAnalyticsSpy(): AnalyticsService
+    private function installAnalyticsSpy(): TrackingIndexHandleLimitAnalyticsSpy
     {
-        $spy = new class extends AnalyticsService {
-            /** @var list<array{handle: string, query: string, sessionId: ?string}> */
-            public array $trackSearchCalls = [];
-
-            public function trackSearch(
-                string $indexHandle,
-                string $query,
-                int $resultsCount,
-                ?float $executionTime,
-                string $backend,
-                ?int $siteId = null,
-                array $analyticsOptions = [],
-                ?string $sessionId = null,
-            ): void {
-                $this->trackSearchCalls[] = [
-                    'handle' => $indexHandle,
-                    'query' => $query,
-                    'sessionId' => $sessionId,
-                ];
-            }
-        };
+        $spy = new TrackingIndexHandleLimitAnalyticsSpy();
         $this->swapPluginComponent('search-manager', 'analytics', $spy);
 
         return $spy;
     }
 
-    private function runTrackSearch(): Response
+    private function runTrackSearch(): \yii\web\Response
     {
         return (new SearchController('search', SearchManager::$plugin))->actionTrackSearch();
     }
@@ -234,5 +214,28 @@ final class TrackingIndexHandleLimitTest extends TestCase
                 return false;
             }
         });
+    }
+}
+
+final class TrackingIndexHandleLimitAnalyticsSpy extends AnalyticsService
+{
+    /** @var list<array{handle: string, query: string, sessionId: ?string}> */
+    public array $trackSearchCalls = [];
+
+    public function trackSearch(
+        string $indexHandle,
+        string $query,
+        int $resultsCount,
+        ?float $executionTime,
+        string $backend,
+        ?int $siteId = null,
+        array $analyticsOptions = [],
+        ?string $sessionId = null,
+    ): void {
+        $this->trackSearchCalls[] = [
+            'handle' => $indexHandle,
+            'query' => $query,
+            'sessionId' => $sessionId,
+        ];
     }
 }

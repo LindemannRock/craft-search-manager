@@ -73,16 +73,16 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         $user->username = 'ada';
         $user->email = 'ada@example.test';
 
-        self::assertSame('Ada Lovelace', $transformer->transform($user)['title'] ?? null);
+        self::assertSame('Ada Lovelace', $transformer->transform($user)['title']);
 
         $user->fullName = '';
-        self::assertSame('ada', $transformer->transform($user)['title'] ?? null);
+        self::assertSame('ada', $transformer->transform($user)['title']);
 
         $user->username = '';
-        self::assertSame('ada@example.test', $transformer->transform($user)['title'] ?? null);
+        self::assertSame('ada@example.test', $transformer->transform($user)['title']);
 
         $user->email = '';
-        self::assertSame('#123', $transformer->transform($user)['title'] ?? null);
+        self::assertSame('#123', $transformer->transform($user)['title']);
     }
 
     public function testLocalBackendHitMergeKeepsTransformerDocumentKindOverStorageMetadata(): void
@@ -311,9 +311,9 @@ final class SearchHitDocumentTypeContractTest extends TestCase
                 'url' => '/' . $slug,
             ]);
 
-            self::assertSame($slug, $hit['slug'] ?? null, $kind);
+            self::assertSame($slug, $hit['slug'], $kind);
             self::assertArrayNotHasKey('elementType', $hit, $kind);
-            self::assertNotSame('', $hit['slug'] ?? '', $kind);
+            self::assertNotSame('', $hit['slug'], $kind);
             self::assertArrayNotHasKey('filename', $hit, $kind);
             self::assertArrayNotHasKey('assetKind', $hit, $kind);
             self::assertArrayNotHasKey('extension', $hit, $kind);
@@ -352,7 +352,7 @@ final class SearchHitDocumentTypeContractTest extends TestCase
 
     private function localBackend(): AbstractSearchEngineBackend
     {
-        return new class extends AbstractSearchEngineBackend {
+        return new class() extends AbstractSearchEngineBackend {
             protected function createStorage(string $fullIndexName): StorageInterface
             {
                 throw new \RuntimeException('Storage is not used by this test.');
@@ -378,14 +378,6 @@ final class SearchHitDocumentTypeContractTest extends TestCase
                 return ['available' => true];
             }
         };
-    }
-
-    private function readPluginFile(string $path): string
-    {
-        $contents = file_get_contents(dirname(__DIR__, 2) . '/' . ltrim($path, '/'));
-        self::assertIsString($contents, sprintf('Expected to read plugin file: %s', $path));
-
-        return $contents;
     }
 }
 

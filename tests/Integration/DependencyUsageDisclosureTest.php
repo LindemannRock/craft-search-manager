@@ -173,7 +173,7 @@ final class DependencyUsageDisclosureTest extends TestCase
      */
     private function actAs(array $permissions): void
     {
-        $identity = new class extends User {
+        $identity = new class() extends User {
             /** @var list<string> */
             public array $grantedPermissions = [];
 
@@ -201,7 +201,7 @@ final class DependencyUsageDisclosureTest extends TestCase
      */
     private function fakeWidgetConfig(string $name, array $indexHandles): WidgetConfig
     {
-        $config = new class extends WidgetConfig {
+        $config = new class() extends WidgetConfig {
             /** @var list<string> */
             public array $fakeIndexHandles = [];
 
@@ -221,7 +221,7 @@ final class DependencyUsageDisclosureTest extends TestCase
      */
     private function installWidgetConfigStub(array $configs): void
     {
-        $stub = new class extends WidgetConfigService {
+        $stub = new class() extends WidgetConfigService {
             /** @var list<WidgetConfig> */
             public array $fakeConfigs = [];
 

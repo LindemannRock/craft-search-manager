@@ -49,7 +49,7 @@ final class SearchIndexCriteriaMatchTest extends TestCase
         }
 
         $includedId = (int)$elements[0]->id;
-        $index->criteria = static function ($query) use ($includedId) {
+        $index->criteria = static function($query) use ($includedId) {
             $query->andWhere(['elements.id' => $includedId]);
             return $query;
         };
@@ -97,7 +97,7 @@ final class SearchIndexCriteriaMatchTest extends TestCase
         // A Closure that filters to a deliberately non-existent ID will
         // never match the test element. `matchesCriteria()` should return
         // false without throwing.
-        $index->criteria = static function ($query) {
+        $index->criteria = static function($query) {
             $query->id(-99999);
             return $query;
         };
@@ -118,7 +118,7 @@ final class SearchIndexCriteriaMatchTest extends TestCase
         // model's `matchesElement()` had no try/catch and would bubble
         // the exception out of the indexing pipeline. The consolidated
         // implementation catches and returns the safe default.
-        $index->criteria = static function ($query): void {
+        $index->criteria = static function($query): void {
             throw new \RuntimeException('Simulated criteria failure');
         };
 

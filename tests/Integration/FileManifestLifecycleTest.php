@@ -14,8 +14,9 @@ use Craft;
 use craft\helpers\StringHelper;
 use craft\web\View;
 use lindemannrock\searchmanager\search\SearchEngine;
-use lindemannrock\searchmanager\search\TermNormalizer;
 use lindemannrock\searchmanager\search\storage\FileStorage;
+use lindemannrock\searchmanager\search\TermNormalizer;
+use lindemannrock\searchmanager\tests\Support\TestProjectBoundary;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -750,30 +751,35 @@ declare(strict_types=1);
 
 use lindemannrock\searchmanager\search\storage\FileStorage;
 
-require $argv[1];
+require_once $argv[1];
+require_once $argv[2];
+require $argv[3];
 
-$operation = $argv[2];
-$basePath = $argv[3];
+$operation = $argv[4];
+$basePath = $argv[5];
 $storage = new FileStorage('pr1-debt-7-file-manifest', $basePath);
 
 if ($operation === 'store-document') {
-    $storage->storeDocument((int)$argv[4], (int)$argv[5], ['worker' => 1], (int)$argv[6], $argv[7]);
+    $storage->storeDocument((int)$argv[6], (int)$argv[7], ['worker' => 1], (int)$argv[8], $argv[9]);
     exit(0);
 }
 
 if ($operation === 'clear-site') {
-    $storage->clearSite((int)$argv[4]);
-    touch($argv[5]);
+    $storage->clearSite((int)$argv[6]);
+    touch($argv[7]);
     exit(0);
 }
 
 exit(1);
 PHP);
 
+        $boundary = TestProjectBoundary::resolve();
         $command = array_merge([
             PHP_BINARY,
             $script,
-            dirname(__DIR__) . '/bootstrap.php',
+            $boundary->vendorAutoload(),
+            $boundary->projectRoot . '/bootstrap.php',
+            $boundary->vendorRoot . '/craftcms/cms/bootstrap/console.php',
             $operation,
             $this->basePath,
         ], $arguments);
@@ -868,5 +874,4 @@ PHP);
 
         return $body;
     }
-
 }

@@ -426,7 +426,7 @@ final class RecordingSecurityController extends SecurityController
 
     protected function writeTemporaryFile(mixed $handle, string $content): int|false
     {
-        self::assertRecordingHandle($handle);
+        $handle = self::recordingHandle($handle);
         $this->calls[] = 'write';
 
         if ($handle->path === self::ENV_PATH) {
@@ -449,14 +449,14 @@ final class RecordingSecurityController extends SecurityController
 
     protected function flushTemporaryFile(mixed $handle): bool
     {
-        self::assertRecordingHandle($handle);
+        self::recordingHandle($handle);
         $this->calls[] = 'flush';
         return $this->failure !== 'flush';
     }
 
     protected function closeTemporaryFile(mixed $handle): bool
     {
-        self::assertRecordingHandle($handle);
+        $handle = self::recordingHandle($handle);
         $this->calls[] = 'close';
         $this->files[$handle->path] = $handle->content;
         return $this->failure !== 'close';
@@ -508,10 +508,12 @@ final class RecordingSecurityController extends SecurityController
         return true;
     }
 
-    private static function assertRecordingHandle(mixed $handle): void
+    private static function recordingHandle(mixed $handle): RecordingSecurityFileHandle
     {
         if (!$handle instanceof RecordingSecurityFileHandle) {
             throw new \RuntimeException('Expected a recording security file handle.');
         }
+
+        return $handle;
     }
 }

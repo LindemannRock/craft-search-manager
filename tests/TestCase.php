@@ -14,7 +14,9 @@ use Craft;
 use craft\base\ElementInterface;
 use craft\cache\FileCache;
 use craft\db\Query;
+use craft\elements\Entry;
 use craft\queue\Queue;
+use craft\web\AssetManager;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\testing\IntegrationTestCase;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -22,9 +24,13 @@ use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\Stubs\StubBackend;
+use lindemannrock\searchmanager\tests\Support\DeterministicFixtureManifest;
 use lindemannrock\searchmanager\tests\Support\OwnedProcessRegistry;
 use lindemannrock\searchmanager\tests\Support\ProcessRunOwner;
 use Throwable;
+use Twig\Loader\ArrayLoader;
+use Twig\Loader\ChainLoader;
+use Twig\Loader\LoaderInterface;
 use yii\db\Connection;
 use yii\db\Transaction;
 use yii\web\ForbiddenHttpException;
@@ -59,6 +65,10 @@ abstract class TestCase extends IntegrationTestCase
     private ?object $originalQueue = null;
     private ?object $originalCache = null;
     private ?string $originalRuntimePath = null;
+    private ?LoaderInterface $originalCpTwigLoader = null;
+    private string|false|null $originalRootAlias = null;
+    private string|false|null $originalWebrootAlias = null;
+    private string|false|null $originalWebAlias = null;
     private ?string $testQueueTable = null;
     private ?string $testQueueRawTable = null;
     private ?string $testQueueShadowTable = null;
@@ -91,7 +101,10 @@ abstract class TestCase extends IntegrationTestCase
             $this->baseStateInitialised = true;
             $this->snapshotAppComponents();
             $this->settingsAttributesSnapshot = SearchManager::$plugin->getSettings()->getAttributes();
+            // Cache lifecycle tests opt into invalidation at the operation boundary.
+            SearchManager::$plugin->getSettings()->clearCacheOnSave = false;
             $this->isolateRuntimeAndCache();
+            $this->isolateAssetResources();
             $this->isolatePendingSyncTable();
             $this->isolateQueue();
             $this->isolateSearchStorageTables();
@@ -301,10 +314,15 @@ abstract class TestCase extends IntegrationTestCase
 
         $property->setValue(null, $indices);
         $expiresAtProperty->setValue(null, microtime(true) + 3600.0);
+        $settings = SearchManager::$plugin->getSettings();
+        $originalClearCacheOnSave = $settings->clearCacheOnSave;
+        // Direct-indexing consumers assert the cache invalidation contract.
+        $settings->clearCacheOnSave = true;
 
         try {
             return $callback();
         } finally {
+            $settings->clearCacheOnSave = $originalClearCacheOnSave;
             $property->setValue(null, $original);
             $expiresAtProperty->setValue(null, $originalExpiresAt);
         }
@@ -375,6 +393,43 @@ abstract class TestCase extends IntegrationTestCase
         Craft::$app->set('cache', new FileCache([
             'cachePath' => $runtimePath . DIRECTORY_SEPARATOR . 'cache',
             'keyPrefix' => 'search-manager-test-' . bin2hex(random_bytes(8)),
+        ]));
+    }
+
+    private function isolateAssetResources(): void
+    {
+        $this->originalRootAlias = Craft::getRootAlias('@root');
+        $this->originalWebrootAlias = Craft::getRootAlias('@webroot');
+        $this->originalWebAlias = Craft::getRootAlias('@web');
+
+        $root = $this->createOwnedTempDirectory('project-root');
+        $webroot = $root . DIRECTORY_SEPARATOR . 'web';
+        $resourcePath = $webroot . DIRECTORY_SEPARATOR . 'cpresources';
+        if (!mkdir($resourcePath, 0700, true) && !is_dir($resourcePath)) {
+            throw new \RuntimeException("Unable to create isolated Craft resource path: {$resourcePath}");
+        }
+
+        Craft::setAlias('@root', $root);
+        Craft::setAlias('@webroot', $webroot);
+        Craft::setAlias('@web', '/');
+        if (Craft::$app->has('assetManager')) {
+            $assetManager = Craft::$app->get('assetManager');
+            if (is_object($assetManager)) {
+                $this->originalAppComponents['assetManager'] = $assetManager;
+            }
+        }
+        Craft::$app->set('assetManager', new AssetManager([
+            'basePath' => $resourcePath,
+            'baseUrl' => '/cpresources',
+        ]));
+
+        $twig = Craft::$app->getView()->getTwig(\craft\web\View::TEMPLATE_MODE_CP);
+        $this->originalCpTwigLoader = $twig->getLoader();
+        $twig->setLoader(new ChainLoader([
+            new ArrayLoader([
+                '_layouts/components/notifications' => '<div id="notifications" role="status"></div>',
+            ]),
+            $this->originalCpTwigLoader,
         ]));
     }
 
@@ -519,6 +574,26 @@ abstract class TestCase extends IntegrationTestCase
 
         $errors = [];
         $this->runCleanupStep($errors, fn() => $this->restoreAppComponents());
+        $this->runCleanupStep($errors, function(): void {
+            if ($this->originalCpTwigLoader !== null) {
+                Craft::$app->getView()->getTwig(\craft\web\View::TEMPLATE_MODE_CP)->setLoader($this->originalCpTwigLoader);
+                $this->originalCpTwigLoader = null;
+            }
+        });
+        $this->runCleanupStep($errors, function(): void {
+            if ($this->originalRootAlias !== null) {
+                Craft::setAlias('@root', $this->originalRootAlias);
+                $this->originalRootAlias = null;
+            }
+            if ($this->originalWebrootAlias !== null) {
+                Craft::setAlias('@webroot', $this->originalWebrootAlias);
+                $this->originalWebrootAlias = null;
+            }
+            if ($this->originalWebAlias !== null) {
+                Craft::setAlias('@web', $this->originalWebAlias);
+                $this->originalWebAlias = null;
+            }
+        });
         $this->runCleanupStep($errors, fn() => $this->restorePluginEdition());
         $this->runCleanupStep($errors, function(): void {
             if ($this->settingsAttributesSnapshot !== null) {
@@ -692,6 +767,22 @@ abstract class TestCase extends IntegrationTestCase
     protected function findWorkingIndexAndElement(): ?array
     {
         $catalogue = SearchManager::$plugin->dependencies->getIndexCatalogue();
+        $fixture = $this->findPackageFixtureRichTextEntry();
+        if ($fixture !== null) {
+            [$fixtureEntry] = $fixture;
+            $manifest = DeterministicFixtureManifest::load();
+            $fixtureIndexHandle = $manifest['indices'][0]['handle'] ?? null;
+            $fixtureIndex = is_string($fixtureIndexHandle) ? SearchIndex::findByHandle($fixtureIndexHandle) : null;
+            if ($fixtureIndex instanceof SearchIndex && $this->indexAcceptsEntry($fixtureIndex, $fixtureEntry, $catalogue)) {
+                return [$fixtureIndex, $fixtureEntry];
+            }
+            foreach (SearchIndex::findAll() as $index) {
+                if ($this->indexAcceptsEntry($index, $fixtureEntry, $catalogue)) {
+                    return [$index, $fixtureEntry];
+                }
+            }
+        }
+
         foreach (SearchIndex::findAll() as $index) {
             if (!$index->enabled) {
                 continue;
@@ -726,6 +817,107 @@ abstract class TestCase extends IntegrationTestCase
         }
 
         return null;
+    }
+
+    /**
+     * @return array{0: Entry, 1: string}|null
+     */
+    protected function findRichTextFixtureEntry(): ?array
+    {
+        $fixture = $this->findPackageFixtureRichTextEntry();
+        if ($fixture !== null) {
+            return $fixture;
+        }
+
+        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        $entries = Entry::find()
+            ->siteId($siteId)
+            ->status(null)
+            ->drafts(false)
+            ->revisions(false)
+            ->andWhere(['entries.primaryOwnerId' => null])
+            ->limit(50)
+            ->all();
+        foreach ($entries as $entry) {
+            foreach ($entry->getFieldLayout()?->getCustomFields() ?? [] as $field) {
+                if (!$field instanceof \craft\ckeditor\Field) {
+                    continue;
+                }
+                $value = (string)$entry->getFieldValue($field->handle);
+                if (preg_match('/<h[23][^>]*>/i', $value)) {
+                    return [$entry, $field->handle];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{0: Entry, 1: string}|null
+     */
+    private function findPackageFixtureRichTextEntry(): ?array
+    {
+        $manifest = DeterministicFixtureManifest::load();
+        $entryData = $manifest['entries'][0] ?? null;
+        $sectionData = $manifest['sections'][0] ?? null;
+        $siteData = $manifest['sites'][0] ?? null;
+        $fields = $manifest['fields'] ?? null;
+        if (!is_array($entryData) || !is_array($sectionData) || !is_array($siteData) || !is_array($fields)) {
+            return null;
+        }
+
+        $richTextHandle = null;
+        foreach ($fields as $field) {
+            if (is_array($field) && ($field['type'] ?? null) === \craft\ckeditor\Field::class) {
+                $richTextHandle = $field['handle'] ?? null;
+                break;
+            }
+        }
+        $slug = $entryData['slug'] ?? null;
+        $sectionHandle = $sectionData['handle'] ?? null;
+        $siteHandle = $siteData['handle'] ?? null;
+        if (!is_string($richTextHandle) || !is_string($slug) || !is_string($sectionHandle) || !is_string($siteHandle)) {
+            return null;
+        }
+
+        $section = Craft::$app->getEntries()->getSectionByHandle($sectionHandle);
+        $site = Craft::$app->getSites()->getSiteByHandle($siteHandle);
+        if ($section === null || $site === null) {
+            return null;
+        }
+        $entry = Entry::find()
+            ->sectionId($section->id)
+            ->slug($slug)
+            ->siteId($site->id)
+            ->status(null)
+            ->drafts(false)
+            ->revisions(false)
+            ->one();
+        if (!$entry instanceof Entry || !$entry->getFieldLayout()?->getFieldByHandle($richTextHandle)) {
+            return null;
+        }
+
+        return [$entry, $richTextHandle];
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $catalogue
+     */
+    private function indexAcceptsEntry(SearchIndex $index, Entry $entry, array $catalogue): bool
+    {
+        if (
+            !$index->enabled
+            || !($catalogue[$index->handle]['referenceable'] ?? false)
+            || $index->elementType !== Entry::class
+        ) {
+            return false;
+        }
+
+        $siteIds = $index->getSiteIds() ?? Craft::$app->getSites()->getAllSiteIds();
+
+        return in_array((int)$entry->siteId, array_map('intval', $siteIds), true)
+            && $index->matchesElement($entry);
     }
 
     /**

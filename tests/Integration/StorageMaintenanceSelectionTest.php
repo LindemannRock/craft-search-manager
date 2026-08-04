@@ -170,14 +170,17 @@ final class StorageMaintenanceSelectionTest extends TestCase
                 ['label' => 'PostgreSQL (3 rows)', 'value' => 'database'],
             ],
         ];
-        $service = new class extends StorageMaintenanceService {
+        $service = new class() extends StorageMaintenanceService {
             /**
              * @var array{
              *   stats: array<string, array<string, mixed>>,
              *   storageOptions: list<array{label: string, value: string}>
              * }
              */
-            public array $projection = [];
+            public array $projection = [
+                'stats' => [],
+                'storageOptions' => [],
+            ];
 
             /**
              * @inheritdoc
@@ -288,6 +291,7 @@ final class StorageMaintenanceSelectionTest extends TestCase
             'database' => 'totalRows',
             'redis' => 'keyCount',
             'file' => 'fileCount',
+            default => throw new \InvalidArgumentException("Unknown storage type: {$type}"),
         };
     }
 
@@ -322,7 +326,7 @@ final class StorageMaintenanceSelectionTest extends TestCase
                     'analyticsCount' => 0,
                     'settings' => SearchManager::$plugin->getSettings(),
                     'storageOptions' => $storageOptions,
-                    'currentUser' => new class {
+                    'currentUser' => new class() {
                         public function can(string $permission): bool
                         {
                             return true;

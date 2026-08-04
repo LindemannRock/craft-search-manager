@@ -208,7 +208,7 @@ final class FileStorageFailureContractTest extends TestCase
         $handle = 'mutation-' . $family;
         $storage = $this->makeStorage($handle);
         $indexPath = $this->indexPath($handle);
-        $suggestions = [[
+        $suggestions = ['alpha guide' => [
             'suggestion' => 'Alpha guide',
             'normalizedSuggestion' => 'alpha guide',
             'tokenKey' => 'alpha guide',
@@ -295,6 +295,7 @@ final class FileStorageFailureContractTest extends TestCase
                 $this->blockPath($indexPath . '/compounds/1_101_1_intro.dat');
                 $storage->deleteCompoundSuggestionsByKey(1, '101_1_intro');
             },
+            default => throw new \InvalidArgumentException("Unknown mutation family: {$family}"),
         };
 
         $this->assertRuntimeFailure($operation);
@@ -307,7 +308,9 @@ final class FileStorageFailureContractTest extends TestCase
         self::assertIsResource($resource);
 
         try {
-            $this->assertRuntimeFailure(static fn(): mixed => $storage->storeTitleTerms(1, 101, [$resource]));
+            $this->assertRuntimeFailure(static function() use ($storage, $resource): void {
+                $storage->storeTitleTerms(1, 101, [$resource]);
+            });
         } finally {
             fclose($resource);
         }

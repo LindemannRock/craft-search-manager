@@ -138,7 +138,7 @@ final class EnrichmentBatchLoadTest extends TestCase
     {
         $this->originalElements = Craft::$app->get('elements');
 
-        $counting = new class extends \craft\services\Elements {
+        $counting = new class() extends \craft\services\Elements {
             public int $getByIdCalls = 0;
 
             public function getElementById(

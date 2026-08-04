@@ -942,7 +942,7 @@ final class RedisStorageFakeRedis
     {
         if ($this->pipeline !== null) {
             $this->hGetAllPipelineCalls++;
-            $this->pipeline[] = fn (): array => $this->hashes[$key] ?? [];
+            $this->pipeline[] = fn(): array => $this->hashes[$key] ?? [];
             return $this;
         }
 
@@ -955,7 +955,7 @@ final class RedisStorageFakeRedis
     {
         if ($this->pipeline !== null) {
             $this->hGetPipelineCalls++;
-            $this->pipeline[] = fn (): mixed => $this->hashes[$key][$field] ?? false;
+            $this->pipeline[] = fn(): mixed => $this->hashes[$key][$field] ?? false;
             return $this;
         }
 
@@ -1020,7 +1020,7 @@ final class RedisStorageFakeRedis
     {
         if ($this->pipeline !== null) {
             $this->sMembersPipelineCalls++;
-            $this->pipeline[] = fn (): array => $this->sets[$key] ?? [];
+            $this->pipeline[] = fn(): array => $this->sets[$key] ?? [];
             return $this;
         }
 
@@ -1109,7 +1109,7 @@ final class RedisStorageFakeRedis
         $maxValue = $max === '+' ? "\xff" : substr($max, 1);
         $matches = array_values(array_filter(
             $members,
-            static fn (string $member): bool => strcmp($member, $minValue) >= 0 && strcmp($member, $maxValue) <= 0,
+            static fn(string $member): bool => strcmp($member, $minValue) >= 0 && strcmp($member, $maxValue) <= 0,
         ));
 
         return array_slice($matches, $offset, $limit);
@@ -1128,13 +1128,13 @@ final class RedisStorageFakeRedis
         $pipeline = $this->pipeline ?? [];
         $this->pipeline = null;
 
-        return array_map(static fn (callable $operation): mixed => $operation(), $pipeline);
+        return array_map(static fn(callable $operation): mixed => $operation(), $pipeline);
     }
 
     public function get(string $key): string|int|false
     {
         if ($this->pipeline !== null) {
-            $this->pipeline[] = fn (): string|int|false => $this->strings[$key] ?? false;
+            $this->pipeline[] = fn(): string|int|false => $this->strings[$key] ?? false;
             return false;
         }
 
@@ -1175,7 +1175,7 @@ final class RedisStorageFakeRedis
     public function eval(string $script, array $args, int $numKeys): array|int|self
     {
         if ($this->pipeline !== null) {
-            $this->pipeline[] = fn (): array|int => $this->evalNow($args);
+            $this->pipeline[] = fn(): array|int => $this->evalNow($args);
 
             return $this;
         }
@@ -1216,7 +1216,7 @@ final class RedisStorageFakeRedis
                 $this->hashes[$displayKey][$suggestion] = $updated;
             }
 
-            $total = array_sum(array_filter($displayFrequencies, static fn (int $frequency): bool => $frequency > 0));
+            $total = array_sum(array_filter($displayFrequencies, static fn(int $frequency): bool => $frequency > 0));
             if ($total <= 0) {
                 unset($this->hashes[$displayKey], $this->zsets[$rankKey][$normalizedSuggestion]);
             } else {
@@ -1255,7 +1255,7 @@ final class RedisStorageFakeRedis
 
         return array_values(array_filter(
             $this->allKeys(),
-            static fn (string $key): bool => fnmatch($pattern, $key),
+            static fn(string $key): bool => fnmatch($pattern, $key),
         ));
     }
 

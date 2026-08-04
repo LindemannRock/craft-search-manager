@@ -219,7 +219,7 @@ final class ProcessRunOwner
     {
         self::assertActiveChild();
         $status = proc_get_status($process);
-        $pid = (int)($status['pid'] ?? 0);
+        $pid = (int)$status['pid'];
         $identity = self::processIdentity($pid);
         if ($identity === null) {
             throw new \RuntimeException("Unable to identify process {$pid} for {$label}.");
@@ -390,7 +390,7 @@ final class ProcessRunOwner
         self::$journalDirectory = self::journalRoot() . DIRECTORY_SEPARATOR . self::$runId;
         self::$runRoot = self::normaliseAbsolutePath(sys_get_temp_dir() . DIRECTORY_SEPARATOR . self::RUN_PREFIX . self::$runId);
         self::$storageRoot = self::normaliseAbsolutePath(
-            dirname(__DIR__, 4) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . self::STORAGE_PREFIX . self::$runId,
+            TestProjectBoundary::resolve()->storageRoot . DIRECTORY_SEPARATOR . self::STORAGE_PREFIX . self::$runId,
         );
 
         if (!mkdir(self::$journalDirectory, 0700) && !is_dir(self::$journalDirectory)) {
@@ -471,7 +471,7 @@ final class ProcessRunOwner
 
         self::$watchdogProcess = $process;
         $status = proc_get_status($process);
-        $identity = self::processIdentity((int)($status['pid'] ?? 0));
+        $identity = self::processIdentity((int)$status['pid']);
         self::$watchdogIdentity = $identity;
         self::injectStartupFailure('watchdog-identity');
         if ($identity === null) {
@@ -728,7 +728,10 @@ final class ProcessRunOwner
         ];
     }
 
-    /** @param mixed $identity */
+    /**
+     * @param mixed $identity
+     * @phpstan-impure Reads live process identity and state from /proc.
+     */
     private static function identityIsAlive($identity): bool
     {
         if (!is_array($identity) || !isset($identity['pid'], $identity['startTicks'])) {
@@ -1170,7 +1173,9 @@ final class ProcessRunOwner
 
     private static function journalRootPath(): string
     {
-        return self::normaliseAbsolutePath(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . self::JOURNAL_DIRECTORY);
+        return self::normaliseAbsolutePath(
+            TestProjectBoundary::resolve()->packageRoot . DIRECTORY_SEPARATOR . self::JOURNAL_DIRECTORY,
+        );
     }
 
     private static function removeEmptyJournalRoot(): void
@@ -1203,7 +1208,7 @@ final class ProcessRunOwner
     private static function assertStorageRoot(string $storageRoot, string $runId): void
     {
         $expected = self::normaliseAbsolutePath(
-            dirname(__DIR__, 4) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . self::STORAGE_PREFIX . $runId,
+            TestProjectBoundary::resolve()->storageRoot . DIRECTORY_SEPARATOR . self::STORAGE_PREFIX . $runId,
         );
         if (!hash_equals($expected, $storageRoot)) {
             throw new \RuntimeException("Storage-root identity mismatch: {$storageRoot}");
@@ -1311,13 +1316,13 @@ final class ProcessRunOwner
         $deadline = microtime(true) + 3.0;
         do {
             $status = proc_get_status(self::$watchdogProcess);
-            if (!($status['running'] ?? false)) {
+            if (!$status['running']) {
                 break;
             }
             usleep(10000);
         } while (microtime(true) < $deadline);
         $status = proc_get_status(self::$watchdogProcess);
-        if ($status['running'] ?? false) {
+        if ($status['running']) {
             if (self::$watchdogIdentity !== null && self::identityIsAlive(self::$watchdogIdentity)) {
                 $result = self::terminateIdentity(self::$watchdogIdentity, 'startup-watchdog');
                 if (!($result['absent'] ?? false) && is_array($errors)) {

@@ -10,6 +10,11 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
+use craft\commerce\elements\Product;
+use craft\commerce\elements\Variant;
+use craft\commerce\models\ProductType;
+use craft\commerce\Plugin as Commerce;
 use craft\elements\Asset;
 use craft\elements\Category;
 use craft\elements\Entry;
@@ -30,18 +35,8 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(TransformerService::class)]
 final class CommerceTransformerTest extends TestCase
 {
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-        self::defineCommerceTestClasses();
-    }
-
     public function testTransformerServiceResolvesAvailableCommerceElementsToCommerceTransformer(): void
     {
-        if (!CommerceElementTypeHelper::commerceElementTypesAvailable()) {
-            self::markTestSkipped('Craft Commerce is not installed and enabled in this test environment.');
-        }
-
         $productClass = CommerceElementTypeHelper::productElementType();
         $variantClass = CommerceElementTypeHelper::variantElementType();
         $service = new TransformerService();
@@ -74,15 +69,17 @@ final class CommerceTransformerTest extends TestCase
 
     public function testProductTransformIncludesProductMetadataAndVariantSearchData(): void
     {
-        $type = $this->productType('Shoes', 'shoes');
-        $redVariant = $this->variant('SKU-RED', 'Red Sneaker', ['Color' => 'Red', 'Size' => 'Large']);
-        $blueVariant = $this->variant('SKU-BLUE', 'Blue Sneaker', ['Color' => 'Blue']);
-        $product = $this->product($type, [$redVariant, $blueVariant], $redVariant);
+        $type = $this->realProductType();
+        $product = $this->product($type);
         $product->id = 101;
-        $product->siteId = 1;
+        $product->siteId = Craft::$app->getSites()->getPrimarySite()->id;
         $product->title = 'Trail Sneaker';
         $product->slug = 'trail-sneaker';
-        $product->fakeUrl = 'https://example.test/products/trail-sneaker';
+        $product->uri = 'products/trail-sneaker';
+        $redVariant = $this->variant('SKU-RED', 'Red Sneaker', 301, $product);
+        $blueVariant = $this->variant('SKU-BLUE', 'Blue Sneaker', 302, $product);
+        $product->setVariants([$redVariant, $blueVariant]);
+        $product->defaultVariantId = $redVariant->id;
 
         $data = (new CommerceTransformer())->transform($product);
 
@@ -91,9 +88,9 @@ final class CommerceTransformerTest extends TestCase
         self::assertArrayNotHasKey('elementType', $data);
         self::assertSame('Trail Sneaker', $data['title']);
         self::assertSame('trail-sneaker', $data['slug']);
-        self::assertSame('https://example.test/products/trail-sneaker', $data['url']);
-        self::assertSame('Shoes', $data['productType']);
-        self::assertSame('shoes', $data['productTypeHandle']);
+        self::assertSame($product->getUrl() ?? '', $data['url']);
+        self::assertSame($type->name, $data['productType']);
+        self::assertSame($type->handle, $data['productTypeHandle']);
         self::assertArrayNotHasKey('productTypeName', $data);
         self::assertArrayNotHasKey('section', $data);
         self::assertArrayNotHasKey('ancestors', $data);
@@ -101,12 +98,12 @@ final class CommerceTransformerTest extends TestCase
         self::assertArrayNotHasKey('folderPath', $data);
         self::assertSame(['SKU-RED', 'SKU-BLUE'], $data['variantSkus']);
         self::assertSame(['Red Sneaker', 'Blue Sneaker'], $data['variantTitles']);
-        self::assertContains('Color Red', $data['variantOptions']);
-        self::assertContains('Size Large', $data['variantOptions']);
+        self::assertArrayNotHasKey('variantOptions', $data);
+        self::assertContainsOnlyInstancesOf(Variant::class, $product->getVariants(true));
         self::assertSame('SKU-RED', $data['defaultVariantSku']);
         self::assertSame('Red Sneaker', $data['defaultVariantTitle']);
         self::assertStringContainsString('SKU-BLUE', $data['content']);
-        self::assertStringContainsString('Color Red', $data['content']);
+        self::assertStringContainsString('Red Sneaker', $data['content']);
         self::assertArrayNotHasKey('_title', $data);
         self::assertArrayNotHasKey('_slug', $data);
         self::assertArrayNotHasKey('_defaultSku', $data);
@@ -114,37 +111,37 @@ final class CommerceTransformerTest extends TestCase
 
     public function testVariantTransformIncludesVariantDataAndParentProductMetadata(): void
     {
-        $type = $this->productType('Shoes', 'shoes');
+        $type = $this->realProductType();
         $product = $this->product($type);
         $product->id = 101;
-        $product->siteId = 1;
+        $product->siteId = Craft::$app->getSites()->getPrimarySite()->id;
         $product->title = 'Trail Sneaker';
         $product->slug = 'trail-sneaker';
-        $product->fakeUrl = 'https://example.test/products/trail-sneaker';
+        $product->uri = 'products/trail-sneaker';
 
-        $variant = $this->variant('SKU-RED', 'Red Sneaker', ['Color' => 'Red', 'Size' => 'Large'], $product);
-        $variant->id = 301;
-        $variant->siteId = 1;
+        $variant = $this->variant('SKU-RED', 'Red Sneaker', 301, $product);
+        $product->setVariants([$variant]);
+        $product->defaultVariantId = $variant->id;
 
         $data = (new CommerceTransformer())->transform($variant);
 
         self::assertSame(301, $data['elementId']);
-        self::assertSame(1, $data['siteId']);
+        self::assertSame($product->siteId, $data['siteId']);
         self::assertSame('variant', $data['type']);
         self::assertArrayNotHasKey('elementType', $data);
         self::assertSame('SKU-RED', $data['sku']);
         self::assertSame('Red Sneaker', $data['variantTitle']);
         self::assertSame('Trail Sneaker', $data['productTitle']);
         self::assertSame('trail-sneaker', $data['productSlug']);
-        self::assertSame('https://example.test/products/trail-sneaker', $data['url']);
-        self::assertSame('Shoes', $data['productType']);
-        self::assertSame('shoes', $data['productTypeHandle']);
+        self::assertSame($variant->getUrl() ?? '', $data['url']);
+        self::assertSame($type->name, $data['productType']);
+        self::assertSame($type->handle, $data['productTypeHandle']);
         self::assertArrayNotHasKey('productTypeName', $data);
         self::assertArrayNotHasKey('section', $data);
         self::assertArrayNotHasKey('ancestors', $data);
         self::assertArrayNotHasKey('level', $data);
         self::assertArrayNotHasKey('folderPath', $data);
-        self::assertContains('Color Red', $data['variantOptions']);
+        self::assertSame([], $data['variantOptions']);
         self::assertStringContainsString('SKU-RED', $data['content']);
         self::assertStringContainsString('Trail Sneaker', $data['content']);
         self::assertArrayNotHasKey('_title', $data);
@@ -154,194 +151,46 @@ final class CommerceTransformerTest extends TestCase
 
     public function testProductTypeIsMetadataNotElementType(): void
     {
-        $product = $this->product($this->productType('Shoes', 'shoes'));
+        $type = $this->realProductType();
+        $product = $this->product($type);
         $product->id = 101;
-        $product->siteId = 1;
+        $product->siteId = Craft::$app->getSites()->getPrimarySite()->id;
 
         $data = (new CommerceTransformer())->transform($product);
 
         self::assertSame('product', $data['type']);
         self::assertArrayNotHasKey('elementType', $data);
-        self::assertSame('Shoes', $data['productType']);
-        self::assertSame('shoes', $data['productTypeHandle']);
+        self::assertSame($type->name, $data['productType']);
+        self::assertSame($type->handle, $data['productTypeHandle']);
         self::assertArrayNotHasKey('productTypeName', $data);
         self::assertArrayNotHasKey('section', $data);
         self::assertStringNotContainsString('ProductType', implode(' ', array_keys($data)));
     }
 
-    private static function defineCommerceTestClasses(): void
+    private function realProductType(): ProductType
     {
-        if (!class_exists(CommerceElementTypeHelper::productElementType())) {
-            eval(<<<'PHP'
-namespace craft\commerce\elements;
+        $type = Commerce::getInstance()->getProductTypes()->getAllProductTypes()[0] ?? null;
+        self::assertInstanceOf(ProductType::class, $type, 'The supported test fixture must install a real Commerce product type.');
 
-class Product extends \craft\base\Element
-{
-    public ?string $fakeUrl = null;
-    public ?object $fakeType = null;
-    public ?object $fakeDefaultVariant = null;
-    public array $fakeVariants = [];
-
-    public function getUrl(): ?string
-    {
-        return $this->fakeUrl;
+        return $type;
     }
 
-    public function getType(): ?object
+    private function product(ProductType $type): Product
     {
-        return $this->fakeType;
-    }
-
-    public function getVariants(): array
-    {
-        return $this->fakeVariants;
-    }
-
-    public function getDefaultVariant(): ?object
-    {
-        return $this->fakeDefaultVariant;
-    }
-}
-
-class Variant extends \craft\base\Element
-{
-    public string $sku = '';
-    public ?string $fakeUrl = null;
-    public ?Product $fakeProduct = null;
-    public array $fakeOptions = [];
-
-    public function getUrl(): ?string
-    {
-        return $this->fakeUrl;
-    }
-
-    public function getSku(): string
-    {
-        return $this->sku;
-    }
-
-    public function setSku(string $sku): void
-    {
-        $this->sku = $sku;
-    }
-
-    public function getProduct(): ?Product
-    {
-        return $this->fakeProduct;
-    }
-
-    public function getOptions(): array
-    {
-        return $this->fakeOptions;
-    }
-}
-PHP);
-            return;
-        }
-
-        if (!class_exists(__NAMESPACE__ . '\\CommerceTransformerTestProduct')) {
-            eval(<<<'PHP'
-namespace lindemannrock\searchmanager\tests\Integration;
-
-class CommerceTransformerTestProduct extends \craft\commerce\elements\Product
-{
-    public ?string $fakeUrl = null;
-    public ?\craft\commerce\models\ProductType $fakeType = null;
-    public ?\craft\commerce\elements\Variant $fakeDefaultVariant = null;
-    public array $fakeVariants = [];
-
-    public function getUrl(): ?string
-    {
-        return $this->fakeUrl;
-    }
-
-    public function getType(): \craft\commerce\models\ProductType
-    {
-        return $this->fakeType ?? new \craft\commerce\models\ProductType(['name' => '', 'handle' => '']);
-    }
-
-    public function getVariants(?bool $includeDisabled = null): \craft\commerce\elements\VariantCollection
-    {
-        return \craft\commerce\elements\VariantCollection::make($this->fakeVariants);
-    }
-
-    public function getDefaultVariant(bool $includeDisabled = false): ?\craft\commerce\elements\Variant
-    {
-        return $this->fakeDefaultVariant;
-    }
-}
-
-class CommerceTransformerTestVariant extends \craft\commerce\elements\Variant
-{
-    public ?string $fakeUrl = null;
-    public ?\craft\commerce\elements\Product $fakeProduct = null;
-    public array $fakeOptions = [];
-
-    public function getUrl(): ?string
-    {
-        return $this->fakeUrl;
-    }
-
-    public function getProduct(): ?\craft\commerce\elements\Product
-    {
-        return $this->fakeProduct;
-    }
-
-    public function getOptions(): array
-    {
-        return $this->fakeOptions;
-    }
-}
-PHP);
-        }
-    }
-
-    private function productType(string $name, string $handle): object
-    {
-        if (class_exists('craft\\commerce\\models\\ProductType')) {
-            return new \craft\commerce\models\ProductType([
-                'name' => $name,
-                'handle' => $handle,
-            ]);
-        }
-
-        return (object)[
-            'name' => $name,
-            'handle' => $handle,
-        ];
-    }
-
-    /**
-     * @param object[] $variants
-     */
-    private function product(object $type, array $variants = [], ?object $defaultVariant = null): object
-    {
-        $class = class_exists(__NAMESPACE__ . '\\CommerceTransformerTestProduct')
-            ? __NAMESPACE__ . '\\CommerceTransformerTestProduct'
-            : CommerceElementTypeHelper::productElementType();
-
-        $product = new $class();
-        $product->fakeType = $type;
-        $product->fakeVariants = $variants;
-        $product->fakeDefaultVariant = $defaultVariant;
+        $product = new Product();
+        $product->typeId = $type->id;
 
         return $product;
     }
 
-    /**
-     * @param array<string, string> $options
-     */
-    private function variant(string $sku, string $title, array $options, ?object $product = null): object
+    private function variant(string $sku, string $title, int $id, Product $product): Variant
     {
-        $class = class_exists(__NAMESPACE__ . '\\CommerceTransformerTestVariant')
-            ? __NAMESPACE__ . '\\CommerceTransformerTestVariant'
-            : CommerceElementTypeHelper::variantElementType();
-
-        $variant = new $class();
+        $variant = new Variant();
+        $variant->id = $id;
         $variant->title = $title;
         $variant->setSku($sku);
-        $variant->fakeOptions = $options;
-        $variant->fakeProduct = $product;
+        $variant->setPrice(25.0);
+        $variant->setOwner($product);
 
         return $variant;
     }

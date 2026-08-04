@@ -61,5 +61,4 @@ final class FuzzyMatcherTypoToleranceTest extends TestCase
         yield 'first-character typo costs two on a long term' => ['xlgorithm', 'algorithm'];
         yield 'Arabic adjacent transposition is mb-safe' => ['اخبتار', 'اختبار'];
     }
-
 }

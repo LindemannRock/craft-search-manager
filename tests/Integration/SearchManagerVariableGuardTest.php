@@ -91,7 +91,7 @@ final class SearchManagerVariableGuardTest extends TestCase
     public function testTwigSearchReturnsPresentedHitsByDefault(): void
     {
         /** @param list<SearchIndex> $indices */
-        $callback = function (array $indices): void {
+        $callback = function(array $indices): void {
             $index = $indices[0];
             $variable = new SearchManagerVariable();
             $stub = $this->installStubBackend();
@@ -140,7 +140,7 @@ final class SearchManagerVariableGuardTest extends TestCase
     public function testTwigSearchRawOptionReturnsBackendHitsUnshaped(): void
     {
         /** @param list<SearchIndex> $indices */
-        $callback = function (array $indices): void {
+        $callback = function(array $indices): void {
             $index = $indices[0];
             $variable = new SearchManagerVariable();
             $stub = $this->installStubBackend();
@@ -275,7 +275,7 @@ final class SearchManagerVariableGuardTest extends TestCase
     public function testProxySearchReturnsPresentedHitsAndNarrowsRetrievableFieldsByDefault(): void
     {
         /** @param list<SearchIndex> $indices */
-        $callback = function (array $indices): void {
+        $callback = function(array $indices): void {
             $index = $indices[0];
             $stub = new SearchManagerVariableRecordingBackend();
             $stub->searchResponse = [
@@ -320,7 +320,7 @@ final class SearchManagerVariableGuardTest extends TestCase
     public function testProxySearchRawOptionReturnsBackendHitsUnshaped(): void
     {
         /** @param list<SearchIndex> $indices */
-        $callback = function (array $indices): void {
+        $callback = function(array $indices): void {
             $index = $indices[0];
             $stub = new SearchManagerVariableRecordingBackend();
             $stub->searchResponse = [
@@ -355,7 +355,7 @@ final class SearchManagerVariableGuardTest extends TestCase
     public function testTwigSearchMultipleReturnsPresentedHitsByDefault(): void
     {
         /** @param list<SearchIndex> $indices */
-        $callback = function (array $indices): void {
+        $callback = function(array $indices): void {
             [$first, $second] = $indices;
             $variable = new SearchManagerVariable();
             $stub = $this->installStubBackend();
@@ -840,13 +840,18 @@ final class SearchManagerVariableRecordingBackend implements BackendInterface, A
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @phpstan-impure Records are appended between observations.
+     * @return list<array{
+     *   method: string,
+     *   indexName: string,
+     *   items?: list<array{query?: string, options?: array<string, mixed>}>
+     * }>
      */
     public function callsFor(string $method): array
     {
         return array_values(array_filter(
             $this->calls,
-            static fn (array $c): bool => $c['method'] === $method,
+            static fn(array $c): bool => $c['method'] === $method,
         ));
     }
 }

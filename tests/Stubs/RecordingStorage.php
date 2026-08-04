@@ -85,7 +85,7 @@ class RecordingStorage implements StorageInterface, ElementSuggestionStorageInte
     public array $getElementsByIdsBatchSizes = [];
 
     /**
-     * @param array<string, array<string, int>> $termDocs term => [docId => freq] (docId = "siteId:elementId")
+     * @param array<int|string, array<string, int>> $termDocs term => [docId => freq] (docId = "siteId:elementId")
      * @param array<int, string[]> $titleByElement elementId => title terms
      * @param array<string, int> $docLengths docId => length
      * @param array<string, float> $fuzzyCandidates term => similarity, returned from getTermsByNgramSimilarity()
@@ -260,7 +260,7 @@ class RecordingStorage implements StorageInterface, ElementSuggestionStorageInte
         if ($prefix !== null && $prefix !== '') {
             $terms = array_filter(
                 $terms,
-                static fn (string|int $term): bool => is_string($term) && str_starts_with($term, $prefix),
+                static fn(string|int $term): bool => is_string($term) && str_starts_with($term, $prefix),
                 ARRAY_FILTER_USE_KEY,
             );
         }
@@ -352,12 +352,12 @@ class RecordingStorage implements StorageInterface, ElementSuggestionStorageInte
 
         $suggestions = [];
         foreach ($suggestionsByNormalized as $data) {
-            $displayFrequencies = $data['displayFrequencies'] ?? [];
+            $displayFrequencies = $data['displayFrequencies'];
             arsort($displayFrequencies);
             $topFrequency = reset($displayFrequencies);
             $topSuggestions = array_keys(array_filter(
                 $displayFrequencies,
-                static fn (int $frequency): bool => $frequency === $topFrequency,
+                static fn(int $frequency): bool => $frequency === $topFrequency,
             ));
             sort($topSuggestions, SORT_STRING);
             $suggestions[$topSuggestions[0]] = (int)$data['totalFrequency'];
@@ -381,7 +381,7 @@ class RecordingStorage implements StorageInterface, ElementSuggestionStorageInte
     {
         return array_filter(
             $docs,
-            static fn (string $docId): bool => str_starts_with($docId, $siteId . ':'),
+            static fn(string $docId): bool => str_starts_with($docId, $siteId . ':'),
             ARRAY_FILTER_USE_KEY,
         );
     }

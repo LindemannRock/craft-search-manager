@@ -12,8 +12,6 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\helpers\AutocompleteResponseHelper;
 use lindemannrock\searchmanager\tests\TestCase;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
 
 /**
  * Regression coverage for audit #221, #224, #239, and #240.

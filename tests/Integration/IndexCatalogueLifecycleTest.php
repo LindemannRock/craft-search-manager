@@ -314,7 +314,7 @@ final class IndexCatalogueLifecycleTest extends TestCase
         $expectedAvailable = array_values(array_filter(
             $allIndices,
             static fn(SearchIndex $index): bool => ($catalogue[$index->handle]['available'] ?? false)
-                && ($catalogue[$index->handle]['referenceable'] ?? false),
+                && $catalogue[$index->handle]['referenceable'],
         ));
         $available = SearchManager::$plugin->dependencies->getAvailableIndices();
         $variable = new SearchManagerVariable();

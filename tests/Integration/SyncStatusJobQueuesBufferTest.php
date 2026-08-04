@@ -126,10 +126,7 @@ final class SyncStatusJobQueuesBufferTest extends TestCase
             $this->shiftPostDateInsideStatusWindow((int) $entry->id);
         }
 
-        $job = new class([
-            'reschedule' => false,
-            'lastSyncTime' => null,
-        ]) extends SyncStatusJob {
+        $job = new class([ 'reschedule' => false, 'lastSyncTime' => null, ]) extends SyncStatusJob {
             protected function statusSyncBatchSize(): int
             {
                 return 1;

@@ -19,7 +19,6 @@ use craft\web\View;
 use lindemannrock\base\helpers\CpNavHelper;
 use lindemannrock\searchmanager\controllers\DashboardController;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
-use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -340,7 +339,7 @@ final class DashboardCardPermissionTest extends TestCase
         $identity = $this->createIdentity($permissions, $admin, $suffix);
         $this->actingAs($identity);
 
-        $user = new class extends \craft\console\User {
+        $user = new class() extends \craft\console\User {
             public function getRemainingSessionTime(): int
             {
                 return -1;
@@ -393,7 +392,7 @@ final class DashboardCardPermissionTest extends TestCase
         return $this->webUser($identity);
     }
 
-    private function renderCaptured(Response $response): string
+    private function renderCaptured(\yii\web\Response $response): string
     {
         $template = $response->data['template'] ?? null;
         $variables = $response->data['variables'] ?? null;
@@ -446,7 +445,7 @@ final class RecordingDashboardController extends DashboardController
 
     public ?User $cpUser = null;
 
-    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): Response
+    public function renderTemplate(string $template, array $variables = [], ?string $templateMode = null): \yii\web\Response
     {
         $response = new Response();
         $response->data = [

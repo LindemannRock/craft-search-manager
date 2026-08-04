@@ -14,10 +14,8 @@ use Craft;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\helpers\QueryNormalizer;
-use lindemannrock\searchmanager\search\storage\FileStorage;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
-use yii\log\Logger;
 
 /**
  * Focused regressions for audit #141, #142, and #143.
@@ -30,7 +28,6 @@ final class AnalyticsQueryCountTest extends TestCase
     private const OTHER_SITE_ID = 999995;
     private const TEST_BACKEND = 'test-audit-final-batch';
 
-    private ?string $fileStorageBasePath = null;
     private ?string $originalDefaultCountry = null;
     private ?string $originalDefaultCity = null;
 

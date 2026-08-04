@@ -108,6 +108,7 @@ final class DefaultPersistenceControllerTest extends TestCase
             'invalid' => '!!! invalid !!!',
             'missing' => self::PREFIX . '-missing',
             'disabled' => self::PREFIX . '-disabled-list',
+            default => throw new \InvalidArgumentException("Unknown default state: {$state}"),
         };
         $this->setPersistedDefault($family, $default);
         $before = $this->settingsRow();

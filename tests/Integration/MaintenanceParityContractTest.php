@@ -14,16 +14,9 @@ use Craft;
 use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
-use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
-use lindemannrock\searchmanager\console\controllers\IndexController;
-use lindemannrock\searchmanager\console\controllers\MaintenanceController;
-use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
-use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\SearchIndex;
-use lindemannrock\searchmanager\services\AutocompleteService;
-use lindemannrock\searchmanager\services\WidgetConfigService;
-use lindemannrock\searchmanager\services\WidgetStyleService;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -94,12 +87,12 @@ final class MaintenanceParityContractTest extends TestCase
             'name' => 'Batch 8 Database Index',
             'handle' => self::DATABASE_INDEX_HANDLE,
             'elementType' => Entry::class,
-            'siteId' => null,
+            'siteId' => json_encode([(int)Craft::$app->getSites()->getPrimarySite()->id], JSON_THROW_ON_ERROR),
             'criteria' => '{}',
             'transformerClass' => '',
             'headingLevels' => null,
             'language' => null,
-            'backend' => 'mysql',
+            'backend' => $this->fixtureBackendHandle(),
             'enabled' => 1,
             'enableAnalytics' => 1,
             'disableStopWords' => 0,
@@ -114,6 +107,7 @@ final class MaintenanceParityContractTest extends TestCase
             'uid' => StringHelper::UUID(),
         ])->execute();
         SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
 
     private function purgeRows(): void
@@ -125,6 +119,18 @@ final class MaintenanceParityContractTest extends TestCase
             ]])
             ->execute();
         SearchIndex::clearCache();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
+    }
+
+    private function fixtureBackendHandle(): string
+    {
+        $handle = (new \craft\db\Query())
+            ->select(['handle'])
+            ->from('{{%searchmanager_backends}}')
+            ->where(['handle' => 'fixtureMysql'])
+            ->scalar();
+
+        return is_string($handle) ? $handle : 'mysql';
     }
 }
 

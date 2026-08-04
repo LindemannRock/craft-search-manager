@@ -58,7 +58,7 @@ final class ApiKeyDeleteDependencyGuardTest extends TestCase
         $this->withPostJson(['keyId' => $apiKeyId]);
 
         $response = (new ApiKeysController('api-keys', SearchManager::$plugin))->actionDelete();
-        $data = $response?->data;
+        $data = $response->data;
 
         self::assertSame(false, $data['success'] ?? true);
         self::assertSame(
@@ -75,7 +75,7 @@ final class ApiKeyDeleteDependencyGuardTest extends TestCase
         $this->withPostJson(['keyId' => $apiKeyId]);
 
         $response = (new ApiKeysController('api-keys', SearchManager::$plugin))->actionDelete();
-        $data = $response?->data;
+        $data = $response->data;
 
         self::assertSame(true, $data['success'] ?? false, json_encode($data));
         self::assertSame(0, $this->countMarkedRows('{{%searchmanager_api_keys}}', ['id' => $apiKeyId]));
@@ -90,7 +90,7 @@ final class ApiKeyDeleteDependencyGuardTest extends TestCase
         $this->withPostJson(['ids' => [$usedKeyId, $unusedKeyId]]);
 
         $response = (new ApiKeysController('api-keys', SearchManager::$plugin))->actionBulkDelete();
-        $data = $response?->data;
+        $data = $response->data;
 
         self::assertSame(false, $data['success'] ?? true);
         self::assertSame([

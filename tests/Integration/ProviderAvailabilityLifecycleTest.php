@@ -1169,7 +1169,7 @@ class ProviderAvailabilityPluginTransformer implements TransformerInterface
  */
 final class ProviderAvailabilityRequiredConstructorTransformer extends ProviderAvailabilityPluginTransformer
 {
-    public function __construct(string $required)
+    public function __construct(public readonly string $required)
     {
     }
 }

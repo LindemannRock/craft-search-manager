@@ -20,8 +20,8 @@ use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\jobs\BatchSyncJob;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\services\TransformerService;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
+use lindemannrock\searchmanager\services\TransformerService;
 use lindemannrock\searchmanager\tests\Stubs\StubBackend;
 use lindemannrock\searchmanager\tests\TestCase;
 

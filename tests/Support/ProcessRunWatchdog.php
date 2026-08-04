@@ -9,8 +9,11 @@
 declare(strict_types=1);
 
 use lindemannrock\searchmanager\tests\Support\ProcessRunOwner;
+use lindemannrock\searchmanager\tests\Support\TestProjectBoundary;
 
-require dirname(__DIR__, 4) . '/vendor/autoload.php';
+require __DIR__ . '/TestProjectBoundary.php';
+$projectBoundary = TestProjectBoundary::resolve();
+require $projectBoundary->vendorAutoload();
 
 $journalDirectory = $argv[1] ?? null;
 if (!is_string($journalDirectory) || $journalDirectory === '') {

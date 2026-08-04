@@ -76,10 +76,10 @@ final class SyncBufferDeleteFanoutTest extends TestCase
 
         $matched = array_filter(
             $deleteCalls,
-            static fn (array $c): bool => $c['indexName'] === $index->handle
+            static fn(array $c): bool => $c['indexName'] === $index->handle
                 && !empty(array_filter(
                     $c['items'] ?? [],
-                    static fn (array $item): bool => (int) ($item['elementId'] ?? 0) === $fakeElementId,
+                    static fn(array $item): bool => (int) ($item['elementId'] ?? 0) === $fakeElementId,
                 )),
         );
         $this->assertNotEmpty(
@@ -117,10 +117,10 @@ final class SyncBufferDeleteFanoutTest extends TestCase
         $deleteCalls = $stub->callsFor('batchDelete');
         $matched = array_filter(
             $deleteCalls,
-            static fn (array $c): bool => $c['indexName'] === $index->handle
+            static fn(array $c): bool => $c['indexName'] === $index->handle
                 && !empty(array_filter(
                     $c['items'] ?? [],
-                    static fn (array $item): bool => (int) ($item['elementId'] ?? 0) === (int) $element->id,
+                    static fn(array $item): bool => (int) ($item['elementId'] ?? 0) === (int) $element->id,
                 )),
         );
         $this->assertNotEmpty(

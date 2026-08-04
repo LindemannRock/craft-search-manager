@@ -145,13 +145,13 @@ final class WidgetConfigServiceDeleteTest extends TestCase
     }
 
     /**
-     * @param array<string, WidgetConfig> $configWidgets
+     * @param list<WidgetConfig> $configWidgets
      */
     private function makeService(array $configWidgets = []): WidgetConfigService
     {
-        $configWidgets = array_column($configWidgets, null, 'handle');
+        $indexedWidgets = array_column($configWidgets, null, 'handle');
 
-        return new class($configWidgets) extends WidgetConfigService {
+        return new class($indexedWidgets) extends WidgetConfigService {
             /**
              * @param array<string, WidgetConfig> $configWidgets
              */

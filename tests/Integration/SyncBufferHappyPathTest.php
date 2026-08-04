@@ -162,7 +162,7 @@ final class SyncBufferHappyPathTest extends TestCase
                 ],
             ]);
 
-            $job = new class extends BatchSyncJob {
+            $job = new class() extends BatchSyncJob {
                 private int $budgetChecks = 0;
 
                 protected function hasExceededTimeBudget(float $started): bool

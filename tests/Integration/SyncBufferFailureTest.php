@@ -236,7 +236,9 @@ final class SyncBufferFailureTest extends TestCase
             ], ['id' => $id])
             ->execute();
 
-        self::assertTrue(Craft::$app->getQueue()->executeJob((string)$id));
+        $queue = Craft::$app->getQueue();
+        self::assertInstanceOf(\craft\queue\Queue::class, $queue);
+        self::assertTrue($queue->executeJob((string)$id));
     }
 
     private function deleteBatchQueueRows(): void

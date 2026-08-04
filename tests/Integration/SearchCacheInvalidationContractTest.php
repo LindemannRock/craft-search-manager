@@ -10,9 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use Craft;
 use lindemannrock\searchmanager\backends\AbstractSearchEngineBackend;
-use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
@@ -40,7 +38,6 @@ final class SearchCacheInvalidationContractTest extends TestCase
         self::assertNotContains($fullIndexName . '_en', $backend->searchEngineCacheKeys());
         self::assertNotContains($fullIndexName . '_ar', $backend->searchEngineCacheKeys());
     }
-
 }
 
 final class SearchCacheInvalidationBackend extends AbstractSearchEngineBackend

@@ -59,7 +59,7 @@ final class TransformerExtensionContractTest extends TestCase
     {
         self::assertTransformerClassValid(ContractPlainTransformer::class);
         self::assertFalse(
-            method_exists(ContractPlainTransformer::class, 'setHeadingLevels'),
+            (new \ReflectionClass(ContractPlainTransformer::class))->hasMethod('setHeadingLevels'),
             'Direct TransformerInterface implementations are supported, but BaseTransformer helpers and heading-level behavior are not automatic.'
         );
     }

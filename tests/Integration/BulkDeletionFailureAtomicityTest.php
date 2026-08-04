@@ -89,7 +89,7 @@ final class BulkDeletionFailureAtomicityTest extends TestCase
             $firstId,
             $failedId,
             ['promotionIds' => [$firstId, $failedId]],
-            static fn(): Response => (new PromotionsController('promotions', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new PromotionsController('promotions', SearchManager::$plugin))
                 ->actionBulkDelete(),
         );
 
@@ -109,7 +109,7 @@ final class BulkDeletionFailureAtomicityTest extends TestCase
             $firstId,
             $failedId,
             ['ruleIds' => [$firstId, $failedId]],
-            static fn(): Response => (new QueryRulesController('query-rules', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new QueryRulesController('query-rules', SearchManager::$plugin))
                 ->actionBulkDelete(),
         );
 
@@ -129,7 +129,7 @@ final class BulkDeletionFailureAtomicityTest extends TestCase
             $firstId,
             $failedId,
             ['backendIds' => [$firstId, $failedId]],
-            static fn(): Response => (new BackendsController('backends', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new BackendsController('backends', SearchManager::$plugin))
                 ->actionBulkDelete(),
         );
 
@@ -149,7 +149,7 @@ final class BulkDeletionFailureAtomicityTest extends TestCase
             $firstId,
             $failedId,
             ['configIds' => [$firstId, $failedId]],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))
                 ->actionBulkDelete(),
         );
 
@@ -169,7 +169,7 @@ final class BulkDeletionFailureAtomicityTest extends TestCase
             $firstId,
             $failedId,
             ['styleIds' => [$firstId, $failedId]],
-            static fn(): Response => (new WidgetsController('widgets', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new WidgetsController('widgets', SearchManager::$plugin))
                 ->actionBulkDeleteStyle(),
         );
 
@@ -189,7 +189,7 @@ final class BulkDeletionFailureAtomicityTest extends TestCase
             $firstId,
             $failedId,
             ['ids' => [$firstId, $failedId]],
-            static fn(): Response => (new ApiKeysController('api-keys', SearchManager::$plugin))
+            static fn(): \yii\web\Response => (new ApiKeysController('api-keys', SearchManager::$plugin))
                 ->actionBulkDelete(),
         );
 
@@ -200,7 +200,7 @@ final class BulkDeletionFailureAtomicityTest extends TestCase
 
     /**
      * @param array<string, mixed> $params
-     * @param callable(): Response $action
+     * @param callable(): \yii\web\Response $action
      * @return array<string, mixed>
      */
     private function postWithSecondDeleteFailure(
@@ -239,7 +239,7 @@ final class BulkDeletionFailureAtomicityTest extends TestCase
 
     /**
      * @param array<string, mixed> $params
-     * @param callable(): Response $action
+     * @param callable(): \yii\web\Response $action
      * @return array<string, mixed>
      */
     private function post(array $params, callable $action): array

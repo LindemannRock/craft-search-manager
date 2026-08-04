@@ -11,17 +11,9 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
-use craft\base\ElementInterface;
-use craft\elements\Asset;
-use craft\elements\Category;
 use craft\elements\Entry;
 use lindemannrock\searchmanager\helpers\SearchIndexQueryHelper;
-use craft\elements\User;
-use lindemannrock\searchmanager\controllers\PromotionsController;
-use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\SearchIndex;
-use lindemannrock\searchmanager\search\Highlighter;
-use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
 

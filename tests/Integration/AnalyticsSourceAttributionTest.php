@@ -26,8 +26,8 @@ use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\QueryRuleService;
-use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\tests\Support\OwnedAnalyticsTracker;
+use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -188,6 +188,7 @@ final class AnalyticsSourceAttributionTest extends TestCase
             'rest' => $this->runRestSearch($handle, $query, $analyticsSource),
             'graphql' => $this->runGraphqlSearch($handle, $query, $analyticsSource),
             'twig' => $this->runTwigSearch($handle, $query, $analyticsSource),
+            default => throw new \InvalidArgumentException("Unknown analytics boundary: {$boundary}"),
         };
 
         $row = $this->analyticsRow($query);
@@ -846,7 +847,6 @@ final class AnalyticsSourceAttributionTest extends TestCase
     {
         return Craft::$app->getSites()->getPrimarySite()->id;
     }
-
 }
 
 /**

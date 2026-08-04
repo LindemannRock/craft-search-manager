@@ -142,7 +142,7 @@ final class AnalyticsGeoDefaultsTest extends TestCase
             (new GeoLookupJob([
                 'analyticsId' => $analyticsId,
                 'ip' => '127.0.0.1',
-            ]))->execute(null);
+            ]))->execute(Craft::$app->getQueue());
 
             $row = (new \craft\db\Query())
                 ->select(['country', 'city', 'region', 'latitude', 'longitude'])

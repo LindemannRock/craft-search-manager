@@ -13,7 +13,6 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use Craft;
 use lindemannrock\searchmanager\events\IndexEvent;
 use lindemannrock\searchmanager\jobs\BatchSyncJob;
-use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\IndexingService;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -51,10 +50,10 @@ final class SyncBufferEventParityTest extends TestCase
         $this->beforeEvents = [];
         $this->afterEvents = [];
 
-        $this->beforeHandler = function (IndexEvent $event): void {
+        $this->beforeHandler = function(IndexEvent $event): void {
             $this->beforeEvents[] = $event;
         };
-        $this->afterHandler = function (IndexEvent $event): void {
+        $this->afterHandler = function(IndexEvent $event): void {
             $this->afterEvents[] = $event;
         };
 
@@ -87,13 +86,13 @@ final class SyncBufferEventParityTest extends TestCase
 
         $beforeForTarget = array_filter(
             $this->beforeEvents,
-            static fn (IndexEvent $e): bool => $e->element !== null
+            static fn(IndexEvent $e): bool => $e->element !== null
                 && (int) $e->element->id === (int) $element->id
                 && (int) $e->element->siteId === (int) $element->siteId,
         );
         $afterForTarget = array_filter(
             $this->afterEvents,
-            static fn (IndexEvent $e): bool => $e->element !== null
+            static fn(IndexEvent $e): bool => $e->element !== null
                 && (int) $e->element->id === (int) $element->id
                 && (int) $e->element->siteId === (int) $element->siteId
                 && $e->indexHandle === $index->handle,
@@ -118,7 +117,7 @@ final class SyncBufferEventParityTest extends TestCase
         $targetSiteId = (int) $element->siteId;
 
         // Attach a second listener that cancels indexing for our target.
-        $cancelHandler = static function (IndexEvent $event) use ($targetElementId, $targetSiteId): void {
+        $cancelHandler = static function(IndexEvent $event) use ($targetElementId, $targetSiteId): void {
             if ($event->element === null) {
                 return;
             }
@@ -136,7 +135,7 @@ final class SyncBufferEventParityTest extends TestCase
             // because the cancellation should drop the row before batchIndex.
             $afterForTarget = array_filter(
                 $this->afterEvents,
-                static fn (IndexEvent $e): bool => $e->element !== null
+                static fn(IndexEvent $e): bool => $e->element !== null
                     && (int) $e->element->id === $targetElementId
                     && (int) $e->element->siteId === $targetSiteId
                     && $e->indexHandle === $index->handle,

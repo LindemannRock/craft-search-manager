@@ -14,8 +14,8 @@ use Craft;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
-use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
 use lindemannrock\searchmanager\tests\TestCase;
 use yii\caching\ArrayCache;
@@ -90,7 +90,7 @@ final class AutocompletePrefixRegressionTest extends TestCase
 
         self::assertSame(['product', 'protein'], $suggestions);
         self::assertSame('pro', $storage->getTermsForAutocompleteCalls[0]['prefix'] ?? null);
-        self::assertSame(4, $storage->getTermsForAutocompleteCalls[0]['limit'] ?? null);
+        self::assertSame(4, $storage->getTermsForAutocompleteCalls[0]['limit']);
         self::assertArrayNotHasKey('profile', array_flip($suggestions));
     }
 

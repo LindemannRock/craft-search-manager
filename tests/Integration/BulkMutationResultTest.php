@@ -84,7 +84,7 @@ final class BulkMutationResultTest extends TestCase
 
     public function testPartialSchemaIncludesSuccessesSkipsAndAllModelErrors(): void
     {
-        $model = new class extends Model {
+        $model = new class() extends Model {
             public function rules(): array
             {
                 return [];

@@ -182,7 +182,7 @@ final class MaintenanceStorageClearTest extends TestCase
         $methodSource = self::methodSource($source, $method);
 
         preg_match_all('/\'(\{\{%searchmanager_search_[^\']+\}\})\'/', $methodSource, $tableMatches);
-        $tables = array_values(array_unique($tableMatches[1] ?? []));
+        $tables = array_values(array_unique($tableMatches[1]));
         sort($tables, SORT_STRING);
 
         return $tables;
@@ -194,18 +194,6 @@ final class MaintenanceStorageClearTest extends TestCase
         self::assertNotEmpty($methodMatches, $method . ' source should be found.');
 
         return $methodMatches[0];
-    }
-
-    /**
-     * @param array<int, mixed> $args
-     * @return mixed
-     */
-    private function invokePrivate(object $object, string $method, array $args): mixed
-    {
-        $reflectionMethod = new \ReflectionMethod($object, $method);
-        $reflectionMethod->setAccessible(true);
-
-        return $reflectionMethod->invokeArgs($object, $args);
     }
 
     private function saveDatabaseIndex(string $handle): void

@@ -19,19 +19,14 @@
 declare(strict_types=1);
 
 use lindemannrock\searchmanager\tests\Support\ProcessRunOwner;
+use lindemannrock\searchmanager\tests\Support\TestProjectBoundary;
 
-$baseBootstrap = dirname(__DIR__, 3) . '/vendor/lindemannrock/craft-plugin-base/src/testing/bootstrap.php';
+$projectBoundaryFile = __DIR__ . '/Support/TestProjectBoundary.php';
 $processRunOwner = __DIR__ . '/Support/ProcessRunOwner.php';
-
-if (!file_exists($baseBootstrap)) {
-    fwrite(STDERR, "Base plugin testing bootstrap not found at {$baseBootstrap}\n");
-    fwrite(STDERR, "Run `composer install` and ensure lindemannrock/craft-plugin-base ^5.25 is present.\n");
-    exit(1);
-}
-
+require_once $projectBoundaryFile;
+$projectBoundary = TestProjectBoundary::resolve();
+require_once $projectBoundary->vendorAutoload();
 require_once $processRunOwner;
 ProcessRunOwner::bootstrap();
-
-require_once $baseBootstrap;
-
-\lindemannrock\base\testing\bootstrap();
+require_once $projectBoundary->baseBootstrap();
+\lindemannrock\base\testing\bootstrap($projectBoundary->projectRoot);

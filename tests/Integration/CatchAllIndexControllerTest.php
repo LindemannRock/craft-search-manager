@@ -120,7 +120,7 @@ final class CatchAllIndexControllerTest extends TestCase
 
         $response = $this->withOnlySearchIndices(
             [],
-            fn(): Response => (new IndicesController('indices', SearchManager::$plugin))->actionCreateCatchAll(),
+            fn(): \yii\web\Response => (new IndicesController('indices', SearchManager::$plugin))->actionCreateCatchAll(),
         );
         $data = $response->data;
 

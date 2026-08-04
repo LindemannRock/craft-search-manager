@@ -572,7 +572,7 @@ final class PersistedResourceIdentityTest extends TestCase
     {
         [$table, $id, $save, $model] = $this->createLoadedSaveCase($family);
         $requestedHandle = self::PREFIX . '-race-' . $family;
-        $model->handle = $requestedHandle;
+        $model->setAttributes(['handle' => $requestedHandle], false);
         $insertedCollision = false;
         $model->on(Model::EVENT_AFTER_VALIDATE, function() use (&$insertedCollision, $family): void {
             if ($insertedCollision) {
@@ -585,6 +585,7 @@ final class PersistedResourceIdentityTest extends TestCase
                 'index' => $this->insertIndex('race-index', 'Race Index'),
                 'widgetConfig' => $this->insertWidget('race-widgetConfig', 'Race Widget'),
                 'widgetStyle' => $this->insertStyle('race-widgetStyle', 'Race Style'),
+                default => throw new \InvalidArgumentException("Unknown persistence family: {$family}"),
             };
         });
 
@@ -597,6 +598,8 @@ final class PersistedResourceIdentityTest extends TestCase
     {
         [, $ruleId, , $rule] = $this->createLoadedSaveCase('queryRule');
         [, $promotionId, , $promotion] = $this->createLoadedSaveCase('promotion');
+        self::assertInstanceOf(QueryRule::class, $rule);
+        self::assertInstanceOf(Promotion::class, $promotion);
         Craft::$app->getDb()->createCommand()
             ->delete('{{%searchmanager_query_rules}}', ['id' => $ruleId])
             ->execute();
