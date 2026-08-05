@@ -2,9 +2,6 @@
 
 Get Search Manager installed and its first setup check cleared — a couple of Composer commands, then one visit to the Control Panel.
 
-> [!NOTE]
-> Search Manager is in active development and not yet available on the Craft Plugin Store. Install via Composer for now.
-
 ## Composer
 
 1. Open your terminal and go to your Craft project:

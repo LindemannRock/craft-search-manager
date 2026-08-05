@@ -6,7 +6,7 @@ Filtering support isn't symmetric across backends. `type` (document kind) and `s
 
 ## Document type filtering
 
-Filter by stable document kind — `entry`, `product`, `variant`, `asset`, `category`, or `user` (lowercase). This works in Twig, the REST API, and JavaScript, on every backend.
+Filter by stable document kind — `entry`, `product`, `variant`, `asset`, `category`, `user`, `source-doc`, `smart-link`, or `short-link` (lowercase). This works in Twig, the REST API, and JavaScript, on every backend.
 
 ```twig
 {# Single type #}

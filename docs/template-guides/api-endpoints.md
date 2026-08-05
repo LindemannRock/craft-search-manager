@@ -75,7 +75,7 @@ GET /actions/search-manager/api/search
 | `indexHandles` | (all indices) | One index handle or a comma-separated list of up to 5 explicit handles to search. Passing more than 5 handles returns an error. Omit to search all enabled indices. |
 | `resultsLimit` | `20` | Maximum results per page (min: 1, max: 200). Values below 1 reset to the default. |
 | `page` | `0` | Page number (0-based) |
-| `type` | (none) | Filter by stable document kind, for example `entry`, `product`, `variant`, `asset`, `category`, or `user` |
+| `type` | (none) | Filter by stable document kind, for example `entry`, `product`, `variant`, `asset`, `category`, `user`, `source-doc`, `smart-link`, or `short-link` |
 | `siteId` | (all sites) | Filter to a specific site. Omit to search all sites. |
 | `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`) |
 | `retrievableFields` | index setting | Optional comma-separated custom field handles to return under each hit's `fields` object. This can narrow the index's `retrievableFields` setting but cannot widen it. Use `*,-wysiwyg` to return all fields except `wysiwyg`, or an empty value to return no custom fields. |
@@ -273,7 +273,7 @@ For split SourceDoc and AutoTransformer-family indices, each returned hit is a f
 | `dateCreated` | `int` | Indexed creation timestamp when available. |
 | `dateUpdated` | `int` | Indexed update timestamp when available. |
 | `score` | `float\|null` | Optional backend-specific relevance signal. Built-in backends return Search Manager's BM25 score; Meilisearch and Typesense map provider ranking values when available; Algolia may omit a comparable score; promoted items can be `null`. |
-| `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, `user`, or `source-doc`. Split section hits keep the parent document kind, such as `entry` or `source-doc`. |
+| `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, `user`, `source-doc`, `smart-link`, or `short-link`. Split section hits keep the parent document kind, such as `entry` or `source-doc`. |
 | Naming rule |  | Hit keys use Craft-native names; a kind prefix is used only where the bare word would be ambiguous within this contract (`entrySection*`, `assetKind`, `categoryGroup*`, `docCategory`). |
 | `source` | `string` | Source name for SourceDoc and custom source-backed hits. |
 | `entrySection` | `string` | Human-readable Entry section name when the hit is an Entry. |

@@ -139,9 +139,12 @@ const widget = document.querySelector('search-modal');
 widget.setAttribute('placeholder', 'Search products...');
 widget.setAttribute('theme', 'dark');
 widget.setAttribute('trigger-selector', '#mobile-search-trigger');
+widget.setAttribute('api-key', 'sm_pub_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
 ```
 
 If the modal is open while an attribute changes, it stays open and keeps the current query. Styling-only changes such as `theme` apply without rebuilding the modal DOM; structural changes re-render the widget and reconnect the internal controls, external trigger, hotkey, and document-level listeners.
+
+Changing `api-key` or `snippet-defaults` while a query is active immediately runs that query again with the new request credentials or snippet settings. The widget retires the previous request first, so a late response cannot replace results created from the newer attributes. Closing the modal or changing the query uses the same stale-response protection.
 
 ### RTL support
 

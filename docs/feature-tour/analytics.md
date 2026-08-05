@@ -78,6 +78,12 @@ Only shown when geo-detection is enabled:
 - City breakdown
 - Regional search patterns
 
+### Recover from a report error
+
+Each analytics panel loads independently. If one request fails, that panel shows an error with **Retry** while panels that loaded successfully remain available. Select **Retry** to reload only the failed panel. Changing the site or date range starts a fresh set of requests, and a slower response from the previous selection cannot overwrite the newer report.
+
+If retrying continues to fail, confirm the browser session is still active, check that the user can edit the selected site, and review the Search Manager logs for the failed analytics request.
+
 ## What gets tracked
 
 Every search records:

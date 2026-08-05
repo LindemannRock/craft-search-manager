@@ -97,7 +97,7 @@ Search arguments:
 | `siteId` | `Int` | Site ID filter. `site` wins when both are provided. |
 | `resultsLimit` | `Int` | Defaults to `20`, capped at `200`. |
 | `page` | `Int` | Zero-based page number. |
-| `type` | `String` | Optional stable document-kind filter, for example `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
+| `type` | `String` | Optional stable document-kind filter, for example `entry`, `product`, `variant`, `asset`, `category`, `user`, `source-doc`, `smart-link`, or `short-link`. |
 | `filters` | `String` | Optional backend-specific filter expression. Requires exactly one `indexHandles` value. |
 | `retrievableFields` | `[String]` | Optional custom field handles to return under `fields`. This can narrow each index's `retrievableFields` setting but cannot widen it. Pass `["*", "-wysiwyg"]` to return all fields except `wysiwyg`, or an empty list to return no custom fields. |
 | `language` | `String` | Optional language code for localized operators. |
@@ -158,7 +158,7 @@ Common hit fields:
 | `elementId` | Numeric Craft element ID. Use this for Craft element queries and URLs. Split section hits share this parent page identity. |
 | `backendId` | Unique Search Manager backend document ID, usually `{elementId}_{siteId}` for page hits and `{elementId}_{siteId}_{sectionId}` for split section hits. Treat hits as unique by `backendId`. |
 | `siteId` / `site` / `language` | Site ID, site handle, and site language from the indexed document. |
-| `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, `user`, and `source-doc`. Split section hits keep the parent document kind, such as `entry` or `source-doc`. |
+| `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, `user`, `source-doc`, `smart-link`, and `short-link`. Split section hits keep the parent document kind, such as `entry` or `source-doc`. |
 | Naming rule | Hit keys use Craft-native names; a kind prefix is used only where the bare word would be ambiguous within this contract (`entrySection*`, `assetKind`, `categoryGroup*`, `docCategory`). |
 | `source` | Source name for SourceDoc and custom source-backed hits. |
 | `entrySection` | Human-readable Entry section name when the hit is an Entry. |

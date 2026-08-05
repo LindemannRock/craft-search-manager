@@ -10,14 +10,6 @@
 
 Advanced multi-backend search management for Craft CMS with BM25 ranking, analytics, caching, query rules, promotions, and a frontend search widget.
 
-## License
-
-This is a commercial plugin licensed under the [Craft License](https://craftcms.github.io/license/). It will be available on the [Craft Plugin Store](https://plugins.craftcms.com) soon. See [LICENSE.md](LICENSE.md) for details.
-
-## ⚠️ Pre-Release
-
-This plugin is in active development and not yet available on the Craft Plugin Store. Features and APIs may change before the initial public release.
-
 ## Features
 
 - **Standard and Pro Editions** — Standard includes the complete search engine and developer toolkit; Pro adds analytics, merchandising, operations, and reusable widget styling
@@ -28,6 +20,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 - **Fuzzy Matching** — Typo tolerance with n-gram similarity
 - **Multi-Language** — Stop words and localized boolean operators in 12 languages (EN, PT, IT, ES, FR, NO, NL, SV, DE, DA, JA, AR)
 - **Commerce Indexing** — Index Craft Commerce Products and Variants when Commerce is installed
+- **Link Manager Indexing** — Index SmartLink Manager and ShortLink Manager links when either plugin is installed
 - **Section Search** — SourceDoc and AutoTransformer-family indices can opt into flat intro/heading section hits with unique backend IDs
 - **Highlighting & Snippets** — Highlight matched terms and show contextual excerpts
 - **Autocomplete** — Search-as-you-type suggestions with separate caching
@@ -41,7 +34,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 - **GraphQL** — Read-only search and autocomplete queries for SPA/headless frontends, with typed `fields { handle value values }` hit data for configured retrievable custom fields
 - **Twig API** — Search, autocomplete, highlighting, and usable configured-index lists directly from templates
 - **Breadcrumb Metadata** — Structure Entries, Categories, and public Assets can expose source-backed `ancestors`, `level`, and `folderPath` context in search hits
-- **Pending Syncs CP** — Operator surface for the L3 sync buffer: triage failures, retry, purge, and watch the queue drain live from the Control Panel
+- **Pending Syncs CP** — Operator surface for the sync buffer: triage failures, retry, purge, and watch the queue drain live from the Control Panel
 - **API Keys** — Generate scoped keys (per-index, per-referrer, expiry, hit caps, rate limits) for the public search, autocomplete, and analytics tracking endpoints. Plaintext shown once; only the HMAC-SHA256 hash is stored. Enable **Require API Key** to enforce keys via the `X-Search-Manager-Key` header; per-key rate limiting returns `429` when a key exceeds its search/autocomplete requests-per-minute cap
 - **Privacy-First** — IP hashing, subnet masking, async geo-lookup, GDPR-friendly
 
@@ -57,29 +50,13 @@ This plugin is in active development and not yet available on the Craft Plugin S
 ### Via Composer
 
 ```bash
-composer require lindemannrock/craft-search-manager
-```
-
-```bash
-php craft plugin/install search-manager
-```
-
-```bash
-php craft search-manager/security/generate-salt
+composer require lindemannrock/craft-search-manager && php craft plugin/install search-manager && php craft search-manager/security/generate-salt
 ```
 
 ### Using DDEV
 
 ```bash
-ddev composer require lindemannrock/craft-search-manager
-```
-
-```bash
-ddev craft plugin/install search-manager
-```
-
-```bash
-ddev craft search-manager/security/generate-salt
+ddev composer require lindemannrock/craft-search-manager && ddev craft plugin/install search-manager && ddev craft search-manager/security/generate-salt
 ```
 
 ## Documentation

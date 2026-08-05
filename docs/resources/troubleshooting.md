@@ -192,9 +192,10 @@ If rows still appear after disabling `autoIndex`:
 
 - Confirm the setting was saved and is not overridden by `config/search-manager.php`.
 - Confirm the rows are new by checking `queuedAt` on the Pending Syncs page.
-- Check whether `replaceNativeSearch` is enabled. In that mode, Craft's native search indexing callback still routes saved elements into the same pending-sync buffer, then `BatchSyncJob` drains them.
 - Check whether another process is queueing rows directly through `SearchManager::$plugin->pendingSyncs->queueForElement()`.
 - Check whether the status sync job queued rows for entries that became live or expired without a save event. That job is controlled by `statusSyncInterval`, not `autoIndex`.
+
+`replaceNativeSearch` does not bypass this setting. Its adapter refreshes Craft's native `searchindex` for fallback coverage, while Search Manager content sync remains exclusively owned by the `autoIndex`-gated save/delete listeners.
 
 Rows already in the buffer before `autoIndex` was disabled will still drain normally through `BatchSyncJob`.
 
@@ -218,16 +219,20 @@ Set `lastIndexedDebounceSeconds` to `0` if you need the timestamp updated after 
 
 ## Document count looks wrong after a bulk import
 
-The "Documents" column on the Indices index page is **eventually consistent**. Automatic save/delete syncs don't adjust this counter — doing so would require a backend probe per element, which would undo the API-amplification reduction that batch sync provides.
+The Indices page compares different units:
 
-This is by design, not a bug. Search results themselves are correct (the underlying index is updated as elements sync); only the metadata badge is delayed.
+- **Craft** is the number of eligible Craft elements.
+- **Indexed** is the comparable number of parent elements represented in the backend.
+- **Documents** is the raw backend record count and appears only when the displayed list contains a Split Sections index. One parent element can produce several section documents, so this number can legitimately exceed both other columns.
 
-**To force an accurate count:**
+Automatic save/delete syncs do not probe the backend once per element. Instead, the completed batch refreshes the authoritative backend document count once per affected index. Until that batch finishes, the stored count can briefly lag even though individual writes have already succeeded.
+
+**If a count stays stale after the batch drains:**
 
 - Rebuild the index: `php craft search-manager/index/rebuild --handle=entries-en`
-- Use the count refresh action on the index detail page (where exposed)
+- Use **Sync Count from Backend** on the index detail page when the configured backend supports it
 
-If you regularly need real-time counts (e.g. for editor-facing dashboards), schedule a periodic rebuild for that index rather than relying on the live counter.
+Do not compare a split index's raw **Documents** value directly with **Craft**. Use **Indexed** for the parent-element comparison.
 
 ## Out of memory during rebuild
 
@@ -341,6 +346,12 @@ ddev craft search-manager/security/generate-salt
 ```
 
 4. **Check queue**: Geo-location runs as a queue job. If your queue isn't processing, geo data won't be recorded.
+
+## Analytics report shows a loading error
+
+**Symptom:** One analytics panel shows an error and a **Retry** button while other panels still display data.
+
+**Fix:** Select **Retry** to reload that panel. If it fails again, confirm the browser session is active, check that the user can edit the selected site, and review Search Manager logs for the failed request. Changing the site or date range starts fresh report requests; Search Manager ignores late responses from the previous selection.
 
 ## Salt generator cannot update `.env`
 

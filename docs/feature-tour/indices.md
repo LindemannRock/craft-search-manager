@@ -4,7 +4,7 @@ Point Search Manager at your content and it turns it into fast, searchable docum
 
 ## What you'll use it for
 
-- Index entries, assets, categories, users, Commerce products/variants, or Docs Manager pages into searchable documents
+- Index entries, assets, categories, users, Commerce products/variants, Docs Manager pages, SmartLinks, or ShortLinks into searchable documents
 - Scope an index to one site, several sites, or all sites for multi-language search
 - Filter what gets indexed with a criteria callback — by section, entry type, or any other element-query filter
 - Route different indices to different backends, or prefix index names per environment for shared Algolia/Meilisearch accounts
@@ -14,7 +14,7 @@ Point Search Manager at your content and it turns it into fast, searchable docum
 
 1. Go to **Search Manager > Indices** and click **New Index**.
 2. Give it a **Name** (the display name) and a **Handle** (the identifier you'll use in code, e.g. `entries-en`).
-3. Choose an **Element Type** — Entries, Assets, Categories, Users, or (when the relevant plugin is installed) Commerce Products/Variants, Docs Manager pages, and other supported types. Craft element types show inline criteria — an Entries index, for example, lets you check which **Sections** to include.
+3. Choose an **Element Type** — Entries, Assets, Categories, Users, or (when the relevant plugin is installed) Commerce Products/Variants, Docs Manager pages, SmartLinks, ShortLinks, and other supported types. Craft element types show inline criteria — an Entries index, for example, lets you check which **Sections** to include.
 4. Choose which **Sites** to index (leave all unchecked to index every site).
 5. Leave **Language** on auto-detect unless you need to override stemming and stop words for a specific site.
 6. Click **Save**.
@@ -25,7 +25,7 @@ The CP form also exposes the same fine-tuning options described in [Index option
 
 Indices you create this way show a **Database** badge and stay fully editable in the CP. Indices defined in `config/search-manager.php` (see [Config file setup](#config-file-setup) below) show a **Config** badge instead and can't be edited in the CP — edit the config file and redeploy.
 
-Everything from here down is reference material: the full option list, the config-file syntax, and the Docs Manager / Commerce integration details. If you're managing indices entirely through the CP, the walkthrough above is all you need — skip ahead only if you want to define indices in code instead.
+Everything from here down is reference material: the full option list, the config-file syntax, and the optional plugin integration details. If you're managing indices entirely through the CP, the walkthrough above is all you need — skip ahead only if you want to define indices in code instead.
 
 ## What is an index?
 
@@ -43,7 +43,7 @@ Nested Matrix entries are indexed as part of their owner's document, never as st
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `name` | `string` | Outer handle in config; required in CP | Display name for the index. A missing, null, blank, or whitespace-only config value falls back to the handle in the CP while still producing a Setup warning |
-| `elementType` | `string` | `Entry::class` in config; required in CP | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, Commerce `Product::class` / `Variant::class`, etc.) |
+| `elementType` | `string` | `Entry::class` in config; required in CP | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, Commerce `Product::class` / `Variant::class`, `SmartLink::class`, `ShortLink::class`, etc.) |
 | `siteId` | `int\|array\|null` | `null` | Site(s) to index. `null` = all sites |
 | `criteria` | `array\|Closure` | `[]` | Selector list or callback used to filter elements |
 | `transformer` | `string` | `null` | Autoloadable zero-argument transformer class for custom document structure |
@@ -171,6 +171,26 @@ Use a **Variant** index when the result itself should be a specific variant, suc
 ```
 
 Leave the transformer blank for the recommended automatic path. Search Manager automatically uses its Commerce transformer for Product and Variant indices, including Commerce metadata such as product type, variant SKUs, titles, and option values. Use a custom transformer only when your storefront needs project-specific indexing logic. A minimal custom transformer can intentionally reduce the indexed Commerce metadata, which is useful for narrow search records but may remove SKU or option matches shoppers expect.
+
+### SmartLink Manager and ShortLink Manager integration
+
+When [SmartLink Manager](https://lindemannrock.com/plugins/smartlink-manager) or [ShortLink Manager](https://lindemannrock.com/plugins/shortlink-manager) is installed and enabled, its link element appears as an index element type in the Control Panel. Search Manager uses its automatic transformer, so searchable element attributes and custom fields flow into the document without integration-specific setup.
+
+```php
+'smart-links' => [
+    'name' => 'Smart Links',
+    'elementType' => \lindemannrock\smartlinkmanager\elements\SmartLink::class,
+    'enabled' => true,
+],
+
+'short-links' => [
+    'name' => 'Short Links',
+    'elementType' => \lindemannrock\shortlinkmanager\elements\ShortLink::class,
+    'enabled' => true,
+],
+```
+
+The resulting document `type` values are `smart-link` and `short-link`. The automatic transformer also supplies the generic `source` labels `Smart-link` and `Short-link`, which source-based widget grouping can use. If either plugin is unavailable, its element type is not offered and an index configured for that unavailable class fails validation instead of silently changing content type. Enabling the plugin again makes the type available and queues affected indices for a rebuild.
 
 ## Multi-site indices
 

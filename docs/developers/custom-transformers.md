@@ -294,6 +294,9 @@ public function transform(ElementInterface $element): array
 - `asset`
 - `category`
 - `user`
+- `source-doc`
+- `smart-link`
+- `short-link`
 
 Do not put an Entry section handle or Entry section type in `type`. Keep section-specific metadata in separate fields:
 
@@ -306,7 +309,7 @@ $data['entrySectionType'] = $element->getSection()?->type;
 
 Commerce product type metadata follows the same rule: `type` stays `product` or `variant`, while product type details use `productType` and `productTypeHandle`.
 
-Non-entry Craft elements also keep their own metadata fields. Source-backed custom elements can use `source`; Assets use `volume`, `volumeHandle`, `filename`, `assetKind`, `extension`, and `size`, plus `width` and `height` when dimensions exist; Categories use `categoryGroup` and `categoryGroupHandle`; Users do not get fake `source` or Entry section metadata.
+Non-entry Craft elements also keep their own metadata fields. Source-backed custom elements can use `source`; Assets use `volume`, `volumeHandle`, `filename`, `assetKind`, `extension`, and `size`, plus `width` and `height` when dimensions exist; Categories use `categoryGroup` and `categoryGroupHandle`. Users omit `source`, while automatic SmartLink and ShortLink documents receive the generic `Smart-link` and `Short-link` source labels. None of those types receives Entry section metadata.
 
 Hierarchy and path context is also top-level kind metadata. `AutoTransformer` writes it at index time for Structure Entries (`ancestors`, `level`), Categories (`ancestors`, `level`), and public Assets (`ancestors`, `folderPath`). Channel/Single Entries, Users, Commerce Products/Variants, source docs, and private-volume Assets omit these keys. `folderPath` is Craft's canonical folder path string, not a join of folder display titles.
 
