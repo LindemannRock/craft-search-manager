@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {execFileSync, spawnSync} from 'node:child_process';
-import {chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
+import {chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -70,7 +70,22 @@ exit 0
     };
 }
 
-function actFailureFixture() {
+function actWorkflow(steps) {
+    return `jobs:
+  quality-gates:
+    container: node:24-bookworm
+    steps:
+${steps.join('\n')}
+`;
+}
+
+const checkoutStep = '      - uses: actions/checkout@v6';
+const trustStep = `      - name: Trust checked-out repository
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"`;
+const qualityGateStep = `      - name: Complete package quality gate
+        run: composer quality-gate`;
+
+function actFailureFixture(workflow = actWorkflow([checkoutStep, trustStep, qualityGateStep])) {
     const root = mkdtempSync(path.join(os.tmpdir(), 'search-manager-act-'));
     const binRoot = path.join(root, 'bin');
     const resourceRoot = path.join(root, 'run-owned-act-resources');
@@ -80,12 +95,7 @@ function actFailureFixture() {
     mkdirSync(binRoot, {recursive: true});
     mkdirSync(resourceRoot, {recursive: true});
     cpSync(path.join(pluginRoot, 'scripts/act-quality-gates'), path.join(root, 'scripts/act-quality-gates'));
-    writeFileSync(path.join(root, '.github/workflows/ci.yml'), `jobs:
-  quality-gates:
-    steps:
-      - name: Complete package quality gate
-        run: composer quality-gate
-`);
+    writeFileSync(path.join(root, '.github/workflows/ci.yml'), workflow);
     const fakeAct = path.join(binRoot, 'act');
     writeFileSync(fakeAct, `#!/bin/sh
 printf '%s\n' "$*" > "$SEARCH_MANAGER_ACT_ARGUMENT_LOG"
@@ -182,7 +192,16 @@ test('every constituent failure makes the aggregate nonzero', async (context) =>
 test('CI and Act select the same aggregate authority', () => {
     const workflow = readFileSync(path.join(pluginRoot, '.github/workflows/ci.yml'), 'utf8');
     const act = readFileSync(path.join(pluginRoot, 'scripts/act-quality-gates'), 'utf8');
+    const exactTrust = /^\s*run:\s+git config --global --add safe\.directory "\$GITHUB_WORKSPACE"\s*$/gm;
     assert.equal((workflow.match(/run:\s+composer quality-gate/g) ?? []).length, 1);
+    assert.equal((workflow.match(exactTrust) ?? []).length, 1);
+    assert.equal((workflow.match(/safe\.directory/g) ?? []).length, 1);
+    assert.doesNotMatch(workflow, /safe\.directory[^\n]*\*/);
+    const checkoutPosition = workflow.indexOf('uses: actions/checkout@v6');
+    const trustPosition = workflow.indexOf('run: git config --global --add safe.directory "$GITHUB_WORKSPACE"');
+    const qualityGatePosition = workflow.indexOf('run: composer quality-gate');
+    assert.ok(checkoutPosition !== -1 && checkoutPosition < trustPosition);
+    assert.ok(trustPosition < qualityGatePosition);
     assert.doesNotMatch(workflow, /run:\s+composer (?:phpstan|check-cs|test|ci:full)/);
     assert.match(workflow, /container:\s+node:24-bookworm/);
     assert.match(workflow, /ignore-cache:\s+\$\{\{ env\.ACT \}\}/);
@@ -193,6 +212,65 @@ test('CI and Act select the same aggregate authority', () => {
     assert.match(act, /-j quality-gates/);
     assert.match(act, /composer quality-gate/);
     assert.match(act, /^\s*--rm\s*$/m);
+});
+
+test('Act preflight rejects invalid workspace trust contracts before launching Act', async (context) => {
+    const invalidContracts = [
+        {
+            name: 'missing trust',
+            workflow: actWorkflow([checkoutStep, qualityGateStep]),
+            error: /trust exactly/,
+        },
+        {
+            name: 'duplicate trust',
+            workflow: actWorkflow([checkoutStep, trustStep, trustStep, qualityGateStep]),
+            error: /trust exactly/,
+        },
+        {
+            name: 'wrong directory',
+            workflow: actWorkflow([
+                checkoutStep,
+                '      - run: git config --global --add safe.directory "/workspace"',
+                qualityGateStep,
+            ]),
+            error: /trust exactly/,
+        },
+        {
+            name: 'trust before checkout',
+            workflow: actWorkflow([trustStep, checkoutStep, qualityGateStep]),
+            error: /after checkout and before composer quality-gate/,
+        },
+        {
+            name: 'trust after quality gate',
+            workflow: actWorkflow([checkoutStep, qualityGateStep, trustStep]),
+            error: /after checkout and before composer quality-gate/,
+        },
+        {
+            name: 'wildcard trust',
+            workflow: actWorkflow([
+                checkoutStep,
+                trustStep,
+                '      - run: git config --global --add safe.directory "*"',
+                qualityGateStep,
+            ]),
+            error: /never use wildcard safe\.directory trust/,
+        },
+    ];
+
+    for (const invalid of invalidContracts) {
+        await context.test(invalid.name, () => {
+            const current = actFailureFixture(invalid.workflow);
+            try {
+                const result = current.run();
+                assert.notEqual(result.status, 0);
+                assert.match(result.stderr, invalid.error);
+                assert.equal(existsSync(current.logPath), false);
+                assert.deepEqual(readdirSync(current.resourceRoot), []);
+            } finally {
+                current.cleanup();
+            }
+        });
+    }
 });
 
 test('controlled Act failure stays nonzero and removes every run-owned resource', () => {

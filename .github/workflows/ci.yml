@@ -39,6 +39,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Trust checked-out repository
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Set up PHP 8.3
         uses: shivammathur/setup-php@v2
         with:
