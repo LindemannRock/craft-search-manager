@@ -42,17 +42,16 @@ final readonly class TestProjectBoundary
         if ($configuredRoot !== null && (!is_string($configuredRoot) || trim($configuredRoot) === '')) {
             throw new \InvalidArgumentException(self::PROJECT_ROOT_ENV . ' must be a non-empty absolute path.');
         }
-
-        $projectRoot = $configuredRoot !== null
-            ? self::validatedDirectory($configuredRoot, 'configured test project root')
-            : self::discoverLocalProjectRoot($packageRoot);
         $disposable = self::environmentFlag($environment[self::DISPOSABLE_ENV] ?? null);
-
         if ($disposable && $configuredRoot === null) {
             throw new \InvalidArgumentException(
                 self::DISPOSABLE_ENV . '=1 requires an explicit ' . self::PROJECT_ROOT_ENV . '.',
             );
         }
+
+        $projectRoot = $configuredRoot !== null
+            ? self::validatedDirectory($configuredRoot, 'configured test project root')
+            : self::discoverLocalProjectRoot($packageRoot);
 
         $vendorRoot = self::validatedDirectory($projectRoot . '/vendor', 'test project vendor root');
         $storageRoot = self::validatedDirectory($projectRoot . '/storage', 'test project storage root');

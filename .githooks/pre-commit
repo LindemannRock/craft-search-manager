@@ -1,59 +1,76 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
-# Pre-commit hook: runs ECS + PHPStan before allowing the commit.
-#
-# Auto-installed via composer post-install/post-update — those scripts run
-# `git config core.hooksPath .githooks` so this file is what git invokes.
-#
-# Falls back to the workspace's shared vendor/ when the plugin is checked out
-# inside the LindemannRock workspace; otherwise uses the plugin's own vendor/
-# (e.g. for external contributors who clone the plugin standalone and ran
-# `composer install` here).
+# Pre-commit hook: runs the read-only PHPStan and ECS checks through Composer.
 
-set -e
+set -u
 
-PHPSTAN=""
-ECS=""
-for path in "../../vendor/bin" "vendor/bin"; do
-  [ -x "$path/phpstan" ] && [ -z "$PHPSTAN" ] && PHPSTAN="$path/phpstan"
-  [ -x "$path/ecs" ] && [ -z "$ECS" ] && ECS="$path/ecs"
-done
+PACKAGE_ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+WORKSPACE_ROOT="$(CDPATH= cd -- "$PACKAGE_ROOT/../.." 2>/dev/null && pwd -P)"
 
-if [ -z "$PHPSTAN" ] || [ -z "$ECS" ]; then
-    echo "PHPStan or ECS not found. Run 'composer install' in the workspace or this plugin first."
+cd "$PACKAGE_ROOT" || {
+    echo "Unable to enter the Search Manager package directory." >&2
     exit 1
-fi
+}
 
-echo "Running code quality checks..."
-
-PHPSTAN_OUTPUT=$(mktemp "${TMPDIR:-/tmp}/phpstan-output.XXXXXX")
-trap 'rm -f "$PHPSTAN_OUTPUT"' EXIT
-
-# ECS — auto-fix and ask for re-stage if anything was modified
-echo "Checking code style with ECS..."
-if ! "$ECS" check --ansi 2>&1 | grep -q "No errors found"; then
-    echo "Code style issues found. Running auto-fix..."
-    "$ECS" check --fix --ansi
-    if [ $? -eq 0 ]; then
-        echo "Code style issues fixed automatically"
-        echo "Files were modified. Please stage changes and commit again."
-        exit 1
-    else
-        echo "Some issues were fixed. Please review changes."
-        exit 1
+if [ "$PACKAGE_ROOT" = "$WORKSPACE_ROOT/plugins/search-manager" ] && [ -f "$WORKSPACE_ROOT/.ddev/config.yaml" ]; then
+    if ! command -v ddev >/dev/null 2>&1; then
+        echo "Search Manager is inside the workspace DDEV project, but 'ddev' is unavailable." >&2
+        echo "Install/start DDEV, then rerun the commit; host PHP is not a supported workspace fallback." >&2
+        exit 127
     fi
+
+    echo "Running Search Manager code quality checks through the workspace DDEV runtime..."
+    (
+        cd "$WORKSPACE_ROOT" || exit 1
+        ddev exec "cd plugins/search-manager && php -r 'fwrite(STDOUT, \"Search Manager pre-commit using DDEV PHP \" . PHP_VERSION . PHP_EOL);' && composer ci"
+    )
+    status=$?
+    if [ "$status" -ne 0 ]; then
+        echo "Search Manager pre-commit checks failed in DDEV (exit $status)." >&2
+        echo "Run: ddev exec \"cd plugins/search-manager && composer ci\"" >&2
+        exit "$status"
+    fi
+
+    echo "Search Manager pre-commit checks passed."
+    exit 0
 fi
 
-# PHPStan — block commit on any error
-echo "Running PHPStan analysis..."
-"$PHPSTAN" analyse --configuration=phpstan.neon --memory-limit=1G --no-progress --error-format=table > "$PHPSTAN_OUTPUT" 2>&1
-if ! grep -q "\[OK\] No errors" "$PHPSTAN_OUTPUT"; then
-    cat "$PHPSTAN_OUTPUT"
-    echo ""
-    echo "PHPStan found issues. Please fix them before committing."
-    echo "Run: composer phpstan"
-    exit 1
+if ! command -v php >/dev/null 2>&1; then
+    echo "Standalone Search Manager checks require PHP, but 'php' is unavailable." >&2
+    exit 127
+fi
+if ! command -v composer >/dev/null 2>&1; then
+    echo "Standalone Search Manager checks require Composer, but 'composer' is unavailable." >&2
+    exit 127
 fi
 
-echo "All checks passed! Proceeding with commit..."
+echo "Validating standalone Composer platform requirements..."
+composer check-platform-reqs --no-interaction
+status=$?
+if [ "$status" -ne 0 ]; then
+    echo "Standalone Composer platform validation failed (exit $status)." >&2
+    echo "Use a PHP/platform combination supported by the installed dependencies, run composer install, and retry." >&2
+    exit "$status"
+fi
+
+echo "Validating standalone PHP quality-tool compatibility..."
+php scripts/check-quality-platform.php
+status=$?
+if [ "$status" -ne 0 ]; then
+    php_version="$(php -r 'echo PHP_VERSION;' 2>/dev/null)"
+    echo "Standalone quality tools are incompatible with active PHP ${php_version:-unknown} (exit $status)." >&2
+    echo "Use a runtime supported by the installed quality tools, or update the standalone dependencies, before retrying." >&2
+    exit "$status"
+fi
+
+echo "Running standalone Search Manager code quality checks..."
+composer ci
+status=$?
+if [ "$status" -ne 0 ]; then
+    echo "Search Manager pre-commit checks failed (exit $status)." >&2
+    echo "Run: composer ci" >&2
+    exit "$status"
+fi
+
+echo "Search Manager pre-commit checks passed."
 exit 0

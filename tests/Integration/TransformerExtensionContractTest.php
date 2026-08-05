@@ -19,6 +19,7 @@ use lindemannrock\searchmanager\services\TransformerService;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
 use lindemannrock\searchmanager\transformers\BaseTransformer;
+use lindemannrock\searchmanager\transformers\CommerceTransformer;
 use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
@@ -30,10 +31,10 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(TransformerService::class)]
 final class TransformerExtensionContractTest extends TestCase
 {
-    private const PROJECT_BASE_TRANSFORMER = 'modules\\searchmanager\\transformers\\ExampleBaseTransformer';
-    private const PROJECT_AUTO_TRANSFORMER = 'modules\\searchmanager\\transformers\\ExampleAutoTransformer';
-    private const PROJECT_INTERFACE_TRANSFORMER = 'modules\\searchmanager\\transformers\\ExampleInterfaceTransformer';
-    private const PROJECT_COMMERCE_TRANSFORMER = 'modules\\searchmanager\\transformers\\ExampleCommercePostProcessorTransformer';
+    private const PROJECT_BASE_TRANSFORMER = ProjectBaseTransformerFixture::class;
+    private const PROJECT_AUTO_TRANSFORMER = ProjectAutoTransformerFixture::class;
+    private const PROJECT_INTERFACE_TRANSFORMER = ProjectInterfaceTransformerFixture::class;
+    private const PROJECT_COMMERCE_TRANSFORMER = ProjectCommercePostProcessorTransformerFixture::class;
 
     public function testBlankTransformerClassRemainsValid(): void
     {
@@ -105,7 +106,7 @@ final class TransformerExtensionContractTest extends TestCase
 
     public function testProjectProductTransformerIsAutoloadableValidAndRunnable(): void
     {
-        $transformerClass = 'modules\\searchmanager\\transformers\\ProductTransformer';
+        $transformerClass = ProjectProductTransformerFixture::class;
 
         self::assertTrue(class_exists($transformerClass));
         self::assertSame(0, (new \ReflectionClass($transformerClass))->getConstructor()?->getNumberOfRequiredParameters() ?? 0);
@@ -163,7 +164,7 @@ final class TransformerExtensionContractTest extends TestCase
     {
         self::assertProjectTransformerClassIsValid(self::PROJECT_INTERFACE_TRANSFORMER);
         self::assertFalse(
-            method_exists(self::PROJECT_INTERFACE_TRANSFORMER, 'setHeadingLevels'),
+            (new \ReflectionClass(self::PROJECT_INTERFACE_TRANSFORMER))->hasMethod('setHeadingLevels'),
             'Direct TransformerInterface implementations are supported, but BaseTransformer helpers and heading-level behavior are not automatic.'
         );
 
@@ -355,4 +356,73 @@ final class ContractConstructorTransformer implements TransformerInterface
 
 final class ContractNotATransformer
 {
+}
+
+final class ProjectProductTransformerFixture extends AutoTransformer
+{
+    public function supports(ElementInterface $element): bool
+    {
+        return $element instanceof Entry;
+    }
+}
+
+final class ProjectBaseTransformerFixture extends BaseTransformer
+{
+    protected function getElementType(): string
+    {
+        return Entry::class;
+    }
+
+    public function transform(ElementInterface $element): array
+    {
+        $content = $this->stripHtml('<h1>Project H1</h1><h5>Project H5</h5><p>Example project body.</p>');
+        $data = $this->getCommonData($element);
+        $data['content'] = $content;
+        $data['projectTransformer'] = 'base';
+        $data['projectHeadingLevels'] = $this->getHeadingLevels();
+        $data['_projectHeadings'] = $this->extractHeadings('<h1>Project H1</h1><h5>Project H5</h5>');
+
+        return $data;
+    }
+}
+
+final class ProjectAutoTransformerFixture extends AutoTransformer
+{
+    public function transform(ElementInterface $element): array
+    {
+        $data = parent::transform($element);
+        $data['projectTransformer'] = 'auto';
+        $data['projectHeadingLevels'] = $this->getHeadingLevels();
+
+        return $data;
+    }
+}
+
+final class ProjectInterfaceTransformerFixture implements TransformerInterface
+{
+    public function transform(ElementInterface $element): array
+    {
+        return [
+            'elementId' => $element->id,
+            'siteId' => $element->siteId,
+            'title' => $element->title ?? '',
+            'projectTransformer' => 'interface',
+        ];
+    }
+
+    public function supports(ElementInterface $element): bool
+    {
+        return $element instanceof Entry;
+    }
+}
+
+final class ProjectCommercePostProcessorTransformerFixture extends CommerceTransformer
+{
+    public function transform(ElementInterface $element): array
+    {
+        $data = parent::transform($element);
+        $data['projectTransformer'] = 'commerce-post-processor';
+
+        return $data;
+    }
 }

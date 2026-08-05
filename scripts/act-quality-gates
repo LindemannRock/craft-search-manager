@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if ! grep -Eq '^[[:space:]]*run:[[:space:]]+composer quality-gate[[:space:]]*$' .github/workflows/ci.yml; then
+    echo "The CI quality-gates job must invoke the canonical 'composer quality-gate' command." >&2
+    exit 1
+fi
+
+set +e
 act push \
     -W .github/workflows/ci.yml \
     -j quality-gates \
     -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
     --container-architecture linux/amd64 \
-    "$@"
+    "$@" \
+    --rm
+status=$?
+set -e
+
+exit "$status"

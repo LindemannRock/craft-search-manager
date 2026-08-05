@@ -37,6 +37,7 @@ final class FreshInstallSchemaContractTest extends TestCase
     private string $runId;
     private string $databaseName;
     private string $projectRoot;
+    private string $securityKey;
     private bool $databaseCreated = false;
     private bool $projectCreated = false;
 
@@ -51,6 +52,7 @@ final class FreshInstallSchemaContractTest extends TestCase
         $this->databaseName = self::DATABASE_PREFIX . $this->runId;
         $this->projectRoot = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
             . DIRECTORY_SEPARATOR . self::PROJECT_PREFIX . $this->runId;
+        $this->securityKey = bin2hex(random_bytes(32));
     }
 
     protected function tearDown(): void
@@ -240,7 +242,7 @@ $packageRoot = getenv('SEARCH_MANAGER_FRESH_INSTALL_PACKAGE_ROOT');
 if (!is_string($packageRoot) || !is_dir($packageRoot . '/src')) {
     throw new RuntimeException('The isolated Search Manager package root is invalid.');
 }
-$loader->addClassMap(Composer\ClassMapGenerator\ClassMapGenerator::createMap($packageRoot . '/src'));
+$loader->addPsr4('lindemannrock\\searchmanager\\', $packageRoot . '/src', true);
 if (class_exists(Dotenv\Dotenv::class)) {
     Dotenv\Dotenv::createUnsafeMutable(CRAFT_BASE_PATH)->safeLoad();
 }
@@ -282,8 +284,10 @@ return [
 PHP);
         $this->writeOwnedFile('.env', implode("\n", [
             'CRAFT_APP_ID=search-manager-pr192-' . $this->runId,
+            'CRAFT_ALLOW_SUPERUSER=1',
+            'CRAFT_EDITION=pro',
             'CRAFT_ENVIRONMENT=test',
-            'CRAFT_SECURITY_KEY=' . bin2hex(random_bytes(32)),
+            'CRAFT_SECURITY_KEY=' . $this->securityKey,
             'CRAFT_DB_DSN=mysql:host=' . $this->mysqlHost() . ';port=' . $this->mysqlPort() . ';dbname=' . $this->databaseName,
             'CRAFT_DB_USER=root',
             'CRAFT_DB_PASSWORD=root',
@@ -474,6 +478,17 @@ SQL);
         return [
             'PATH' => is_string($_SERVER['PATH'] ?? null) ? $_SERVER['PATH'] : '/usr/local/bin:/usr/bin:/bin',
             'LANG' => is_string($_SERVER['LANG'] ?? null) && $_SERVER['LANG'] !== '' ? $_SERVER['LANG'] : 'C.UTF-8',
+            'CRAFT_APP_ID' => 'search-manager-pr192-' . $this->runId,
+            'CRAFT_ALLOW_SUPERUSER' => '1',
+            'CRAFT_EDITION' => 'pro',
+            'CRAFT_ENVIRONMENT' => 'test',
+            'CRAFT_SECURITY_KEY' => $this->securityKey,
+            'CRAFT_DB_DSN' => 'mysql:host=' . $this->mysqlHost() . ';port=' . $this->mysqlPort() . ';dbname=' . $this->databaseName,
+            'CRAFT_DB_USER' => 'root',
+            'CRAFT_DB_PASSWORD' => 'root',
+            'CRAFT_DB_SCHEMA' => '',
+            'CRAFT_DB_TABLE_PREFIX' => '',
+            'PRIMARY_SITE_URL' => 'https://pr192.example.test',
             self::PACKAGE_ROOT_ENV => dirname(__DIR__, 2),
             'XDEBUG_MODE' => 'off',
         ];

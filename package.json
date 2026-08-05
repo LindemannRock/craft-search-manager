@@ -11,6 +11,7 @@
     "build:widget": "cd src/web/assets/searchwidget && npm run build",
     "dev": "cd src/web/assets/searchwidget && npm run dev",
     "test:analytics": "cd src/web/assets && npm run test:analytics",
+    "test:bulk-response": "node --test tests/js/bulk-mutation-response-handler.test.mjs",
     "watch": "cd src/web/assets/searchwidget && npm run watch",
     "test": "cd src/web/assets/searchwidget && npm test",
     "test:a11y": "cd src/web/assets/searchwidget && npm run test:a11y",

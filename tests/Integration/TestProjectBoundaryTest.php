@@ -23,11 +23,17 @@ final class TestProjectBoundaryTest extends TestCase
 {
     public function testLocalProjectIsSelectedWithoutAnExplicitOverride(): void
     {
-        $boundary = TestProjectBoundary::resolve([]);
+        $projectRoot = $this->fakeProjectRoot();
+        $packageRoot = $projectRoot . '/plugins/search-manager';
+        $fixtureTemplates = $packageRoot . '/tests/Fixtures/Project/templates';
+        if (!mkdir($fixtureTemplates, 0700, true) && !is_dir($fixtureTemplates)) {
+            throw new \RuntimeException('Unable to create the synthetic local package boundary.');
+        }
+        $boundary = TestProjectBoundary::resolve([], $packageRoot);
 
         self::assertFalse($boundary->disposable);
-        self::assertSame(realpath(dirname(__DIR__, 4)), $boundary->projectRoot);
-        self::assertSame(realpath(dirname(__DIR__, 2)), $boundary->packageRoot);
+        self::assertSame(realpath($projectRoot), $boundary->projectRoot);
+        self::assertSame(realpath($packageRoot), $boundary->packageRoot);
     }
 
     public function testExplicitRunnerOwnedProjectIsSelectedAndValidated(): void
@@ -62,10 +68,10 @@ final class TestProjectBoundaryTest extends TestCase
 
     public function testBoundaryAndFixtureIdentitiesAreStableAndReal(): void
     {
-        $boundary = TestProjectBoundary::resolve([]);
+        $boundary = TestProjectBoundary::resolve();
         $manifest = DeterministicFixtureManifest::load();
 
-        self::assertSame($boundary->identityHash(), TestProjectBoundary::resolve([])->identityHash());
+        self::assertSame($boundary->identityHash(), TestProjectBoundary::resolve()->identityHash());
         self::assertSame($manifest, DeterministicFixtureManifest::load());
         self::assertSame(DeterministicFixtureManifest::EXPECTED_HASH, DeterministicFixtureManifest::hash());
         $uids = array_filter(

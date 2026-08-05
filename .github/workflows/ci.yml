@@ -8,6 +8,34 @@ on:
 jobs:
   quality-gates:
     runs-on: ubuntu-latest
+    container: node:24-bookworm
+    services:
+      db:
+        image: mysql:8.0.40
+        env:
+          MYSQL_DATABASE: db
+          MYSQL_USER: db
+          MYSQL_PASSWORD: db
+          MYSQL_ROOT_PASSWORD: root
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      redis2:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v6
 
@@ -19,15 +47,18 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        uses: ramsey/composer-install@v3
+        uses: ramsey/composer-install@v4
         with:
           composer-options: --prefer-dist
+          ignore-cache: ${{ env.ACT }}
 
-      - name: Composer security audit
-        run: composer audit --abandoned=report
+      - name: Install JavaScript dependencies
+        run: |
+          npm ci --prefix src/web/assets
+          npm ci --prefix src/web/assets/searchwidget
 
-      - name: PHPStan
-        run: composer phpstan
+      - name: Install Chromium
+        run: cd src/web/assets/searchwidget && npx playwright install --with-deps chromium
 
-      - name: ECS code style check
-        run: composer check-cs
+      - name: Complete package quality gate
+        run: composer quality-gate

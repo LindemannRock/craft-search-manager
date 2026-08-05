@@ -342,6 +342,9 @@ final class ProcessRunOwner
         if (!is_array($fields) || !isset($fields[19])) {
             return null;
         }
+        if (in_array($fields[0] ?? null, ['Z', 'X', 'x'], true)) {
+            return null;
+        }
 
         return ['pid' => $pid, 'startTicks' => (string)$fields[19]];
     }

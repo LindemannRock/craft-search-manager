@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PACKAGE_ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "$PACKAGE_ROOT"
+
+if [ -f composer.lock ] || [ -f vendor/composer/installed.json ]; then
+    exec composer audit --abandoned=report
+fi
+
+AUDIT_TMP_ROOT="${TMPDIR:-/tmp}"
+AUDIT_WORKTREE="$(mktemp -d "$AUDIT_TMP_ROOT/search-manager-composer-audit.XXXXXX")"
+
+cleanup_audit_worktree() {
+    case "$AUDIT_WORKTREE" in
+        "$AUDIT_TMP_ROOT"/search-manager-composer-audit.*)
+            rm -rf -- "$AUDIT_WORKTREE"
+            ;;
+        *)
+            echo "Refusing to remove unexpected Composer audit path: $AUDIT_WORKTREE" >&2
+            return 1
+            ;;
+    esac
+}
+trap cleanup_audit_worktree EXIT
+
+cp composer.json "$AUDIT_WORKTREE/composer.json"
+composer update --no-install --no-scripts --no-interaction --prefer-dist --working-dir="$AUDIT_WORKTREE"
+composer audit --abandoned=report --locked --working-dir="$AUDIT_WORKTREE"

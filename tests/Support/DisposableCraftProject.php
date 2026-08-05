@@ -36,6 +36,7 @@ final class DisposableCraftProject
     private string $projectRoot;
     private string $databaseName;
     private string $vendorRoot;
+    private string $securityKey;
     private bool $databaseCreated = false;
     private bool $grantCreated = false;
     private bool $projectCreated = false;
@@ -50,6 +51,7 @@ final class DisposableCraftProject
             . DIRECTORY_SEPARATOR . 'search-manager-fixture-' . $this->runId;
         $this->databaseName = self::DATABASE_PREFIX . $this->runId;
         $this->vendorRoot = $this->resolveVendorRoot();
+        $this->securityKey = bin2hex(random_bytes(32));
     }
 
     /** @return array<string, mixed> */
@@ -268,8 +270,8 @@ PHP);
             'CRAFT_APP_ID=search-manager-fixture-' . $this->runId,
             'CRAFT_ENVIRONMENT=test',
             'CRAFT_EDITION=pro',
-            'CRAFT_SECURITY_KEY=' . bin2hex(random_bytes(32)),
-            'CRAFT_DB_DSN=mysql:host=db;port=3306;dbname=' . $this->databaseName,
+            'CRAFT_SECURITY_KEY=' . $this->securityKey,
+            'CRAFT_DB_DSN=' . $this->fixtureDsn(),
             'CRAFT_DB_USER=db',
             'CRAFT_DB_PASSWORD=db',
             'CRAFT_DB_SCHEMA=',
@@ -391,6 +393,17 @@ PHP);
         $environment = [
             'PATH' => is_string($_SERVER['PATH'] ?? null) ? $_SERVER['PATH'] : '/usr/local/bin:/usr/bin:/bin',
             'LANG' => is_string($_SERVER['LANG'] ?? null) && $_SERVER['LANG'] !== '' ? $_SERVER['LANG'] : 'C.UTF-8',
+            'CRAFT_APP_ID' => 'search-manager-fixture-' . $this->runId,
+            'CRAFT_ALLOW_SUPERUSER' => '1',
+            'CRAFT_EDITION' => 'pro',
+            'CRAFT_ENVIRONMENT' => 'test',
+            'CRAFT_SECURITY_KEY' => $this->securityKey,
+            'CRAFT_DB_DSN' => $this->fixtureDsn(),
+            'CRAFT_DB_USER' => 'db',
+            'CRAFT_DB_PASSWORD' => 'db',
+            'CRAFT_DB_SCHEMA' => '',
+            'CRAFT_DB_TABLE_PREFIX' => '',
+            'PRIMARY_SITE_URL' => 'https://fixture-primary.example.test',
             TestProjectBoundary::PROJECT_ROOT_ENV => $this->projectRoot,
             TestProjectBoundary::DISPOSABLE_ENV => '1',
             self::SOURCE_VENDOR_ENV => $this->vendorRoot,
@@ -403,6 +416,11 @@ PHP);
         }
 
         return $environment;
+    }
+
+    private function fixtureDsn(): string
+    {
+        return 'mysql:host=db;port=3306;dbname=' . $this->databaseName;
     }
 
     private function adminPdo(): PDO

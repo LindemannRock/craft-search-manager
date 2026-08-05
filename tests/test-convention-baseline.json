@@ -1,0 +1,110 @@
+[
+  {
+    "path": "tests/Integration/AnalyticsControllerFailureLoggingTest.php",
+    "kind": "class",
+    "identifier": "Pr134AnalyticsController",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/AnalyticsControllerFailureLoggingTest.php",
+    "kind": "class",
+    "identifier": "Pr134FailingAnalyticsService",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/AnalyticsLifecycleScopeTest.php",
+    "kind": "class",
+    "identifier": "Pr128RecordingAnalyticsService",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/AnalyticsRetentionLifecycleTest.php",
+    "kind": "class",
+    "identifier": "Pr131SettingsController",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/AutoTransformerNativeFieldTest.php",
+    "kind": "class",
+    "identifier": "A5ThrowingRelationCollection",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/AutoTransformerNativeFieldTest.php",
+    "kind": "class",
+    "identifier": "A5ThrowingRelationField",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/BackendConnectionTestActionTest.php",
+    "kind": "class",
+    "identifier": "Pr126BackendsController",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/BackendConnectionTestActionTest.php",
+    "kind": "class",
+    "identifier": "Pr126RecordingBackend",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/BackendConnectionTestActionTest.php",
+    "kind": "class",
+    "identifier": "Pr126RecordingBackendService",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/DefaultPersistenceControllerTest.php",
+    "kind": "class",
+    "identifier": "Pr127BackendsController",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/DefaultPersistenceControllerTest.php",
+    "kind": "class",
+    "identifier": "Pr127WidgetsController",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/EditionFoundationTest.php",
+    "kind": "function",
+    "identifier": "testPr142ProPermissionOrderAndNestingAreCanonical",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/EditionFoundationTest.php",
+    "kind": "function",
+    "identifier": "testPr142StandardPermissionOrderAndNestingAreCanonical",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/IndexingFailureContractTest.php",
+    "kind": "class",
+    "identifier": "A5ConstructorFailingTransformer",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/IndexingFailureContractTest.php",
+    "kind": "class",
+    "identifier": "A5HealthyTransformer",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/IndexingFailureContractTest.php",
+    "kind": "class",
+    "identifier": "A5SelectiveTransformer",
+    "reason": "work-history ID"
+  },
+  {
+    "path": "tests/Integration/MaintenanceStorageClearTest.php",
+    "kind": "function",
+    "identifier": "purgeAuditRows",
+    "reason": "work-history label"
+  },
+  {
+    "path": "tests/Integration/PromotionPresentationTruthTest.php",
+    "kind": "class",
+    "identifier": "A10Fs2PipelineBackendService",
+    "reason": "work-history ID"
+  }
+]

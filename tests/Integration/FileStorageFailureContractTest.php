@@ -105,16 +105,17 @@ final class FileStorageFailureContractTest extends TestCase
         file_put_contents($path, $fault === 'decode' ? '{invalid' : ($fault === 'empty' ? '' : '{"1:101":1}'));
 
         if ($fault === 'open') {
-            chmod($path, 0000);
+            $this->registerFaultWrapper();
+            FileStorageFailureFaultStreamWrapper::$modes['open'] = 'open-fail';
+            $readFile = new \ReflectionMethod(FileStorage::class, 'readFile');
+            $this->assertRuntimeFailure(
+                static fn(): mixed => $readFile->invoke($storage, self::FAULT_SCHEME . '://root/open'),
+            );
+
+            return;
         }
 
-        try {
-            $this->assertRuntimeFailure(static fn(): array => $storage->getTermDocuments('failure', 1));
-        } finally {
-            if ($fault === 'open') {
-                chmod($path, 0644);
-            }
-        }
+        $this->assertRuntimeFailure(static fn(): array => $storage->getTermDocuments('failure', 1));
     }
 
     public function testExistingFileLockAndReadFailuresThrow(): void
