@@ -880,11 +880,18 @@ async function runWidgetInstanceBehaviorTests() {
             document.getElementById('background').focus();
             document.getElementById('focus-widget').open({ source: 'test' });
         });
-        await page.waitForTimeout(20);
-        let focusState = await page.evaluate(() => {
-            const widget = document.getElementById('focus-widget');
-            return widget.shadowRoot.activeElement === widget.shadowRoot.querySelector('.sm-input');
-        });
+        let focusState = false;
+        try {
+            await page.waitForFunction(() => {
+                const widget = document.getElementById('focus-widget');
+                return widget.shadowRoot.activeElement === widget.shadowRoot.querySelector('.sm-input');
+            }, null, { timeout: 2000 });
+            focusState = true;
+        } catch (error) {
+            if (error.name !== 'TimeoutError') {
+                throw error;
+            }
+        }
         test('Modal open moves initial focus to the search input', focusState);
 
         await page.evaluate(() => {
