@@ -103,6 +103,8 @@
     "children": [
       "resources/logging",
       "resources/testing-tools",
+      "resources/postman",
+      "resources/example-templates",
       "resources/troubleshooting",
       "resources/translations"
     ]

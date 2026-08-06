@@ -108,9 +108,9 @@ final class CpTestIndexEligibilityTest extends TestCase
     {
         $templatesRoot = TestProjectBoundary::resolve()->fixtureTemplatesRoot;
         $templates = [
-            'test-search.twig',
-            'test-search-datastar.twig',
-            'test-search-widget.twig',
+            'search-manager-search-playground.twig',
+            'search-manager-native-comparison.twig',
+            'search-manager-widget-playground.twig',
         ];
 
         foreach ($templates as $path) {
@@ -130,7 +130,7 @@ final class CpTestIndexEligibilityTest extends TestCase
             );
         }
 
-        foreach (['test-search.twig', 'test-search-datastar.twig'] as $path) {
+        foreach (['search-manager-search-playground.twig', 'search-manager-native-comparison.twig'] as $path) {
             $template = file_get_contents($templatesRoot . '/' . $path);
             self::assertIsString($template);
             self::assertStringContainsString(
@@ -147,7 +147,7 @@ final class CpTestIndexEligibilityTest extends TestCase
             );
         }
 
-        $widget = file_get_contents($templatesRoot . '/test-search-widget.twig');
+        $widget = file_get_contents($templatesRoot . '/search-manager-widget-playground.twig');
         self::assertIsString($widget);
         self::assertStringContainsString("initialScope = indexHandles|length ? '__all' : ''", $widget);
         self::assertStringContainsString(
@@ -171,17 +171,17 @@ final class CpTestIndexEligibilityTest extends TestCase
         $backend = $this->installStubBackend();
         SearchManager::$plugin->dependencies->clearIndexCatalogue();
 
-        foreach (['test-search', 'test-search-datastar'] as $template) {
+        foreach (['search-manager-search-playground', 'search-manager-native-comparison'] as $template) {
             $source = file_get_contents($templatesRoot . '/' . $template . '.twig');
             self::assertIsString($source);
             $html = Craft::$app->getView()->renderString($source, [], View::TEMPLATE_MODE_SITE);
             self::assertStringContainsString('<!doctype html>', $html, $template);
         }
 
-        $widgetSource = file_get_contents($templatesRoot . '/test-search-widget.twig');
+        $widgetSource = file_get_contents($templatesRoot . '/search-manager-widget-playground.twig');
         self::assertIsString($widgetSource);
         $twig = Craft::$app->getView()->getTwig();
-        $twig->parse($twig->tokenize(new \Twig\Source($widgetSource, 'test-search-widget')));
+        $twig->parse($twig->tokenize(new \Twig\Source($widgetSource, 'search-manager-widget-playground')));
         self::addToAssertionCount(1);
 
         self::assertSame([], $backend->calls);

@@ -201,7 +201,7 @@ final class TestProjectFixtureSeeder
                     'enabledByDefault' => true,
                     'hasUrls' => true,
                     'uriFormat' => 'fixture-pages/{slug}',
-                    'template' => 'test-search.twig',
+                    'template' => 'search-manager-search-playground.twig',
                 ]);
             }
             $section = new Section([
@@ -321,7 +321,7 @@ final class TestProjectFixtureSeeder
                     'siteId' => $site->id,
                     'hasUrls' => true,
                     'uriFormat' => 'fixture-topics/{slug}',
-                    'template' => 'test-search.twig',
+                    'template' => 'search-manager-search-playground.twig',
                 ]);
             }
             $group = new CategoryGroup([
@@ -401,7 +401,7 @@ final class TestProjectFixtureSeeder
                     'siteId' => $siteId,
                     'hasUrls' => true,
                     'uriFormat' => 'fixture-products/{slug}',
-                    'template' => 'test-search.twig',
+                    'template' => 'search-manager-search-playground.twig',
                     'enabledByDefault' => true,
                 ]);
             }

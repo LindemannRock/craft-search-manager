@@ -1,0 +1,1004 @@
+{#
+// Search Manager benchmark template.
+//
+// Purpose: portable diagnostic page for comparing Search Manager results with
+// Craft element-query .search() behavior.
+// Required: Search Manager.
+// Optional: Datastar, used only for reactive input/DOM patching.
+// Note: the selected index is used directly by the Search Manager column. The
+// Craft column runs a matching element query and, when Replace Native Search is
+// enabled, Search Manager resolves the coverage index by element type/site scope.
+// This is a development/testing template, not a production search UI.
+#}
+
+{% set datastarInstalled = lrPluginInstalled('datastar') %}
+{% set datastarEnabled = lrPluginEnabled('datastar') and datastar is defined %}
+{% set replaceNativeSearch = craft.searchManager.getSettings().replaceNativeSearch ?? false %}
+{% set queryParams = craft.app.request.queryParams %}
+{% set indexRecords = craft.searchManager.getAvailableIndices() %}
+{% set indexHandles = indexRecords|map(index => index.handle) %}
+{% set siteNamesById = {} %}
+{% for site in craft.app.sites.getAllSites() %}
+    {% set siteNamesById = siteNamesById|merge({ (site.id): site.name }) %}
+{% endfor %}
+{% set initialIndex = 'all-sites' in indexHandles ? 'all-sites' : (indexHandles[0] ?? '') %}
+{% set requestIndex = queryParams.smIndex ?? queryParams.smindex ?? queryParams.index ?? craft.app.request.getParam('smIndex') ?? craft.app.request.getParam('index') ?? null %}
+{% set requestQuery = queryParams.q ?? craft.app.request.getParam('q') ?? null %}
+{% set signalState = signals is defined ? (signals.sm ?? {}) : {} %}
+{% set query = requestQuery is not null and requestQuery != '' ? requestQuery : (signalState.q ?? '') %}
+{% set activeIndex = requestIndex is not null and requestIndex != '' ? requestIndex : (signalState.index ?? initialIndex) %}
+{% set activeIndex = activeIndex == '__all' or activeIndex in indexHandles ? activeIndex : initialIndex %}
+{% set requestLimit = queryParams.limit ?? craft.app.request.getParam('limit') ?? (signalState.limit ?? 10) %}
+{% set limit = requestLimit matches '/^\\d+$/' ? requestLimit : 10 %}
+{% set limit = limit < 1 ? 1 : (limit > 50 ? 50 : limit) %}
+{% set activeIndexRecord = null %}
+{% for index in indexRecords %}
+    {% if index.handle == activeIndex %}
+        {% set activeIndexRecord = index %}
+    {% endif %}
+{% endfor %}
+{% set activeElementType = activeIndexRecord ? activeIndexRecord.elementType : '' %}
+{% set isProductIndex = activeIndex == 'commerce' or activeElementType ends with '\\Product' %}
+{% set isVariantIndex = activeIndex == 'commerce-variants' or activeElementType ends with '\\Variant' %}
+{% set isSmartLinkIndex = activeElementType ends with '\\SmartLink' %}
+{% set isShortLinkIndex = activeElementType ends with '\\ShortLink' %}
+{% set isSourceDocIndex = activeElementType ends with '\\SourceDoc' %}
+{% set isEntryIndex = activeElementType == '' or activeElementType ends with '\\Entry' %}
+{% set nativeQueryLabel = 'craft.entries.site("*").search(query)' %}
+{% if isProductIndex %}
+    {% set nativeQueryLabel = 'craft.products.site("*").search(query)' %}
+{% elseif isVariantIndex %}
+    {% set nativeQueryLabel = 'craft.variants.site("*").search(query)' %}
+{% elseif isSmartLinkIndex %}
+    {% set nativeQueryLabel = 'craft.smartLinkManager.smartLinks().site("*").search(query)' %}
+{% elseif isShortLinkIndex %}
+    {% set nativeQueryLabel = 'craft.shortLinkManager.shortLinks().site("*").search(query)' %}
+{% elseif isSourceDocIndex %}
+    {% set nativeQueryLabel = 'craft.docsManager.sourceDocs().site("*").search(query)' %}
+{% endif %}
+{% set commerceEnabled = lrPluginEnabled('commerce') %}
+{% set canSearch = query|length >= 2 and indexHandles|length %}
+{% set searchManagerResults = null %}
+{% set searchManagerElapsedMs = null %}
+{% set nativeResults = [] %}
+{% set nativeElapsedMs = null %}
+{% set nativeScope = 'entries, all sites' %}
+{% set nativeUnavailable = null %}
+{% set suggestionResponse = null %}
+{% set suggestions = [] %}
+{% set suggestionMeta = null %}
+{% set fetchAction = null %}
+
+{% if datastarEnabled %}
+    {#
+    // Datastar renders this same template through its action endpoint on input
+    // changes. The Datastar-only response is isolated below so this template
+    // still works as a normal GET page when Datastar is missing or disabled.
+    #}
+    {% set fetchAction = datastar.get('search-manager-native-comparison.twig') %}
+{% endif %}
+
+{% if canSearch %}
+    {% if activeIndex != '__all' %}
+        {% set suggestionResponse = craft.searchManager.suggest(query, activeIndex, {
+            limit: 8,
+            includeMeta: true,
+        }) %}
+        {% set suggestions = suggestionResponse.suggestions ?? suggestionResponse %}
+        {% set suggestionMeta = suggestionResponse.meta ?? null %}
+    {% endif %}
+
+    {% set searchOptions = {
+        limit: limit,
+        snippetMaxLength: 150,
+        snippetMode: 'balanced',
+        snippetCleanMarkdown: true,
+        skipAnalytics: true,
+    } %}
+
+    {% set searchManagerStarted = date('now')|date('U.u') %}
+    {% set searchManagerResults = activeIndex == '__all'
+        ? craft.searchManager.searchMultiple(indexHandles, query, searchOptions)
+        : craft.searchManager.search(activeIndex, query, searchOptions)
+    %}
+    {% set searchManagerElapsedMs = (((date('now')|date('U.u')) - searchManagerStarted) * 1000)|round(1) %}
+
+    {#
+    // The native column intentionally runs Craft element queries. With Replace
+    // Native Search enabled, Search Manager's adapter maps those queries to a
+    // full-coverage index; the selected index handle is not passed through.
+    #}
+    {% set nativeStarted = date('now')|date('U.u') %}
+    {% if isProductIndex %}
+        {% set nativeScope = 'products, all sites' %}
+        {% if commerceEnabled and craft.products is defined %}
+            {% set nativeResults = craft.products.site('*').search(query).orderBy('score desc').limit(limit).all() %}
+        {% else %}
+            {% set nativeUnavailable = 'Craft Commerce is not enabled, so the product native-search comparison is skipped.' %}
+        {% endif %}
+    {% elseif isVariantIndex %}
+        {% set nativeScope = 'variants, all sites' %}
+        {% if commerceEnabled and craft.variants is defined %}
+            {% set nativeResults = craft.variants.site('*').search(query).orderBy('score desc').limit(limit).all() %}
+        {% else %}
+            {% set nativeUnavailable = 'Craft Commerce is not enabled, so the variant native-search comparison is skipped.' %}
+        {% endif %}
+    {% elseif isSmartLinkIndex %}
+        {% set nativeScope = 'smart links, all sites' %}
+        {% if craft.smartLinkManager is defined %}
+            {% set nativeResults = craft.smartLinkManager.smartLinks().site('*').search(query).orderBy('score desc').limit(limit).all() %}
+        {% else %}
+            {% set nativeUnavailable = 'SmartLink Manager is not enabled, so the smart-link native-search comparison is skipped.' %}
+        {% endif %}
+    {% elseif isShortLinkIndex %}
+        {% set nativeScope = 'short links, all sites' %}
+        {% if craft.shortLinkManager is defined %}
+            {% set nativeResults = craft.shortLinkManager.shortLinks().site('*').search(query).orderBy('score desc').limit(limit).all() %}
+        {% else %}
+            {% set nativeUnavailable = 'ShortLink Manager is not enabled, so the short-link native-search comparison is skipped.' %}
+        {% endif %}
+    {% elseif isSourceDocIndex %}
+        {% set nativeScope = 'source docs, all sites' %}
+        {% if craft.docsManager is defined %}
+            {% set nativeResults = craft.docsManager.sourceDocs().site('*').search(query).orderBy('score desc').limit(limit).all() %}
+        {% else %}
+            {% set nativeUnavailable = 'Docs Manager is not enabled, so the docs native-search comparison is skipped.' %}
+        {% endif %}
+    {% elseif activeIndex == '__all' %}
+        {% set nativeUnavailable = 'Select a single index to compare against a matching Craft element query.' %}
+    {% elseif isEntryIndex %}
+        {% set nativeResults = craft.entries.site('*').search(query).orderBy('score desc').limit(limit).all() %}
+    {% else %}
+        {#
+        // Honesty guard: an element type with no wired native query must not
+        // silently fall back to entries — that compares unrelated result sets.
+        #}
+        {% set nativeScope = activeElementType %}
+        {% set nativeUnavailable = 'No native element-query comparison is wired for ' ~ activeElementType ~ '.' %}
+    {% endif %}
+    {% set nativeElapsedMs = (((date('now')|date('U.u')) - nativeStarted) * 1000)|round(1) %}
+{% endif %}
+
+{% set resultsMarkup %}
+    <section id="datastar-search-results" class="results" aria-live="polite">
+        {% if suggestions|length %}
+            <div class="suggestions" aria-label="Autocomplete suggestions">
+                <strong>Suggestions</strong>
+                {% for suggestion in suggestions %}
+                    <a class="suggestion-chip" href="?q={{ suggestion|url_encode }}&smIndex={{ activeIndex|url_encode }}&limit={{ limit }}">{{ suggestion }}</a>
+                {% endfor %}
+                {% if suggestionMeta %}
+                    <span>Autocomplete cache {{ suggestionMeta.cached ?? false ? 'hit' : 'miss' }}</span>
+                {% endif %}
+            </div>
+        {% elseif canSearch and activeIndex == '__all' %}
+            <p class="helper-note">Autocomplete suggestions are shown when a single Search Manager index is selected.</p>
+        {% endif %}
+
+        {% if not indexHandles|length %}
+            <p class="empty">No Search Manager indices are configured.</p>
+        {% elseif query|length and query|length < 2 %}
+            <p class="empty">Type at least 2 characters.</p>
+        {% elseif not canSearch %}
+            <p class="empty">Enter a query to compare Search Manager with Craft's element-query search.</p>
+        {% else %}
+            <div class="summary">
+                <strong>Benchmark</strong>
+                <span>Query <code>{{ query }}</code></span>
+                <span>Limit {{ limit }}</span>
+            </div>
+
+            <div class="benchmark-grid">
+                <article class="benchmark-card">
+                    <header>
+                        <h2>Search Manager</h2>
+                        <dl>
+                            <div>
+                                <dt>Server</dt>
+                                <dd>{{ searchManagerElapsedMs }} ms</dd>
+                            </div>
+                            <div>
+                                <dt>Total</dt>
+                                <dd>{{ searchManagerResults.total ?? 0 }}</dd>
+                            </div>
+                            <div>
+                                <dt>Scope</dt>
+                                <dd>{{ activeIndex == '__all' ? 'all indices' : activeIndex }}</dd>
+                            </div>
+                            <div>
+                                <dt>Backend</dt>
+                                <dd>{{ searchManagerResults.meta.backend ?? 'n/a' }}</dd>
+                            </div>
+                            <div>
+                                <dt>Cache</dt>
+                                <dd>
+                                    {% if searchManagerResults.meta.cached is defined %}
+                                        {{ searchManagerResults.meta.cached ? 'hit' : 'miss' }}
+                                    {% else %}
+                                        n/a
+                                    {% endif %}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Took</dt>
+                                <dd>{{ searchManagerResults.meta.took is defined ? searchManagerResults.meta.took ~ ' ms' : 'n/a' }}</dd>
+                            </div>
+                        </dl>
+                    </header>
+
+                    {% if searchManagerResults.error is defined %}
+                        <p class="error">{{ searchManagerResults.error }}</p>
+                    {% elseif searchManagerResults.hits is defined and searchManagerResults.hits|length %}
+                        <ol class="list">
+                            {% for hit in searchManagerResults.hits %}
+                                <li class="{{ hit.promoted ?? false ? 'is-promoted' }}">
+                                    {% set title = hit.title ?? hit.sectionTitle ?? ('Element #' ~ (hit.elementId ?? loop.index)) %}
+                                    {% set highlightedTitle = craft.searchManager.highlight(title, query, {
+                                        tag: 'mark',
+                                        class: 'search-highlight',
+                                    }) %}
+                                    <a href="{{ hit.url ?? '#' }}">
+                                        <span>{{ highlightedTitle|raw }}</span>
+                                        {% if hit.score is defined and hit.score is not null %}
+                                            <small>{{ hit.score|number_format(2) }}</small>
+                                        {% endif %}
+                                    </a>
+
+                                    {% set excerpt = hit.snippet ?? hit.excerpt ?? '' %}
+                                    {% if excerpt %}
+                                        {% set highlightedExcerpt = craft.searchManager.highlight(excerpt, query, {
+                                            tag: 'mark',
+                                            class: 'search-highlight',
+                                            stripTags: false,
+                                        }) %}
+                                        <p>{{ highlightedExcerpt|raw }}</p>
+                                    {% endif %}
+
+                                    <div class="meta">
+                                        {% if hit.promoted ?? false %}<span class="promo-badge">Promoted #{{ hit.position ?? loop.index }}</span>{% endif %}
+                                        {% if hit.index is defined %}<span class="meta-chip">{{ hit.index }}</span>{% endif %}
+                                        {% if hit.elementId is defined %}<span class="meta-chip">Element {{ hit.elementId }}</span>{% endif %}
+                                        {% if hit.siteId is defined %}
+                                            {% set siteName = siteNamesById[hit.siteId] ?? null %}
+                                            <span class="meta-chip">Site {{ hit.siteId }}{% if siteName %} - {{ siteName }}{% endif %}</span>
+                                        {% endif %}
+                                        {% if hit.matchedIn is defined and hit.matchedIn|length %}<span class="meta-chip">Matched {{ hit.matchedIn|join(', ') }}</span>{% endif %}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ol>
+                    {% else %}
+                        <p class="empty">No Search Manager results.</p>
+                    {% endif %}
+                </article>
+
+                <article class="benchmark-card">
+                    <header>
+                        <h2>{{ replaceNativeSearch ? 'Craft .search() via Search Manager' : 'Craft Native' }}</h2>
+                        <dl>
+                            <div>
+                                <dt>Server</dt>
+                                <dd>{{ nativeElapsedMs }} ms</dd>
+                            </div>
+                            <div>
+                                <dt>Shown</dt>
+                                <dd>{{ nativeResults|length }}</dd>
+                            </div>
+                            <div>
+                                <dt>Scope</dt>
+                                <dd>{{ nativeScope }}</dd>
+                            </div>
+                            <div class="is-placeholder" aria-hidden="true">
+                                <dt>&nbsp;</dt>
+                                <dd>&nbsp;</dd>
+                            </div>
+                            <div class="is-placeholder" aria-hidden="true">
+                                <dt>&nbsp;</dt>
+                                <dd>&nbsp;</dd>
+                            </div>
+                            <div class="is-placeholder" aria-hidden="true">
+                                <dt>&nbsp;</dt>
+                                <dd>&nbsp;</dd>
+                            </div>
+                        </dl>
+                    </header>
+
+                    {% if nativeUnavailable %}
+                        <p class="empty">{{ nativeUnavailable }}</p>
+                    {% elseif nativeResults|length %}
+                        <ol class="list">
+                            {% for element in nativeResults %}
+                                <li>
+                                    {% set nativeTitle = element.title ?? ('Element #' ~ element.id) %}
+                                    {% set highlightedNativeTitle = craft.searchManager.highlight(nativeTitle, query, {
+                                        tag: 'mark',
+                                        class: 'search-highlight',
+                                    }) %}
+                                    <a href="{{ element.url ?? '#' }}">
+                                        <span>{{ highlightedNativeTitle|raw }}</span>
+                                        {% if element.searchScore is defined and element.searchScore is not null %}
+                                            <small>{{ element.searchScore|number_format(2) }}</small>
+                                        {% endif %}
+                                    </a>
+                                    <div class="meta">
+                                        <span class="meta-chip">{{ nativeScope|split(',')|first }}</span>
+                                        <span class="meta-chip">Element {{ element.id }}</span>
+                                        {% if element.siteId is defined %}
+                                            {% set siteName = siteNamesById[element.siteId] ?? null %}
+                                            <span class="meta-chip">Site {{ element.siteId }}{% if siteName %} - {{ siteName }}{% endif %}</span>
+                                        {% endif %}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ol>
+                    {% else %}
+                        <p class="empty">No Craft element-query results.</p>
+                    {% endif %}
+                </article>
+            </div>
+        {% endif %}
+    </section>
+{% endset %}
+
+{% if datastarEnabled and craft.app.request.headers.get('Datastar-Request') %}
+    {{ resultsMarkup|raw }}
+{% else %}
+<!doctype html>
+<html lang="{{ craft.app.language }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Search Manager Benchmark</title>
+    <script>
+        (function() {
+            var theme = localStorage.getItem('searchBenchmarkTheme');
+            if (theme === 'light' || theme === 'dark') {
+                document.documentElement.dataset.theme = theme;
+            }
+        })();
+    </script>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #f7f7f8;
+            --panel: #fff;
+            --panel-strong: #fafafa;
+            --text: #18181b;
+            --muted: #71717a;
+            --border: #d4d4d8;
+            --accent: #0f766e;
+            --accent-soft: #ccfbf1;
+            --accent-text: #0f766e;
+            --code-bg: #eef2ff;
+            --code-border: #c7d2fe;
+            --code-text: #312e81;
+            --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            --warning: #92400e;
+            --warning-bg: #fffbeb;
+            --promo: #7c3aed;
+            --promo-bg: #f3e8ff;
+            --promo-badge-bg: #7c3aed;
+            --promo-badge-text: #fff;
+            --button-bg: #0f766e;
+            --button-text: #fff;
+            --radius-card: 8px;
+            --radius-control: 6px;
+            --radius-chip: 6px;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #09090b;
+                --panel: #18181b;
+                --panel-strong: #111113;
+                --text: #fafafa;
+                --muted: #a1a1aa;
+                --border: #3f3f46;
+                --accent: #5eead4;
+                --accent-soft: #134e4a;
+                --accent-text: #5eead4;
+                --code-bg: #1e293b;
+                --code-border: #475569;
+                --code-text: #e0e7ff;
+                --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23cbd5e1'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+                --warning: #fbbf24;
+                --warning-bg: #451a03;
+                --promo: #c4b5fd;
+                --promo-bg: #2e1065;
+                --promo-badge-bg: #c4b5fd;
+                --promo-badge-text: #1e1b4b;
+                --button-bg: #5eead4;
+                --button-text: #042f2e;
+            }
+        }
+
+        :root[data-theme="light"] {
+            color-scheme: light;
+            --bg: #f7f7f8;
+            --panel: #fff;
+            --panel-strong: #fafafa;
+            --text: #18181b;
+            --muted: #71717a;
+            --border: #d4d4d8;
+            --accent: #0f766e;
+            --accent-soft: #ccfbf1;
+            --accent-text: #0f766e;
+            --code-bg: #eef2ff;
+            --code-border: #c7d2fe;
+            --code-text: #312e81;
+            --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            --warning: #92400e;
+            --warning-bg: #fffbeb;
+            --promo: #7c3aed;
+            --promo-bg: #f3e8ff;
+            --promo-badge-bg: #7c3aed;
+            --promo-badge-text: #fff;
+            --button-bg: #0f766e;
+            --button-text: #fff;
+        }
+
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+            --bg: #09090b;
+            --panel: #18181b;
+            --panel-strong: #111113;
+            --text: #fafafa;
+            --muted: #a1a1aa;
+            --border: #3f3f46;
+            --accent: #5eead4;
+            --accent-soft: #134e4a;
+            --accent-text: #5eead4;
+            --code-bg: #1e293b;
+            --code-border: #475569;
+            --code-text: #e0e7ff;
+            --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23cbd5e1'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            --warning: #fbbf24;
+            --warning-bg: #451a03;
+            --promo: #c4b5fd;
+            --promo-bg: #2e1065;
+            --promo-badge-bg: #c4b5fd;
+            --promo-badge-text: #1e1b4b;
+            --button-bg: #5eead4;
+            --button-text: #042f2e;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        main {
+            width: min(1080px, calc(100vw - 32px));
+            margin: 40px auto;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(30px, 5vw, 48px);
+            line-height: 1;
+            letter-spacing: 0;
+        }
+
+        h2 {
+            letter-spacing: 0;
+        }
+
+        .page-header {
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 22px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 22px;
+        }
+
+        .eyebrow {
+            margin: 0 0 10px;
+            color: var(--accent-text);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .header-copy {
+            min-width: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        .lede {
+            max-width: 780px;
+            margin: 0 0 22px;
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .panel,
+        .notes {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            background: var(--panel);
+            padding: 20px;
+        }
+
+        .notes {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .notes h2 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .notes p,
+        .notes ul {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        .notes ul {
+            padding-left: 20px;
+        }
+
+        .status {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0 0 18px;
+        }
+
+        .badge {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-chip);
+            padding: 6px 10px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .badge.ok {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .badge.warn {
+            border-color: var(--warning);
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .helper-note {
+            margin: 0 0 18px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin: -6px 0 18px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .suggestions strong {
+            color: var(--text);
+        }
+
+        .suggestion-chip {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-chip);
+            background: var(--panel-strong);
+            color: var(--text);
+            padding: 6px 10px;
+            text-decoration: none;
+        }
+
+        .suggestion-chip:hover {
+            border-color: var(--accent);
+            color: var(--accent-text);
+            text-decoration: none;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(180px, 260px) minmax(96px, 120px) auto;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        input,
+        select,
+        button {
+            min-height: 44px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-control);
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 0 12px;
+            font: inherit;
+        }
+
+        input,
+        select {
+            width: 100%;
+        }
+
+        select {
+            appearance: none;
+            background-image: var(--select-chevron);
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px 16px;
+            padding-right: 40px;
+        }
+
+        button {
+            background: var(--button-bg);
+            color: var(--button-text);
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .theme-toggle {
+            min-width: 118px;
+            border-color: var(--border);
+            background-color: var(--panel-strong);
+            color: var(--text);
+        }
+
+        input:focus,
+        select:focus,
+        button:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: baseline;
+            margin-bottom: 14px;
+            color: var(--muted);
+        }
+
+        .benchmark-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .benchmark-card {
+            min-width: 0;
+        }
+
+        .benchmark-card header {
+            margin-bottom: 12px;
+        }
+
+        .benchmark-card h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+            line-height: 1.2;
+        }
+
+        .benchmark-card dl {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin: 0;
+        }
+
+        .benchmark-card dl div {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 10px;
+        }
+
+        .benchmark-card dl div.is-placeholder {
+            visibility: hidden;
+        }
+
+        .benchmark-card dt {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        .benchmark-card dd {
+            margin: 4px 0 0;
+            overflow-wrap: anywhere;
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        code {
+            border: 1px solid var(--code-border);
+            border-radius: var(--radius-chip);
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 2px 5px;
+            font-size: 0.9em;
+            font-weight: 650;
+        }
+
+        .list {
+            display: grid;
+            gap: 12px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .list li {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 14px;
+        }
+
+        .list li.is-promoted {
+            border-color: var(--promo);
+            background: var(--promo-bg);
+        }
+
+        .list a {
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .list a:hover {
+            color: var(--accent);
+        }
+
+        .list p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .promo-badge {
+            border-radius: var(--radius-chip);
+            background: var(--promo-badge-bg);
+            color: var(--promo-badge-text);
+            padding: 2px 8px;
+            font-weight: 700;
+        }
+
+        .meta-chip {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-chip);
+            background: var(--panel-strong);
+            color: var(--muted);
+            padding: 2px 8px;
+            font-weight: 650;
+        }
+
+        .empty,
+        .error {
+            margin: 0;
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-card);
+            padding: 18px;
+            color: var(--muted);
+        }
+
+        .error {
+            color: #dc2626;
+        }
+
+        mark {
+            border-radius: var(--radius-chip);
+            background: #fef08a;
+            color: #18181b;
+            padding: 1px 3px;
+        }
+
+        @media (max-width: 760px) {
+            main {
+                margin: 24px auto;
+            }
+
+            .controls,
+            .benchmark-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                display: grid;
+            }
+
+            .header-actions {
+                justify-content: flex-start;
+            }
+
+            .benchmark-card dl {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main
+        {% if datastarEnabled %}
+            data-signals="{{ {
+                sm: {
+                        q: query,
+                        index: activeIndex,
+                        limit: limit,
+                    }
+                }|json_encode }}"
+        {% endif %}
+    >
+        <header class="page-header">
+            <div class="header-copy">
+                <p class="eyebrow">Search Manager diagnostic template</p>
+                <h1>Search Manager Benchmark</h1>
+                <p class="lede">
+                    Compare Search Manager results with Craft element-query search. Datastar is optional; it only makes the form reactive and does not change the search results.
+                </p>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" type="button" data-theme-toggle>Theme</button>
+            </div>
+        </header>
+
+        <section class="notes" aria-labelledby="benchmark-notes">
+            <h2 id="benchmark-notes">How to use this page</h2>
+            <ul>
+                <li>Copy this template to <code>templates/search-manager-native-comparison.twig</code> and open <code>/search-manager-native-comparison</code>.</li>
+                <li>Select a Search Manager index, run exact terms, plurals, typos, SKU fragments, product type names, and nonsense terms.</li>
+                <li>The selected index is used directly by the Search Manager column. The Craft column runs a matching element query, such as <code>craft.products.search()</code>; Replace Native Search maps that query to a coverage index automatically.</li>
+                <li>Run each query twice to compare cold and warm cache behavior.</li>
+                <li>If Replace Native Search is enabled, the Craft column tests <code>.search()</code> through Search Manager, not pure Craft native search.</li>
+                <li>Install Datastar only if you want reactive updates: <code>composer require putyourlightson/craft-datastar</code>, then install/enable the <code>datastar</code> plugin.</li>
+            </ul>
+        </section>
+
+        <div class="status">
+            <span class="badge ok">Search Manager enabled</span>
+            <span class="badge {{ datastarEnabled ? 'ok' : (datastarInstalled ? 'warn' : '') }}">
+                Datastar {{ datastarEnabled ? 'enabled' : (datastarInstalled ? 'installed but disabled' : 'not installed') }}
+            </span>
+            <span class="badge {{ datastarEnabled ? 'ok' : '' }}">
+                Transport {{ datastarEnabled ? 'Datastar reactive' : 'GET form fallback' }}
+            </span>
+            <span class="badge {{ replaceNativeSearch ? 'warn' : '' }}">
+                Replace Native Search {{ replaceNativeSearch ? 'on' : 'off' }}
+            </span>
+            {% if commerceEnabled %}
+                <span class="badge ok">Commerce enabled</span>
+            {% endif %}
+        </div>
+
+        <div class="panel">
+            <p class="helper-note">
+                {{ datastarEnabled
+                    ? 'Datastar is active for reactive input changes; the Search button remains as a normal GET fallback.'
+                    : 'Datastar is not active, so this page uses a normal GET form. Install and enable Datastar for reactive updates.'
+                }}
+                {{ replaceNativeSearch
+                    ? 'The Craft column runs ' ~ nativeQueryLabel ~ '; Replace Native Search maps that element query to a coverage index automatically.'
+                    : 'The Craft column uses Craft native .search() because Replace Native Search is off.'
+                }}
+            </p>
+
+            <form class="controls" method="get" action="">
+                <input
+                    type="search"
+                    name="q"
+                    value="{{ query }}"
+                    placeholder="Try eco, eco bag, classic watches, SKU fragments..."
+                    autocomplete="off"
+                    {% if datastarEnabled %}
+                        data-bind:sm.q
+                        data-on:input__debounce.300ms="$sm.q = evt.target.value; {{ fetchAction }}"
+                    {% endif %}
+                >
+
+                <select
+                    name="smIndex"
+                    aria-label="Search index"
+                    {% if datastarEnabled %}
+                        data-bind:sm.index
+                        data-on:change="$sm.index = evt.target.value; {{ fetchAction }}"
+                    {% endif %}
+                >
+                    {% if indexHandles|length > 1 %}
+                        <option value="__all" {{ activeIndex == '__all' ? 'selected' }}>All indices</option>
+                    {% endif %}
+                    {% for handle in indexHandles %}
+                        <option value="{{ handle }}" {{ activeIndex == handle ? 'selected' }}>{{ handle }}</option>
+                    {% endfor %}
+                </select>
+
+                <input
+                    type="number"
+                    name="limit"
+                    value="{{ limit }}"
+                    min="1"
+                    max="50"
+                    step="1"
+                    aria-label="Result limit"
+                    {% if datastarEnabled %}
+                        data-bind:sm.limit
+                        data-on:input__debounce.300ms="$sm.limit = evt.target.value; {{ fetchAction }}"
+                    {% endif %}
+                >
+
+                <button type="submit">Search</button>
+            </form>
+
+            {{ resultsMarkup|raw }}
+        </div>
+    </main>
+    <script>
+        (function() {
+            var button = document.querySelector('[data-theme-toggle]');
+            if (!button) {
+                return;
+            }
+
+            var root = document.documentElement;
+            var media = window.matchMedia('(prefers-color-scheme: dark)');
+
+            function currentTheme() {
+                return root.dataset.theme || (media.matches ? 'dark' : 'light');
+            }
+
+            function updateLabel() {
+                button.textContent = currentTheme() === 'dark' ? 'Light mode' : 'Dark mode';
+            }
+
+            button.addEventListener('click', function() {
+                var next = currentTheme() === 'dark' ? 'light' : 'dark';
+                root.dataset.theme = next;
+                localStorage.setItem('searchBenchmarkTheme', next);
+                updateLabel();
+            });
+
+            media.addEventListener('change', function() {
+                if (!root.dataset.theme) {
+                    updateLabel();
+                }
+            });
+
+            updateLabel();
+        })();
+    </script>
+</body>
+</html>
+{% endif %}

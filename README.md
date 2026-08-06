@@ -63,7 +63,8 @@ ddev composer require lindemannrock/craft-search-manager && ddev craft plugin/in
 
 Full documentation is available in the [docs](docs/) folder.
 
-Postman collection setup notes are available in [resources/postman/README.md](resources/postman/README.md).
+- [Postman collection](resources/postman/README.md) — import, scope, Analytics, optional developer validation, and safety
+- [Example templates](resources/example-templates/README.md) — copyable Twig search, native-comparison, and real-widget playgrounds
 
 ## Support
 

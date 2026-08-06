@@ -1,0 +1,989 @@
+{#
+	// Search Manager widget test template.
+	//
+	// Purpose: portable frontend page for testing the packaged Search Manager
+	// modal widget in default, custom inline, and debug-enabled custom modes.
+	// Required: Search Manager.
+	// Note: this page intentionally uses the real widget include. It does not
+	// mock widget markup or require a CDN UI kit.
+	// This is a development/testing template, not a production search UI.
+#}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set settings = craft.searchManager.getSettings() %}
+{% set indexRecords = craft.searchManager.getAvailableIndices() %}
+{% set indexHandles = indexRecords|map(index => index.handle) %}
+{% set widgetConfigs = plugin.widgetConfigs.getAll(true) %}
+{% set defaultWidget = plugin.widgetConfigs.getDefault() %}
+{% set queryParams = craft.app.request.queryParams %}
+{% set initialScope = indexHandles|length ? '__all' : '' %}
+{% set requestedScope = queryParams.widgetScope ?? craft.app.request.getParam('widgetScope') ?? initialScope %}
+{% set widgetScope = requestedScope == '__all' or requestedScope in indexHandles ? requestedScope : initialScope %}
+{% set customIndexHandles = widgetScope == '__all' ? [] : (widgetScope ? [widgetScope] : []) %}
+{% set scopeLabel = widgetScope == '__all' ? 'all indices' : (widgetScope ?: 'no indices') %}
+
+<!doctype html>
+<html lang='{{ craft.app.language }}'>
+	<head>
+		<meta charset='utf-8'>
+		<meta name='viewport' content='width=device-width, initial-scale=1'>
+		<meta name='robots' content='noindex,nofollow'>
+		<title>Search Manager Widget Test</title>
+		<script>
+			(function () {
+				var theme = localStorage.getItem('searchWidgetTestTheme');
+				if (theme === 'light' || theme === 'dark') {
+					document.documentElement.dataset.theme = theme;
+				}
+			})();
+		</script>
+		<style>
+			:root {
+				color-scheme: light dark;
+				--bg: #f7f7f8;
+				--panel: #fff;
+				--panel-strong: #f1f5f9;
+				--text: #111827;
+				--muted: #5f6470;
+				--border: #d6dae1;
+				--accent: #0f766e;
+				--accent-text: #0f766e;
+				--accent-soft: #d9f5ef;
+				--code-bg: #eef2ff;
+				--code-border: #c7d2fe;
+				--code-text: #312e81;
+				--select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+				--button-bg: #0f766e;
+				--button-text: #fff;
+				--warning: #8a4b00;
+				--warning-bg: #fff1d6;
+				--custom-panel: #f8fafc;
+				--custom-panel-dark: #1f2937;
+				--radius-card: 8px;
+				--radius-control: 6px;
+				--radius-chip: 6px;
+				font-family:
+					ui-sans-serif,
+					system-ui,
+					-apple-system,
+					BlinkMacSystemFont,
+					'Segoe UI',
+					sans-serif;
+			}
+
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme='light']) {
+					--bg: #111318;
+					--panel: #181b22;
+					--panel-strong: #222733;
+					--text: #f4f7fb;
+					--muted: #b5bdc9;
+					--border: #3a404d;
+					--accent: #5eead4;
+					--accent-text: #99f6e4;
+					--accent-soft: #143d38;
+					--code-bg: #1e293b;
+					--code-border: #475569;
+					--code-text: #e0e7ff;
+					--select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23cbd5e1'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+					--button-bg: #14b8a6;
+					--button-text: #042f2e;
+					--warning: #ffd28a;
+					--warning-bg: #3d2812;
+					--custom-panel: #1f2937;
+				}
+			}
+
+			:root[data-theme='dark'] {
+				--bg: #111318;
+				--panel: #181b22;
+				--panel-strong: #222733;
+				--text: #f4f7fb;
+				--muted: #b5bdc9;
+				--border: #3a404d;
+				--accent: #5eead4;
+				--accent-text: #99f6e4;
+				--accent-soft: #143d38;
+				--code-bg: #1e293b;
+				--code-border: #475569;
+				--code-text: #e0e7ff;
+				--select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23cbd5e1'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+				--button-bg: #14b8a6;
+				--button-text: #042f2e;
+				--warning: #ffd28a;
+				--warning-bg: #3d2812;
+				--custom-panel: #1f2937;
+			}
+
+			:root[data-theme='light'] {
+				--bg: #f7f7f8;
+				--panel: #fff;
+				--panel-strong: #f1f5f9;
+				--text: #111827;
+				--muted: #5f6470;
+				--border: #d6dae1;
+				--accent: #0f766e;
+				--accent-text: #0f766e;
+				--accent-soft: #d9f5ef;
+				--code-bg: #eef2ff;
+				--code-border: #c7d2fe;
+				--code-text: #312e81;
+				--select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+				--button-bg: #0f766e;
+				--button-text: #fff;
+				--warning: #8a4b00;
+				--warning-bg: #fff1d6;
+				--custom-panel: #f8fafc;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+				background: var(--bg);
+				color: var(--text);
+			}
+
+			main {
+				width: min(1180px, calc(100% - 32px));
+				margin: 36px auto;
+			}
+
+			.page-header {
+				display: flex;
+				gap: 18px;
+				align-items: flex-start;
+				justify-content: space-between;
+				margin-bottom: 22px;
+				border-bottom: 1px solid var(--border);
+				padding-bottom: 22px;
+			}
+
+			.eyebrow {
+				margin: 0 0 10px;
+				color: var(--accent-text);
+				font-size: 13px;
+				font-weight: 700;
+				letter-spacing: 0;
+				text-transform: uppercase;
+			}
+
+			h1,
+			h2,
+			h3,
+			p {
+				margin-top: 0;
+			}
+
+			h1 {
+				margin-bottom: 8px;
+				font-size: clamp(30px, 5vw, 48px);
+				line-height: 1;
+				letter-spacing: 0;
+			}
+
+			h2 {
+				margin-bottom: 8px;
+				font-size: 22px;
+				letter-spacing: 0;
+			}
+
+			h3 {
+				margin-bottom: 8px;
+				font-size: 15px;
+				letter-spacing: 0;
+			}
+
+			.lede {
+				max-width: 780px;
+				margin-bottom: 0;
+				color: var(--muted);
+				font-size: 16px;
+				line-height: 1.6;
+			}
+
+			.header-actions {
+				display: flex;
+				flex-shrink: 0;
+				gap: 8px;
+			}
+
+			.theme-toggle,
+			button,
+			select {
+				min-height: 44px;
+				border: 1px solid var(--border);
+				border-radius: var(--radius-control);
+				background-color: var(--panel-strong);
+				color: var(--text);
+				padding: 0 12px;
+				font: inherit;
+			}
+
+			select {
+				appearance: none;
+				background-image: var(--select-chevron);
+				background-position: right 12px center;
+				background-repeat: no-repeat;
+				background-size: 16px 16px;
+				padding-right: 40px;
+			}
+
+			button {
+				cursor: pointer;
+				font-weight: 700;
+			}
+
+			.theme-toggle {
+				min-width: 118px;
+			}
+
+			button:focus,
+			select:focus {
+				outline: 2px solid var(--accent);
+				outline-offset: 2px;
+			}
+
+			.notes,
+			.panel,
+			.widget-card,
+			.reference {
+				border: 1px solid var(--border);
+				border-radius: var(--radius-card);
+				background: var(--panel);
+				padding: 20px;
+			}
+
+			.notes {
+				display: grid;
+				gap: 12px;
+				margin-bottom: 18px;
+			}
+
+			.notes ul {
+				margin: 0;
+				padding-left: 20px;
+				color: var(--muted);
+				line-height: 1.55;
+			}
+
+			.status {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+				align-items: center;
+				margin: 0 0 18px;
+			}
+
+			.badge {
+				border: 1px solid var(--border);
+				border-radius: var(--radius-chip);
+				background: var(--panel-strong);
+				color: var(--muted);
+				padding: 6px 10px;
+				font-size: 13px;
+				text-decoration: none;
+			}
+
+			.badge.ok {
+				border-color: var(--accent);
+				color: var(--accent);
+			}
+
+			.badge.warn {
+				border-color: var(--warning);
+				background: var(--warning-bg);
+				color: var(--warning);
+			}
+
+			.toolbar {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 12px;
+				align-items: end;
+				margin-bottom: 18px;
+			}
+
+			.field {
+				display: grid;
+				gap: 6px;
+			}
+
+			.field span {
+				color: var(--muted);
+				font-size: 12px;
+				font-weight: 700;
+				line-height: 1.2;
+			}
+
+			.field select {
+				min-width: min(320px, calc(100vw - 72px));
+				background-color: var(--bg);
+			}
+
+			.widget-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+				gap: 18px;
+			}
+
+			.widget-card {
+				display: grid;
+				gap: 18px;
+				align-content: start;
+				min-height: 360px;
+			}
+
+			.widget-card.is-custom {
+				background: var(--custom-panel);
+			}
+
+			.card-copy {
+				display: grid;
+				gap: 8px;
+			}
+
+			.card-copy p {
+				margin: 0;
+				color: var(--muted);
+				line-height: 1.55;
+			}
+
+			.trigger-area {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 12px;
+				align-items: center;
+				border-top: 1px solid var(--border);
+				padding-top: 18px;
+			}
+
+			.custom-trigger {
+				display: inline-flex;
+				gap: 12px;
+				align-items: center;
+				justify-content: space-between;
+				min-width: 240px;
+				border: 1px solid #4338ca;
+				border-radius: var(--radius-card);
+				background: #4f46e5;
+				color: #fff;
+				padding: 11px 14px;
+				box-shadow: 0 12px 28px rgb(79 70 229 / 22%);
+			}
+
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme='light']) .custom-trigger {
+					border-color: #facc15;
+					background: #facc15;
+					color: #111827;
+				}
+			}
+
+			:root[data-theme='dark'] .custom-trigger {
+				border-color: #facc15;
+				background: #facc15;
+				color: #111827;
+			}
+
+			.custom-trigger-debug {
+				border-color: #0f766e;
+				background: #0f766e;
+				box-shadow: 0 12px 28px rgb(15 118 110 / 22%);
+			}
+
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme='light']) .custom-trigger-debug {
+					border-color: #5eead4;
+					background: #5eead4;
+					color: #042f2e;
+				}
+			}
+
+			:root[data-theme='dark'] .custom-trigger-debug {
+				border-color: #5eead4;
+				background: #5eead4;
+				color: #042f2e;
+			}
+
+			.custom-trigger span {
+				display: inline-flex;
+				gap: 8px;
+				align-items: center;
+			}
+
+			.custom-trigger kbd {
+				border-radius: var(--radius-chip);
+				background: rgb(255 255 255 / 20%);
+				padding: 2px 7px;
+				font-size: 12px;
+			}
+
+			.reference {
+				margin-top: 18px;
+			}
+
+			.reference p {
+				color: var(--muted);
+				line-height: 1.55;
+			}
+
+			pre {
+				overflow: auto;
+				margin: 0;
+				border-radius: var(--radius-card);
+				background: #111318;
+				color: #f4f7fb;
+				padding: 16px;
+				font-size: 13px;
+				line-height: 1.55;
+			}
+
+			code {
+				border: 1px solid var(--code-border);
+				border-radius: var(--radius-chip);
+				background: var(--code-bg);
+				color: var(--code-text);
+				padding: 2px 5px;
+				font-size: 0.9em;
+				font-weight: 650;
+			}
+
+			pre code {
+				border: 0;
+				background: transparent;
+				color: inherit;
+				padding: 0;
+				font-weight: inherit;
+			}
+
+			.index-list {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+				gap: 10px;
+				margin-top: 14px;
+			}
+
+			.index-item {
+				border: 1px solid var(--border);
+				border-radius: var(--radius-control);
+				background: var(--bg);
+				padding: 10px;
+			}
+
+			.index-item strong,
+			.index-item span {
+				display: block;
+				overflow-wrap: anywhere;
+			}
+
+			.index-item span {
+				margin-top: 4px;
+				color: var(--muted);
+				font-size: 13px;
+			}
+
+			@media (max-width: 820px) {
+				main {
+					margin: 24px auto;
+				}
+
+				.page-header {
+					display: grid;
+				}
+
+				.header-actions {
+					justify-content: flex-start;
+				}
+
+				.widget-grid {
+					grid-template-columns: 1fr;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<header class='page-header'>
+				<div>
+					<p class='eyebrow'>Search Manager diagnostic template</p>
+					<h1>Search Manager Widget Test</h1>
+					<p class='lede'>Test the packaged modal widget with site defaults, inline custom styles, and debug metadata enabled.</p>
+				</div>
+				<div class='header-actions'>
+					<button class='theme-toggle' type='button' data-theme-toggle>Theme</button>
+				</div>
+			</header>
+
+			<section class='notes' aria-labelledby='widget-notes'>
+				<h2 id='widget-notes'>How to use this page</h2>
+				<ul>
+					<li>
+						Copy this template to
+						<code>templates/search-manager-widget-playground.twig</code>
+						and open
+						<code>/search-manager-widget-playground</code>
+						.
+					</li>
+					<li>
+						The default example uses the configured default widget settings and styles, with only
+						<code>indexHandles</code>
+						overridden by this page's scope selector.
+					</li>
+					<li>The custom examples use inline widget parameters and styles, so they can be copied without creating a CP style preset.</li>
+					<li>
+						The debug example sends
+						<code>debugEnabled: true</code>
+						and shows widget/API metadata in the results panel.
+					</li>
+					<li>Open each trigger and test terms, plurals, typos, SKU fragments, product type names, and nonsense terms.</li>
+				</ul>
+			</section>
+
+			<div class='status'>
+				<span class='badge ok'>Search Manager enabled</span>
+				<span class='badge {{ defaultWidget ? 'ok' : 'warn' }}'>Default widget {{ defaultWidget ? defaultWidget.handle : 'fallback defaults' }}</span>
+				<span class='badge'>{{ widgetConfigs | length }} enabled widget config{{ widgetConfigs|length == 1 ? '' : 's' }}</span>
+				<span class='badge'>{{ indexHandles | length }} index{{ indexHandles|length == 1 ? '' : 'es' }}</span>
+			</div>
+
+			<section class='panel' aria-labelledby='widget-scope'>
+				<form class='toolbar' method='get' action=''>
+					<label class='field'>
+						<span id='widget-scope'>Custom widget scope</span>
+						<select name='widgetScope' onchange='this.form.submit()'>
+							<option value='__all' {{ widgetScope == '__all' ? 'selected' }}>All indices</option>
+							{% for index in indexRecords %}
+								<option value='{{ index.handle }}' {{ widgetScope == index.handle ? 'selected' }}>{{ index.handle }}</option>
+							{% endfor %}
+						</select>
+					</label>
+				</form>
+
+				<div class='widget-grid'>
+					<article class='widget-card'>
+						<div class='card-copy'>
+							<h2>Default Widget</h2>
+							<p>Uses the configured default widget and built-in/default style resolution.</p>
+							<p>
+								Current scope:
+								<code>{{ scopeLabel }}</code>
+								.
+							</p>
+						</div>
+						<div class='trigger-area'>
+							{%
+								include 'search-manager/_widget/search-modal' with {
+								    indexHandles: customIndexHandles,
+								}
+							%}
+						</div>
+					</article>
+
+					<article class='widget-card is-custom'>
+						<div class='card-copy'>
+							<h2>Custom Inline Widget</h2>
+							<p>Uses a custom trigger, selected scope, richer snippets, and inline light/dark style overrides.</p>
+							<p>
+								Current scope:
+								<code>{{ scopeLabel }}</code>
+								.
+							</p>
+						</div>
+						<div class='trigger-area'>
+							<button id='custom-search-trigger' class='custom-trigger' type='button' aria-label='Open custom search'>
+								<span>Search site</span>
+								<kbd>⌘J</kbd>
+							</button>
+						</div>
+						{%
+							include 'search-manager/_widget/search-modal' with {
+							    indexHandles: customIndexHandles,
+							    placeholder: 'Search content, products, docs...',
+							    theme: 'light',
+							    triggerHotkey: 'j',
+							    triggerEnabled: false,
+							    triggerSelector: '#custom-search-trigger',
+							    resultsLimit: 20,
+							    searchDebounceMs: 180,
+							    searchMinChars: 2,
+							    recentlyViewedEnabled: true,
+							    resultsGroupingEnabled: false,
+							    resultsRequireUrl: true,
+							    snippetMode: 'balanced',
+							    snippetMaxLength: 50,
+							    snippetCleanMarkdown: true,
+							    analyticsSource: 'search-manager-widget-playground-custom',
+							    styles: {
+							        spinnerColor: '#4f46e5',
+							        spinnerColorDark: '#facc15',
+							        modalBg: '#ffffff',
+							        modalBgDark: '#111827',
+							        modalBorderColor: '#c7d2fe',
+							        modalBorderColorDark: '#475569',
+							        modalBorderRadius: '8',
+							        modalBorderWidth: '1',
+							        modalMaxWidth: '760',
+							        modalMaxHeight: '82',
+							        modalPaddingX: '18',
+							        modalPaddingY: '18',
+							        modalShadow: '0 24px 70px rgba(15, 23, 42, 0.20)',
+							        modalShadowDark: '0 28px 80px rgba(0, 0, 0, 0.56)',
+							        headerBg: '#f8fafc',
+							        headerBgDark: '#1f2937',
+							        headerBorderColor: '#c7d2fe',
+							        headerBorderColorDark: '#334155',
+							        headerBorderWidth: '1',
+							        headerBorderRadius: '8',
+							        headerPaddingX: '16',
+							        headerPaddingY: '12',
+							        inputBg: '#ffffff',
+							        inputBgDark: '#0b1220',
+							        inputTextColor: '#111827',
+							        inputTextColorDark: '#f8fafc',
+							        inputPlaceholderColor: '#64748b',
+							        inputPlaceholderColorDark: '#cbd5e1',
+							        inputBorderColor: '#a5b4fc',
+							        inputBorderColorDark: '#475569',
+							        inputFontSize: '17',
+							        inputBorderRadius: '6',
+							        inputBorderWidth: '1',
+							        inputPaddingX: '12',
+							        inputPaddingY: '10',
+							        resultBg: '#ffffff',
+							        resultBgDark: '#172033',
+							        resultBorderColor: '#e2e8f0',
+							        resultBorderColorDark: '#334155',
+							        resultBorderWidth: '1',
+							        resultBorderRadius: '6',
+							        resultGap: '8',
+							        resultPaddingX: '16',
+							        resultPaddingY: '14',
+							        resultTextColor: '#111827',
+							        resultTextColorDark: '#f8fafc',
+							        resultDescColor: '#475569',
+							        resultDescColorDark: '#cbd5e1',
+							        resultMutedColor: '#64748b',
+							        resultMutedColorDark: '#94a3b8',
+							        resultActiveBg: '#4f46e5',
+							        resultActiveBgDark: '#facc15',
+							        resultActiveBorderColor: '#4338ca',
+							        resultActiveBorderColorDark: '#fde047',
+							        resultActiveTextColor: '#ffffff',
+							        resultActiveTextColorDark: '#111827',
+							        resultActiveDescColor: '#eef2ff',
+							        resultActiveDescColorDark: '#1f2937',
+							        resultActiveMutedColor: '#e0e7ff',
+							        resultActiveMutedColorDark: '#374151',
+							        triggerBg: '#ffffff',
+							        triggerBgDark: '#1f2937',
+							        triggerTextColor: '#3730a3',
+							        triggerTextColorDark: '#f8fafc',
+							        triggerBorderRadius: '8',
+							        triggerBorderWidth: '1',
+							        triggerBorderColor: '#a5b4fc',
+							        triggerBorderColorDark: '#475569',
+							        triggerHoverBg: '#eef2ff',
+							        triggerHoverBgDark: '#334155',
+							        triggerHoverTextColor: '#312e81',
+							        triggerHoverTextColorDark: '#ffffff',
+							        triggerHoverBorderColor: '#4f46e5',
+							        triggerHoverBorderColorDark: '#facc15',
+							        triggerPaddingX: '16',
+							        triggerPaddingY: '10',
+							        triggerFontSize: '15',
+							        kbdBg: '#eef2ff',
+							        kbdBgDark: '#374151',
+							        kbdTextColor: '#3730a3',
+							        kbdTextColorDark: '#f8fafc',
+							        kbdBorderRadius: '5',
+							        highlightBgLight: '#fef08a',
+							        highlightColorLight: '#18181b',
+							        highlightBgDark: '#facc15',
+							        highlightColorDark: '#18181b',
+							        highlightActiveBgLight: '#ffffff',
+							        highlightActiveColorLight: '#312e81',
+							        highlightActiveBgDark: '#111827',
+							        highlightActiveColorDark: '#fde68a',
+							        iconColor: '#4f46e5',
+							        iconColorDark: '#facc15',
+							        iconActiveColor: '#ffffff',
+							        iconActiveColorDark: '#111827',
+							        searchIconColor: '#4f46e5',
+							        searchIconColorDark: '#facc15',
+							        clearIconColor: '#64748b',
+							        clearIconColorDark: '#cbd5e1',
+							        resultIconColor: '#64748b',
+							        resultIconColorDark: '#94a3b8',
+							        resultIconActiveColor: '#ffffff',
+							        resultIconActiveColorDark: '#111827',
+							        arrowColor: '#ffffff',
+							        arrowColorDark: '#111827',
+							        hierarchyConnectorColor: '#c7d2fe',
+							        hierarchyConnectorColorDark: '#475569',
+							        hierarchyConnectorActiveColor: '#ffffff',
+							        hierarchyConnectorActiveColorDark: '#111827',
+							        promotedBg: '#be123c',
+							        promotedBgDark: '#fda4af',
+							        promotedColor: '#ffffff',
+							        promotedColorDark: '#111827',
+							        scrollbarColor: '#818cf8',
+							        scrollbarColorDark: '#facc15',
+							        footerBg: '#f8fafc',
+							        footerBgDark: '#1f2937',
+							        footerTextColor: '#475569',
+							        footerTextColorDark: '#cbd5e1',
+							        footerPaddingX: '16',
+							        footerPaddingY: '12',
+							        backdropOpacity: '60',
+									backdropBlur: '1'
+							    }
+							}
+						%}
+					</article>
+
+					<article class='widget-card is-custom'>
+						<div class='card-copy'>
+							<h2>Custom Debug Widget</h2>
+							<p>Uses a custom trigger and enables widget debug metadata in the results panel.</p>
+							<p>
+								Current scope:
+								<code>{{ scopeLabel }}</code>
+								.
+							</p>
+						</div>
+						<div class='trigger-area'>
+							<button id='custom-search-debug-trigger' class='custom-trigger custom-trigger-debug' type='button' aria-label='Open custom debug search'>
+								<span>Debug search</span>
+								<kbd>⌘D</kbd>
+							</button>
+						</div>
+						{%
+							include 'search-manager/_widget/search-modal' with {
+							    indexHandles: customIndexHandles,
+							    placeholder: 'Search with debug metadata...',
+							    theme: 'light',
+							    triggerHotkey: 'd',
+							    triggerEnabled: false,
+							    triggerSelector: '#custom-search-debug-trigger',
+							    resultsLimit: 20,
+							    searchDebounceMs: 180,
+							    searchMinChars: 2,
+							    recentlyViewedEnabled: true,
+							    resultsGroupingEnabled: true,
+							    resultsRequireUrl: false,
+							    debugEnabled: true,
+							    snippetMode: 'deep',
+							    snippetMaxLength: 250,
+							    snippetCleanMarkdown: true,
+							    analyticsSource: 'search-manager-widget-playground-debug',
+							    styles: {
+							        spinnerColor: '#0f766e',
+							        spinnerColorDark: '#5eead4',
+							        modalBg: '#ffffff',
+							        modalBgDark: '#111827',
+							        modalBorderColor: '#99f6e4',
+							        modalBorderColorDark: '#2dd4bf',
+							        modalBorderRadius: '8',
+							        modalBorderWidth: '1',
+							        modalMaxWidth: '820',
+							        modalMaxHeight: '84',
+							        modalPaddingX: '18',
+							        modalPaddingY: '18',
+							        modalShadow: '0 24px 70px rgba(15, 118, 110, 0.18)',
+							        modalShadowDark: '0 28px 80px rgba(0, 0, 0, 0.58)',
+							        headerBg: '#f0fdfa',
+							        headerBgDark: '#134e4a',
+							        headerBorderColor: '#99f6e4',
+							        headerBorderColorDark: '#2dd4bf',
+							        headerBorderWidth: '1',
+							        headerBorderRadius: '8',
+							        headerPaddingX: '16',
+							        headerPaddingY: '12',
+							        inputBg: '#ffffff',
+							        inputBgDark: '#0b1220',
+							        inputTextColor: '#111827',
+							        inputTextColorDark: '#f8fafc',
+							        inputPlaceholderColor: '#64748b',
+							        inputPlaceholderColorDark: '#cbd5e1',
+							        inputBorderColor: '#5eead4',
+							        inputBorderColorDark: '#2dd4bf',
+							        inputFontSize: '17',
+							        inputBorderRadius: '6',
+							        inputBorderWidth: '1',
+							        inputPaddingX: '12',
+							        inputPaddingY: '10',
+							        resultBg: '#ffffff',
+							        resultBgDark: '#172033',
+							        resultBorderColor: '#ccfbf1',
+							        resultBorderColorDark: '#334155',
+							        resultBorderWidth: '1',
+							        resultBorderRadius: '6',
+							        resultGap: '8',
+							        resultPaddingX: '16',
+							        resultPaddingY: '14',
+							        resultTextColor: '#111827',
+							        resultTextColorDark: '#f8fafc',
+							        resultDescColor: '#475569',
+							        resultDescColorDark: '#cbd5e1',
+							        resultMutedColor: '#0f766e',
+							        resultMutedColorDark: '#99f6e4',
+							        resultActiveBg: '#0f766e',
+							        resultActiveBgDark: '#5eead4',
+							        resultActiveBorderColor: '#0f766e',
+							        resultActiveBorderColorDark: '#99f6e4',
+							        resultActiveTextColor: '#ffffff',
+							        resultActiveTextColorDark: '#042f2e',
+							        resultActiveDescColor: '#ccfbf1',
+							        resultActiveDescColorDark: '#134e4a',
+							        resultActiveMutedColor: '#ccfbf1',
+							        resultActiveMutedColorDark: '#0f766e',
+							        triggerBg: '#ffffff',
+							        triggerBgDark: '#134e4a',
+							        triggerTextColor: '#0f766e',
+							        triggerTextColorDark: '#f8fafc',
+							        triggerBorderRadius: '8',
+							        triggerBorderWidth: '1',
+							        triggerBorderColor: '#5eead4',
+							        triggerBorderColorDark: '#2dd4bf',
+							        triggerHoverBg: '#ccfbf1',
+							        triggerHoverBgDark: '#0f766e',
+							        triggerHoverTextColor: '#042f2e',
+							        triggerHoverTextColorDark: '#ffffff',
+							        triggerHoverBorderColor: '#0f766e',
+							        triggerHoverBorderColorDark: '#5eead4',
+							        triggerPaddingX: '16',
+							        triggerPaddingY: '10',
+							        triggerFontSize: '15',
+							        kbdBg: '#ccfbf1',
+							        kbdBgDark: '#0f766e',
+							        kbdTextColor: '#0f766e',
+							        kbdTextColorDark: '#ffffff',
+							        kbdBorderRadius: '5',
+							        highlightBgLight: '#fef08a',
+							        highlightColorLight: '#18181b',
+							        highlightBgDark: '#facc15',
+							        highlightColorDark: '#18181b',
+							        highlightActiveBgLight: '#ffffff',
+							        highlightActiveColorLight: '#0f766e',
+							        highlightActiveBgDark: '#111827',
+							        highlightActiveColorDark: '#5eead4',
+							        iconColor: '#0f766e',
+							        iconColorDark: '#5eead4',
+							        iconActiveColor: '#ffffff',
+							        iconActiveColorDark: '#042f2e',
+							        searchIconColor: '#0f766e',
+							        searchIconColorDark: '#5eead4',
+							        clearIconColor: '#64748b',
+							        clearIconColorDark: '#cbd5e1',
+							        resultIconColor: '#0f766e',
+							        resultIconColorDark: '#99f6e4',
+							        resultIconActiveColor: '#ffffff',
+							        resultIconActiveColorDark: '#042f2e',
+							        arrowColor: '#ffffff',
+							        arrowColorDark: '#042f2e',
+							        hierarchyConnectorColor: '#99f6e4',
+							        hierarchyConnectorColorDark: '#2dd4bf',
+							        hierarchyConnectorActiveColor: '#ffffff',
+							        hierarchyConnectorActiveColorDark: '#042f2e',
+							        promotedBg: '#be123c',
+							        promotedBgDark: '#fda4af',
+							        promotedColor: '#ffffff',
+							        promotedColorDark: '#111827',
+							        scrollbarColor: '#14b8a6',
+							        scrollbarColorDark: '#5eead4',
+							        footerBg: '#f0fdfa',
+							        footerBgDark: '#134e4a',
+							        footerTextColor: '#0f766e',
+							        footerTextColorDark: '#ccfbf1',
+							        footerPaddingX: '16',
+							        footerPaddingY: '12',
+							        backdropOpacity: '60',
+									backdropBlur: '1'
+							    }
+							}
+						%}
+					</article>
+				</div>
+			</section>
+
+			<section class='reference' aria-labelledby='copyable-pattern'>
+				<h2 id='copyable-pattern'>Copyable Pattern</h2>
+				<p>
+					The default widget needs only the include. For a branded trigger, render your own button and connect it with
+					<code>triggerSelector</code>
+					.
+				</p>
+				<pre><code>{% verbatim %}{% include 'search-manager/_widget/search-modal' %}
+
+<button id="site-search-trigger" type="button">Search site</button>
+
+{% include 'search-manager/_widget/search-modal' with {
+    triggerEnabled: false,
+    triggerSelector: '#site-search-trigger',
+    indexHandles: ['entries'],
+    placeholder: 'Search content...',
+    styles: {
+        modalBorderRadius: '8',
+        resultActiveBg: '#ccfbf1',
+    },
+} %}{% endverbatim %}</code></pre>
+			</section>
+
+			<section class='reference' aria-labelledby='configured-indices'>
+				<h2 id='configured-indices'>Configured Indices</h2>
+				<div class='index-list'>
+					{% for index in indexRecords %}
+						<div class='index-item'>
+							<strong>{{ index.handle }}</strong>
+							<span>{{ index.name ?? index.handle }}</span>
+						</div>
+					{% else %}
+						<p>No Search Manager indices are configured.</p>
+					{% endfor %}
+				</div>
+			</section>
+		</main>
+
+		<script>
+			(function () {
+				var button = document.querySelector('[data-theme-toggle]');
+				if (!button) {
+					return;
+				}
+
+				var root = document.documentElement;
+				var media = window.matchMedia('(prefers-color-scheme: dark)');
+
+				function currentTheme() {
+					return root.dataset.theme || (media.matches ? 'dark' : 'light');
+				}
+
+				function updateLabel() {
+					var theme = currentTheme();
+					button.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+					document.querySelectorAll('search-modal').forEach(function (widget) {
+						widget.setAttribute('theme', theme);
+					});
+				}
+
+				button.addEventListener('click', function () {
+					var next = currentTheme() === 'dark' ? 'light' : 'dark';
+					root.dataset.theme = next;
+					localStorage.setItem('searchWidgetTestTheme', next);
+					updateLabel();
+				});
+
+				media.addEventListener('change', function () {
+					if (!root.dataset.theme) {
+						updateLabel();
+					}
+				});
+
+				updateLabel();
+			})();
+		</script>
+	</body>
+</html>

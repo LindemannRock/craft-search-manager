@@ -76,5 +76,5 @@
     {"handle": "fixtureSourceDocs", "uid": "a1000000-0000-4000-8000-000000000007", "elementType": "lindemannrock\\docsmanager\\elements\\SourceDoc", "analytics": true, "split": true},
     {"handle": "fixtureVariants", "uid": "a1000000-0000-4000-8000-000000000008", "elementType": "craft\\commerce\\elements\\Variant", "analytics": false, "split": false}
   ],
-  "templates": ["test-search.twig", "test-search-datastar.twig", "test-search-widget.twig"]
+  "templates": ["search-manager-search-playground.twig", "search-manager-native-comparison.twig", "search-manager-widget-playground.twig"]
 }

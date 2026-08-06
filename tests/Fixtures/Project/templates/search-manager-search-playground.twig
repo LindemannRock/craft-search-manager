@@ -1,0 +1,1272 @@
+{#
+// Search Manager test template.
+//
+// Purpose: portable GET-based diagnostic page for testing Search Manager's
+// Twig API, result shape, snippets, promotions, suggestions, cache state, and
+// basic query behavior.
+// Required: Search Manager.
+// Optional: Datastar, used only for reactive input/DOM patching.
+// Note: this page intentionally does not render widget samples. Widget styling
+// belongs in dedicated widget templates so this page stays focused and readable.
+// This is a development/testing template, not a production search UI.
+#}
+
+{% set datastarInstalled = lrPluginInstalled('datastar') %}
+{% set datastarEnabled = lrPluginEnabled('datastar') and datastar is defined %}
+{% set isDatastarRequest = datastarEnabled and craft.app.request.headers.get('Datastar-Request') %}
+{% set searchManagerSettings = craft.searchManager.getSettings() %}
+{% set replaceNativeSearch = searchManagerSettings.replaceNativeSearch ?? false %}
+{% set autocompleteEnabled = searchManagerSettings.enableAutocomplete ?? true %}
+{% set autocompleteMinLength = searchManagerSettings.autocompleteMinLength ?? 2 %}
+{% set autocompleteEndpoint = actionUrl('search-manager/api/autocomplete') %}
+{% set queryParams = craft.app.request.queryParams %}
+{% set indexRecords = craft.searchManager.getAvailableIndices() %}
+{% set indexHandles = indexRecords|map(index => index.handle) %}
+{% set siteNamesById = {} %}
+{% for site in craft.app.sites.getAllSites() %}
+    {% set siteNamesById = siteNamesById|merge({ (site.id): site.name }) %}
+{% endfor %}
+{% set initialIndex = 'all-sites' in indexHandles ? 'all-sites' : (indexHandles[0] ?? '') %}
+{% set requestIndex = queryParams.smIndex ?? queryParams.scope ?? queryParams.index ?? craft.app.request.getParam('smIndex') ?? craft.app.request.getParam('scope') ?? craft.app.request.getParam('index') ?? null %}
+{% set requestQueryParam = queryParams.q ?? craft.app.request.getParam('q') ?? null %}
+{% set signalState = signals is defined ? (signals.sm ?? {}) : {} %}
+{% set requestQuery = requestQueryParam is not null and requestQueryParam != '' ? requestQueryParam : (signalState.q ?? '') %}
+{% set activeIndex = requestIndex is not null and requestIndex != '' ? requestIndex : (signalState.index ?? initialIndex) %}
+{% set activeIndex = activeIndex == '__all' or activeIndex in indexHandles ? activeIndex : initialIndex %}
+{% set requestLimit = queryParams.limit ?? craft.app.request.getParam('limit') ?? (signalState.limit ?? 10) %}
+{% set limit = requestLimit matches '/^\\d+$/' ? requestLimit : 10 %}
+{% set limit = limit < 1 ? 1 : (limit > 50 ? 50 : limit) %}
+{% set requestSnippetMaxLength = queryParams.snippetMaxLength ?? craft.app.request.getParam('snippetMaxLength') ?? (signalState.snippetMaxLength ?? 150) %}
+{% set snippetMaxLength = requestSnippetMaxLength matches '/^\\d+$/' ? requestSnippetMaxLength : 150 %}
+{% set snippetMaxLength = snippetMaxLength < 50 ? 50 : (snippetMaxLength > 1000 ? 1000 : snippetMaxLength) %}
+{% set snippetMode = queryParams.snippetMode ?? craft.app.request.getParam('snippetMode') ?? (signalState.snippetMode ?? 'balanced') %}
+{% set snippetMode = snippetMode in ['early', 'balanced', 'deep'] ? snippetMode : 'balanced' %}
+{% set requestSnippetCleanMarkdown = queryParams.snippetCleanMarkdown ?? craft.app.request.getParam('snippetCleanMarkdown') ?? (signalState.snippetCleanMarkdown ?? true) %}
+{% set requestSnippetIncludeCodeBlocks = queryParams.snippetIncludeCodeBlocks ?? craft.app.request.getParam('snippetIncludeCodeBlocks') ?? (signalState.snippetIncludeCodeBlocks ?? false) %}
+{% set snippetCleanMarkdown = requestSnippetCleanMarkdown in [true, 1, '1', 'true', 'on'] %}
+{% set snippetIncludeCodeBlocks = requestSnippetIncludeCodeBlocks in [true, 1, '1', 'true', 'on'] %}
+{% set canSearch = requestQuery|length >= 2 and indexHandles|length %}
+{% set searchResults = null %}
+{% set searchElapsedMs = null %}
+{% set fetchAction = null %}
+{% set sampleSeed = requestQuery|trim|replace({
+    '"': '',
+    '*': '',
+    'title:': '',
+    'content:': '',
+    ' AND ': ' ',
+    ' OR ': ' ',
+    ' NOT ': ' ',
+    '^3': '',
+    '^2': '',
+    '^1.5': '',
+}) %}
+{% set sampleQueries = [] %}
+
+{% if datastarEnabled %}
+    {#
+    // Datastar renders this same template through its action endpoint on input
+    // changes. The Datastar response is isolated below so this template still
+    // works as a normal GET page when Datastar is missing or disabled.
+    #}
+    {% set fetchAction = datastar.get('search-manager-search-playground.twig') %}
+{% endif %}
+
+{% if canSearch %}
+    {% set searchOptions = {
+        limit: limit,
+        snippetMaxLength: snippetMaxLength,
+        snippetMode: snippetMode,
+        snippetCleanMarkdown: snippetCleanMarkdown,
+        snippetIncludeCodeBlocks: snippetIncludeCodeBlocks,
+        skipAnalytics: true,
+    } %}
+
+    {% set searchStarted = date('now')|date('U.u') %}
+    {% set searchResults = activeIndex == '__all'
+        ? craft.searchManager.searchMultiple(indexHandles, requestQuery, searchOptions)
+        : craft.searchManager.search(activeIndex, requestQuery, searchOptions)
+    %}
+    {% set searchElapsedMs = (((date('now')|date('U.u')) - searchStarted) * 1000)|round(1) %}
+
+    {% if not sampleSeed and searchResults.hits is defined and searchResults.hits|length %}
+        {% set firstHit = searchResults.hits|first %}
+        {% set sampleSeed = firstHit.title ?? firstHit.sectionTitle ?? '' %}
+    {% endif %}
+{% endif %}
+
+{% if not sampleSeed %}
+    {% set sampleSeed = 'test' %}
+{% endif %}
+
+{% set sampleTerm = (sampleSeed|split(' ')|first|default('search'))|trim %}
+{% set sampleTerm = sampleTerm ?: 'search' %}
+{% set excludedTerm = sampleTerm == 'spam' ? 'draft' : 'spam' %}
+{% set alternateTerm = sampleTerm == 'test' ? 'demo' : 'test' %}
+{% set sampleQueries = [
+    { label: 'Phrase', query: '"' ~ sampleSeed ~ '"' },
+    { label: 'OR', query: sampleTerm ~ ' OR ' ~ alternateTerm },
+    { label: 'NOT', query: sampleTerm ~ ' NOT ' ~ excludedTerm },
+    { label: 'Title', query: 'title:' ~ sampleTerm },
+    { label: 'Content', query: 'content:' ~ sampleTerm },
+    { label: 'Wildcard', query: sampleTerm ~ '*' },
+    { label: 'Boost', query: sampleTerm ~ '^2 ' ~ alternateTerm },
+] %}
+
+{% set autocompleteMarkup %}
+    <div
+        id="search-autocomplete-dropdown"
+        class="autocomplete-dropdown"
+        role="listbox"
+        aria-label="Autocomplete suggestions"
+        data-autocomplete-enabled="{{ autocompleteEnabled ? '1' : '0' }}"
+        data-autocomplete-url="{{ autocompleteEndpoint }}"
+        data-autocomplete-min-length="{{ autocompleteMinLength }}"
+        data-autocomplete-limit="8"
+        hidden
+    >
+    </div>
+{% endset %}
+
+{% set resultsMarkup %}
+    <section id="search-test-results" class="results" aria-live="polite">
+        {% if canSearch and activeIndex == '__all' %}
+            <p class="helper-note">Autocomplete suggestions are shown when a single Search Manager index is selected.</p>
+        {% endif %}
+
+        {% if not indexHandles|length %}
+            <p class="empty">No Search Manager indices are configured.</p>
+        {% elseif requestQuery|length and requestQuery|length < 2 %}
+            <p class="empty">Type at least 2 characters.</p>
+        {% elseif not canSearch %}
+            <p class="empty">Enter a query to inspect Search Manager results.</p>
+        {% else %}
+            <div class="summary">
+                <strong>Search Results</strong>
+                <span>Query <code>{{ requestQuery }}</code></span>
+                <span>Limit {{ limit }}</span>
+                <span>Snippet {{ snippetMode }}, {{ snippetMaxLength }} chars</span>
+                <span>{{ snippetCleanMarkdown ? 'Markdown cleaned' : 'Markdown raw' }}</span>
+                <span>{{ snippetIncludeCodeBlocks ? 'Code included' : 'Code excluded' }}</span>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span>Server</span>
+                    <strong>{{ searchElapsedMs }} ms</strong>
+                </div>
+                <div class="metric">
+                    <span>Total</span>
+                    <strong>{{ searchResults.total ?? 0 }}</strong>
+                </div>
+                <div class="metric">
+                    <span>Scope</span>
+                    <strong>{{ activeIndex == '__all' ? 'all indices' : activeIndex }}</strong>
+                </div>
+                <div class="metric">
+                    <span>Cache</span>
+                    <strong>
+                        {% if searchResults.meta.cached is defined %}
+                            {{ searchResults.meta.cached ? 'hit' : 'miss' }}
+                        {% else %}
+                            n/a
+                        {% endif %}
+                    </strong>
+                </div>
+            </div>
+
+            {% if searchResults.redirect is defined and searchResults.redirect %}
+                <p class="empty">Redirect rule matched: <a href="{{ searchResults.redirect }}">{{ searchResults.redirect }}</a></p>
+            {% endif %}
+
+            {% if searchResults.error is defined %}
+                <p class="error">{{ searchResults.error }}</p>
+            {% elseif searchResults.hits is defined and searchResults.hits|length %}
+                <ol class="list">
+                    {% for hit in searchResults.hits %}
+                        <li class="{{ hit.promoted ?? false ? 'is-promoted' }}">
+                            {% set title = hit.title ?? hit.sectionTitle ?? ('Element #' ~ (hit.elementId ?? loop.index)) %}
+                            {% set highlightedTitle = craft.searchManager.highlight(title, requestQuery, {
+                                tag: 'mark',
+                                class: 'search-highlight',
+                            }) %}
+                            {% set url = hit.url ?? hit.sectionUrl ?? null %}
+                            <a href="{{ url ?? '#' }}">
+                                <span>{{ highlightedTitle|raw }}</span>
+                                {% if hit.score is defined and hit.score is not null %}
+                                    <small>{{ hit.score|number_format(2) }}</small>
+                                {% endif %}
+                            </a>
+
+                            {% set excerpt = hit.snippet ?? hit.excerpt ?? hit.description ?? '' %}
+                            {% if excerpt %}
+                                {% set highlightedExcerpt = craft.searchManager.highlight(excerpt, requestQuery, {
+                                    tag: 'mark',
+                                    class: 'search-highlight',
+                                    stripTags: false,
+                                }) %}
+                                <p class="snippet">{{ highlightedExcerpt|raw }}</p>
+                            {% else %}
+                                <p class="no-snippet">No snippet returned for this hit. Title highlighting is still applied above.</p>
+                            {% endif %}
+
+                            <div class="meta">
+                                {% if hit.promoted ?? false %}<span class="promo-badge">Promoted #{{ hit.position ?? loop.index }}</span>{% endif %}
+                                {% if hit.boosted ?? false %}<span class="boost-badge">Boosted</span>{% endif %}
+                                {% if hit.index is defined %}<span class="meta-chip">{{ hit.index }}</span>{% endif %}
+                                {% if hit.elementId is defined %}<span class="meta-chip">Element {{ hit.elementId }}</span>{% endif %}
+                                {% if hit.siteId is defined %}
+                                    {% set siteName = siteNamesById[hit.siteId] ?? null %}
+                                    <span class="meta-chip">Site {{ hit.siteId }}{% if siteName %} - {{ siteName }}{% endif %}</span>
+                                {% endif %}
+                                {% if hit.matchedIn is defined and hit.matchedIn|length %}<span class="meta-chip">Matched {{ hit.matchedIn|join(', ') }}</span>{% endif %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ol>
+            {% else %}
+                <p class="empty">No Search Manager results.</p>
+            {% endif %}
+        {% endif %}
+    </section>
+{% endset %}
+
+{% if isDatastarRequest %}
+    {{ resultsMarkup|raw }}
+{% else %}
+<!doctype html>
+<html lang="{{ craft.app.language }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Search Manager Test</title>
+    <script>
+        (function() {
+            var theme = localStorage.getItem('searchTestTheme');
+            if (theme === 'light' || theme === 'dark') {
+                document.documentElement.dataset.theme = theme;
+            }
+        })();
+    </script>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #f7f7f8;
+            --panel: #fff;
+            --panel-strong: #fafafa;
+            --text: #18181b;
+            --muted: #71717a;
+            --border: #d4d4d8;
+            --accent: #0f766e;
+            --accent-soft: #ccfbf1;
+            --accent-text: #0f766e;
+            --code-bg: #eef2ff;
+            --code-border: #c7d2fe;
+            --code-text: #312e81;
+            --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            --warning: #92400e;
+            --warning-bg: #fffbeb;
+            --promo: #7c3aed;
+            --promo-bg: #f3e8ff;
+            --promo-badge-bg: #7c3aed;
+            --promo-badge-text: #fff;
+            --boost-badge-bg: #0f766e;
+            --boost-badge-text: #fff;
+            --button-bg: #0f766e;
+            --button-text: #fff;
+            --radius-card: 8px;
+            --radius-control: 6px;
+            --radius-chip: 6px;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #09090b;
+                --panel: #18181b;
+                --panel-strong: #111113;
+                --text: #fafafa;
+                --muted: #a1a1aa;
+                --border: #3f3f46;
+                --accent: #5eead4;
+                --accent-soft: #134e4a;
+                --accent-text: #5eead4;
+                --code-bg: #1e293b;
+                --code-border: #475569;
+                --code-text: #e0e7ff;
+                --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23cbd5e1'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+                --warning: #fbbf24;
+                --warning-bg: #451a03;
+                --promo: #c4b5fd;
+                --promo-bg: #2e1065;
+                --promo-badge-bg: #c4b5fd;
+                --promo-badge-text: #1e1b4b;
+                --boost-badge-bg: #5eead4;
+                --boost-badge-text: #042f2e;
+                --button-bg: #5eead4;
+                --button-text: #042f2e;
+            }
+        }
+
+        :root[data-theme="light"] {
+            color-scheme: light;
+            --bg: #f7f7f8;
+            --panel: #fff;
+            --panel-strong: #fafafa;
+            --text: #18181b;
+            --muted: #71717a;
+            --border: #d4d4d8;
+            --accent: #0f766e;
+            --accent-soft: #ccfbf1;
+            --accent-text: #0f766e;
+            --code-bg: #eef2ff;
+            --code-border: #c7d2fe;
+            --code-text: #312e81;
+            --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            --warning: #92400e;
+            --warning-bg: #fffbeb;
+            --promo: #7c3aed;
+            --promo-bg: #f3e8ff;
+            --promo-badge-bg: #7c3aed;
+            --promo-badge-text: #fff;
+            --boost-badge-bg: #0f766e;
+            --boost-badge-text: #fff;
+            --button-bg: #0f766e;
+            --button-text: #fff;
+        }
+
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+            --bg: #09090b;
+            --panel: #18181b;
+            --panel-strong: #111113;
+            --text: #fafafa;
+            --muted: #a1a1aa;
+            --border: #3f3f46;
+            --accent: #5eead4;
+            --accent-soft: #134e4a;
+            --accent-text: #5eead4;
+            --code-bg: #1e293b;
+            --code-border: #475569;
+            --code-text: #e0e7ff;
+            --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23cbd5e1'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            --warning: #fbbf24;
+            --warning-bg: #451a03;
+            --promo: #c4b5fd;
+            --promo-bg: #2e1065;
+            --promo-badge-bg: #c4b5fd;
+            --promo-badge-text: #1e1b4b;
+            --boost-badge-bg: #5eead4;
+            --boost-badge-text: #042f2e;
+            --button-bg: #5eead4;
+            --button-text: #042f2e;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        main {
+            width: min(1080px, calc(100vw - 32px));
+            margin: 40px auto;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(30px, 5vw, 48px);
+            line-height: 1;
+            letter-spacing: 0;
+        }
+
+        h2 {
+            letter-spacing: 0;
+        }
+
+        .page-header {
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 22px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 22px;
+        }
+
+        .eyebrow {
+            margin: 0 0 10px;
+            color: var(--accent-text);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .header-copy {
+            min-width: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        .lede {
+            max-width: 780px;
+            margin: 0 0 22px;
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .panel,
+        .notes {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            background: var(--panel);
+            padding: 20px;
+        }
+
+        .notes {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .notes h2 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .notes p,
+        .notes ul {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        .notes ul {
+            padding-left: 20px;
+        }
+
+        .status,
+        .samples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin: 0 0 18px;
+        }
+
+        .badge,
+        .sample {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-chip);
+            background: var(--panel-strong);
+            color: var(--muted);
+            padding: 6px 10px;
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        .badge.ok {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .badge.warn {
+            border-color: var(--warning);
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .sample:hover {
+            border-color: var(--accent);
+            color: var(--accent-text);
+            text-decoration: none;
+        }
+
+        .sample {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+
+        .sample-label {
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .sample code {
+            color: var(--text);
+            font: inherit;
+        }
+
+        .helper-note {
+            margin: 0 0 18px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(180px, 260px) minmax(96px, 120px) auto;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .query-wrap {
+            position: relative;
+            min-width: 0;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            z-index: 20;
+            top: calc(100% + 6px);
+            right: 0;
+            left: 0;
+            max-height: 260px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-control);
+            background: var(--panel);
+            box-shadow: 0 12px 28px rgb(15 23 42 / 14%);
+        }
+
+        .autocomplete-dropdown[hidden] {
+            display: none;
+        }
+
+        .query-wrap:not(:focus-within) .autocomplete-dropdown {
+            display: none;
+        }
+
+        .autocomplete-option {
+            display: block;
+            width: 100%;
+            min-height: 0;
+            padding: 10px 12px;
+            border: 0;
+            border-bottom: 1px solid var(--border);
+            border-radius: 0;
+            background: transparent;
+            color: var(--text);
+            font: inherit;
+            text-align: left;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .autocomplete-option:hover,
+        .autocomplete-option:focus {
+            background: var(--panel-strong);
+            color: var(--text);
+            text-decoration: none;
+            outline: none;
+        }
+
+        .autocomplete-highlight {
+            color: var(--accent-text);
+            font-weight: 800;
+        }
+
+        .autocomplete-meta {
+            padding: 8px 12px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .advanced {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .field-control {
+            display: grid;
+            gap: 6px;
+        }
+
+        .field-control span,
+        .check-control span {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .check-control {
+            display: grid;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .check-control .checkbox-shell {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            min-height: 44px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-control);
+            background: var(--bg);
+            color: var(--text);
+            padding: 0 12px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .check-control input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            min-height: 0;
+            margin: 0;
+            accent-color: var(--button-bg);
+        }
+
+        input,
+        select,
+        button {
+            min-height: 44px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-control);
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 0 12px;
+            font: inherit;
+        }
+
+        input,
+        select {
+            width: 100%;
+        }
+
+        select {
+            appearance: none;
+            background-image: var(--select-chevron);
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px 16px;
+            padding-right: 40px;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            min-height: 0;
+        }
+
+        button {
+            background: var(--button-bg);
+            color: var(--button-text);
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .theme-toggle {
+            min-width: 118px;
+            border-color: var(--border);
+            background-color: var(--panel-strong);
+            color: var(--text);
+        }
+
+        input:focus,
+        select:focus,
+        button:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: baseline;
+            margin-bottom: 14px;
+            color: var(--muted);
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .metric {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 10px;
+        }
+
+        .metric span {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        .metric strong {
+            display: block;
+            margin-top: 4px;
+            overflow-wrap: anywhere;
+            font-size: 16px;
+            line-height: 1.25;
+        }
+
+        code {
+            border: 1px solid var(--code-border);
+            border-radius: var(--radius-chip);
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 2px 5px;
+            font-size: 0.9em;
+            font-weight: 650;
+        }
+
+        .list {
+            display: grid;
+            gap: 12px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .list li {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 14px;
+        }
+
+        .list li.is-promoted {
+            border-color: var(--promo);
+            background: var(--promo-bg);
+        }
+
+        .list a {
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .list a:hover {
+            color: var(--accent);
+        }
+
+        .list p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .list p.no-snippet {
+            border-left: 3px solid var(--border);
+            padding-left: 10px;
+            font-size: 13px;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .promo-badge,
+        .boost-badge {
+            border-radius: var(--radius-chip);
+            padding: 2px 8px;
+            font-weight: 700;
+        }
+
+        .meta-chip {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-chip);
+            background: var(--panel-strong);
+            color: var(--muted);
+            padding: 2px 8px;
+            font-weight: 650;
+        }
+
+        .promo-badge {
+            background: var(--promo-badge-bg);
+            color: var(--promo-badge-text);
+        }
+
+        .boost-badge {
+            background: var(--boost-badge-bg);
+            color: var(--boost-badge-text);
+        }
+
+        .empty,
+        .error {
+            margin: 0;
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-card);
+            padding: 18px;
+            color: var(--muted);
+        }
+
+        .error {
+            color: #dc2626;
+        }
+
+        mark {
+            border-radius: var(--radius-chip);
+            background: #fef08a;
+            color: #18181b;
+            padding: 1px 3px;
+        }
+
+        .search-highlight {
+            border-radius: var(--radius-chip);
+            background: #fef08a;
+            color: #18181b;
+            padding: 1px 3px;
+        }
+
+        @media (max-width: 760px) {
+            main {
+                margin: 24px auto;
+            }
+
+            .controls,
+            .advanced,
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                display: grid;
+            }
+
+            .header-actions {
+                justify-content: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main
+        {% if datastarEnabled %}
+            data-signals="{{ {
+                sm: {
+                    q: requestQuery,
+                    index: activeIndex,
+                    limit: limit,
+                    snippetMode: snippetMode,
+                    snippetMaxLength: snippetMaxLength,
+                    snippetCleanMarkdown: snippetCleanMarkdown,
+                    snippetIncludeCodeBlocks: snippetIncludeCodeBlocks,
+                }
+            }|json_encode }}"
+        {% endif %}
+    >
+        <header class="page-header">
+            <div class="header-copy">
+                <p class="eyebrow">Search Manager diagnostic template</p>
+                <h1>Search Manager Test</h1>
+                <p class="lede">
+                    Test Search Manager's Twig search API, suggestions, snippets, promotions, and cache metadata. Datastar is optional; it only makes the form reactive and does not change the search results.
+                </p>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" type="button" data-theme-toggle>Theme</button>
+            </div>
+        </header>
+
+        <section class="notes" aria-labelledby="test-notes">
+            <h2 id="test-notes">How to use this page</h2>
+            <ul>
+                <li>Copy this template to <code>templates/search-manager-search-playground.twig</code> and open <code>/search-manager-search-playground</code>.</li>
+                <li>Select one index or all indices, then test exact terms, plurals, typos, SKU fragments, product type names, and nonsense terms.</li>
+                <li>Run each query twice to compare cold and warm cache behavior.</li>
+                <li>This page uses <code>craft.searchManager.search()</code> and <code>craft.searchManager.searchMultiple()</code>; it does not test Craft native <code>.search()</code>.</li>
+                <li>Widget examples are intentionally excluded from this template so search behavior and result shape stay easy to inspect.</li>
+                <li>Install Datastar only if you want reactive updates: <code>composer require putyourlightson/craft-datastar</code>, then install/enable the <code>datastar</code> plugin.</li>
+            </ul>
+        </section>
+
+        <div class="status">
+            <span class="badge ok">Search Manager enabled</span>
+            <span class="badge {{ datastarEnabled ? 'ok' : (datastarInstalled ? 'warn' : '') }}">
+                Datastar {{ datastarEnabled ? 'enabled' : (datastarInstalled ? 'installed but disabled' : 'not installed') }}
+            </span>
+            <span class="badge {{ datastarEnabled ? 'ok' : '' }}">
+                Transport {{ datastarEnabled ? 'Datastar reactive' : 'GET form fallback' }}
+            </span>
+            <span class="badge {{ replaceNativeSearch ? 'warn' : '' }}">Replace Native Search {{ replaceNativeSearch ? 'on' : 'off' }}</span>
+        </div>
+
+        <div class="panel">
+            <p class="helper-note">
+                {{ datastarEnabled
+                    ? 'Datastar is active for reactive input changes; the Search button remains as a normal GET fallback.'
+                    : 'Datastar is not active, so this page uses a normal GET form. Install and enable Datastar for reactive updates.'
+                }}
+            </p>
+
+            <div class="samples" aria-label="Sample queries">
+                <strong>Operators</strong>
+                {% for sample in sampleQueries %}
+                    <a class="sample" href="?q={{ sample.query|url_encode }}&smIndex={{ activeIndex|url_encode }}&limit={{ limit }}&snippetMode={{ snippetMode }}&snippetMaxLength={{ snippetMaxLength }}&snippetCleanMarkdown={{ snippetCleanMarkdown ? '1' : '0' }}&snippetIncludeCodeBlocks={{ snippetIncludeCodeBlocks ? '1' : '0' }}">
+                        <span class="sample-label">{{ sample.label }}</span>
+                        <code>{{ sample.query }}</code>
+                    </a>
+                {% endfor %}
+            </div>
+
+            <form method="get" action="">
+                <div class="controls">
+                    <div class="query-wrap">
+                        <input
+                            id="search-query"
+                            type="search"
+                            name="q"
+                            value="{{ requestQuery }}"
+                            placeholder="Try test, eco, eco bag, classic watches..."
+                            autocomplete="off"
+                            aria-autocomplete="list"
+                            aria-controls="search-autocomplete-dropdown"
+                            data-autocomplete-min-length="{{ autocompleteMinLength }}"
+                            {% if datastarEnabled %}
+                                data-bind:sm.q
+                                data-on:input__debounce.300ms="$sm.q = evt.target.value; {{ fetchAction }}"
+                            {% endif %}
+                        >
+                        {{ autocompleteMarkup|raw }}
+                    </div>
+
+                    <select
+                        name="smIndex"
+                        aria-label="Search index"
+                        {% if datastarEnabled %}
+                            data-bind:sm.index
+                            data-on:change="$sm.index = evt.target.value; {{ fetchAction }}"
+                        {% endif %}
+                    >
+                        {% if indexHandles|length > 1 %}
+                            <option value="__all" {{ activeIndex == '__all' ? 'selected' }}>All indices</option>
+                        {% endif %}
+                        {% for handle in indexHandles %}
+                            <option value="{{ handle }}" {{ activeIndex == handle ? 'selected' }}>{{ handle }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <input
+                        type="number"
+                        name="limit"
+                        value="{{ limit }}"
+                        min="1"
+                        max="50"
+                        step="1"
+                        aria-label="Result limit"
+                        {% if datastarEnabled %}
+                            data-bind:sm.limit
+                            data-on:input__debounce.300ms="$sm.limit = evt.target.value; {{ fetchAction }}"
+                        {% endif %}
+                    >
+
+                    <button type="submit">Search</button>
+                </div>
+
+                <div class="advanced">
+                    <label class="field-control">
+                        <span>Snippet mode</span>
+                        <select
+                            name="snippetMode"
+                            aria-label="Snippet mode"
+                            {% if datastarEnabled %}
+                                data-bind:sm.snippetMode
+                                data-on:change="$sm.snippetMode = evt.target.value; {{ fetchAction }}"
+                            {% endif %}
+                        >
+                            {% for mode in ['early', 'balanced', 'deep'] %}
+                                <option value="{{ mode }}" {{ snippetMode == mode ? 'selected' }}>{{ mode }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <label class="field-control">
+                        <span>Snippet length</span>
+                        <input
+                            type="number"
+                            name="snippetMaxLength"
+                            value="{{ snippetMaxLength }}"
+                            min="50"
+                            max="1000"
+                            step="10"
+                            aria-label="Snippet length"
+                            {% if datastarEnabled %}
+                                data-bind:sm.snippetMaxLength
+                                data-on:input__debounce.300ms="$sm.snippetMaxLength = evt.target.value; {{ fetchAction }}"
+                                data-on:change="$sm.snippetMaxLength = evt.target.value; {{ fetchAction }}"
+                            {% endif %}
+                        >
+                    </label>
+
+                    <label class="check-control">
+                        <span>Markdown</span>
+                        <input type="hidden" name="snippetCleanMarkdown" value="0">
+                        <span class="checkbox-shell">
+                            <input
+                                type="checkbox"
+                                name="snippetCleanMarkdown"
+                                value="1"
+                                {{ snippetCleanMarkdown ? 'checked' }}
+                                {% if datastarEnabled %}
+                                    data-bind:sm.snippetCleanMarkdown
+                                    data-on:change="$sm.snippetCleanMarkdown = evt.target.checked; {{ fetchAction }}"
+                                {% endif %}
+                            >
+                            Clean Markdown
+                        </span>
+                    </label>
+
+                    <label class="check-control">
+                        <span>Code blocks</span>
+                        <input type="hidden" name="snippetIncludeCodeBlocks" value="0">
+                        <span class="checkbox-shell">
+                            <input
+                                type="checkbox"
+                                name="snippetIncludeCodeBlocks"
+                                value="1"
+                                {{ snippetIncludeCodeBlocks ? 'checked' }}
+                                {% if datastarEnabled %}
+                                    data-bind:sm.snippetIncludeCodeBlocks
+                                    data-on:change="$sm.snippetIncludeCodeBlocks = evt.target.checked; {{ fetchAction }}"
+                                {% endif %}
+                            >
+                            Include code
+                        </span>
+                    </label>
+                </div>
+            </form>
+
+            {{ resultsMarkup|raw }}
+        </div>
+    </main>
+
+    <script>
+        (function() {
+            var button = document.querySelector('[data-theme-toggle]');
+            if (!button) {
+                return;
+            }
+
+            var root = document.documentElement;
+            var media = window.matchMedia('(prefers-color-scheme: dark)');
+
+            function currentTheme() {
+                return root.dataset.theme || (media.matches ? 'dark' : 'light');
+            }
+
+            function updateLabel() {
+                button.textContent = currentTheme() === 'dark' ? 'Light mode' : 'Dark mode';
+            }
+
+            button.addEventListener('click', function() {
+                var next = currentTheme() === 'dark' ? 'light' : 'dark';
+                root.dataset.theme = next;
+                localStorage.setItem('searchTestTheme', next);
+                updateLabel();
+            });
+
+            media.addEventListener('change', function() {
+                if (!root.dataset.theme) {
+                    updateLabel();
+                }
+            });
+
+            updateLabel();
+        })();
+
+        (function() {
+            var input = document.getElementById('search-query');
+            if (!input) {
+                return;
+            }
+
+            var form = input.form;
+            var queryWrap = input.closest('.query-wrap');
+            var autocompleteTimer = null;
+            var autocompleteRequestId = 0;
+
+            function getDropdown() {
+                return document.getElementById('search-autocomplete-dropdown');
+            }
+
+            function escapeHtml(value) {
+                return String(value == null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function highlightSuggestion(suggestion, query) {
+                var source = String(suggestion == null ? '' : suggestion);
+                var needle = String(query == null ? '' : query).trim();
+                if (!needle) {
+                    return escapeHtml(source);
+                }
+
+                var index = source.toLowerCase().indexOf(needle.toLowerCase());
+                if (index === -1) {
+                    return escapeHtml(source);
+                }
+
+                return escapeHtml(source.slice(0, index))
+                    + '<strong class="autocomplete-highlight">'
+                    + escapeHtml(source.slice(index, index + needle.length))
+                    + '</strong>'
+                    + escapeHtml(source.slice(index + needle.length));
+            }
+
+            function hideAutocomplete() {
+                var dropdown = getDropdown();
+                if (!dropdown) {
+                    return;
+                }
+
+                dropdown.hidden = true;
+                dropdown.innerHTML = '';
+            }
+
+            function submitSearch() {
+                if (!form) {
+                    return;
+                }
+
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                    return;
+                }
+
+                form.submit();
+            }
+
+            function renderSuggestions(suggestions, query) {
+                var dropdown = getDropdown();
+                if (!dropdown || !Array.isArray(suggestions) || !suggestions.length) {
+                    hideAutocomplete();
+                    return;
+                }
+
+                dropdown.innerHTML = suggestions.map(function(suggestion) {
+                    return '<button class="autocomplete-option" type="button" role="option" data-suggestion="'
+                        + escapeHtml(suggestion)
+                        + '"><span>'
+                        + highlightSuggestion(suggestion, query)
+                        + '</span></button>';
+                }).join('');
+                dropdown.hidden = false;
+            }
+
+            function fetchAutocomplete() {
+                var dropdown = getDropdown();
+                if (!dropdown) {
+                    return;
+                }
+
+                var autocompleteEnabled = dropdown.dataset.autocompleteEnabled !== '0';
+                var minLength = parseInt(dropdown.dataset.autocompleteMinLength || input.dataset.autocompleteMinLength || '2', 10);
+                var endpoint = dropdown.dataset.autocompleteUrl || '';
+                var query = input.value.trim();
+                var indexSelect = form ? form.querySelector('[name="smIndex"]') : null;
+                var indexHandle = indexSelect ? indexSelect.value : '';
+
+                if (!autocompleteEnabled || !endpoint || indexHandle === '__all' || query.length < minLength) {
+                    autocompleteRequestId += 1;
+                    hideAutocomplete();
+                    return;
+                }
+
+                var requestId = ++autocompleteRequestId;
+                var url = new URL(endpoint, window.location.origin);
+                url.searchParams.set('q', query);
+                url.searchParams.set('indexHandles', indexHandle);
+                url.searchParams.set('resultsLimit', dropdown.dataset.autocompleteLimit || '8');
+                url.searchParams.set('only', 'suggestions');
+
+                fetch(url.toString(), {
+                    headers: {
+                        Accept: 'application/json'
+                    }
+                })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Autocomplete request failed');
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (requestId !== autocompleteRequestId || input.value.trim() !== query) {
+                            return;
+                        }
+
+                        var suggestions = Array.isArray(data) ? data : (data && Array.isArray(data.suggestions) ? data.suggestions : []);
+                        renderSuggestions(suggestions, query);
+                    })
+                    .catch(function() {
+                        if (requestId === autocompleteRequestId) {
+                            hideAutocomplete();
+                        }
+                    });
+            }
+
+            input.addEventListener('input', function() {
+                clearTimeout(autocompleteTimer);
+                hideAutocomplete();
+                autocompleteTimer = setTimeout(fetchAutocomplete, 200);
+            });
+            input.addEventListener('blur', function() {
+                setTimeout(function() {
+                    hideAutocomplete();
+                }, 200);
+            });
+
+            document.addEventListener('click', function(event) {
+                var option = event.target.closest('.autocomplete-option');
+                if (option) {
+                    input.value = option.dataset.suggestion || option.textContent.trim();
+                    hideAutocomplete();
+                    submitSearch();
+                    return;
+                }
+
+                if (!event.target.closest('.query-wrap')) {
+                    hideAutocomplete();
+                }
+            });
+
+            if (queryWrap) {
+                queryWrap.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape') {
+                        hideAutocomplete();
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
+{% endif %}

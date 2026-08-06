@@ -2,8 +2,6 @@
 
 Use **Search Manager → Settings → Test** when you need to prove a backend, index, query, promotion, or API example before you wire it into a template or client. The page runs the same configured Search Manager services from inside Craft, so it is the fastest operational check after creating an index, changing query rules, or troubleshooting a surprising result.
 
-![The Search tab on Settings → Test with a query, feature toggles, snippet options, and result output](../images/testing-tools-search-test.webp)
-
 ## What you'll use it for
 
 - Confirming an index returns the expected hits before publishing a search UI
@@ -40,8 +38,6 @@ When search caching is enabled, **Clear Search Cache** clears cached search resu
 
 ## Check backend diagnostics
 
-![The Backend tab on Settings → Test showing connection, response time, capabilities, and backend indices](../images/testing-tools-backend-diagnostics.webp)
-
 Switch to the **Backend** tab to run **Backend Diagnostics**.
 
 1. Choose a **Backend**. Enabled backends are listed by name and type, and the default backend is marked **Default**.
@@ -52,25 +48,10 @@ The diagnostics panel shows **Connection**, **Response Time**, **Browse**, **Mul
 
 For Redis, the backend sidebar also shows the factual configuration source, transport, endpoint, selected database, authentication mode, and a fixed safe status when configuration cannot be used. Search Manager settings and settings derived from Craft's Redis cache configuration are identified separately. Passwords, ACL usernames, SSL context, internal target identity, and provider exception text are not returned to the browser. A failed connect, authentication, database selection, or PING check stops before any backend information is requested.
 
-## Download the Postman collection
+## Continue testing outside the CP
 
-The **Search** tab includes a **Developer Resources** box with **Download Postman collection**. The download is `search-manager-postman.zip` and includes:
-
-- `Search-Manager.postman_collection.json`
-- `Search-Manager.postman_environment.json`
-- `README.md`
-
-Use it when you want to test the public Search Manager API outside Craft with the same endpoint examples your frontend or integration will call.
-
-After importing both JSON files, set only `base_url` and replace `query` with a term you know exists in indexed content. The **Start Here** requests omit `indexHandles`, so Search Manager searches all enabled indices when API-key enforcement is off or the authenticated public key's allowed indices when enforcement is on. Add the optional `public_api_key` only when the running installation requires one. A `401` response tells you to add that key; a `200` response with zero hits is valid and means you should try a query that exists in the index.
-
-The remaining customer folders build on that first request:
-
-- **Search Examples** covers one index, multiple comma-separated indices, one site, multiple indices within one site, and the canonical widget response.
-- **Autocomplete Examples** uses the same omitted, singular, and multiple-index vocabulary, with suggestions-only and results-only variants.
-- **Analytics** interprets the server-owned outcome without an edition variable: Track Search `200` distinguishes recorded (`tracked=true`) from accepted but not recorded under current settings (`tracked=false`), Track Click `200` proves acceptance only, and an empty `204` is the Standard-edition no-op. Track Click requires both an element ID and its index handle.
-
-Ordinary exploratory Search requests include `skipAnalytics=1`. Strict missing/invalid-key, Referer/Origin, index/site-scope, and deterministic rate-limit checks stay in **Developer Validation — Optional**. Every request in that folder requires `developer_api_key_enforcement_enabled=yes` plus its own disposable local prerequisites, and missing setup skips only that request. The folder never controls the customer examples. Do not run it with production keys, hosted providers, valuable indices, or valuable analytics data. Analytics `401` responses provide the same instruction to set `public_api_key` and retry as Start Here.
+- [Postman](postman.md) explains the bundled public REST collection, environment variables, server-owned scope, Analytics responses, optional developer validation, and cleanup.
+- [Example templates](example-templates.md) explains the packaged Twig search, native-comparison, and real-widget playgrounds, including copy commands and resulting routes.
 
 ## Next steps
 

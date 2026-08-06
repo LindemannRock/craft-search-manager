@@ -413,15 +413,25 @@ final class PostmanArtifactContractTest extends TestCase
             (string)$trackClick['request']['description'],
         );
 
+        $packagedGuide = $this->file(self::README_FILE);
+        self::assertStringContainsString('accepted but not recorded', $packagedGuide, self::README_FILE);
+        self::assertStringContainsString('acceptance only', $packagedGuide, self::README_FILE);
+        self::assertStringContainsString('public_api_key', $packagedGuide, self::README_FILE);
+
+        $publicGuide = $this->file('docs/resources/postman.md');
+        self::assertStringContainsString('Accepted but not recorded', $publicGuide);
+        self::assertStringContainsString('does not prove persistence', $publicGuide);
+        self::assertStringContainsString('public_api_key', $publicGuide);
+
         foreach ([
-            self::README_FILE,
-            'docs/resources/testing-tools.md',
-            'docs/feature-tour/utilities.md',
-        ] as $documentation) {
-            $source = $this->file($documentation);
-            self::assertStringContainsString('accepted but not recorded', $source, $documentation);
-            self::assertStringContainsString('acceptance only', $source, $documentation);
-            self::assertStringContainsString('public_api_key', $source, $documentation);
+            'docs/resources/testing-tools.md' => '(postman.md)',
+            'docs/feature-tour/utilities.md' => '(../resources/postman.md)',
+        ] as $documentation => $link) {
+            self::assertStringContainsString(
+                $link,
+                $this->file($documentation),
+                $documentation,
+            );
         }
     }
 

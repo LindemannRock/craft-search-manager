@@ -17,7 +17,7 @@ namespace lindemannrock\searchmanager\tests\Support;
  */
 final class DeterministicFixtureManifest
 {
-    public const EXPECTED_HASH = 'fe5c184ce47ab6ff00bf621a5934469a3afbd3108a43747c6b66b94438294a23';
+    public const EXPECTED_HASH = '379dcf47d39a01f9ac5ab88f2cdcab9db8696d4c0bc9d9686fca48834689c9ae';
 
     /** @var list<class-string> */
     public const REQUIRED_INTEGRATION_CLASSES = [
