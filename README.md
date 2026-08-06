@@ -12,7 +12,7 @@ Advanced multi-backend search management for Craft CMS with BM25 ranking, analyt
 
 ## Features
 
-- **Standard and Pro Editions** — Standard includes the complete search engine and developer toolkit; Pro adds analytics, merchandising, operations, and reusable widget styling
+- **Standard and Pro Editions** — Standard includes the complete search engine and developer toolkit; Pro adds analytics, search optimization, editorial controls, operations, and reusable widget styling
 - **7 Search Backends** — MySQL, PostgreSQL, Redis, File (built-in), plus Algolia, Meilisearch, Typesense
 - **Config Index Readiness** — Setup reports per-index configuration errors and warnings, and rebuild preflight blocks unsafe clears
 - **BM25 Ranking** — Industry-standard relevance scoring with configurable parameters

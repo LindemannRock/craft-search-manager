@@ -1,6 +1,6 @@
 # Promotions @since(5.10.0)
 
-Pin a specific product, entry, or page to a fixed spot in your search results — bypassing normal relevance scoring — so it shows up exactly where you want it when the query, index, site, and result type all match. Promotions are built for merchandising, editorial control, and making sure important content wins over whatever the ranking algorithm would otherwise pick.
+Pin a specific product, entry, or page to a fixed spot in your search results — bypassing normal relevance scoring — so it shows up exactly where you want it when the query, index, site, and result type all match. Promotions are built for search optimization and editorial control, making sure important content can win over whatever the ranking algorithm would otherwise pick.
 
 Promotions require Pro. In Standard, stored promotions remain intact but are not inserted into search results.
 

@@ -1,6 +1,6 @@
 # Editions
 
-Search Manager is available in Standard and Pro. Standard is the complete search engine and developer toolkit; Pro adds the operational, measurement, merchandising, and reusable-branding surfaces teams use to run search day to day.
+Search Manager is available in Standard and Pro. Standard is the complete search engine and developer toolkit; Pro adds analytics, search optimization, editorial controls, operational tools, and reusable widget styling for teams that run search day to day.
 
 ## Feature comparison
 
@@ -17,7 +17,7 @@ Search Manager is available in Standard and Pro. Standard is the complete search
 | Promotion badge, row-tint, and hidden display modes | — | ✓ |
 | Built-in widget analytics and placement/idle settings | — | ✓ |
 | Reusable Widget Style presets and style editor | — | ✓ |
-| **Operations and merchandising** | | |
+| **Search operations and optimization** | | |
 | Automatic index synchronization plus manual rebuild and clear tools | ✓ | ✓ |
 | Pending-sync queue browser and row-level operations | — | ✓ |
 | Analytics-driven cache warming | — | ✓ |

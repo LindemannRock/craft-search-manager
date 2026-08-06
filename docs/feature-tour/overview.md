@@ -29,7 +29,7 @@ It's a full-featured search plugin for Craft CMS: index your content into a sear
 
 - **[Query Rules](query-rules.md)** — Modify search behavior based on query patterns: synonyms, section/category/element boosting, and redirects.
 
-- **[Promotions](promotions.md)** — Pin specific elements to fixed positions in search results for merchandising and editorial control.
+- **[Promotions](promotions.md)** — Pin specific elements to fixed positions in search results for search optimization and editorial control.
 
 - **[Analytics](analytics.md)** — Track searches, zero-hit queries, device info, geographic data, and performance metrics. Identify content gaps and optimize your search experience.
 
