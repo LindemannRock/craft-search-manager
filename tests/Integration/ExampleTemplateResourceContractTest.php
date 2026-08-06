@@ -135,7 +135,7 @@ final class ExampleTemplateResourceContractTest extends TestCase
 
         $pipes = [];
         $process = proc_open(
-            ['git', 'check-attr', 'export-ignore', '--', ...$expected],
+            ['git', '-c', 'safe.directory=' . $this->packageRoot(), 'check-attr', 'export-ignore', '--', ...$expected],
             [
                 0 => ['pipe', 'r'],
                 1 => ['pipe', 'w'],
