@@ -1,5 +1,110 @@
 # Changelog
 
+## [5.54.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.53.2...v5.54.0) - 2026-08-06
+
+
+### Added
+
+* **analytics:** enforce Pro gating while preserving data controls ([09ceeb8](https://github.com/LindemannRock/craft-search-manager/commit/09ceeb82d0f7b9c513d2911ded5e61a83cb93340))
+* **editions:** add Standard and Pro foundation ([f031b09](https://github.com/LindemannRock/craft-search-manager/commit/f031b092d55f48adb0720d366aaafcaa1b3251f4))
+* **editions:** gate cache warming behind Pro ([c1237d4](https://github.com/LindemannRock/craft-search-manager/commit/c1237d4e3ed47da02970d9568eba58ffa037d25a))
+* **editions:** gate pending sync console behind Pro ([5c57e64](https://github.com/LindemannRock/craft-search-manager/commit/5c57e64767682027a1da3657c5e000c33dc676e6))
+* **editions:** gate Pro-only widget settings and style presets ([0bba678](https://github.com/LindemannRock/craft-search-manager/commit/0bba678261f56bc0e87b8bd9ce6e2ff7eb352d27))
+* **editions:** gate query rules and promotions behind Pro ([f1278c9](https://github.com/LindemannRock/craft-search-manager/commit/f1278c9784d375f47e30d0f36afdc7c19ba1801f))
+* **editions:** wire Standard and Pro feature availability ([949c247](https://github.com/LindemannRock/craft-search-manager/commit/949c247410f1ef317cb1a54d8d1aab79de1b0175))
+* expose available indices ([c5c9567](https://github.com/LindemannRock/craft-search-manager/commit/c5c9567c412da80d95ab289e95a59f1c178bc5d3))
+* **helpers:** add presentHitOptions method for hit option normalization ([d7daa52](https://github.com/LindemannRock/craft-search-manager/commit/d7daa5220275cabb5c60b8499814671b4a85617a))
+* **indexing:** validate config indices and surface readiness findings ([aa4c862](https://github.com/LindemannRock/craft-search-manager/commit/aa4c8628e2ea0aaf2e4da3ca954097f8c343cda4))
+* **templates:** package search playground examples ([6c98e36](https://github.com/LindemannRock/craft-search-manager/commit/6c98e36b999e2b1b368af028d97c8a3db7d620a5))
+
+
+### Fixed
+
+* align autocomplete language filtering and analytics query casing ([bf31a35](https://github.com/LindemannRock/craft-search-manager/commit/bf31a35101bc88ac424a53cb990ff4fcf1a1f1fd))
+* align config loading, search side effects, and validation feedback ([6b8bc9c](https://github.com/LindemannRock/craft-search-manager/commit/6b8bc9cb6f73ed8fe11d9b270fd3f5156d8f2b80))
+* align indexing failure and observability contracts ([ec2e355](https://github.com/LindemannRock/craft-search-manager/commit/ec2e35500e768c4438b2639cabd048536d9606a5))
+* align install schema, recurring job status, and package metadata ([7796438](https://github.com/LindemannRock/craft-search-manager/commit/7796438902ada5d5f460445763d40be9bb2c5b11))
+* align permission-aware CP navigation ([225597c](https://github.com/LindemannRock/craft-search-manager/commit/225597c3cdd832c7836484564ce0a4092f98bdb6))
+* align Postman with public API contracts ([b4db055](https://github.com/LindemannRock/craft-search-manager/commit/b4db055e211998dd929f47d26c9630c7124b08fb))
+* align settings and widget validation redisplay variables ([f4078a3](https://github.com/LindemannRock/craft-search-manager/commit/f4078a3f11b1ff94f54d672a7cf83f0dbae89ae4))
+* align table actions and permission order ([e285675](https://github.com/LindemannRock/craft-search-manager/commit/e2856751a7b261c4f4f3a4c4baa87da6a30d8fa7))
+* align widget style usage with effective configs ([02c99fa](https://github.com/LindemannRock/craft-search-manager/commit/02c99fa39b4070d6bc2754257266c7cc562f321a))
+* **analytics:** align scope and presentation ([47325a2](https://github.com/LindemannRock/craft-search-manager/commit/47325a2f4c2baefc02d4bb7e3b354852f64de48b))
+* **analytics:** clear rule and promotion tracking data ([21838e6](https://github.com/LindemannRock/craft-search-manager/commit/21838e6f2fd84708e25dcb977c1fbad8892c9df6))
+* **analytics:** honor skipAnalytics for multi-index redirects ([aa65520](https://github.com/LindemannRock/craft-search-manager/commit/aa65520ea6e1f07dee81ab86f03a7b94825c4045))
+* **analytics:** select trending query casing by frequency ([9883641](https://github.com/LindemannRock/craft-search-manager/commit/9883641f37827a36596cb6991e49a114ca98f057))
+* **analytics:** show request failures ([eaa740f](https://github.com/LindemannRock/craft-search-manager/commit/eaa740fb037f54db119e9294db1bc45acfb71222))
+* **api:** simplify Postman collection ([716ef9d](https://github.com/LindemannRock/craft-search-manager/commit/716ef9d8cffe841f9160ad3f027ff86c0625b87a))
+* apply aggregate pagination once ([15dd173](https://github.com/LindemannRock/craft-search-manager/commit/15dd1736e73cafd4a037138f599716127f83498e))
+* **autocomplete:** normalize regional languages for local terms ([d07e462](https://github.com/LindemannRock/craft-search-manager/commit/d07e462956ae49e2da7a1a09881496bfea998c3e))
+* **backends:** correct hosted pagination ([e93d738](https://github.com/LindemannRock/craft-search-manager/commit/e93d738fb7b7151260a71fda942c8d65b224d126))
+* batch search hot paths and harden cache freshness ([b8d0bfe](https://github.com/LindemannRock/craft-search-manager/commit/b8d0bfe7725e01a4baa7f97238db5a1454bd6d53))
+* centralize index reference safety and configuration error recovery ([30942e7](https://github.com/LindemannRock/craft-search-manager/commit/30942e7bd233ad3be24139de66ac76be9ab3696b))
+* correct [@since](https://github.com/since) tags against release history ([b4dc75d](https://github.com/LindemannRock/craft-search-manager/commit/b4dc75d55ac63281f5164b14bb647db1ebb443b9))
+* correct [@since](https://github.com/since) version for getDocumentsByElementIds method ([d675a0a](https://github.com/LindemannRock/craft-search-manager/commit/d675a0af924109b62f836e644fd13fc7169adbb5))
+* correct index counts, promotion targets, and UI rendering ([9b4483d](https://github.com/LindemannRock/craft-search-manager/commit/9b4483d7a8b504a0924513d696baae2761b5be2d))
+* correct search indexing, backend results, and UI consistency ([d41ddb5](https://github.com/LindemannRock/craft-search-manager/commit/d41ddb5f0e8d2c24fda64c7623173266b1c900fb))
+* correct settings persistence, widget validation, and config output ([df800b6](https://github.com/LindemannRock/craft-search-manager/commit/df800b68f33976d1f7f29bbb4cab56ea85ec8d56))
+* correct split index health and format document counts ([775ccf6](https://github.com/LindemannRock/craft-search-manager/commit/775ccf6c3d63b0e31d27c5f2fb33f476f20cdb57))
+* **cp:** present comparable index counts ([b1072a9](https://github.com/LindemannRock/craft-search-manager/commit/b1072a9d564ec00fe704792eb97c2e851c61e12d))
+* **dashboard:** align card permissions ([205a9dd](https://github.com/LindemannRock/craft-search-manager/commit/205a9dd5c9d353a8baf9f3af8b35c8faa5d89750))
+* **editions:** complete downgrade lifecycle safeguards ([a1621ca](https://github.com/LindemannRock/craft-search-manager/commit/a1621cac47f044b8a551ba7f8bcc490dad587589))
+* **editions:** hide Pro surfaces in Standard and preserve widget saves ([9477d77](https://github.com/LindemannRock/craft-search-manager/commit/9477d778cca4977bff615277a17f3a79cb26cb06))
+* **editions:** hide pro-only search test surfaces in standard ([e95eaca](https://github.com/LindemannRock/craft-search-manager/commit/e95eacab912114ed35b17b510719270019709da3))
+* enforce authoritative resource persistence ([0570df5](https://github.com/LindemannRock/craft-search-manager/commit/0570df5c942413a9176c11d89393c9615cd94c7f))
+* enforce autocomplete cache and limit contracts ([40012f4](https://github.com/LindemannRock/craft-search-manager/commit/40012f426e8947d494186a8a8381b1e2b3946202))
+* enforce File storage I/O truth ([b9bafe8](https://github.com/LindemannRock/craft-search-manager/commit/b9bafe83b0c348d71e458a9650ad8e74dbe0cfa5))
+* enforce hosted index lifecycle truth ([0e6c14a](https://github.com/LindemannRock/craft-search-manager/commit/0e6c14aae2814b0d6cd0e91b546ac2dd6fcb0c55))
+* enforce index maintenance capabilities ([df87c26](https://github.com/LindemannRock/craft-search-manager/commit/df87c269fcfa919fa06edf9e491dd670af6895e6))
+* enforce native Redis connection contracts ([f85ec6b](https://github.com/LindemannRock/craft-search-manager/commit/f85ec6bb1ea60a71c041863a50dd4770914d2bfe))
+* enforce search cache failure and invalidation contracts ([1373219](https://github.com/LindemannRock/craft-search-manager/commit/1373219dec75d873c05ecc873148185debca9c4d))
+* enforce Typesense import result truth ([4180808](https://github.com/LindemannRock/craft-search-manager/commit/41808088b998e5f33670115bd0fe16d6c4357d10))
+* gate debug metadata and validate cache keys ([99471ee](https://github.com/LindemannRock/craft-search-manager/commit/99471ee5057a980939c5b90e4ef2d0867269ccdd))
+* **gql:** remove 'uri' field from SearchHitType definitions ([a93f24e](https://github.com/LindemannRock/craft-search-manager/commit/a93f24e0f7f6102fe1e4ff460b85033ae9293f58))
+* harden backend access and default lifecycle ([78dd131](https://github.com/LindemannRock/craft-search-manager/commit/78dd131c41808cc84b91a65926efc5cbc6685b99))
+* harden config, section splitting, analytics, and autocomplete ([3696d22](https://github.com/LindemannRock/craft-search-manager/commit/3696d225174a695ca456947d85884f1fa652d9fe))
+* harden destructive index and storage maintenance ([ba92b5e](https://github.com/LindemannRock/craft-search-manager/commit/ba92b5e1d7ed6de2cccd9558caa4ff20439d04fc))
+* harden local index storage and test resolution ([25dd207](https://github.com/LindemannRock/craft-search-manager/commit/25dd207f3dc08ef7100b0ec094cc437fac7a8ed5))
+* harden Search Manager public API contracts ([02c6d6b](https://github.com/LindemannRock/craft-search-manager/commit/02c6d6b1c2ab5d26a2e0ee03b55513161ae35a28))
+* harden Search Manager salt generation ([f1239b7](https://github.com/LindemannRock/craft-search-manager/commit/f1239b7e30ff9c7174992fa559ae2f9cd16b9e48))
+* harden search scoring, JavaScript escaping, and debug metadata ([7f5d6ac](https://github.com/LindemannRock/craft-search-manager/commit/7f5d6acef802095c7350b690cf73687f5a190ea8))
+* hide Sync Count for unsupported backends ([707ea6c](https://github.com/LindemannRock/craft-search-manager/commit/707ea6c78c59bf9e67690237031c103eedbc62aa))
+* **indexing:** exclude nested entries from standalone search documents ([0c1e24e](https://github.com/LindemannRock/craft-search-manager/commit/0c1e24e2fd52daf6d5be9373c9d8b97aff11a7f8))
+* **indexing:** fail closed before clearing rebuilt indices ([ac25f66](https://github.com/LindemannRock/craft-search-manager/commit/ac25f668cfb05c14f0b8de5664c7730f9eaed37d))
+* **indexing:** isolate invalid config index items ([654892a](https://github.com/LindemannRock/craft-search-manager/commit/654892af8b7e18e308b53ba9eefbcb130b702889))
+* **indexing:** preserve config closure criteria during rebuilds ([0836c09](https://github.com/LindemannRock/craft-search-manager/commit/0836c090dba50541c98f0032a11d462521e2af79))
+* **indexing:** report rebuild failures and counts accurately ([fe6251f](https://github.com/LindemannRock/craft-search-manager/commit/fe6251f3a6d7adfa91e0ceecb2731246dff91a00))
+* make analytics source attribution deterministic ([22f9ba6](https://github.com/LindemannRock/craft-search-manager/commit/22f9ba6db003d65f41205c65968a66e732efe630))
+* **migrations:** support fresh MySQL installs ([9687d83](https://github.com/LindemannRock/craft-search-manager/commit/9687d83cc14ca1db38c621e22bf54cd7a30ef3c4))
+* normalize public search query semantics ([036e0ca](https://github.com/LindemannRock/craft-search-manager/commit/036e0cae49798df6e25cf7c1ff99688cd980ed04))
+* preserve local batch failure truth ([60c1426](https://github.com/LindemannRock/craft-search-manager/commit/60c14268b90e63008aa5ac420da70b6ff1f84b34))
+* preserve validation errors in conditional fields ([0f9caa2](https://github.com/LindemannRock/craft-search-manager/commit/0f9caa234dbea985208cb2bb900bdb10e6cbe2ba))
+* **promotions:** align application truth ([ef89b4b](https://github.com/LindemannRock/craft-search-manager/commit/ef89b4b0f1266b9f3e3429f9168d15bd7755cc24))
+* reconcile site and provider index lifecycles ([8735b21](https://github.com/LindemannRock/craft-search-manager/commit/8735b21649b5bbcb8b1034e44fd6557e54c47f58))
+* remove dead search paths and bound docs source caching ([97292e5](https://github.com/LindemannRock/craft-search-manager/commit/97292e5023e8aa650cd43fd2092605a9ddb5d8dc))
+* remove unused linkMode parameter from error summary ([c0e6e67](https://github.com/LindemannRock/craft-search-manager/commit/c0e6e67cc961b6f945e84b4d45d5e43563b307eb))
+* require base 5.37 and logging library 5.18 ([3839d50](https://github.com/LindemannRock/craft-search-manager/commit/3839d505acee5f568d529804a2c0f5feb8403978))
+* restore pending sync retry wakeups ([043e048](https://github.com/LindemannRock/craft-search-manager/commit/043e0480f1e5686351f4539084d2f0acad26a401))
+* scope analytics lifecycle operations ([6dafe23](https://github.com/LindemannRock/craft-search-manager/commit/6dafe23b97f95e18f1deb8db34e8a4e9bdc4aa72))
+* secure credential persistence failure logs ([e436d52](https://github.com/LindemannRock/craft-search-manager/commit/e436d52b96ee29261d0e5d222aac76e25ca824cd))
+* show only actionable storage options ([dc5ee32](https://github.com/LindemannRock/craft-search-manager/commit/dc5ee32aabcb6d4f29f7afac67812b2259d5764d))
+* **sync:** reconcile document counts before deferred continuation ([e14d6cc](https://github.com/LindemannRock/craft-search-manager/commit/e14d6ccb64d95861570f98030da27ade17d3e961))
+* **test-tool:** add explicit noopener to new-tab links ([210be0e](https://github.com/LindemannRock/craft-search-manager/commit/210be0e97ec05d600911169247abafe69128c7b0))
+* unify bulk mutation contracts ([4b8e4f0](https://github.com/LindemannRock/craft-search-manager/commit/4b8e4f05c16e0dc90aaf2fd20f58e127dafc66de))
+* **widgets:** harden modal behavior and build parity ([65c3774](https://github.com/LindemannRock/craft-search-manager/commit/65c3774f61794abb453f6258bd84766b57bf0f6f))
+* **widgets:** stabilize initial focus verification ([ab3e7e8](https://github.com/LindemannRock/craft-search-manager/commit/ab3e7e809fe2da733a59c7e4d68fb65880edf804))
+* **widgets:** stabilize production builds ([f99ce58](https://github.com/LindemannRock/craft-search-manager/commit/f99ce58b4681fd407c0fee47a75c49cc8dfa6654))
+
+
+### Changed
+
+* batch hosted search deletions ([dc96476](https://github.com/LindemannRock/craft-search-manager/commit/dc96476547f4aa14880a76aeff342a1c3b5cb893))
+
+
+### Miscellaneous Chores
+
+* trigger release 5.54.0 ([70b686f](https://github.com/LindemannRock/craft-search-manager/commit/70b686f1c95e794b070a9cb1f91aa1209cb07350))
+
 ## [5.53.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.53.1...v5.53.2) - 2026-07-18
 
 
