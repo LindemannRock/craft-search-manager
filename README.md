@@ -63,7 +63,7 @@ ddev composer require lindemannrock/craft-search-manager && ddev craft plugin/in
 
 Full documentation is available in the [docs](docs/) folder.
 
-Postman collection setup notes are available in [postman/README.md](postman/README.md).
+Postman collection setup notes are available in [resources/postman/README.md](resources/postman/README.md).
 
 ## Support
 

@@ -10,7 +10,12 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
+use craft\web\Response as WebResponse;
+use lindemannrock\searchmanager\controllers\SettingsController;
+use lindemannrock\searchmanager\SearchManager;
 use PHPUnit\Framework\TestCase;
+use ZipArchive;
 
 /**
  * Pins the shipped Postman collection to Search Manager's public REST contract.
@@ -19,9 +24,9 @@ use PHPUnit\Framework\TestCase;
  */
 final class PostmanArtifactContractTest extends TestCase
 {
-    private const COLLECTION_FILE = 'postman/Search-Manager.postman_collection.json';
-    private const ENVIRONMENT_FILE = 'postman/Search-Manager.postman_environment.json';
-    private const README_FILE = 'postman/README.md';
+    private const COLLECTION_FILE = 'resources/postman/Search-Manager.postman_collection.json';
+    private const ENVIRONMENT_FILE = 'resources/postman/Search-Manager.postman_environment.json';
+    private const README_FILE = 'resources/postman/README.md';
     private const FIXTURE_FILE = 'tests/Support/PostmanFixture.php';
 
     /**
@@ -83,6 +88,93 @@ final class PostmanArtifactContractTest extends TestCase
         'rate_limit_allowed_requests',
         'rate_limit_runner_iterations',
     ];
+
+    public function testDownloadUsesCanonicalResourceDirectoryAndStableArchiveContract(): void
+    {
+        $packageRoot = dirname(__DIR__, 2);
+        $canonicalDirectory = $packageRoot . '/resources/postman';
+        $legacyDirectory = $packageRoot . '/postman';
+        $expectedFiles = [
+            'search-manager.postman_collection.json' => 'Search-Manager.postman_collection.json',
+            'search-manager.postman_environment.json' => 'Search-Manager.postman_environment.json',
+            'readme.md' => 'README.md',
+        ];
+
+        self::assertDirectoryExists($canonicalDirectory);
+        self::assertDirectoryDoesNotExist($legacyDirectory);
+        foreach ($expectedFiles as $sourceFilename) {
+            self::assertFileExists($canonicalDirectory . '/' . $sourceFilename);
+            self::assertFileDoesNotExist($legacyDirectory . '/' . $sourceFilename);
+        }
+
+        $controller = new class('settings', SearchManager::$plugin) extends SettingsController {
+            public function requirePermission(string $permissionName): void
+            {
+            }
+        };
+        $originalResponse = Craft::$app->getResponse();
+        Craft::$app->set('response', new WebResponse());
+
+        try {
+            $response = $controller->actionDownloadPostmanCollection();
+        } finally {
+            Craft::$app->set('response', $originalResponse);
+        }
+
+        self::assertSame('application/zip; charset=utf-8', $response->headers->get('Content-Type'));
+        self::assertSame(
+            'attachment; filename="search-manager-postman.zip"',
+            $response->headers->get('Content-Disposition'),
+        );
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'search-manager-postman-');
+        self::assertIsString($tempFile);
+        $archive = new ZipArchive();
+        $archiveIsOpen = false;
+
+        try {
+            $content = (string)$response->content;
+            self::assertSame(strlen($content), file_put_contents($tempFile, $content));
+            self::assertTrue($archive->open($tempFile));
+            $archiveIsOpen = true;
+
+            $archiveFiles = [];
+            for ($index = 0; $index < $archive->numFiles; $index++) {
+                $filename = $archive->getNameIndex($index);
+                self::assertIsString($filename);
+                $archiveFiles[] = $filename;
+            }
+
+            self::assertSame(array_keys($expectedFiles), $archiveFiles);
+            foreach ($expectedFiles as $archiveFilename => $sourceFilename) {
+                self::assertSame(
+                    file_get_contents($canonicalDirectory . '/' . $sourceFilename),
+                    $archive->getFromName($archiveFilename),
+                    $archiveFilename,
+                );
+            }
+        } finally {
+            if ($archiveIsOpen) {
+                $archive->close();
+            }
+            unlink($tempFile);
+        }
+
+        self::assertStringContainsString(
+            "'search-manager/settings/download-postman-collection' => 'search-manager/settings/download-postman-collection'",
+            $this->file('src/SearchManager.php'),
+        );
+        foreach ([
+            'src/templates/settings/test/_partials/search.twig',
+            'src/templates/utilities/index.twig',
+        ] as $template) {
+            self::assertStringContainsString(
+                "actionUrl('search-manager/settings/download-postman-collection')",
+                $this->file($template),
+                $template,
+            );
+        }
+    }
 
     public function testCollectionAndEnvironmentAreValidVersion21Artifacts(): void
     {

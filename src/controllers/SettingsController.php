@@ -236,7 +236,7 @@ class SettingsController extends Controller
     {
         $this->requirePermission('searchManager:manageSettings');
 
-        $postmanPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'postman';
+        $postmanPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'postman';
         $files = [];
 
         foreach ([
