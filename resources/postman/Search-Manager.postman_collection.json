@@ -1,1962 +1,1132 @@
 {
-    "info": {
-        "_postman_id": "sm-collection-search-manager",
-        "name": "Search Manager API",
-        "description": "Executable examples for Search Manager's public Search, Autocomplete, Track Search, Track Click, and API-key enforcement contracts.\n\nAuthentication and edition are independent environment axes. `api_mode` is `anonymous`, `keyed`, or `rate-limit`; `edition_mode` is `standard` or `pro`.\n\nOne collection-level prerequisite authority reads the request contract matrix, runs only compatible requests, and emits a visible `SKIP:` reason for an invalid axis, incompatible request, missing variable, or invalid rate-runner contract.\n\nSource: https://github.com/LindemannRock/craft-search-manager",
-        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-    },
-    "auth": {
-        "type": "apikey",
-        "apikey": [
-            {
-                "key": "key",
-                "value": "X-Search-Manager-Key",
-                "type": "string"
-            },
-            {
-                "key": "value",
-                "value": "{{api_key}}",
-                "type": "string"
-            },
-            {
-                "key": "in",
-                "value": "header",
-                "type": "string"
-            }
+  "info": {
+    "_postman_id": "4398030c-840b-41c7-a964-ff90301d988f",
+    "name": "Search Manager API",
+    "description": "Customer-first examples for exploring Search Manager's public Search, Autocomplete, and Analytics endpoints. Start with Start Here. API-key enforcement, index scope, and tracking availability come from the running installation; users never declare a mode or edition. Developer Validation — Optional is isolated and intended only for disposable local fixtures.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-Search-Manager-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{public_api_key}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const baseUrl = String(pm.environment.get('base_url') || '').trim();",
+          "if (baseUrl && !pm.request.headers.has('Referer')) {",
+      "  const origin = baseUrl.match(/^(https?:\\/\\/[^/]+)/i);",
+      "  if (origin) {",
+      "    pm.request.headers.upsert({key: 'Referer', value: origin[1] + '/'});",
+      "  } else {",
+      "    console.warn('base_url must be an absolute URL, for example https://example.com.');",
+      "  }",
+          "}"
         ]
-    },
-    "item": [
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Start Here",
+      "description": "Set base_url and replace query with text known to exist in indexed content. public_api_key is optional unless the running installation requires it. No index is sent: the server searches all enabled indices when enforcement is off, or the public key's allowed indices when enforcement is on.",
+      "item": [
         {
-            "name": "Search API",
-            "description": "Search authentication depends on `api_mode`, never on edition. Anonymous examples require enforcement off; keyed examples use a scoped public key in Standard or Pro.",
-            "item": [
-                {
-                    "name": "Search - anonymous (enforcement disabled)",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&resultsLimit={{results_limit}}",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `anonymous`. Editions: `standard`, `pro`. Required variables: `base_url`, `query`, `index_handles`, `results_limit`. Expected: exact `200`.",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('search response has the public hit envelope', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('hits');",
-                                    "  pm.expect(json.hits).to.be.an('array');",
-                                    "  pm.expect(json).to.have.property('total');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Search - public key (enforcement enabled)",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}",
-                                "description": "Must match the public key allowed-referrer list."
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&resultsLimit={{results_limit}}",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `referrer`, `query`, `index_handles`, `results_limit`. Expected: exact `200`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('search response has the public hit envelope', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('hits');",
-                                    "  pm.expect(json.hits).to.be.an('array');",
-                                    "  pm.expect(json).to.have.property('total');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Search - public key with Origin fallback",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Origin",
-                                "value": "{{origin}}",
-                                "description": "Origin fallback; this request intentionally omits Referer."
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&resultsLimit={{results_limit}}",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `origin`, `query`, `index_handles`, `results_limit`. Expected: exact `200`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('search response has the public hit envelope', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('hits');",
-                                    "  pm.expect(json.hits).to.be.an('array');",
-                                    "  pm.expect(json).to.have.property('total');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Search - canonical widget-style response",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&resultsLimit={{results_limit}}&resultsRequireUrl=1&snippetMode=deep&snippetMaxLength=1000&snippetCleanMarkdown=1&snippetIncludeCodeBlocks=1",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                },
-                                {
-                                    "key": "resultsRequireUrl",
-                                    "value": "1",
-                                    "description": "Exclude public hits without a URL."
-                                },
-                                {
-                                    "key": "snippetMode",
-                                    "value": "deep",
-                                    "description": "Snippet positioning mode."
-                                },
-                                {
-                                    "key": "snippetMaxLength",
-                                    "value": "1000",
-                                    "description": "Maximum snippet length."
-                                },
-                                {
-                                    "key": "snippetCleanMarkdown",
-                                    "value": "1",
-                                    "description": "Clean Markdown markers from snippet display text."
-                                },
-                                {
-                                    "key": "snippetIncludeCodeBlocks",
-                                    "value": "1",
-                                    "description": "Include code-block text in snippets."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `referrer`, `query`, `index_handles`, `results_limit`. Expected: exact `200`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('search response has the public hit envelope', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('hits');",
-                                    "  pm.expect(json.hits).to.be.an('array');",
-                                    "  pm.expect(json).to.have.property('total');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Search - no indices uses public-key scope",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&resultsLimit={{results_limit}}",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `referrer`, `query`, `results_limit`. Expected: exact `200`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('search response has the public hit envelope', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('hits');",
-                                    "  pm.expect(json.hits).to.be.an('array');",
-                                    "  pm.expect(json).to.have.property('total');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Search - scoped site",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&siteId={{site_id}}&resultsLimit={{results_limit}}",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "siteId",
-                                    "value": "{{site_id}}",
-                                    "description": "Optional Craft site ID filter."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `referrer`, `query`, `index_handles`, `site_id`, `results_limit`. Expected: exact `200`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('search response has the public hit envelope', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('hits');",
-                                    "  pm.expect(json.hits).to.be.an('array');",
-                                    "  pm.expect(json).to.have.property('total');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "Autocomplete API",
-            "description": "Autocomplete authentication depends on `api_mode`, never on edition. Anonymous and keyed response contracts are identical in Standard and Pro.",
-            "item": [
-                {
-                    "name": "Autocomplete - anonymous (enforcement disabled)",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indexHandles={{index_handles}}&resultsLimit={{results_limit}}",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "autocomplete"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `anonymous`. Editions: `standard`, `pro`. Required variables: `base_url`, `query`, `index_handles`, `results_limit`. Expected: exact `200`.",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('autocomplete response has both public lists', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json.suggestions).to.be.an('array');",
-                                    "  pm.expect(json.results).to.be.an('array');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Autocomplete - public key (enforcement enabled)",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indexHandles={{index_handles}}&resultsLimit={{results_limit}}",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "autocomplete"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `referrer`, `query`, `index_handles`, `results_limit`. Expected: exact `200`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('autocomplete response has both public lists', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json.suggestions).to.be.an('array');",
-                                    "  pm.expect(json.results).to.be.an('array');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Autocomplete - public key with Origin fallback",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Origin",
-                                "value": "{{origin}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indexHandles={{index_handles}}&resultsLimit={{results_limit}}",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "autocomplete"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `origin`, `query`, `index_handles`, `results_limit`. Expected: exact `200`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('autocomplete response has both public lists', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json.suggestions).to.be.an('array');",
-                                    "  pm.expect(json.results).to.be.an('array');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Autocomplete - only suggestions",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indexHandles={{index_handles}}&resultsLimit={{results_limit}}&only=suggestions",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "autocomplete"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                },
-                                {
-                                    "key": "only",
-                                    "value": "suggestions",
-                                    "description": "Return only suggestions or only result objects."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `referrer`, `query`, `index_handles`, `results_limit`. Expected: exact `200`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('suggestions-only response is an array', function () {",
-                                    "  pm.expect(json).to.be.an('array');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Autocomplete - only results",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indexHandles={{index_handles}}&resultsLimit={{results_limit}}&only=results",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "autocomplete"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "{{results_limit}}",
-                                    "description": "Maximum number of results to return."
-                                },
-                                {
-                                    "key": "only",
-                                    "value": "results",
-                                    "description": "Return only suggestions or only result objects."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `referrer`, `query`, `index_handles`, `results_limit`. Expected: exact `200`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('results-only response is an array', function () {",
-                                    "  pm.expect(json).to.be.an('array');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "Analytics Tracking",
-            "description": "Tracking alone is edition-dependent. Standard returns the pre-parse `204` no-op for every API mode; authenticated Pro examples require `api_mode=keyed` and valid origin/key prerequisites.",
-            "item": [
-                {
-                    "name": "Track search - Standard pre-parse no-op",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/search/track-search",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "search",
-                                "track-search"
-                            ]
-                        },
-                        "description": "API modes: `anonymous`, `keyed`, `rate-limit`. Editions: `standard`. Required variables: `base_url`. Expected: exact `204`.",
-                        "auth": {
-                            "type": "noauth"
-                        },
-                        "body": {
-                            "mode": "urlencoded",
-                            "urlencoded": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "type": "text",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "type": "text",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsCount",
-                                    "value": "{{results_count}}",
-                                    "type": "text",
-                                    "description": "Number of results shown to the user."
-                                },
-                                {
-                                    "key": "trigger",
-                                    "value": "{{trigger}}",
-                                    "type": "text",
-                                    "description": "One of click, enter, idle, or unknown."
-                                },
-                                {
-                                    "key": "analyticsSource",
-                                    "value": "{{analytics_source}}",
-                                    "type": "text",
-                                    "description": "Short analytics source identifier."
-                                },
-                                {
-                                    "key": "siteId",
-                                    "value": "{{site_id}}",
-                                    "type": "text",
-                                    "description": "Optional known Craft site ID."
-                                },
-                                {
-                                    "key": "cached",
-                                    "value": "0",
-                                    "type": "text",
-                                    "description": "Whether the originating search response was cached."
-                                },
-                                {
-                                    "key": "took",
-                                    "value": "42.5",
-                                    "type": "text",
-                                    "description": "Originating search execution time in milliseconds."
-                                }
-                            ]
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 204', function () {",
-                                    "  pm.response.to.have.status(204);",
-                                    "});",
-                                    "pm.test('no-content response has an empty body', function () {",
-                                    "  pm.expect(pm.response.text()).to.eql('');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Track click - Standard pre-parse no-op",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/search/track-click",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "search",
-                                "track-click"
-                            ]
-                        },
-                        "description": "API modes: `anonymous`, `keyed`, `rate-limit`. Editions: `standard`. Required variables: `base_url`. Expected: exact `204`.",
-                        "auth": {
-                            "type": "noauth"
-                        },
-                        "body": {
-                            "mode": "urlencoded",
-                            "urlencoded": [
-                                {
-                                    "key": "elementId",
-                                    "value": "{{element_id}}",
-                                    "type": "text",
-                                    "description": "Element ID for the clicked result."
-                                },
-                                {
-                                    "key": "query",
-                                    "value": "{{query}}",
-                                    "type": "text",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "index",
-                                    "value": "{{index_handle}}",
-                                    "type": "text",
-                                    "description": "Single index handle for the clicked result."
-                                },
-                                {
-                                    "key": "position",
-                                    "value": "1",
-                                    "type": "text",
-                                    "description": "One-based result position."
-                                }
-                            ]
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 204', function () {",
-                                    "  pm.response.to.have.status(204);",
-                                    "});",
-                                    "pm.test('no-content response has an empty body', function () {",
-                                    "  pm.expect(pm.response.text()).to.eql('');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Track search - Pro public key",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/search/track-search",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "search",
-                                "track-search"
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `pro`. Required variables: `base_url`, `api_key`, `referrer`, `query`, `index_handles`, `results_count`, `trigger`, `analytics_source`, `site_id`. Expected: exact `200`.",
-                        "body": {
-                            "mode": "urlencoded",
-                            "urlencoded": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "type": "text",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "type": "text",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsCount",
-                                    "value": "{{results_count}}",
-                                    "type": "text",
-                                    "description": "Number of results shown to the user."
-                                },
-                                {
-                                    "key": "trigger",
-                                    "value": "{{trigger}}",
-                                    "type": "text",
-                                    "description": "One of click, enter, idle, or unknown."
-                                },
-                                {
-                                    "key": "analyticsSource",
-                                    "value": "{{analytics_source}}",
-                                    "type": "text",
-                                    "description": "Short analytics source identifier."
-                                },
-                                {
-                                    "key": "siteId",
-                                    "value": "{{site_id}}",
-                                    "type": "text",
-                                    "description": "Optional known Craft site ID."
-                                },
-                                {
-                                    "key": "cached",
-                                    "value": "0",
-                                    "type": "text",
-                                    "description": "Whether the originating search response was cached."
-                                },
-                                {
-                                    "key": "took",
-                                    "value": "42.5",
-                                    "type": "text",
-                                    "description": "Originating search execution time in milliseconds."
-                                }
-                            ]
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('tracking response reports success', function () {",
-                                    "  pm.expect(json).to.have.property('success', true);",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Track search - Pro same-origin Origin",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Origin",
-                                "value": "{{origin}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/search/track-search",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "search",
-                                "track-search"
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `pro`. Required variables: `base_url`, `api_key`, `origin`, `query`, `index_handles`, `results_count`, `trigger`, `analytics_source`, `site_id`. Expected: exact `200`.",
-                        "body": {
-                            "mode": "urlencoded",
-                            "urlencoded": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "type": "text",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "type": "text",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsCount",
-                                    "value": "{{results_count}}",
-                                    "type": "text",
-                                    "description": "Number of results shown to the user."
-                                },
-                                {
-                                    "key": "trigger",
-                                    "value": "{{trigger}}",
-                                    "type": "text",
-                                    "description": "One of click, enter, idle, or unknown."
-                                },
-                                {
-                                    "key": "analyticsSource",
-                                    "value": "{{analytics_source}}",
-                                    "type": "text",
-                                    "description": "Short analytics source identifier."
-                                },
-                                {
-                                    "key": "siteId",
-                                    "value": "{{site_id}}",
-                                    "type": "text",
-                                    "description": "Optional known Craft site ID."
-                                },
-                                {
-                                    "key": "cached",
-                                    "value": "0",
-                                    "type": "text",
-                                    "description": "Whether the originating search response was cached."
-                                },
-                                {
-                                    "key": "took",
-                                    "value": "42.5",
-                                    "type": "text",
-                                    "description": "Originating search execution time in milliseconds."
-                                }
-                            ]
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('tracking response reports success', function () {",
-                                    "  pm.expect(json).to.have.property('success', true);",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Track click - Pro public key",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/search/track-click",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "search",
-                                "track-click"
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `pro`. Required variables: `base_url`, `api_key`, `referrer`, `element_id`, `query`, `index_handle`. Expected: exact `200`.",
-                        "body": {
-                            "mode": "urlencoded",
-                            "urlencoded": [
-                                {
-                                    "key": "elementId",
-                                    "value": "{{element_id}}",
-                                    "type": "text",
-                                    "description": "Element ID for the clicked result."
-                                },
-                                {
-                                    "key": "query",
-                                    "value": "{{query}}",
-                                    "type": "text",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "index",
-                                    "value": "{{index_handle}}",
-                                    "type": "text",
-                                    "description": "Single index handle for the clicked result."
-                                },
-                                {
-                                    "key": "position",
-                                    "value": "1",
-                                    "type": "text",
-                                    "description": "One-based result position."
-                                }
-                            ]
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 200', function () {",
-                                    "  pm.response.to.have.status(200);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('tracking response reports success', function () {",
-                                    "  pm.expect(json).to.have.property('success', true);",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Track search - Pro disallowed Origin",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Origin",
-                                "value": "{{blocked_origin}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/search/track-search",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "search",
-                                "track-search"
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `pro`. Required variables: `base_url`, `api_key`, `blocked_origin`. Expected: exact `403`.",
-                        "body": {
-                            "mode": "urlencoded",
-                            "urlencoded": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "type": "text",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "type": "text",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsCount",
-                                    "value": "{{results_count}}",
-                                    "type": "text",
-                                    "description": "Number of results shown to the user."
-                                },
-                                {
-                                    "key": "trigger",
-                                    "value": "{{trigger}}",
-                                    "type": "text",
-                                    "description": "One of click, enter, idle, or unknown."
-                                },
-                                {
-                                    "key": "analyticsSource",
-                                    "value": "{{analytics_source}}",
-                                    "type": "text",
-                                    "description": "Short analytics source identifier."
-                                },
-                                {
-                                    "key": "siteId",
-                                    "value": "{{site_id}}",
-                                    "type": "text",
-                                    "description": "Optional known Craft site ID."
-                                },
-                                {
-                                    "key": "cached",
-                                    "value": "0",
-                                    "type": "text",
-                                    "description": "Whether the originating search response was cached."
-                                },
-                                {
-                                    "key": "took",
-                                    "value": "42.5",
-                                    "type": "text",
-                                    "description": "Originating search execution time in milliseconds."
-                                }
-                            ]
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 403', function () {",
-                                    "  pm.response.to.have.status(403);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('error response is a JSON problem object', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('message');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Track search preflight - Pro same-origin Origin",
-                    "request": {
-                        "method": "OPTIONS",
-                        "header": [
-                            {
-                                "key": "Origin",
-                                "value": "{{origin}}"
-                            },
-                            {
-                                "key": "Access-Control-Request-Method",
-                                "value": "POST"
-                            },
-                            {
-                                "key": "Access-Control-Request-Headers",
-                                "value": "Content-Type, Accept, X-Search-Manager-Key"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/search/track-search",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "search",
-                                "track-search"
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `pro`. Required variables: `base_url`, `origin`. Expected: exact `204`.",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 204', function () {",
-                                    "  pm.response.to.have.status(204);",
-                                    "});",
-                                    "pm.test('no-content response has an empty body', function () {",
-                                    "  pm.expect(pm.response.text()).to.eql('');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "Enforcement Checks",
-            "description": "Public API-key enforcement, Referer/Origin fallback, index/site scope, and rate limiting are edition-independent. Keyed checks run in Standard or Pro; the rate runner uses its own API mode.",
-            "item": [
-                {
-                    "name": "Missing public key - exact 401",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&resultsLimit=5",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "5",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `query`, `index_handles`, `results_limit`. Expected: exact `401`.",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 401', function () {",
-                                    "  pm.response.to.have.status(401);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('error response is a JSON problem object', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('message');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Invalid public key - exact 401",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&resultsLimit=5",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "5",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `invalid_api_key`, `referrer`, `query`, `index_handles`, `results_limit`. Expected: exact `401`.",
-                        "auth": {
-                            "type": "apikey",
-                            "apikey": [
-                                {
-                                    "key": "key",
-                                    "value": "X-Search-Manager-Key",
-                                    "type": "string"
-                                },
-                                {
-                                    "key": "value",
-                                    "value": "{{invalid_api_key}}",
-                                    "type": "string"
-                                },
-                                {
-                                    "key": "in",
-                                    "value": "header",
-                                    "type": "string"
-                                }
-                            ]
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 401', function () {",
-                                    "  pm.response.to.have.status(401);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('error response is a JSON problem object', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('message');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Public key with disallowed Referer - exact 403",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{blocked_referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&resultsLimit=5",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "5",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `blocked_referrer`, `query`, `index_handles`, `results_limit`. Expected: exact `403`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 403', function () {",
-                                    "  pm.response.to.have.status(403);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('error response is a JSON problem object', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('message');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Public key with disallowed Origin - exact 403",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Origin",
-                                "value": "{{blocked_origin}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&resultsLimit=5",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "5",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `blocked_origin`, `query`, `index_handles`, `results_limit`. Expected: exact `403`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 403', function () {",
-                                    "  pm.response.to.have.status(403);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('error response is a JSON problem object', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('message');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Public key with out-of-scope index - exact 403",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{blocked_index_handle}}&resultsLimit=5",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{blocked_index_handle}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "5",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `referrer`, `query`, `blocked_index_handle`, `results_limit`. Expected: exact `403`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 403', function () {",
-                                    "  pm.response.to.have.status(403);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('error response is a JSON problem object', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('message');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Public key with unknown site - exact 400",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&siteId={{unknown_site_id}}&resultsLimit=5",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "siteId",
-                                    "value": "{{unknown_site_id}}",
-                                    "description": "Optional Craft site ID filter."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "5",
-                                    "description": "Maximum number of results to return."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `keyed`. Editions: `standard`, `pro`. Required variables: `base_url`, `api_key`, `referrer`, `query`, `index_handles`, `unknown_site_id`, `results_limit`. Expected: exact `400`."
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('status is exactly 400', function () {",
-                                    "  pm.response.to.have.status(400);",
-                                    "});",
-                                    "const json = pm.response.json();",
-                                    "pm.test('error response is a JSON problem object', function () {",
-                                    "  pm.expect(json).to.be.an('object');",
-                                    "  pm.expect(json).to.have.property('message');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Rate-limit Runner - deterministic 200 then 429",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Referer",
-                                "value": "{{referrer}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&resultsLimit=1&skipAnalytics=1",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "actions",
-                                "search-manager",
-                                "api",
-                                "search"
-                            ],
-                            "query": [
-                                {
-                                    "key": "q",
-                                    "value": "{{query}}",
-                                    "description": "Search query text."
-                                },
-                                {
-                                    "key": "indexHandles",
-                                    "value": "{{index_handles}}",
-                                    "description": "One or more enabled Search Manager index handles, comma-separated."
-                                },
-                                {
-                                    "key": "resultsLimit",
-                                    "value": "1",
-                                    "description": "Maximum number of results to return."
-                                },
-                                {
-                                    "key": "skipAnalytics",
-                                    "value": "1",
-                                    "description": "Return search results without recording search analytics."
-                                }
-                            ]
-                        },
-                        "description": "API modes: `rate-limit`. Editions: `standard`, `pro`. Required variables: `base_url`, `rate_limit_api_key`, `referrer`, `query`, `index_handles`, `results_limit`, `rate_limit_allowed_requests`, `rate_limit_runner_iterations`. Expected: exact `200` before the declared cap, then exact `429`.",
-                        "auth": {
-                            "type": "apikey",
-                            "apikey": [
-                                {
-                                    "key": "key",
-                                    "value": "X-Search-Manager-Key",
-                                    "type": "string"
-                                },
-                                {
-                                    "key": "value",
-                                    "value": "{{rate_limit_api_key}}",
-                                    "type": "string"
-                                },
-                                {
-                                    "key": "in",
-                                    "value": "header",
-                                    "type": "string"
-                                }
-                            ]
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "const allowedRequests = Number(pm.environment.get('rate_limit_allowed_requests'));",
-                                    "const expectedStatus = pm.info.iteration < allowedRequests ? 200 : 429;",
-                                    "pm.test(`rate-limit iteration ${pm.info.iteration + 1} has exact status ${expectedStatus}`, function () {",
-                                    "  pm.response.to.have.status(expectedStatus);",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-    ],
-    "variable": [
-        {
-            "key": "request_contracts",
-            "value": "{\"Search - anonymous (enforcement disabled)\":{\"apiModes\":[\"anonymous\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"noauth\",\"expectedStatus\":200},\"Search - public key (enforcement enabled)\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Search - public key with Origin fallback\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"origin\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Search - canonical widget-style response\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Search - no indices uses public-key scope\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"query\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Search - scoped site\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"query\",\"index_handles\",\"site_id\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Autocomplete - anonymous (enforcement disabled)\":{\"apiModes\":[\"anonymous\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"noauth\",\"expectedStatus\":200},\"Autocomplete - public key (enforcement enabled)\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Autocomplete - public key with Origin fallback\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"origin\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Autocomplete - only suggestions\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Autocomplete - only results\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Track search - Standard pre-parse no-op\":{\"apiModes\":[\"anonymous\",\"keyed\",\"rate-limit\"],\"editionModes\":[\"standard\"],\"requiredVariables\":[\"base_url\"],\"auth\":\"noauth\",\"expectedStatus\":204},\"Track click - Standard pre-parse no-op\":{\"apiModes\":[\"anonymous\",\"keyed\",\"rate-limit\"],\"editionModes\":[\"standard\"],\"requiredVariables\":[\"base_url\"],\"auth\":\"noauth\",\"expectedStatus\":204},\"Track search - Pro public key\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"query\",\"index_handles\",\"results_count\",\"trigger\",\"analytics_source\",\"site_id\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Track search - Pro same-origin Origin\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"origin\",\"query\",\"index_handles\",\"results_count\",\"trigger\",\"analytics_source\",\"site_id\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Track click - Pro public key\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"element_id\",\"query\",\"index_handle\"],\"auth\":\"inherited\",\"expectedStatus\":200},\"Track search - Pro disallowed Origin\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"blocked_origin\"],\"auth\":\"inherited\",\"expectedStatus\":403},\"Track search preflight - Pro same-origin Origin\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"pro\"],\"requiredVariables\":[\"base_url\",\"origin\"],\"auth\":\"noauth\",\"expectedStatus\":204},\"Missing public key - exact 401\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"noauth\",\"expectedStatus\":401},\"Invalid public key - exact 401\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"invalid_api_key\",\"referrer\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"invalid_api_key\",\"expectedStatus\":401},\"Public key with disallowed Referer - exact 403\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"blocked_referrer\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":403},\"Public key with disallowed Origin - exact 403\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"blocked_origin\",\"query\",\"index_handles\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":403},\"Public key with out-of-scope index - exact 403\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"query\",\"blocked_index_handle\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":403},\"Public key with unknown site - exact 400\":{\"apiModes\":[\"keyed\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"api_key\",\"referrer\",\"query\",\"index_handles\",\"unknown_site_id\",\"results_limit\"],\"auth\":\"inherited\",\"expectedStatus\":400},\"Rate-limit Runner - deterministic 200 then 429\":{\"apiModes\":[\"rate-limit\"],\"editionModes\":[\"standard\",\"pro\"],\"requiredVariables\":[\"base_url\",\"rate_limit_api_key\",\"referrer\",\"query\",\"index_handles\",\"results_limit\",\"rate_limit_allowed_requests\",\"rate_limit_runner_iterations\"],\"auth\":\"rate_limit_api_key\",\"expectedStatus\":\"rate\",\"rateRunner\":true}}",
-            "type": "string"
-        }
-    ],
-    "event": [
-        {
-            "listen": "prerequest",
-            "script": {
+          "name": "Search all allowed indices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
                 "type": "text/javascript",
                 "exec": [
-                    "const supportedApiModes = ['anonymous', 'keyed', 'rate-limit'];",
-                    "const supportedEditionModes = ['standard', 'pro'];",
-                    "const apiMode = String(pm.environment.get('api_mode') || '');",
-                    "const editionMode = String(pm.environment.get('edition_mode') || '');",
-                    "let skipReason = '';",
-                    "let contracts = {};",
-                    "",
-                    "try {",
-                    "  contracts = JSON.parse(pm.collectionVariables.get('request_contracts') || '{}');",
-                    "} catch (error) {",
-                    "  skipReason = `collection request_contracts is invalid JSON: ${error.message}`;",
-                    "}",
-                    "",
-                    "const contract = contracts[pm.info.requestName];",
-                    "if (!skipReason && !contract) {",
-                    "  skipReason = 'request is missing from the collection request_contracts authority';",
-                    "}",
-                    "if (!skipReason && !supportedApiModes.includes(apiMode)) {",
-                    "  skipReason = `api_mode must be one of ${supportedApiModes.join(', ')}; active value is ${apiMode || '<unset>'}`;",
-                    "}",
-                    "if (!skipReason && !supportedEditionModes.includes(editionMode)) {",
-                    "  skipReason = `edition_mode must be one of ${supportedEditionModes.join(', ')}; active value is ${editionMode || '<unset>'}`;",
-                    "}",
-                    "if (!skipReason && !contract.apiModes.includes(apiMode)) {",
-                    "  skipReason = `request supports api_mode=${contract.apiModes.join('|')}; active api_mode is ${apiMode}`;",
-                    "}",
-                    "if (!skipReason && !contract.editionModes.includes(editionMode)) {",
-                    "  skipReason = `request supports edition_mode=${contract.editionModes.join('|')}; active edition_mode is ${editionMode}`;",
-                    "}",
-                    "if (!skipReason) {",
-                    "  const missing = contract.requiredVariables.filter((name) => String(pm.environment.get(name) ?? '').trim() === '');",
-                    "  if (missing.length > 0) {",
-                    "    skipReason = `missing required environment variable(s): ${missing.join(', ')}`;",
-                    "  }",
-                    "}",
-                    "if (!skipReason && contract.rateRunner) {",
-                    "  const allowedRequests = Number(pm.environment.get('rate_limit_allowed_requests'));",
-                    "  const requiredIterations = Number(pm.environment.get('rate_limit_runner_iterations'));",
-                    "  if (!Number.isInteger(allowedRequests) || allowedRequests < 1) {",
-                    "    skipReason = 'rate_limit_allowed_requests must be a positive integer';",
-                    "  } else if (!Number.isInteger(requiredIterations) || requiredIterations <= allowedRequests) {",
-                    "    skipReason = 'rate_limit_runner_iterations must be an integer greater than rate_limit_allowed_requests';",
-                    "  } else if (pm.info.iterationCount !== requiredIterations) {",
-                    "    skipReason = `Runner must use exactly ${requiredIterations} iterations; active run has ${pm.info.iterationCount}`;",
-                    "  }",
-                    "}",
-                    "if (skipReason) {",
-                    "  console.warn(`SKIP: ${pm.info.requestName}: ${skipReason}`);",
-                    "  pm.execution.skipRequest();",
-                    "}"
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Search returned a valid 200 response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('hits').that.is.an('array');",
+                  "    pm.expect(body).to.have.property('total').that.is.a('number');",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  if (body.total === 0) {",
+                  "    console.info('Search Manager returned a valid response with zero hits. Replace query with a term known to exist in indexed content.');",
+                  "  }",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Search response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
                 ]
+              }
             }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&skipAnalytics=1",
+            "description": "Uses Search Manager's server-selected index scope. A 200 response with zero hits is valid; replace query with a term known to exist in indexed content. If this installation requires API keys, a missing public_api_key returns an actionable 401. Exploratory Search requests use skipAnalytics=1."
+          },
+          "response": []
+        },
+        {
+          "name": "Autocomplete across all allowed indices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Autocomplete returned a valid 200 response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('suggestions').that.is.an('array');",
+                  "    pm.expect(body).to.have.property('results').that.is.an('array');",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  if (body.suggestions.length === 0 && body.results.length === 0) {",
+                  "    console.info('Search Manager returned a valid response with zero autocomplete matches. Replace query with a term known to exist in indexed content.');",
+                  "  }",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Autocomplete response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}",
+                    "description": "Uses Search Manager's server-selected index scope. A 200 response with zero matches is valid; replace query with a term known to exist in indexed content. If this installation requires API keys, a missing public_api_key returns an actionable 401."
+          },
+          "response": []
         }
-    ]
+      ]
+    },
+    {
+      "name": "Search Examples",
+      "description": "Search accepts omitted indexHandles, one handle, or multiple comma-separated handles (maximum five), with an optional siteId restriction. Targeted search is not singular-only. These exploratory requests use skipAnalytics=1.",
+      "item": [
+        {
+          "name": "Search one index",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"index_handle\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Set index_handle to one real enabled index before using this optional example. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Search returned a valid 200 response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('hits').that.is.an('array');",
+                  "    pm.expect(body).to.have.property('total').that.is.a('number');",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  if (body.total === 0) {",
+                  "    console.info('Search Manager returned a valid response with zero hits. Replace query with a term known to exist in indexed content.');",
+                  "  }",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Search response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handle}}&skipAnalytics=1",
+            "description": "Targets the single enabled index in index_handle."
+          },
+          "response": []
+        },
+        {
+          "name": "Search multiple indices",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"index_handles\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Set index_handles to two or more comma-separated real enabled indices before using this optional example. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Search returned a valid 200 response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('hits').that.is.an('array');",
+                  "    pm.expect(body).to.have.property('total').that.is.a('number');",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  if (body.total === 0) {",
+                  "    console.info('Search Manager returned a valid response with zero hits. Replace query with a term known to exist in indexed content.');",
+                  "  }",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Search response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&skipAnalytics=1",
+            "description": "Targets the comma-separated indices in index_handles. Search Manager accepts at most five and applies the authenticated public key's allowed scope."
+          },
+          "response": []
+        },
+        {
+          "name": "Search one site",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"site_id\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Set site_id to a real Craft site ID before using this optional example. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Search returned a valid 200 response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('hits').that.is.an('array');",
+                  "    pm.expect(body).to.have.property('total').that.is.a('number');",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  if (body.total === 0) {",
+                  "    console.info('Search Manager returned a valid response with zero hits. Replace query with a term known to exist in indexed content.');",
+                  "  }",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Search response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&siteId={{site_id}}&skipAnalytics=1",
+            "description": "Omits indexHandles so the server selects enabled/key-scoped indices, then restricts the search to site_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Search multiple indices within one site",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"index_handles\",\"site_id\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Set index_handles and site_id before using this optional example. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Search returned a valid 200 response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('hits').that.is.an('array');",
+                  "    pm.expect(body).to.have.property('total').that.is.a('number');",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  if (body.total === 0) {",
+                  "    console.info('Search Manager returned a valid response with zero hits. Replace query with a term known to exist in indexed content.');",
+                  "  }",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Search response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&siteId={{site_id}}&skipAnalytics=1",
+            "description": "Targets multiple comma-separated indices and restricts them to one Craft site."
+          },
+          "response": []
+        },
+        {
+          "name": "Canonical widget-style response",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"index_handles\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Set index_handles to the comma-separated indices used by your widget before using this optional example. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Search returned a valid 200 response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('hits').that.is.an('array');",
+                  "    pm.expect(body).to.have.property('total').that.is.a('number');",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  if (body.total === 0) {",
+                  "    console.info('Search Manager returned a valid response with zero hits. Replace query with a term known to exist in indexed content.');",
+                  "  }",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Search response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{index_handles}}&resultsLimit=10&resultsRequireUrl=1&snippetMode=deep&snippetMaxLength=1000&snippetCleanMarkdown=1&snippetIncludeCodeBlocks=1&skipAnalytics=1",
+            "description": "Requests the canonical widget-style hit presentation across multiple indices, including URL filtering and deep cleaned snippets."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Autocomplete Examples",
+      "description": "Autocomplete uses the same omitted, singular, and comma-separated multiple-index vocabulary as Search. Omitted indexHandles lets the server select all enabled indices or the authenticated key's allowed scope.",
+      "item": [
+        {
+          "name": "Autocomplete one index",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"index_handle\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Set index_handle to one real enabled index before using this optional example. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Autocomplete returned a valid 200 response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('suggestions').that.is.an('array');",
+                  "    pm.expect(body).to.have.property('results').that.is.an('array');",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  if (body.suggestions.length === 0 && body.results.length === 0) {",
+                                    "    console.info('Search Manager returned a valid response with zero autocomplete matches. Replace query with a term known to exist in indexed content.');",
+                  "  }",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Autocomplete response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indexHandles={{index_handle}}",
+            "description": "Targets the single enabled index in index_handle."
+          },
+          "response": []
+        },
+        {
+          "name": "Autocomplete multiple indices",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"index_handles\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Set index_handles to two or more comma-separated real enabled indices before using this optional example. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Autocomplete returned a valid 200 response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('suggestions').that.is.an('array');",
+                  "    pm.expect(body).to.have.property('results').that.is.an('array');",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  if (body.suggestions.length === 0 && body.results.length === 0) {",
+                  "    console.info('Search Manager returned a valid response with zero autocomplete matches. Replace query with a term known to exist in indexed content.');",
+                  "  }",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Autocomplete response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indexHandles={{index_handles}}",
+            "description": "Targets the comma-separated indices in index_handles, respecting Search Manager's public maximum of five."
+          },
+          "response": []
+        },
+        {
+          "name": "Suggestions only",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Suggestions-only response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected response is reported as a failure', function () { pm.expect.fail('Expected 200 or an actionable 401; received ' + pm.response.code + '.'); });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&only=suggestions",
+            "description": "Omits indexHandles for server-owned scope and returns only the suggestions array."
+          },
+          "response": []
+        },
+        {
+          "name": "Results only",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Results-only response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected response is reported as a failure', function () { pm.expect.fail('Expected 200 or an actionable 401; received ' + pm.response.code + '.'); });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&only=results",
+            "description": "Omits indexHandles for server-owned scope and returns only the element-results array."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "description": "The running Search Manager edition and settings determine the response. Users do not declare an edition. Track Search distinguishes recorded from accepted-but-not-recorded responses; Track Click proves acceptance only. A 204 with an empty body is the Standard-edition no-op. Any other status is reported as a failure.",
+      "item": [
+        {
+          "name": "Track search",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Track search was accepted', function () { pm.expect(body).to.have.property('success', true); });",
+                  "  if (body.tracked === true) {",
+                  "    pm.test('Track search was recorded', function () { pm.expect(body.tracked).to.eql(true); });",
+                  "    console.info('Track Search was accepted and recorded.');",
+                  "  } else if (body.tracked === false) {",
+                  "    pm.test('Track search was accepted but not recorded', function () { pm.expect(body.tracked).to.eql(false); });",
+                  "    console.info('Track Search was accepted but not recorded under the current Analytics settings.');",
+                  "  } else {",
+                  "    pm.test('Track search returned its tracking disposition', function () { pm.expect.fail('Expected tracked to be true or false.'); });",
+                  "  }",
+                  "} else if (pm.response.code === 204) {",
+                  "  pm.test('Track search is a Standard-edition no-op', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "    pm.expect(pm.response.text()).to.eql('');",
+                  "  });",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Analytics response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200 with tracked true or false, 204 for the Standard-edition no-op, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/actions/search-manager/search/track-search",
+            "description": "Tracks search intent without declaring an edition or index scope. On 200, tracked=true means recorded while tracked=false means accepted but not recorded under current Analytics settings. A 204 empty response is the Standard-edition no-op.",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "q",
+                  "value": "{{query}}",
+                  "type": "text"
+                },
+                {
+                  "key": "resultsCount",
+                  "value": "0",
+                  "type": "text"
+                },
+                {
+                  "key": "trigger",
+                  "value": "enter",
+                  "type": "text"
+                },
+                {
+                  "key": "analyticsSource",
+                  "value": "postman",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Track click",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"element_id\",\"index_handle\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Set element_id to a real result element ID and index_handle to the enabled index that returned it. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Track click was accepted', function () { pm.expect(pm.response.json()).to.have.property('success', true); });",
+                  "} else if (pm.response.code === 204) {",
+                  "  pm.test('Track click is a Standard-edition no-op', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "    pm.expect(pm.response.text()).to.eql('');",
+                  "  });",
+                  "} else if (pm.response.code === 401) {",
+                  "  pm.test('API-key enforcement requires a public key', function () { pm.response.to.have.status(401); });",
+                  "  console.warn('This installation requires a public API key. Set public_api_key to a permitted Search Manager public key and send the request again.');",
+                  "} else {",
+                  "  pm.test('Unexpected Analytics response is reported as a failure', function () {",
+                  "    pm.expect.fail('Expected 200 when tracking is accepted, 204 for the Standard-edition no-op, or 401 when this installation requires a public key; received ' + pm.response.code + '.');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/actions/search-manager/search/track-click",
+            "description": "Submits a click for element_id in index_handle. A 200 proves acceptance only, not persistence. Missing either value skips only this request with setup guidance.",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "elementId",
+                  "value": "{{element_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "query",
+                  "value": "{{query}}",
+                  "type": "text"
+                },
+                {
+                  "key": "index",
+                  "value": "{{index_handle}}",
+                  "type": "text"
+                },
+                {
+                  "key": "position",
+                  "value": "1",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Developer Validation — Optional",
+      "description": "Contained conformance checks for a disposable local installation only. Never use production keys, providers, valuable indices, or valuable analytics data. Missing developer-only prerequisites skip only their own request. The rate-limit check is Runner-only and requires a dedicated disposable key.",
+      "item": [
+        {
+          "name": "Missing public API key",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (String(pm.environment.get('developer_api_key_enforcement_enabled') || '').toLowerCase() !== 'yes') { missing.push('developer_api_key_enforcement_enabled=yes'); }",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Enable Require API Key in the disposable local installation and set developer_api_key_enforcement_enabled=yes. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Missing public API key is rejected', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&skipAnalytics=1",
+            "description": "Requires API-key enforcement on a disposable local installation and proves an exact 401 without sending a key.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid public API key",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (String(pm.environment.get('developer_api_key_enforcement_enabled') || '').toLowerCase() !== 'yes') { missing.push('developer_api_key_enforcement_enabled=yes'); }",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Enable Require API Key in the disposable local installation and set developer_api_key_enforcement_enabled=yes. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid public API key is rejected', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&skipAnalytics=1",
+            "description": "Uses a fixed obvious invalid key against a disposable local installation and proves an exact 401.",
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "X-Search-Manager-Key",
+                  "type": "string"
+                },
+                {
+                  "key": "value",
+                  "value": "sm_pub_invalid_example",
+                  "type": "string"
+                },
+                {
+                  "key": "in",
+                  "value": "header",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disallowed Referer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"developer_public_api_key\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (String(pm.environment.get('developer_api_key_enforcement_enabled') || '').toLowerCase() !== 'yes') { missing.push('developer_api_key_enforcement_enabled=yes'); }",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Enable Require API Key, set developer_api_key_enforcement_enabled=yes, and create a disposable restricted local public key that does not allow blocked.invalid. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Disallowed Referer is rejected', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Referer",
+                "value": "https://blocked.invalid/",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&skipAnalytics=1",
+            "description": "Uses the reserved blocked.invalid host and a disposable restricted public key. The key must not allow this host.",
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "X-Search-Manager-Key",
+                  "type": "string"
+                },
+                {
+                  "key": "value",
+                  "value": "{{developer_public_api_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "in",
+                  "value": "header",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disallowed Origin",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"developer_public_api_key\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (String(pm.environment.get('developer_api_key_enforcement_enabled') || '').toLowerCase() !== 'yes') { missing.push('developer_api_key_enforcement_enabled=yes'); }",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Enable Require API Key, set developer_api_key_enforcement_enabled=yes, and create a disposable restricted local public key that does not allow blocked.invalid. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Disallowed Origin is rejected', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "https://blocked.invalid",
+                "type": "text"
+              },
+              {
+                "key": "Referer",
+                "value": "",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&skipAnalytics=1",
+            "description": "Uses the reserved blocked.invalid host as Origin and no Referer, proving Origin fallback enforcement with a disposable restricted key.",
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "X-Search-Manager-Key",
+                  "type": "string"
+                },
+                {
+                  "key": "value",
+                  "value": "{{developer_public_api_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "in",
+                  "value": "header",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Out-of-scope index",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"developer_public_api_key\",\"developer_blocked_index_handle\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (String(pm.environment.get('developer_api_key_enforcement_enabled') || '').toLowerCase() !== 'yes') { missing.push('developer_api_key_enforcement_enabled=yes'); }",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Enable Require API Key, set developer_api_key_enforcement_enabled=yes, and create a disposable restricted local key plus an index outside its allowlist. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Out-of-scope index is rejected', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indexHandles={{developer_blocked_index_handle}}&skipAnalytics=1",
+            "description": "Uses a disposable index outside developer_public_api_key's allowlist and proves exact 403 scope enforcement.",
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "X-Search-Manager-Key",
+                  "type": "string"
+                },
+                {
+                  "key": "value",
+                  "value": "{{developer_public_api_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "in",
+                  "value": "header",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unknown site",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"developer_public_api_key\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (String(pm.environment.get('developer_api_key_enforcement_enabled') || '').toLowerCase() !== 'yes') { missing.push('developer_api_key_enforcement_enabled=yes'); }",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Enable Require API Key, set developer_api_key_enforcement_enabled=yes, and create a disposable restricted local public key before running the unknown-site check. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unknown site is rejected', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&siteId=999999999&skipAnalytics=1",
+            "description": "Uses an obviously unknown site ID and a disposable restricted public key. It proves exact 400 site-scope validation.",
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "X-Search-Manager-Key",
+                  "type": "string"
+                },
+                {
+                  "key": "value",
+                  "value": "{{developer_public_api_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "in",
+                  "value": "header",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deterministic rate-limit validation",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"developer_rate_limit_api_key\",\"developer_rate_limit_allowed_requests\",\"developer_rate_limit_runner_iterations\"];",
+                  "const missing = required.filter(function (name) { return String(pm.environment.get(name) || '').trim() === ''; });",
+                  "if (String(pm.environment.get('developer_api_key_enforcement_enabled') || '').toLowerCase() !== 'yes') { missing.push('developer_api_key_enforcement_enabled=yes'); }",
+                  "if (missing.length > 0) {",
+                  "  console.warn('SKIP: ' + pm.info.requestName + ': Enable Require API Key, set developer_api_key_enforcement_enabled=yes, and configure a dedicated disposable local rate-limit key with its exact Runner settings. Missing: ' + missing.join(', '));",
+                  "  pm.execution.skipRequest();",
+                  "}",
+                  "const allowed = Number(pm.environment.get('developer_rate_limit_allowed_requests'));",
+                  "const iterations = Number(pm.environment.get('developer_rate_limit_runner_iterations'));",
+                  "if (!Number.isInteger(allowed) || allowed < 1 || !Number.isInteger(iterations) || iterations <= allowed || pm.info.iterationCount !== iterations) {",
+                  "  console.warn('SKIP: Deterministic rate-limit validation: Runner must use exactly developer_rate_limit_runner_iterations iterations, and that value must be greater than the positive configured limit.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allowed = Number(pm.environment.get('developer_rate_limit_allowed_requests'));",
+                  "const expected = pm.info.iteration < allowed ? 200 : 429;",
+                  "pm.test('Rate limit follows the configured disposable-key boundary', function () { pm.response.to.have.status(expected); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actions/search-manager/api/search?q={{query}}&skipAnalytics=1",
+            "description": "Runner-only. Select only this request, use exactly developer_rate_limit_runner_iterations iterations, and use a dedicated disposable key whose per-minute limit exactly matches developer_rate_limit_allowed_requests. Never reuse a production key or run against valuable data.",
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "X-Search-Manager-Key",
+                  "type": "string"
+                },
+                {
+                  "key": "value",
+                  "value": "{{developer_rate_limit_api_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "in",
+                  "value": "header",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
 }

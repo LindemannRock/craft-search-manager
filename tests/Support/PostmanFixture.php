@@ -20,6 +20,7 @@ require dirname(__DIR__) . '/bootstrap.php';
 
 const POSTMAN_FIXTURE_BACKEND = '__sm_postman_fixture_backend__';
 const POSTMAN_FIXTURE_INDEX = '__sm_postman_fixture_index__';
+const POSTMAN_FIXTURE_SECOND_INDEX = '__sm_postman_fixture_second_index__';
 const POSTMAN_FIXTURE_BLOCKED_INDEX = '__sm_postman_fixture_blocked_index__';
 const POSTMAN_FIXTURE_KEY = 'sm-postman-fixture-key';
 const POSTMAN_FIXTURE_RATE_KEY = 'sm-postman-fixture-rate-key';
@@ -41,10 +42,10 @@ $command = $argv[1] ?? 'status';
 try {
     $result = match ($command) {
         'setup' => setupFixture($stateFile, $environmentFile),
-        'mode' => setFixtureMode($stateFile, $environmentFile, $argv[2] ?? '', $argv[3] ?? ''),
+        'mode' => setFixtureMode($stateFile, $environmentFile, $argv[2] ?? '', $argv[3] ?? '', $argv[4] ?? 'analytics-enabled'),
         'status' => fixtureStatus($stateFile, $environmentFile),
         'cleanup' => cleanupFixture($stateFile, $environmentFile),
-        default => throw new InvalidArgumentException('Use setup, mode <anonymous|keyed|rate-limit> <standard|pro>, status, or cleanup.'),
+        default => throw new InvalidArgumentException('Use setup, mode <anonymous|keyed|rate-limit> <standard|pro> [analytics-enabled|analytics-disabled], status, or cleanup.'),
     };
 
     echo json_encode($result, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . PHP_EOL;
@@ -87,6 +88,20 @@ function setupFixture(string $stateFile, string $environmentFile): array
         throw new RuntimeException('A primary Craft site is required for the Postman fixture.');
     }
 
+    $configFile = Craft::getAlias('@config/search-manager.php');
+    if (!is_string($configFile) || !is_file($configFile)) {
+        throw new RuntimeException('The local config/search-manager.php file is required for deterministic Analytics fixture modes.');
+    }
+    $configOriginal = file_get_contents($configFile);
+    if ($configOriginal === false) {
+        throw new RuntimeException('Unable to read the local Search Manager config file.');
+    }
+    $configMode = fileperms($configFile);
+    if ($configMode === false) {
+        throw new RuntimeException('Unable to read the local Search Manager config file mode.');
+    }
+    $configMode &= 0777;
+
     $now = Db::prepareDateForDb(new DateTime('now', new DateTimeZone('UTC')));
     $transaction = $db->beginTransaction();
 
@@ -103,7 +118,7 @@ function setupFixture(string $stateFile, string $environmentFile): array
         ])->execute();
 
         $indexIds = [];
-        foreach ([POSTMAN_FIXTURE_INDEX, POSTMAN_FIXTURE_BLOCKED_INDEX] as $handle) {
+        foreach ([POSTMAN_FIXTURE_INDEX, POSTMAN_FIXTURE_SECOND_INDEX, POSTMAN_FIXTURE_BLOCKED_INDEX] as $handle) {
             $db->createCommand()->insert('{{%searchmanager_indices}}', [
                 'name' => $handle,
                 'handle' => $handle,
@@ -139,12 +154,12 @@ function setupFixture(string $stateFile, string $environmentFile): array
 
         [$publicKey, $publicPlaintext] = createFixtureKey(
             POSTMAN_FIXTURE_KEY,
-            [POSTMAN_FIXTURE_INDEX],
+            [POSTMAN_FIXTURE_INDEX, POSTMAN_FIXTURE_SECOND_INDEX],
             null,
         );
         [$rateKey, $ratePlaintext] = createFixtureKey(
             POSTMAN_FIXTURE_RATE_KEY,
-            [POSTMAN_FIXTURE_INDEX],
+            [POSTMAN_FIXTURE_INDEX, POSTMAN_FIXTURE_SECOND_INDEX],
             POSTMAN_FIXTURE_RATE_LIMIT,
         );
 
@@ -155,6 +170,13 @@ function setupFixture(string $stateFile, string $environmentFile): array
             'settingsApplied' => managedSettings($settingsRow),
             'settingsPreviousApplied' => managedSettings($settingsRow),
             'settingsApplyPending' => false,
+            'configFile' => $configFile,
+            'configMode' => $configMode,
+            'configOriginal' => $configOriginal,
+            'configOriginalHash' => hash('sha256', $configOriginal),
+            'configApplied' => $configOriginal,
+            'configPreviousApplied' => $configOriginal,
+            'configApplyPending' => false,
             'siteId' => $siteId,
             'indexIds' => $indexIds,
             'publicKeyId' => $publicKey->id,
@@ -175,6 +197,14 @@ function setupFixture(string $stateFile, string $environmentFile): array
         $transaction->commit();
     } catch (Throwable $exception) {
         $transaction->rollBack();
+        if (isset($state) && is_array($state)) {
+            try {
+                restoreAnalyticsConfig($state);
+            } catch (Throwable) {
+                // Keep the state file when config restoration needs explicit recovery.
+                throw $exception;
+            }
+        }
         @unlink($stateFile);
         @unlink($environmentFile);
         SearchIndex::clearCache();
@@ -196,14 +226,22 @@ function setupFixture(string $stateFile, string $environmentFile): array
 /**
  * @return array<string, mixed>
  */
-function setFixtureMode(string $stateFile, string $environmentFile, string $apiMode, string $editionMode): array
-{
+function setFixtureMode(
+    string $stateFile,
+    string $environmentFile,
+    string $apiMode,
+    string $editionMode,
+    string $analyticsMode,
+): array {
     $state = readState($stateFile);
     if (!in_array($apiMode, ['anonymous', 'keyed', 'rate-limit'], true)) {
         throw new InvalidArgumentException('API mode must be anonymous, keyed, or rate-limit.');
     }
     if (!in_array($editionMode, [SearchManager::EDITION_STANDARD, SearchManager::EDITION_PRO], true)) {
         throw new InvalidArgumentException('Edition mode must be standard or pro.');
+    }
+    if (!in_array($analyticsMode, ['analytics-enabled', 'analytics-disabled'], true)) {
+        throw new InvalidArgumentException('Analytics mode must be analytics-enabled or analytics-disabled.');
     }
 
     $activeEdition = SearchManager::$plugin->getEditionHandle();
@@ -213,7 +251,8 @@ function setFixtureMode(string $stateFile, string $environmentFile, string $apiM
         );
     }
 
-    applyApiModeSettings($apiMode, $stateFile, $state);
+    $analyticsEnabled = $analyticsMode === 'analytics-enabled';
+    applyApiModeSettings($apiMode, $stateFile, $state, $analyticsEnabled);
     if ($apiMode === 'rate-limit') {
         clearRateLimitCounters((int)$state['rateKeyId']);
     }
@@ -224,6 +263,7 @@ function setFixtureMode(string $stateFile, string $environmentFile, string $apiM
         'apiMode' => $apiMode,
         'editionMode' => $editionMode,
         'requireApiKey' => $apiMode === 'anonymous' ? 0 : 1,
+        'analyticsEnabled' => $analyticsEnabled,
         'environmentFile' => $environmentFile,
         'counts' => markerCounts(),
     ];
@@ -250,7 +290,7 @@ function cleanupFixture(string $stateFile, string $environmentFile): array
 {
     $state = readState($stateFile);
     $db = Craft::$app->getDb();
-    $handles = [POSTMAN_FIXTURE_INDEX, POSTMAN_FIXTURE_BLOCKED_INDEX];
+    $handles = [POSTMAN_FIXTURE_INDEX, POSTMAN_FIXTURE_SECOND_INDEX, POSTMAN_FIXTURE_BLOCKED_INDEX];
     $transaction = $db->beginTransaction();
 
     try {
@@ -287,6 +327,7 @@ function cleanupFixture(string $stateFile, string $environmentFile): array
             $db->createCommand()->delete('{{%queue}}', ['like', 'job', '__sm_postman_fixture_%', false])->execute();
         }
 
+        restoreAnalyticsConfig($state);
         restoreManagedSettings($state);
 
         clearRateLimitCounters((int)$state['publicKeyId']);
@@ -300,7 +341,9 @@ function cleanupFixture(string $stateFile, string $environmentFile): array
 
     $counts = markerCounts();
     $settingsRestored = managedSettings(currentSettingsRow()) === managedSettings($state['settingsOriginal']);
-    if (array_sum($counts) !== 0 || !$settingsRestored) {
+    $configCurrent = file_get_contents((string)$state['configFile']);
+    $configRestored = is_string($configCurrent) && hash('sha256', $configCurrent) === $state['configOriginalHash'];
+    if (array_sum($counts) !== 0 || !$settingsRestored || !$configRestored) {
         throw new RuntimeException('Fixture cleanup or settings restoration verification failed.');
     }
 
@@ -321,8 +364,11 @@ function cleanupFixture(string $stateFile, string $environmentFile): array
         'status' => 'clean',
         'counts' => $counts,
         'settingsRestored' => true,
+        'analyticsConfigRestored' => true,
         'settingsSnapshotHash' => $state['settingsHash'],
         'settingsCurrentHash' => currentSettingsHash(),
+        'analyticsConfigSnapshotHash' => $state['configOriginalHash'],
+        'analyticsConfigCurrentHash' => hash('sha256', $configCurrent),
         'stateFileRemoved' => !file_exists($stateFile),
         'environmentFileRemoved' => !file_exists($environmentFile),
         'reportFilesRemoved' => $reportFilesRemoved,
@@ -357,11 +403,17 @@ function createFixtureKey(string $handle, array $allowedIndices, ?int $rateLimit
 }
 
 /** @param array<string, mixed> $state */
-function applyApiModeSettings(string $apiMode, string $stateFile, array &$state): void
-{
+function applyApiModeSettings(
+    string $apiMode,
+    string $stateFile,
+    array &$state,
+    bool $analyticsEnabled = true,
+): void {
+    applyAnalyticsConfigMode($analyticsEnabled, $stateFile, $state);
+
     $applied = [
         'requireApiKey' => $apiMode === 'anonymous' ? 0 : 1,
-        'enableAnalytics' => 1,
+        'enableAnalytics' => $analyticsEnabled ? 1 : 0,
         'enableGeoDetection' => 0,
         'enableCache' => 0,
         'enableAutocompleteCache' => 0,
@@ -387,6 +439,41 @@ function applyApiModeSettings(string $apiMode, string $stateFile, array &$state)
     writeState($stateFile, $state);
 }
 
+/** @param array<string, mixed> $state */
+function applyAnalyticsConfigMode(bool $analyticsEnabled, string $stateFile, array &$state): void
+{
+    $configFile = (string)$state['configFile'];
+    $current = file_get_contents($configFile);
+    if (!is_string($current) || $current !== (string)$state['configApplied']) {
+        throw new RuntimeException('Postman fixture refused to overwrite a concurrently changed Search Manager config file.');
+    }
+
+    $replacementCount = 0;
+    $target = preg_replace(
+        "/(^[ \\t]*'enableAnalytics'[ \\t]*=>[ \\t]*)(?:true|false)([ \\t]*,)/m",
+        '$1' . ($analyticsEnabled ? 'true' : 'false') . '$2',
+        (string)$state['configOriginal'],
+        -1,
+        $replacementCount,
+    );
+    if (!is_string($target) || $replacementCount > 1) {
+        throw new RuntimeException('The local Search Manager config has more than one active enableAnalytics override.');
+    }
+
+    $state['configPreviousApplied'] = $current;
+    $state['configApplied'] = $target;
+    $state['configApplyPending'] = true;
+    writeState($stateFile, $state);
+
+    if (file_put_contents($configFile, $target, LOCK_EX) !== strlen($target)) {
+        throw new RuntimeException('Unable to apply the disposable Analytics config override.');
+    }
+    chmod($configFile, (int)$state['configMode']);
+
+    $state['configApplyPending'] = false;
+    writeState($stateFile, $state);
+}
+
 /**
  * @param array<string, mixed> $state
  */
@@ -399,29 +486,19 @@ function writeEnvironment(
     $templateFile = dirname(__DIR__, 2) . '/resources/postman/Search-Manager.postman_environment.json';
     $environment = json_decode((string)file_get_contents($templateFile), true, 512, JSON_THROW_ON_ERROR);
     $values = [
-        'api_mode' => $apiMode,
-        'edition_mode' => $editionMode,
         'base_url' => POSTMAN_FIXTURE_BASE_URL,
-        'api_key' => (string)$state['publicPlaintext'],
-        'rate_limit_api_key' => (string)$state['ratePlaintext'],
-        'invalid_api_key' => 'sm_pub_invalidplaceholder',
-        'referrer' => POSTMAN_FIXTURE_BASE_URL . '/',
-        'blocked_referrer' => 'https://blocked.example.test/',
-        'origin' => POSTMAN_FIXTURE_BASE_URL,
-        'blocked_origin' => 'https://blocked.example.test',
         'query' => POSTMAN_FIXTURE_QUERY,
-        'index_handles' => POSTMAN_FIXTURE_INDEX,
+        'public_api_key' => $apiMode === 'anonymous' ? '' : (string)$state['publicPlaintext'],
         'index_handle' => POSTMAN_FIXTURE_INDEX,
-        'blocked_index_handle' => POSTMAN_FIXTURE_BLOCKED_INDEX,
-        'results_limit' => '10',
+        'index_handles' => POSTMAN_FIXTURE_INDEX . ',' . POSTMAN_FIXTURE_SECOND_INDEX,
         'site_id' => (string)$state['siteId'],
-        'unknown_site_id' => '999999',
         'element_id' => '999998',
-        'results_count' => '0',
-        'trigger' => 'enter',
-        'analytics_source' => 'postman-fixture',
-        'rate_limit_allowed_requests' => (string)POSTMAN_FIXTURE_RATE_LIMIT,
-        'rate_limit_runner_iterations' => (string)POSTMAN_FIXTURE_ITERATIONS,
+        'developer_api_key_enforcement_enabled' => $apiMode === 'anonymous' ? '' : 'yes',
+        'developer_public_api_key' => (string)$state['publicPlaintext'],
+        'developer_blocked_index_handle' => POSTMAN_FIXTURE_BLOCKED_INDEX,
+        'developer_rate_limit_api_key' => (string)$state['ratePlaintext'],
+        'developer_rate_limit_allowed_requests' => (string)POSTMAN_FIXTURE_RATE_LIMIT,
+        'developer_rate_limit_runner_iterations' => (string)POSTMAN_FIXTURE_ITERATIONS,
     ];
 
     foreach ($environment['values'] as &$variable) {
@@ -443,7 +520,7 @@ function writeEnvironment(
 function markerCounts(): array
 {
     $db = Craft::$app->getDb();
-    $handles = [POSTMAN_FIXTURE_INDEX, POSTMAN_FIXTURE_BLOCKED_INDEX];
+    $handles = [POSTMAN_FIXTURE_INDEX, POSTMAN_FIXTURE_SECOND_INDEX, POSTMAN_FIXTURE_BLOCKED_INDEX];
     $counts = [
         'apiKeys' => (int)(new Query())->from('{{%searchmanager_api_keys}}')->where([
             'handle' => [POSTMAN_FIXTURE_KEY, POSTMAN_FIXTURE_RATE_KEY],
@@ -544,6 +621,34 @@ function managedSettings(array $row): array
     ksort($managed);
 
     return $managed;
+}
+
+/** @param array<string, mixed> $state */
+function restoreAnalyticsConfig(array $state): void
+{
+    $configFile = (string)$state['configFile'];
+    $current = file_get_contents($configFile);
+    if (!is_string($current)) {
+        throw new RuntimeException('Unable to read the Search Manager config while restoring the fixture.');
+    }
+
+    $original = (string)$state['configOriginal'];
+    if ($current === $original) {
+        return;
+    }
+
+    $expected = (string)$state['configApplied'];
+    if (($state['configApplyPending'] ?? false) && $current === (string)$state['configPreviousApplied']) {
+        $expected = (string)$state['configPreviousApplied'];
+    }
+    if ($current !== $expected) {
+        throw new RuntimeException('Postman fixture cleanup refused to overwrite a concurrently changed Search Manager config file.');
+    }
+
+    if (file_put_contents($configFile, $original, LOCK_EX) !== strlen($original)) {
+        throw new RuntimeException('Unable to restore the Search Manager config file.');
+    }
+    chmod($configFile, (int)$state['configMode']);
 }
 
 /** @param array<string, mixed> $state */

@@ -62,6 +62,16 @@ The **Search** tab includes a **Developer Resources** box with **Download Postma
 
 Use it when you want to test the public Search Manager API outside Craft with the same endpoint examples your frontend or integration will call.
 
+After importing both JSON files, set only `base_url` and replace `query` with a term you know exists in indexed content. The **Start Here** requests omit `indexHandles`, so Search Manager searches all enabled indices when API-key enforcement is off or the authenticated public key's allowed indices when enforcement is on. Add the optional `public_api_key` only when the running installation requires one. A `401` response tells you to add that key; a `200` response with zero hits is valid and means you should try a query that exists in the index.
+
+The remaining customer folders build on that first request:
+
+- **Search Examples** covers one index, multiple comma-separated indices, one site, multiple indices within one site, and the canonical widget response.
+- **Autocomplete Examples** uses the same omitted, singular, and multiple-index vocabulary, with suggestions-only and results-only variants.
+- **Analytics** interprets the server-owned outcome without an edition variable: Track Search `200` distinguishes recorded (`tracked=true`) from accepted but not recorded under current settings (`tracked=false`), Track Click `200` proves acceptance only, and an empty `204` is the Standard-edition no-op. Track Click requires both an element ID and its index handle.
+
+Ordinary exploratory Search requests include `skipAnalytics=1`. Strict missing/invalid-key, Referer/Origin, index/site-scope, and deterministic rate-limit checks stay in **Developer Validation — Optional**. Every request in that folder requires `developer_api_key_enforcement_enabled=yes` plus its own disposable local prerequisites, and missing setup skips only that request. The folder never controls the customer examples. Do not run it with production keys, hosted providers, valuable indices, or valuable analytics data. Analytics `401` responses provide the same instruction to set `public_api_key` and retry as Start Here.
+
 ## Next steps
 
 - [Quickstart](../get-started/quickstart.md) — create the backend and index you will test.

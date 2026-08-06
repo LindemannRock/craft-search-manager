@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
 use ZipArchive;
 
 /**
- * Pins the shipped Postman collection to Search Manager's public REST contract.
+ * Pins the shipped Postman resources to the customer-first public REST contract.
  *
  * @since 5.54.0
  */
@@ -30,63 +30,58 @@ final class PostmanArtifactContractTest extends TestCase
     private const FIXTURE_FILE = 'tests/Support/PostmanFixture.php';
 
     /**
-     * @var array<string, array{status: int|string, auth: string}>
+     * @var array<string, list<string>>
      */
-    private const REQUEST_MATRIX = [
-        'Search API > Search - anonymous (enforcement disabled)' => ['status' => 200, 'auth' => 'noauth'],
-        'Search API > Search - public key (enforcement enabled)' => ['status' => 200, 'auth' => 'inherited'],
-        'Search API > Search - public key with Origin fallback' => ['status' => 200, 'auth' => 'inherited'],
-        'Search API > Search - canonical widget-style response' => ['status' => 200, 'auth' => 'inherited'],
-        'Search API > Search - no indices uses public-key scope' => ['status' => 200, 'auth' => 'inherited'],
-        'Search API > Search - scoped site' => ['status' => 200, 'auth' => 'inherited'],
-        'Autocomplete API > Autocomplete - anonymous (enforcement disabled)' => ['status' => 200, 'auth' => 'noauth'],
-        'Autocomplete API > Autocomplete - public key (enforcement enabled)' => ['status' => 200, 'auth' => 'inherited'],
-        'Autocomplete API > Autocomplete - public key with Origin fallback' => ['status' => 200, 'auth' => 'inherited'],
-        'Autocomplete API > Autocomplete - only suggestions' => ['status' => 200, 'auth' => 'inherited'],
-        'Autocomplete API > Autocomplete - only results' => ['status' => 200, 'auth' => 'inherited'],
-        'Analytics Tracking > Track search - Standard pre-parse no-op' => ['status' => 204, 'auth' => 'noauth'],
-        'Analytics Tracking > Track click - Standard pre-parse no-op' => ['status' => 204, 'auth' => 'noauth'],
-        'Analytics Tracking > Track search - Pro public key' => ['status' => 200, 'auth' => 'inherited'],
-        'Analytics Tracking > Track search - Pro same-origin Origin' => ['status' => 200, 'auth' => 'inherited'],
-        'Analytics Tracking > Track click - Pro public key' => ['status' => 200, 'auth' => 'inherited'],
-        'Analytics Tracking > Track search - Pro disallowed Origin' => ['status' => 403, 'auth' => 'inherited'],
-        'Analytics Tracking > Track search preflight - Pro same-origin Origin' => ['status' => 204, 'auth' => 'noauth'],
-        'Enforcement Checks > Missing public key - exact 401' => ['status' => 401, 'auth' => 'noauth'],
-        'Enforcement Checks > Invalid public key - exact 401' => ['status' => 401, 'auth' => 'invalid_api_key'],
-        'Enforcement Checks > Public key with disallowed Referer - exact 403' => ['status' => 403, 'auth' => 'inherited'],
-        'Enforcement Checks > Public key with disallowed Origin - exact 403' => ['status' => 403, 'auth' => 'inherited'],
-        'Enforcement Checks > Public key with out-of-scope index - exact 403' => ['status' => 403, 'auth' => 'inherited'],
-        'Enforcement Checks > Public key with unknown site - exact 400' => ['status' => 400, 'auth' => 'inherited'],
-        'Enforcement Checks > Rate-limit Runner - deterministic 200 then 429' => ['status' => 'rate', 'auth' => 'rate_limit_api_key'],
+    private const FOLDER_REQUESTS = [
+        'Start Here' => [
+            'Search all allowed indices',
+            'Autocomplete across all allowed indices',
+        ],
+        'Search Examples' => [
+            'Search one index',
+            'Search multiple indices',
+            'Search one site',
+            'Search multiple indices within one site',
+            'Canonical widget-style response',
+        ],
+        'Autocomplete Examples' => [
+            'Autocomplete one index',
+            'Autocomplete multiple indices',
+            'Suggestions only',
+            'Results only',
+        ],
+        'Analytics' => [
+            'Track search',
+            'Track click',
+        ],
+        'Developer Validation — Optional' => [
+            'Missing public API key',
+            'Invalid public API key',
+            'Disallowed Referer',
+            'Disallowed Origin',
+            'Out-of-scope index',
+            'Unknown site',
+            'Deterministic rate-limit validation',
+        ],
     ];
 
     /**
      * @var list<string>
      */
     private const ENVIRONMENT_VARIABLES = [
-        'api_mode',
-        'edition_mode',
         'base_url',
-        'api_key',
-        'rate_limit_api_key',
-        'invalid_api_key',
-        'referrer',
-        'blocked_referrer',
-        'origin',
-        'blocked_origin',
         'query',
-        'index_handles',
+        'public_api_key',
         'index_handle',
-        'blocked_index_handle',
-        'results_limit',
+        'index_handles',
         'site_id',
-        'unknown_site_id',
         'element_id',
-        'results_count',
-        'trigger',
-        'analytics_source',
-        'rate_limit_allowed_requests',
-        'rate_limit_runner_iterations',
+        'developer_api_key_enforcement_enabled',
+        'developer_public_api_key',
+        'developer_blocked_index_handle',
+        'developer_rate_limit_api_key',
+        'developer_rate_limit_allowed_requests',
+        'developer_rate_limit_runner_iterations',
     ];
 
     public function testDownloadUsesCanonicalResourceDirectoryAndStableArchiveContract(): void
@@ -176,7 +171,7 @@ final class PostmanArtifactContractTest extends TestCase
         }
     }
 
-    public function testCollectionAndEnvironmentAreValidVersion21Artifacts(): void
+    public function testCollectionAndEnvironmentUseTheCustomerFirstStructure(): void
     {
         $collection = $this->collection();
         $environment = $this->environment();
@@ -188,369 +183,403 @@ final class PostmanArtifactContractTest extends TestCase
         self::assertSame('Search Manager API', $collection['info']['name'] ?? null);
         self::assertSame('apikey', $collection['auth']['type'] ?? null);
         self::assertSame('X-Search-Manager-Key', $this->authValue($collection['auth'], 'key'));
-        self::assertSame('{{api_key}}', $this->authValue($collection['auth'], 'value'));
+        self::assertSame('{{public_api_key}}', $this->authValue($collection['auth'], 'value'));
         self::assertSame('environment', $environment['_postman_variable_scope'] ?? null);
         self::assertSame('Search Manager API', $environment['name'] ?? null);
-        self::assertSame(
-            ['Search API', 'Autocomplete API', 'Analytics Tracking', 'Enforcement Checks'],
-            array_column($collection['item'] ?? [], 'name'),
-        );
-        self::assertSame(['request_contracts'], array_column($collection['variable'] ?? [], 'key'));
+        self::assertSame(array_keys(self::FOLDER_REQUESTS), array_column($collection['item'] ?? [], 'name'));
+        self::assertSame([], $collection['variable'] ?? []);
+
+        foreach ($collection['item'] ?? [] as $folder) {
+            $folderName = (string)$folder['name'];
+            self::assertSame(self::FOLDER_REQUESTS[$folderName], array_column($folder['item'] ?? [], 'name'));
+        }
+
         self::assertSame(['prerequest'], array_column($collection['event'] ?? [], 'listen'));
+        $collectionGuard = $this->collectionScript('prerequest');
+        self::assertStringContainsString("pm.environment.get('base_url')", $collectionGuard);
+        self::assertStringContainsString("pm.request.headers.upsert({key: 'Referer'", $collectionGuard);
+        self::assertStringNotContainsString('skipRequest', $collectionGuard);
+        self::assertStringNotContainsString('request_contracts', $collectionGuard);
     }
 
-    public function testRequestMatrixUsesExactStatusesAndOneCanonicalPrerequisiteAuthority(): void
-    {
-        $requests = $this->requestsByPath();
-        $contracts = $this->requestContracts();
-        $guard = $this->collectionScript('prerequest');
-
-        self::assertSame(array_keys(self::REQUEST_MATRIX), array_keys($requests));
-        self::assertSame(
-            array_map(static fn(string $path): string => substr($path, strpos($path, ' > ') + 3), array_keys($requests)),
-            array_keys($contracts),
-        );
-        self::assertSame(1, substr_count($this->file(self::COLLECTION_FILE), 'pm.execution.skipRequest();'));
-        self::assertStringContainsString("pm.environment.get('api_mode')", $guard);
-        self::assertStringContainsString("pm.environment.get('edition_mode')", $guard);
-        self::assertStringContainsString("pm.collectionVariables.get('request_contracts')", $guard);
-        self::assertStringContainsString('!supportedApiModes.includes(apiMode)', $guard);
-        self::assertStringContainsString('!supportedEditionModes.includes(editionMode)', $guard);
-        self::assertStringContainsString("apiMode || '<unset>'", $guard);
-        self::assertStringContainsString("editionMode || '<unset>'", $guard);
-        self::assertStringContainsString('contract.apiModes.includes(apiMode)', $guard);
-        self::assertStringContainsString('contract.editionModes.includes(editionMode)', $guard);
-        self::assertStringContainsString('contract.requiredVariables.filter', $guard);
-        self::assertStringContainsString('SKIP:', $guard);
-        self::assertStringContainsString('pm.execution.skipRequest();', $guard);
-
-        foreach (self::REQUEST_MATRIX as $path => $contract) {
-            $item = $requests[$path];
-            $name = (string)$item['name'];
-            $canonical = $contracts[$name];
-            $description = (string)($item['request']['description'] ?? '');
-            $test = $this->script($item, 'test');
-
-            self::assertSame([], array_values(array_filter(
-                $item['event'] ?? [],
-                static fn(array $event): bool => ($event['listen'] ?? null) === 'prerequest',
-            )), $path);
-            self::assertSame($contract['auth'], $canonical['auth'] ?? null, $path);
-            self::assertSame($contract['status'], $canonical['expectedStatus'] ?? null, $path);
-            self::assertSame($contract['auth'], $this->authenticationMode($item), $path);
-            self::assertStringContainsString(
-                'API modes: ' . $this->descriptionValues($canonical['apiModes'] ?? []),
-                $description,
-                $path,
-            );
-            self::assertStringContainsString(
-                'Editions: ' . $this->descriptionValues($canonical['editionModes'] ?? []),
-                $description,
-                $path,
-            );
-            self::assertStringContainsString(
-                'Required variables: ' . $this->descriptionValues($canonical['requiredVariables'] ?? []),
-                $description,
-                $path,
-            );
-
-            if ($contract['status'] === 'rate') {
-                self::assertStringContainsString('pm.info.iteration < allowedRequests ? 200 : 429', $test, $path);
-                self::assertStringContainsString('pm.response.to.have.status(expectedStatus)', $test, $path);
-                self::assertTrue((bool)($canonical['rateRunner'] ?? false), $path);
-                self::assertStringContainsString('Expected: exact `200` before the declared cap, then exact `429`.', $description, $path);
-                continue;
-            }
-
-            self::assertStringContainsString("Expected: exact `{$contract['status']}`.", $description, $path);
-            self::assertStringContainsString("pm.response.to.have.status({$contract['status']})", $test, $path);
-            self::assertDoesNotMatchRegularExpression('/\[(?:200|204|400|401|403|429)[^\]]*,/', $test, $path);
-        }
-    }
-
-    public function testAuthenticationAndEditionAxesAreIndependent(): void
-    {
-        $contracts = $this->requestContracts();
-
-        foreach ([
-            'Search - public key (enforcement enabled)',
-            'Search - public key with Origin fallback',
-            'Search - canonical widget-style response',
-            'Search - no indices uses public-key scope',
-            'Search - scoped site',
-            'Autocomplete - public key (enforcement enabled)',
-            'Autocomplete - public key with Origin fallback',
-            'Autocomplete - only suggestions',
-            'Autocomplete - only results',
-            'Missing public key - exact 401',
-            'Invalid public key - exact 401',
-            'Public key with disallowed Referer - exact 403',
-            'Public key with disallowed Origin - exact 403',
-            'Public key with out-of-scope index - exact 403',
-            'Public key with unknown site - exact 400',
-        ] as $name) {
-            self::assertSame(['keyed'], $contracts[$name]['apiModes'] ?? null, $name);
-            self::assertSame(['standard', 'pro'], $contracts[$name]['editionModes'] ?? null, $name);
-        }
-
-        foreach ([
-            'Search - anonymous (enforcement disabled)',
-            'Autocomplete - anonymous (enforcement disabled)',
-        ] as $name) {
-            self::assertSame(['anonymous'], $contracts[$name]['apiModes'] ?? null, $name);
-            self::assertSame(['standard', 'pro'], $contracts[$name]['editionModes'] ?? null, $name);
-        }
-
-        foreach ([
-            'Track search - Standard pre-parse no-op',
-            'Track click - Standard pre-parse no-op',
-        ] as $name) {
-            self::assertSame(['anonymous', 'keyed', 'rate-limit'], $contracts[$name]['apiModes'] ?? null, $name);
-            self::assertSame(['standard'], $contracts[$name]['editionModes'] ?? null, $name);
-            self::assertSame(204, $contracts[$name]['expectedStatus'] ?? null, $name);
-        }
-
-        foreach ([
-            'Track search - Pro public key',
-            'Track search - Pro same-origin Origin',
-            'Track click - Pro public key',
-            'Track search - Pro disallowed Origin',
-            'Track search preflight - Pro same-origin Origin',
-        ] as $name) {
-            self::assertSame(['keyed'], $contracts[$name]['apiModes'] ?? null, $name);
-            self::assertSame(['pro'], $contracts[$name]['editionModes'] ?? null, $name);
-        }
-
-        $rate = $contracts['Rate-limit Runner - deterministic 200 then 429'];
-        self::assertSame(['rate-limit'], $rate['apiModes'] ?? null);
-        self::assertSame(['standard', 'pro'], $rate['editionModes'] ?? null);
-        self::assertTrue((bool)($rate['rateRunner'] ?? false));
-    }
-
-    public function testPositiveExamplesUseOnlyPublicKeysAndServerKeyTeachingIsAbsent(): void
-    {
-        $combined = implode("\n", [
-            $this->file(self::COLLECTION_FILE),
-            $this->file(self::ENVIRONMENT_FILE),
-            $this->file(self::README_FILE),
-            $this->file(self::FIXTURE_FILE),
-        ]);
-
-        self::assertStringNotContainsString('server_api_key', $combined);
-        self::assertStringNotContainsString('server key example', strtolower($combined));
-        self::assertStringNotContainsString('server keys skip', strtolower($combined));
-        self::assertStringNotContainsString('sm_srv_', $combined);
-        self::assertStringNotContainsString('fixture' . '_mode', $combined);
-        self::assertStringNotContainsString('keyed' . '-pro', $combined);
-
-        foreach ($this->requestsByPath() as $path => $item) {
-            $auth = $item['request']['auth'] ?? null;
-            if (is_array($auth) && ($auth['type'] ?? null) === 'apikey') {
-                $value = $this->authValue($auth, 'value');
-                self::assertContains($value, ['{{invalid_api_key}}', '{{rate_limit_api_key}}'], $path);
-            }
-        }
-    }
-
-    public function testEnvironmentHasOneConsumedHarmlessContractForAllModes(): void
+    public function testShippedEnvironmentIsSimpleOrderedAndContainsNoFixtureDefaults(): void
     {
         $environment = $this->environment();
         $values = [];
+
         foreach ($environment['values'] ?? [] as $variable) {
             $key = (string)($variable['key'] ?? '');
             self::assertArrayNotHasKey($key, $values, "Duplicate environment variable: {$key}");
             self::assertTrue((bool)($variable['enabled'] ?? false), $key);
+            self::assertNotSame('', trim((string)($variable['description'] ?? '')), $key);
             $values[$key] = $variable;
         }
 
         self::assertSame(self::ENVIRONMENT_VARIABLES, array_keys($values));
-        self::assertSame('', $values['api_mode']['value']);
-        self::assertSame('', $values['edition_mode']['value']);
         self::assertSame('https://yoursite.com', $values['base_url']['value']);
-        self::assertSame('', $values['api_key']['value']);
-        self::assertSame('', $values['rate_limit_api_key']['value']);
-        self::assertSame('sm_pub_invalidplaceholder', $values['invalid_api_key']['value']);
-        self::assertSame('secret', $values['api_key']['type']);
-        self::assertSame('secret', $values['rate_limit_api_key']['type']);
-        self::assertSame('secret', $values['invalid_api_key']['type']);
+        self::assertSame('test', $values['query']['value']);
+        self::assertSame('', $values['public_api_key']['value']);
+        self::assertSame('secret', $values['public_api_key']['type']);
+        foreach (['index_handle', 'index_handles', 'site_id', 'element_id'] as $optional) {
+            self::assertSame('', $values[$optional]['value'], $optional);
+        }
+        foreach (array_slice(self::ENVIRONMENT_VARIABLES, 7) as $developerVariable) {
+            self::assertStringContainsString(
+                'Developer Validation only',
+                (string)$values[$developerVariable]['description'],
+                $developerVariable,
+            );
+        }
 
-        $environmentSource = $this->file(self::ENVIRONMENT_FILE);
-        self::assertStringNotContainsString('localhost', $environmentSource);
-        self::assertStringNotContainsString('.ddev.site', $environmentSource);
-        self::assertStringNotContainsString('.internal', $environmentSource);
+        $shipped = $this->shippedSource();
+        foreach (['postman-fixture', 'api_mode', 'edition_mode', 'request_contracts'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $shipped, $forbidden);
+        }
+        self::assertStringNotContainsString('localhost', $this->file(self::ENVIRONMENT_FILE));
+        self::assertStringNotContainsString('.ddev.site', $this->file(self::ENVIRONMENT_FILE));
+        self::assertStringNotContainsString('.internal', $this->file(self::ENVIRONMENT_FILE));
+    }
 
+    public function testEveryReferencedEnvironmentVariableIsDeclaredAndConsumed(): void
+    {
         $collectionSource = $this->file(self::COLLECTION_FILE);
         preg_match_all('/\{\{([a-zA-Z0-9_]+)\}\}/', $collectionSource, $templateMatches);
         preg_match_all("/pm\\.environment\\.get\\('([a-zA-Z0-9_]+)'\\)/", $collectionSource, $scriptMatches);
-        $contracts = $this->requestContracts();
-        $contractVariables = [];
-        foreach ($contracts as $contract) {
-            $contractVariables = array_merge($contractVariables, $contract['requiredVariables'] ?? []);
-        }
-        $referenced = array_values(array_unique(array_merge(
-            $templateMatches[1],
-            $scriptMatches[1],
-            $contractVariables,
-        )));
+        $referenced = array_values(array_unique(array_merge($templateMatches[1], $scriptMatches[1])));
         sort($referenced);
         $declared = self::ENVIRONMENT_VARIABLES;
         sort($declared);
 
-        self::assertSame($declared, $referenced, 'Every referenced variable must exist and every shipped variable must have a consumer.');
+        self::assertSame($declared, $referenced);
     }
 
-    public function testRoutesParametersBodiesAndHeadersMatchTheControllers(): void
+    public function testEveryRequestHasASelfDescribingExecutableContract(): void
+    {
+        foreach ($this->requestsByPath() as $path => $item) {
+            $request = $item['request'] ?? [];
+            $requestSource = json_encode($request, JSON_THROW_ON_ERROR);
+            $testEvents = $this->events($item, 'test');
+
+            self::assertNotSame('', trim((string)($item['name'] ?? '')), $path);
+            self::assertNotSame('', trim((string)($request['description'] ?? '')), $path);
+            self::assertContains($request['method'] ?? null, ['GET', 'POST'], $path);
+            self::assertStringStartsWith('{{base_url}}/actions/search-manager/', $this->rawUrl($item), $path);
+            self::assertIsArray($request['header'] ?? null, $path);
+            self::assertSame([], $item['response'] ?? null, $path);
+            self::assertCount(1, $testEvents, $path);
+            self::assertNotSame('', trim(implode("\n", $testEvents[0]['script']['exec'] ?? [])), $path);
+            self::assertStringNotContainsString('api_mode', $requestSource, $path);
+            self::assertStringNotContainsString('edition_mode', $requestSource, $path);
+            self::assertStringNotContainsString('postman-fixture', $requestSource, $path);
+            self::assertStringNotContainsString('server_api_key', $requestSource, $path);
+            self::assertStringNotContainsString('to.include(pm.response.code)', $this->script($item, 'test'), $path);
+        }
+    }
+
+    public function testStartHereNeedsNoModesOrIndexScopeAndExplainsValidEmptyResults(): void
     {
         $requests = $this->requestsByPath();
-        $searchQueryKeys = [];
-        $autocompleteQueryKeys = [];
+
+        foreach ([
+            'Start Here > Search all allowed indices',
+            'Start Here > Autocomplete across all allowed indices',
+        ] as $path) {
+            $item = $requests[$path];
+            $url = $this->rawUrl($item);
+            self::assertStringContainsString('{{base_url}}', $url, $path);
+            self::assertStringContainsString('q={{query}}', $url, $path);
+            self::assertStringNotContainsString('indexHandles=', $url, $path);
+            self::assertSame([], $this->events($item, 'prerequest'), $path);
+            self::assertStringContainsString('zero', strtolower((string)$item['request']['description']), $path);
+            $test = $this->script($item, 'test');
+            self::assertStringContainsString('pm.response.code === 200', $test, $path);
+            self::assertStringContainsString('pm.response.code === 401', $test, $path);
+            self::assertStringContainsString('public_api_key', $test, $path);
+            self::assertStringContainsString('zero', strtolower($test), $path);
+        }
+
+        self::assertStringContainsString(
+            'skipAnalytics=1',
+            $this->rawUrl($requests['Start Here > Search all allowed indices']),
+        );
+        self::assertStringNotContainsString(
+            'skipAnalytics',
+            $this->rawUrl($requests['Start Here > Autocomplete across all allowed indices']),
+        );
+    }
+
+    public function testSearchAndAutocompleteRepresentOmittedSingularAndMultipleScopesConsistently(): void
+    {
+        $requests = $this->requestsByPath();
+
+        self::assertStringContainsString(
+            'indexHandles={{index_handle}}',
+            $this->rawUrl($requests['Search Examples > Search one index']),
+        );
+        self::assertStringContainsString(
+            'indexHandles={{index_handles}}',
+            $this->rawUrl($requests['Search Examples > Search multiple indices']),
+        );
+        self::assertStringNotContainsString(
+            'indexHandles=',
+            $this->rawUrl($requests['Search Examples > Search one site']),
+        );
+        self::assertStringContainsString(
+            'siteId={{site_id}}',
+            $this->rawUrl($requests['Search Examples > Search one site']),
+        );
+        $multiSite = $this->rawUrl($requests['Search Examples > Search multiple indices within one site']);
+        self::assertStringContainsString('indexHandles={{index_handles}}', $multiSite);
+        self::assertStringContainsString('siteId={{site_id}}', $multiSite);
+        self::assertStringContainsString(
+            'indexHandles={{index_handles}}',
+            $this->rawUrl($requests['Search Examples > Canonical widget-style response']),
+        );
+
+        self::assertStringContainsString(
+            'indexHandles={{index_handle}}',
+            $this->rawUrl($requests['Autocomplete Examples > Autocomplete one index']),
+        );
+        self::assertStringContainsString(
+            'indexHandles={{index_handles}}',
+            $this->rawUrl($requests['Autocomplete Examples > Autocomplete multiple indices']),
+        );
+        foreach (['Suggestions only', 'Results only'] as $name) {
+            self::assertStringNotContainsString(
+                'indexHandles=',
+                $this->rawUrl($requests["Autocomplete Examples > {$name}"]),
+                $name,
+            );
+        }
 
         foreach ($requests as $path => $item) {
-            $request = $item['request'];
-            $rawUrl = (string)($request['url']['raw'] ?? '');
-            self::assertStringStartsWith('{{base_url}}/actions/search-manager/', $rawUrl, $path);
+            $url = $this->rawUrl($item);
+            if (str_contains($url, '/api/search?') && !str_contains($path, 'Developer Validation')) {
+                self::assertStringContainsString('skipAnalytics=1', $url, $path);
+            }
+            self::assertStringNotContainsString('indices=', $url, $path);
+        }
 
-            if (str_contains($rawUrl, '/api/search?')) {
+        self::assertStringContainsString('maximum five', strtolower((string)$this->folder('Search Examples')['description']));
+        self::assertStringContainsString('same omitted, singular', strtolower((string)$this->folder('Autocomplete Examples')['description']));
+    }
+
+    public function testAnalyticsUsesServerResponsesWithoutAnEditionVariable(): void
+    {
+        $requests = $this->requestsByPath();
+        $trackSearch = $requests['Analytics > Track search'];
+        $trackClick = $requests['Analytics > Track click'];
+
+        self::assertSame(
+            ['q', 'resultsCount', 'trigger', 'analyticsSource'],
+            $this->bodyKeys($trackSearch),
+        );
+        self::assertSame(
+            ['elementId', 'query', 'index', 'position'],
+            $this->bodyKeys($trackClick),
+        );
+        self::assertSame([], $this->events($trackSearch, 'prerequest'));
+        self::assertCount(1, $this->events($trackClick, 'prerequest'));
+        self::assertStringContainsString(
+            'const required = ["element_id","index_handle"]',
+            $this->script($trackClick, 'prerequest'),
+        );
+        self::assertStringContainsString(
+            'Set element_id to a real result element ID and index_handle to the enabled index that returned it',
+            $this->script($trackClick, 'prerequest'),
+        );
+
+        $searchTest = $this->script($trackSearch, 'test');
+        self::assertStringContainsString('pm.response.code === 200', $searchTest);
+        self::assertStringContainsString("property('success', true)", $searchTest);
+        self::assertStringContainsString('body.tracked === true', $searchTest);
+        self::assertStringContainsString('body.tracked === false', $searchTest);
+        self::assertStringContainsString('accepted but not recorded under the current Analytics settings', $searchTest);
+        self::assertStringContainsString('pm.response.code === 204', $searchTest);
+        self::assertStringContainsString("pm.expect(pm.response.text()).to.eql('')", $searchTest);
+        self::assertStringContainsString('pm.response.code === 401', $searchTest);
+        self::assertStringContainsString('Set public_api_key to a permitted Search Manager public key', $searchTest);
+        self::assertStringContainsString('pm.expect.fail', $searchTest);
+
+        $clickTest = $this->script($trackClick, 'test');
+        self::assertStringContainsString('pm.response.code === 200', $clickTest);
+        self::assertStringContainsString("property('success', true)", $clickTest);
+        self::assertStringContainsString('pm.response.code === 204', $clickTest);
+        self::assertStringContainsString('pm.response.code === 401', $clickTest);
+        self::assertStringContainsString('Set public_api_key to a permitted Search Manager public key', $clickTest);
+        self::assertStringContainsString('pm.expect.fail', $clickTest);
+        self::assertStringContainsString(
+            'A 200 proves acceptance only, not persistence',
+            (string)$trackClick['request']['description'],
+        );
+
+        foreach ([
+            self::README_FILE,
+            'docs/resources/testing-tools.md',
+            'docs/feature-tour/utilities.md',
+        ] as $documentation) {
+            $source = $this->file($documentation);
+            self::assertStringContainsString('accepted but not recorded', $source, $documentation);
+            self::assertStringContainsString('acceptance only', $source, $documentation);
+            self::assertStringContainsString('public_api_key', $source, $documentation);
+        }
+    }
+
+    public function testDeveloperValidationIsIsolatedAndUsesExactDisposableContracts(): void
+    {
+        $requests = $this->requestsByPath();
+        $developerFolder = $this->folder('Developer Validation — Optional');
+        self::assertStringContainsString('disposable local', strtolower((string)$developerFolder['description']));
+        self::assertStringContainsString('never use production', strtolower((string)$developerFolder['description']));
+
+        $statuses = [
+            'Missing public API key' => 401,
+            'Invalid public API key' => 401,
+            'Disallowed Referer' => 403,
+            'Disallowed Origin' => 403,
+            'Out-of-scope index' => 403,
+            'Unknown site' => 400,
+        ];
+        foreach ($statuses as $name => $status) {
+            $path = "Developer Validation — Optional > {$name}";
+            self::assertStringContainsString(
+                "pm.response.to.have.status({$status})",
+                $this->script($requests[$path], 'test'),
+                $path,
+            );
+            self::assertCount(1, $this->events($requests[$path], 'prerequest'), $path);
+            self::assertStringContainsString('SKIP:', $this->script($requests[$path], 'prerequest'), $path);
+            self::assertStringContainsString(
+                "pm.environment.get('developer_api_key_enforcement_enabled')",
+                $this->script($requests[$path], 'prerequest'),
+                $path,
+            );
+            self::assertStringContainsString(
+                "missing.push('developer_api_key_enforcement_enabled=yes')",
+                $this->script($requests[$path], 'prerequest'),
+                $path,
+            );
+        }
+
+        self::assertSame('noauth', $requests['Developer Validation — Optional > Missing public API key']['request']['auth']['type'] ?? null);
+        self::assertSame(
+            'sm_pub_invalid_example',
+            $this->authValue(
+                $requests['Developer Validation — Optional > Invalid public API key']['request']['auth'],
+                'value',
+            ),
+        );
+        self::assertSame(
+            'https://blocked.invalid/',
+            $this->headerValue($requests['Developer Validation — Optional > Disallowed Referer'], 'Referer'),
+        );
+        self::assertSame(
+            'https://blocked.invalid',
+            $this->headerValue($requests['Developer Validation — Optional > Disallowed Origin'], 'Origin'),
+        );
+        self::assertStringContainsString(
+            'indexHandles={{developer_blocked_index_handle}}',
+            $this->rawUrl($requests['Developer Validation — Optional > Out-of-scope index']),
+        );
+        self::assertStringContainsString(
+            'siteId=999999999',
+            $this->rawUrl($requests['Developer Validation — Optional > Unknown site']),
+        );
+
+        $rate = $requests['Developer Validation — Optional > Deterministic rate-limit validation'];
+        self::assertSame(
+            '{{developer_rate_limit_api_key}}',
+            $this->authValue($rate['request']['auth'], 'value'),
+        );
+        self::assertStringContainsString('pm.info.iterationCount !== iterations', $this->script($rate, 'prerequest'));
+        self::assertStringContainsString('pm.info.iteration < allowed ? 200 : 429', $this->script($rate, 'test'));
+        self::assertStringContainsString('Runner-only', (string)$rate['request']['description']);
+        self::assertStringContainsString('skipAnalytics=1', $this->rawUrl($rate));
+
+        foreach (['Start Here', 'Search Examples', 'Autocomplete Examples', 'Analytics'] as $customerFolder) {
+            self::assertStringNotContainsString(
+                'developer_',
+                json_encode($this->folder($customerFolder), JSON_THROW_ON_ERROR),
+                $customerFolder,
+            );
+        }
+    }
+
+    public function testRoutesBodiesAndAuthenticationMatchTheControllers(): void
+    {
+        foreach ($this->requestsByPath() as $path => $item) {
+            $request = $item['request'];
+            $url = $this->rawUrl($item);
+            self::assertStringStartsWith('{{base_url}}/actions/search-manager/', $url, $path);
+
+            if (str_contains($url, '/api/search?')) {
                 self::assertSame('GET', $request['method'] ?? null, $path);
-                self::assertStringContainsString('/api/search?', $rawUrl, $path);
-                self::assertStringContainsString('q={{query}}', $rawUrl, $path);
-                $searchQueryKeys = array_merge($searchQueryKeys, array_column($request['url']['query'] ?? [], 'key'));
+                self::assertStringContainsString('q={{query}}', $url, $path);
             }
-            if (str_contains($rawUrl, '/api/autocomplete?')) {
+            if (str_contains($url, '/api/autocomplete?')) {
                 self::assertSame('GET', $request['method'] ?? null, $path);
-                self::assertStringContainsString('/api/autocomplete?', $rawUrl, $path);
-                self::assertStringContainsString('q={{query}}', $rawUrl, $path);
-                $autocompleteQueryKeys = array_merge($autocompleteQueryKeys, array_column($request['url']['query'] ?? [], 'key'));
+                self::assertStringContainsString('q={{query}}', $url, $path);
             }
-            if (str_contains($rawUrl, '/search/track-search')) {
-                self::assertContains($request['method'] ?? null, ['POST', 'OPTIONS'], $path);
-            }
-            if (str_contains($rawUrl, '/search/track-click')) {
+            if (str_contains($url, '/search/track-')) {
                 self::assertSame('POST', $request['method'] ?? null, $path);
             }
         }
 
-        self::assertSame(
-            [
-                'indexHandles',
-                'q',
-                'resultsLimit',
-                'resultsRequireUrl',
-                'siteId',
-                'skipAnalytics',
-                'snippetCleanMarkdown',
-                'snippetIncludeCodeBlocks',
-                'snippetMaxLength',
-                'snippetMode',
-            ],
-            $this->sortedUnique($searchQueryKeys),
-        );
-        self::assertSame(
-            ['indexHandles', 'only', 'q', 'resultsLimit'],
-            $this->sortedUnique($autocompleteQueryKeys),
-        );
-
-        self::assertSame(
-            ['q', 'indexHandles', 'resultsCount', 'trigger', 'analyticsSource', 'siteId', 'cached', 'took'],
-            $this->bodyKeys($requests['Analytics Tracking > Track search - Pro public key']),
-        );
-        self::assertSame(
-            ['elementId', 'query', 'index', 'position'],
-            $this->bodyKeys($requests['Analytics Tracking > Track click - Pro public key']),
-        );
-        self::assertSame(
-            $this->bodyKeys($requests['Analytics Tracking > Track search - Pro public key']),
-            $this->bodyKeys($requests['Analytics Tracking > Track search - Standard pre-parse no-op']),
-        );
-        self::assertSame(
-            $this->bodyKeys($requests['Analytics Tracking > Track search - Pro public key']),
-            $this->bodyKeys($requests['Analytics Tracking > Track search - Pro same-origin Origin']),
-        );
-        self::assertSame(
-            $this->bodyKeys($requests['Analytics Tracking > Track search - Pro public key']),
-            $this->bodyKeys($requests['Analytics Tracking > Track search - Pro disallowed Origin']),
-        );
-        self::assertSame(
-            $this->bodyKeys($requests['Analytics Tracking > Track click - Pro public key']),
-            $this->bodyKeys($requests['Analytics Tracking > Track click - Standard pre-parse no-op']),
-        );
-        self::assertSame(
-            [],
-            $this->bodyKeys($requests['Analytics Tracking > Track search preflight - Pro same-origin Origin']),
-        );
-        self::assertSame(
-            [],
-            $this->bodyKeys($requests['Enforcement Checks > Public key with disallowed Origin - exact 403']),
-        );
-
-        self::assertSame(
-            '{{blocked_referrer}}',
-            $this->headerValue($requests['Enforcement Checks > Public key with disallowed Referer - exact 403'], 'Referer'),
-        );
-        self::assertSame(
-            '{{blocked_origin}}',
-            $this->headerValue($requests['Enforcement Checks > Public key with disallowed Origin - exact 403'], 'Origin'),
-        );
-        self::assertSame(
-            '{{blocked_origin}}',
-            $this->headerValue($requests['Analytics Tracking > Track search - Pro disallowed Origin'], 'Origin'),
-        );
-        self::assertSame(
-            '{{origin}}',
-            $this->headerValue($requests['Analytics Tracking > Track search - Pro same-origin Origin'], 'Origin'),
-        );
-        self::assertNull(
-            $this->headerValue($requests['Analytics Tracking > Track search - Pro same-origin Origin'], 'Referer'),
-        );
-
-        self::assertStringContainsString(
-            'indexHandles={{blocked_index_handle}}',
-            (string)$requests['Enforcement Checks > Public key with out-of-scope index - exact 403']['request']['url']['raw'],
-        );
-        self::assertStringContainsString(
-            'siteId={{unknown_site_id}}',
-            (string)$requests['Enforcement Checks > Public key with unknown site - exact 400']['request']['url']['raw'],
-        );
+        self::assertSame('apikey', $this->collection()['auth']['type'] ?? null);
+        foreach ([
+            'Developer Validation — Optional > Invalid public API key',
+            'Developer Validation — Optional > Disallowed Referer',
+            'Developer Validation — Optional > Disallowed Origin',
+            'Developer Validation — Optional > Out-of-scope index',
+            'Developer Validation — Optional > Unknown site',
+            'Developer Validation — Optional > Deterministic rate-limit validation',
+        ] as $path) {
+            self::assertSame('apikey', $this->requestsByPath()[$path]['request']['auth']['type'] ?? null, $path);
+        }
     }
 
-    public function testTrackingAndRateContractsArePinnedWithoutBroadAllowlists(): void
+    public function testInternalFixtureKeepsDeterministicModesWithoutLeakingThemToShippedFiles(): void
     {
-        $requests = $this->requestsByPath();
-        $source = $this->file(self::COLLECTION_FILE);
-
-        self::assertStringNotContainsString('to.include(pm.response.code)', $source);
-        self::assertDoesNotMatchRegularExpression('/expect\(\[(?:200|204|400|401|403|429)/', $source);
+        $fixture = $this->file(self::FIXTURE_FILE);
 
         foreach ([
-            'Analytics Tracking > Track search - Standard pre-parse no-op',
-            'Analytics Tracking > Track click - Standard pre-parse no-op',
-        ] as $path) {
-            self::assertSame('noauth', $requests[$path]['request']['auth']['type'] ?? null);
-            self::assertStringContainsString('pm.response.to.have.status(204)', $this->script($requests[$path], 'test'));
-            self::assertStringContainsString("pm.expect(pm.response.text()).to.eql('')", $this->script($requests[$path], 'test'));
-        }
-
-        foreach ([
-            'Analytics Tracking > Track search - Pro public key',
-            'Analytics Tracking > Track search - Pro same-origin Origin',
-            'Analytics Tracking > Track click - Pro public key',
-        ] as $path) {
-            self::assertStringContainsString('pm.response.to.have.status(200)', $this->script($requests[$path], 'test'));
-            self::assertStringContainsString("'success'", $this->script($requests[$path], 'test'));
+            'POSTMAN_FIXTURE_INDEX',
+            'POSTMAN_FIXTURE_SECOND_INDEX',
+            'POSTMAN_FIXTURE_BLOCKED_INDEX',
+            'POSTMAN_FIXTURE_RATE_LIMIT = 3',
+            'POSTMAN_FIXTURE_ITERATIONS = 5',
+            "['anonymous', 'keyed', 'rate-limit']",
+            '[SearchManager::EDITION_STANDARD, SearchManager::EDITION_PRO]',
+            "['analytics-enabled', 'analytics-disabled']",
+            "applyApiModeSettings('anonymous'",
+            'applyApiModeSettings($apiMode',
+            "'enableAnalytics' => \$analyticsEnabled ? 1 : 0",
+            'applyAnalyticsConfigMode($analyticsEnabled',
+            'restoreAnalyticsConfig($state)',
+            "'analyticsConfigRestored' => true",
+            'restoreManagedSettings($state)',
+            'array_sum($counts) !== 0',
+        ] as $contract) {
+            self::assertStringContainsString($contract, $fixture, $contract);
         }
 
         self::assertStringContainsString(
-            'pm.response.to.have.status(403)',
-            $this->script($requests['Analytics Tracking > Track search - Pro disallowed Origin'], 'test'),
+            "'index_handles' => POSTMAN_FIXTURE_INDEX . ',' . POSTMAN_FIXTURE_SECOND_INDEX",
+            $fixture,
         );
-
-        $rate = $requests['Enforcement Checks > Rate-limit Runner - deterministic 200 then 429'];
-        $guard = $this->collectionScript('prerequest');
-        self::assertSame('{{rate_limit_api_key}}', $this->authValue($rate['request']['auth'], 'value'));
-        self::assertStringContainsString('rate_limit_allowed_requests', $this->script($rate, 'test'));
-        self::assertStringContainsString('rate_limit_runner_iterations', $guard);
-        self::assertStringContainsString('pm.info.iterationCount !== requiredIterations', $guard);
-        self::assertStringContainsString('skipAnalytics=1', (string)$rate['request']['url']['raw']);
+        self::assertStringContainsString(
+            "'public_api_key' => \$apiMode === 'anonymous' ? '' : (string)\$state['publicPlaintext']",
+            $fixture,
+        );
+        self::assertStringContainsString(
+            "'developer_blocked_index_handle' => POSTMAN_FIXTURE_BLOCKED_INDEX",
+            $fixture,
+        );
+        self::assertStringContainsString(
+            "'developer_rate_limit_api_key' => (string)\$state['ratePlaintext']",
+            $fixture,
+        );
+        self::assertStringNotContainsString('POSTMAN_FIXTURE', $this->shippedSource());
     }
 
     /**
@@ -572,25 +601,6 @@ final class PostmanArtifactContractTest extends TestCase
     /**
      * @return array<string, array<string, mixed>>
      */
-    private function requestContracts(): array
-    {
-        foreach ($this->collection()['variable'] ?? [] as $variable) {
-            if (($variable['key'] ?? null) !== 'request_contracts') {
-                continue;
-            }
-
-            $contracts = json_decode((string)($variable['value'] ?? ''), true, 512, JSON_THROW_ON_ERROR);
-            self::assertIsArray($contracts);
-
-            return $contracts;
-        }
-
-        self::fail('Missing collection request_contracts authority.');
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
     private function requestsByPath(): array
     {
         $requests = [];
@@ -601,6 +611,20 @@ final class PostmanArtifactContractTest extends TestCase
         }
 
         return $requests;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function folder(string $name): array
+    {
+        foreach ($this->collection()['item'] ?? [] as $folder) {
+            if (($folder['name'] ?? null) === $name) {
+                return $folder;
+            }
+        }
+
+        self::fail("Missing collection folder {$name}.");
     }
 
     /**
@@ -622,18 +646,38 @@ final class PostmanArtifactContractTest extends TestCase
         return $contents;
     }
 
+    private function shippedSource(): string
+    {
+        return implode("\n", [
+            $this->file(self::COLLECTION_FILE),
+            $this->file(self::ENVIRONMENT_FILE),
+            $this->file(self::README_FILE),
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     * @return list<array<string, mixed>>
+     */
+    private function events(array $item, string $listen): array
+    {
+        return array_values(array_filter(
+            $item['event'] ?? [],
+            static fn(array $event): bool => ($event['listen'] ?? null) === $listen,
+        ));
+    }
+
     /**
      * @param array<string, mixed> $item
      */
     private function script(array $item, string $listen): string
     {
-        foreach ($item['event'] ?? [] as $event) {
-            if (($event['listen'] ?? null) === $listen) {
-                return implode("\n", $event['script']['exec'] ?? []);
-            }
+        $events = $this->events($item, $listen);
+        if ($events === []) {
+            self::fail("Missing {$listen} script for request " . ($item['name'] ?? '<unknown>'));
         }
 
-        self::fail("Missing {$listen} script for request " . ($item['name'] ?? '<unknown>'));
+        return implode("\n", $events[0]['script']['exec'] ?? []);
     }
 
     private function collectionScript(string $listen): string
@@ -648,6 +692,14 @@ final class PostmanArtifactContractTest extends TestCase
     }
 
     /**
+     * @param array<string, mixed> $item
+     */
+    private function rawUrl(array $item): string
+    {
+        return (string)($item['request']['url'] ?? '');
+    }
+
+    /**
      * @param array<string, mixed> $auth
      */
     private function authValue(array $auth, string $key): ?string
@@ -659,51 +711,6 @@ final class PostmanArtifactContractTest extends TestCase
         }
 
         return null;
-    }
-
-    /**
-     * @param array<string, mixed> $item
-     */
-    private function authenticationMode(array $item): string
-    {
-        $auth = $item['request']['auth'] ?? null;
-        if (!is_array($auth)) {
-            return 'inherited';
-        }
-
-        if (($auth['type'] ?? null) === 'noauth') {
-            return 'noauth';
-        }
-
-        if (($auth['type'] ?? null) === 'apikey') {
-            return match ($this->authValue($auth, 'value')) {
-                '{{invalid_api_key}}' => 'invalid_api_key',
-                '{{rate_limit_api_key}}' => 'rate_limit_api_key',
-                default => 'unexpected_apikey',
-            };
-        }
-
-        return 'unexpected_auth';
-    }
-
-    /**
-     * @param list<string> $values
-     * @return list<string>
-     */
-    private function sortedUnique(array $values): array
-    {
-        $values = array_values(array_unique($values));
-        sort($values);
-
-        return $values;
-    }
-
-    /**
-     * @param list<string> $values
-     */
-    private function descriptionValues(array $values): string
-    {
-        return implode(', ', array_map(static fn(string $value): string => "`{$value}`", $values)) . '.';
     }
 
     /**

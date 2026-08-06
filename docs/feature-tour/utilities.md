@@ -100,7 +100,11 @@ Use this when:
 
 ## Developer resources
 
-Download the bundled Postman collection and environment from the Utilities page, or from **Settings → Test**. The ZIP contains the collection, environment template, and README so developers can test the Search Manager API outside Craft. See [Testing tools](../resources/testing-tools.md) for the full Settings → Test workflow, including live search, autocomplete, promotions, query rules, debug metadata, and backend diagnostics.
+Download the bundled Postman collection and environment from the Utilities page, or from **Settings → Test**. The ZIP contains the collection, environment template, and README so developers can test the Search Manager API outside Craft.
+
+The imported **Start Here** folder needs only your site URL and a known indexed query; the public API key is optional unless the running installation requires one. Search, Autocomplete, and Analytics examples follow the server's real authentication, index-scope, edition, and settings behavior without asking you to declare a mode. Track Search distinguishes recorded from accepted but not recorded responses, while Track Click proves acceptance only and requires both the result element ID and index handle. Analytics `401` responses tell you to set `public_api_key` and retry. Strict security and rate-limit checks are isolated in **Developer Validation — Optional** for disposable local data, and every request there requires explicit confirmation that API-key enforcement is enabled plus its own prerequisites.
+
+See [Testing tools](../resources/testing-tools.md) for the full Settings → Test workflow, Postman folder guide, and safety boundary, including live search, autocomplete, promotions, query rules, debug metadata, and backend diagnostics.
 
 ## Permissions
 
