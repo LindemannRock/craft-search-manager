@@ -16,42 +16,54 @@ const cssTextPlugin = {
     },
 };
 
-// Build options for SearchModalWidget
-const modalOptions = {
-    entryPoints: [path.join(__dirname, 'src/widgets/SearchModalWidget.js')],
-    bundle: true,
-    format: 'iife',
-    globalName: 'SearchModalWidget',
-    plugins: [cssTextPlugin],
-    footer: {
-        // Auto-register the custom element
-        js: `if(typeof customElements!=='undefined'&&!customElements.get('search-modal')){customElements.define('search-modal',SearchModalWidget.default);}`,
+const productionOptions = {
+    minify: true,
+    sourcemap: false,
+    tsconfigRaw: {
+        compilerOptions: {
+            alwaysStrict: false,
+        },
     },
 };
 
-// Build options for standalone Highlighter utility
-const highlighterOptions = {
-    entryPoints: [path.join(__dirname, 'src/modules/Highlighter.js')],
-    bundle: true,
-    format: 'iife',
-    globalName: 'SearchManagerHighlighter',
-    footer: {
-        // Expose named exports on the global: highlight, escapeHtml, escapeRegex, create, parseQuery
-        js: [
-            'if(typeof window!=="undefined"){',
-            '  var _h=SearchManagerHighlighter;',
-            '  window.SearchManagerHighlighter={',
-            '    highlight:_h.highlightMatches,',
-            '    escapeHtml:_h.escapeHtml,',
-            '    escapeRegex:_h.escapeRegex,',
-            '    create:_h.createHighlighter,',
-            '    parseQuery:_h.parseQueryTerms,',
-            '    getHitTerms:_h.getHitHighlightTerms',
-            '  };',
-            '}',
-        ].join(''),
-    },
-};
+function getModalOptions(sourceRoot) {
+    return {
+        entryPoints: [path.join(sourceRoot, 'widgets/SearchModalWidget.js')],
+        bundle: true,
+        format: 'iife',
+        globalName: 'SearchModalWidget',
+        plugins: [cssTextPlugin],
+        footer: {
+            // Auto-register the custom element
+            js: `if(typeof customElements!=='undefined'&&!customElements.get('search-modal')){customElements.define('search-modal',SearchModalWidget.default);}`,
+        },
+    };
+}
+
+function getHighlighterOptions(sourceRoot) {
+    return {
+        entryPoints: [path.join(sourceRoot, 'modules/Highlighter.js')],
+        bundle: true,
+        format: 'iife',
+        globalName: 'SearchManagerHighlighter',
+        footer: {
+            // Expose named exports on the global: highlight, escapeHtml, escapeRegex, create, parseQuery
+            js: [
+                'if(typeof window!=="undefined"){',
+                '  var _h=SearchManagerHighlighter;',
+                '  window.SearchManagerHighlighter={',
+                '    highlight:_h.highlightMatches,',
+                '    escapeHtml:_h.escapeHtml,',
+                '    escapeRegex:_h.escapeRegex,',
+                '    create:_h.createHighlighter,',
+                '    parseQuery:_h.parseQueryTerms,',
+                '    getHitTerms:_h.getHitHighlightTerms',
+                '  };',
+                '}',
+            ].join(''),
+        },
+    };
+}
 
 function getOutputPaths(outputRoot = path.resolve(__dirname, '..')) {
     return {
@@ -62,10 +74,13 @@ function getOutputPaths(outputRoot = path.resolve(__dirname, '..')) {
 
 async function build({
     mode = process.argv.includes('--watch') ? 'watch' : (process.argv.includes('--dev') ? 'dev' : 'production'),
+    sourceRoot = path.join(__dirname, 'src'),
     outputRoot = path.resolve(__dirname, '..'),
     quiet = false,
 } = {}) {
     const outputPaths = getOutputPaths(outputRoot);
+    const modalOptions = getModalOptions(sourceRoot);
+    const highlighterOptions = getHighlighterOptions(sourceRoot);
     fs.mkdirSync(path.dirname(outputPaths.modal), { recursive: true });
     fs.mkdirSync(path.dirname(outputPaths.highlighter), { recursive: true });
 
@@ -108,14 +123,12 @@ async function build({
             esbuild.build({
                 ...modalOptions,
                 outfile: outputPaths.modal,
-                minify: true,
-                sourcemap: false,
+                ...productionOptions,
             }),
             esbuild.build({
                 ...highlighterOptions,
                 outfile: outputPaths.highlighter,
-                minify: true,
-                sourcemap: false,
+                ...productionOptions,
             }),
         ]);
         if (!quiet) {

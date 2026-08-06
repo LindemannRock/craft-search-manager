@@ -217,20 +217,53 @@ try {
 async function runBuildParityTests() {
     const firstRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-widget-build-one-'));
     const secondRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-widget-build-two-'));
+    const layoutRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-widget-build-layouts-'));
 
     try {
         const tracked = getOutputPaths();
         const first = await build({ outputRoot: firstRoot, quiet: true });
         const second = await build({ outputRoot: secondRoot, quiet: true });
+        const standaloneProject = path.join(layoutRoot, 'standalone');
+        const standaloneSource = path.join(standaloneProject, 'src/web/assets/searchwidget/src');
+        const strictProject = path.join(layoutRoot, 'strict-project');
+        const strictSource = path.join(strictProject, 'src/web/assets/searchwidget/src');
+        fs.cpSync(SRC_DIR, standaloneSource, { recursive: true });
+        fs.cpSync(SRC_DIR, strictSource, { recursive: true });
+        fs.mkdirSync(path.join(standaloneProject, 'src/config'), { recursive: true });
+        fs.mkdirSync(path.join(strictProject, 'src/config'), { recursive: true });
+        fs.copyFileSync(
+            path.join(__dirname, '..', '..', '..', 'config/style-defaults.json'),
+            path.join(standaloneProject, 'src/config/style-defaults.json'),
+        );
+        fs.copyFileSync(
+            path.join(__dirname, '..', '..', '..', 'config/style-defaults.json'),
+            path.join(strictProject, 'src/config/style-defaults.json'),
+        );
+        fs.writeFileSync(path.join(strictProject, 'tsconfig.json'), JSON.stringify({
+            compilerOptions: { strict: true },
+        }));
+        const standalone = await build({
+            sourceRoot: standaloneSource,
+            outputRoot: path.join(layoutRoot, 'standalone-output'),
+            quiet: true,
+        });
+        const ambientStrict = await build({
+            sourceRoot: strictSource,
+            outputRoot: path.join(layoutRoot, 'strict-output'),
+            quiet: true,
+        });
 
         for (const artifact of ['modal', 'highlighter']) {
             const trackedBytes = fs.readFileSync(tracked[artifact]);
             const firstBytes = fs.readFileSync(first[artifact]);
             const secondBytes = fs.readFileSync(second[artifact]);
+            const standaloneBytes = fs.readFileSync(standalone[artifact]);
+            const ambientStrictBytes = fs.readFileSync(ambientStrict[artifact]);
             const label = path.basename(tracked[artifact]);
 
             test(`${label} matches a fresh canonical production build`, trackedBytes.equals(firstBytes));
             test(`${label} is byte-identical across isolated production builds`, firstBytes.equals(secondBytes));
+            test(`${label} ignores an ambient strict TypeScript project`, standaloneBytes.equals(ambientStrictBytes));
         }
     } catch (error) {
         console.error(error);
@@ -238,6 +271,7 @@ async function runBuildParityTests() {
     } finally {
         fs.rmSync(firstRoot, { recursive: true, force: true });
         fs.rmSync(secondRoot, { recursive: true, force: true });
+        fs.rmSync(layoutRoot, { recursive: true, force: true });
     }
 }
 
