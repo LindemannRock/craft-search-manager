@@ -337,21 +337,43 @@ const hl = SearchManagerHighlighter.create({
 const html = hl('Some text to highlight', 'text');
 ```
 
-#### `parseQuery(query)` @since(5.43.0)
+#### `parseQuery(query, field = null, language = 'en')` @since(5.43.0)
 
-Parse a search query into an array of highlight-ready terms. Handles quoted phrases, boolean operators, field prefixes, wildcards, and boost markers.
+Parse a search query into an array of highlight-ready terms. It handles quoted phrases, boolean operators, field prefixes, wildcards, and boost markers. Pass `field` as `'title'` or `'content'` to retain only terms eligible for that display area. Pass the result language when localized operators may appear; regional forms such as `nl-NL` are normalized to their base language. English operators are always recognized as a fallback.
 
 ```javascript
 SearchManagerHighlighter.parseQuery('"craft cms" OR templates NOT draft');
-// → ['craft cms', 'templates', 'draft']
-// Operator keywords (OR, NOT) are removed, but the highlighter has no negation
-// semantics — the term after NOT is still returned and would still be highlighted.
+// → ['craft cms', 'templates']
 
-SearchManagerHighlighter.parseQuery('title:blog test^2 search*');
-// → ['blog', 'test', 'search']
+SearchManagerHighlighter.parseQuery('offen NICHT entwurf', null, 'de-DE');
+// → ['offen']
+
+SearchManagerHighlighter.parseQuery('title:blog content:tutorial search', 'title');
+// → ['blog', 'search']
 ```
 
-This is the same parser that `highlight()` uses internally when no explicit `terms` are passed. Useful for inspecting what terms will be highlighted or for building custom highlighting logic.
+When `highlight()` has no explicit `terms`, it uses this parser with its default English language. For localized operators, parse with the correct language and pass the returned array through `terms`, or use the hit-aware helper below.
+
+#### `getHitTerms(hit, area, query, displayedText = '')` @since(5.53.2)
+
+Resolve the terms that one result actually matched. Use `area` values `'title'`, `'heading'`, or `'snippet'`; pass `displayedText` for a split heading so terms are projected onto that exact H2/H3 label. The helper reads `hit.language`, `hit.matchedTerms`, and `hit.matchedPhrases`, excludes NOT operands, preserves restrictive field scopes, and returns an empty array when nothing is eligible.
+
+```javascript
+const terms = SearchManagerHighlighter.getHitTerms(
+    hit,
+    hit.sectionType === 'heading' ? 'heading' : 'title',
+    query,
+    hit.sectionTitle || hit.title
+);
+
+const html = SearchManagerHighlighter.highlight(
+    hit.sectionTitle || hit.title,
+    query,
+    { terms }
+);
+```
+
+For OR queries, this highlights only the terms matched by that hit. For split results, it highlights every matched term that occurs in the displayed heading. See [Which query words are highlighted?](../feature-tour/highlighting.md#which-query-words-are-highlighted) for the canonical behavior, including stop words, hyphens, phrases, and field scopes.
 
 ### Phrase highlighting
 
@@ -366,7 +388,7 @@ const html = SearchManagerHighlighter.highlight(hit.title, query, { terms });
 // "Getting Started with <mark>Craft CMS</mark>" (phrase highlighted as one unit)
 ```
 
-Without explicit `terms`, the highlighter parses the query automatically — extracting quoted phrases as single terms, stripping operators (AND/OR/NOT), removing field prefixes and wildcards. This works well for standalone use. When backend-provided terms are available (as in the widget), pass them via `terms` for the most accurate results.
+Without explicit `terms`, the highlighter parses the query automatically — extracting quoted phrases as single terms, removing recognized operators and NOT operands, and stripping field prefixes, wildcards, and boosts. This is convenient for standalone English queries. When backend-provided terms are available, prefer `getHitTerms()` so highlighting follows that result's language, match metadata, phrases, and field scope.
 
 ### Features
 
@@ -396,12 +418,15 @@ document.getElementById('search-input').addEventListener('input', async function
     );
     const data = await response.json();
 
-    document.getElementById('results').innerHTML = data.hits.map(hit =>
-        `<div class="result">
-            <h3>${SearchManagerHighlighter.highlight(hit.title, query)}</h3>
-            <p>${SearchManagerHighlighter.highlight(hit.snippet || '', query)}</p>
-        </div>`
-    ).join('');
+    document.getElementById('results').innerHTML = data.hits.map(hit => {
+        const titleTerms = SearchManagerHighlighter.getHitTerms(hit, 'title', query);
+        const snippetTerms = SearchManagerHighlighter.getHitTerms(hit, 'snippet', query);
+
+        return `<div class="result">
+            <h3>${SearchManagerHighlighter.highlight(hit.title, query, { terms: titleTerms })}</h3>
+            <p>${SearchManagerHighlighter.highlight(hit.snippet || '', query, { terms: snippetTerms })}</p>
+        </div>`;
+    }).join('');
 });
 </script>
 ```

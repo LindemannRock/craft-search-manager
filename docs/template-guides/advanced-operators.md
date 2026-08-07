@@ -14,6 +14,8 @@ Wrap terms in double quotes to find exact sequences:
 
 Only matches documents where "craft" is immediately followed by "cms". Phrase matches are boosted 4x by default.
 
+The phrase check keeps the complete quoted sequence. For example, `"Choose from 7 search backends"` may highlight that whole phrase even when enabled English stop-word filtering would remove `from` from an ordinary unquoted query.
+
 ## NOT operator
 
 Exclude documents containing specific terms:
@@ -71,6 +73,8 @@ Assign custom weights to individual terms:
 
 ## Boolean operators
 
+On built-in backends, unquoted adjacent terms use AND by default. Hyphens and other punctuation are token boundaries, so `built-in backends` is processed as the adjacent terms `built`, `in`, and `backends`; enabled stop-word filtering can then remove `in` before matching.
+
 ```twig
 {# OR: documents with either term #}
 {% set results = craft.searchManager.search('entries', 'craft OR cms') %}
@@ -79,6 +83,8 @@ Assign custom weights to individual terms:
 {% set results = craft.searchManager.search('entries', 'craft AND cms') %}
 {% set results = craft.searchManager.search('entries', 'craft cms') %}
 ```
+
+Highlighting follows each result's effective match metadata: OR results paint only the operands that matched that result, NOT operands are not painted, and explicit `title:`/`content:` scopes remain restrictive. Split H2/H3 result headings paint every matched term that occurs in that displayed heading. See [Which query words are highlighted?](../feature-tour/highlighting.md#which-query-words-are-highlighted) for the canonical examples and stop-word behavior.
 
 ## Localized boolean operators
 

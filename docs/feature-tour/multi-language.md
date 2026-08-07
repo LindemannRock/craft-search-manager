@@ -31,9 +31,14 @@ Japanese note: written Japanese doesn't use whitespace between words and the bui
 
 Other site languages still benefit from tokenisation, indexing, and boolean operator parsing — they just don't filter common words. See [Regional variants](#regional-variants) below to add your own stop word file.
 
+With filtering enabled, stop words are removed from ordinary built-in-backend matching and from the matched-term metadata used by result highlighting. That is why `Choose from 7 search backends` can match while `from` stays unhighlighted. Quoting `"Choose from 7 search backends"` changes it to a contiguous phrase, so the complete matched phrase may be highlighted. Hyphens are token boundaries too: `built-in` becomes `built` and `in`, and English filtering removes `in` from the ordinary match.
+
+See [Which query words are highlighted?](highlighting.md#which-query-words-are-highlighted) for the canonical matching and highlighting rules.
+
 ## Disabling stop words
 
 Stop words can be:
+
 - **Disabled globally**: turn off **Enable Stop Words** in the CP under Search Manager > Settings > Language > Stop Words Filtering, or set `'enableStopWords' => false` in config
 - **Disabled per-index**: toggle it off on the index's edit screen, or set `'disableStopWords' => true` in that index's config
 - **Customized per-region**: create custom [stop word files](#regional-variants)

@@ -14,6 +14,23 @@ There are two independent ways to get this: highlight and snippet text yourself 
 
 Both highlighting and snippets work on any text you pass in — they're not limited to indexed fields. You can highlight titles, body content, custom fields, or any string.
 
+## Which query words are highlighted?
+
+The bundled widget highlights what each result actually matched, not every word the visitor typed. On the built-in MySQL, PostgreSQL, Redis, and File backends, these rules work together:
+
+- Unquoted adjacent terms use **AND** by default. If the strict intersection has no results, the built-in engine can broaden to related results as described in [Multi-word query returns nothing](../resources/troubleshooting.md#multi-word-query-returns-nothing-or-related-results).
+- Hyphens and other punctuation are token boundaries. For example, `built-in` is processed as `built` and `in`.
+- When stop-word filtering is enabled, common words such as `in` and `from` are removed from ordinary matching and therefore from hit-driven highlighting.
+- A quoted query is a contiguous phrase. Its complete matched phrase can be highlighted, including words that would otherwise be stop words.
+
+For example, the unquoted query `Choose from 7 search backends` can match a heading while `from` remains unhighlighted. The quoted query `"Choose from 7 search backends"` requires that contiguous phrase and may highlight the complete phrase.
+
+Boolean and field operators narrow this further. With `alpha OR beta`, each result highlights only the operand or operands that matched that result. A `NOT` operand is excluded and is not highlighted. Explicit `title:` and `content:` scopes remain restrictive: a title-only term does not paint a snippet, and a content-only term does not paint a normal page title.
+
+Split-section results follow the same per-hit rule. Whether the result is a flat split row or an H2/H3 child in a hierarchical layout, every term that actually matched and occurs in the displayed heading is highlighted. The parent page title and snippets keep their own field-specific highlighting.
+
+These query semantics belong to the built-in backends. Algolia, Meilisearch, and Typesense receive the original query unchanged and apply their native query syntax. See [Advanced operators](../template-guides/advanced-operators.md) for the complete backend boundary and [Multi-language support](multi-language.md#stop-words) for stop-word controls.
+
 ## Server-side highlighting
 
 For PHP/Twig templates, and for reading the REST/GraphQL response directly.

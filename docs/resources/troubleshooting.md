@@ -53,6 +53,23 @@ See [Permissions](../developers/permissions.md#dashboard-access) for the complet
 - If a variant like singular/plural isn't matching, confirm `enableFuzzy` is on (Settings → Search → Fuzzy Matching) and that `similarityThreshold` hasn't been raised far above the `0.25` default — a config-file override wins over the CP value (the CP shows the effective value in the override warning).
 - To see exactly which terms each query word matched, call the search API with `debugEnabled=1` (requires `devMode` or the *View debug meta* permission) and inspect `meta.resolvedTerms`.
 
+## Why isn't every query word highlighted?
+
+**Symptom:** A result matches, but one or more words from the query are not marked in its title, split H2/H3 heading, or snippet. For example, `Choose from 7 search backends` matches while `from` remains unhighlighted.
+
+**Cause:** The bundled widget highlights the effective terms that each result actually matched, not every raw query word.
+
+- Built-in backends use AND for unquoted adjacent terms by default, and hyphens are token boundaries.
+- With stop-word filtering enabled, common words such as `in` and `from` are removed from ordinary matching and highlighting. Disable filtering globally under **Settings → Language** or per index if those words must participate.
+- Quoted text is a contiguous phrase, so `"Choose from 7 search backends"` may highlight the complete phrase.
+- OR paints only the operands matched by that result. NOT operands are excluded and never painted.
+- Explicit `title:` and `content:` scopes remain restrictive.
+- Split-section H2/H3 rows paint every matched term that occurs in that displayed heading; parent titles and snippets keep their own field scope.
+
+Algolia, Meilisearch, and Typesense receive the original query and apply provider-native syntax, so do not assume the built-in operator rules apply there. In a custom JavaScript UI, prefer `SearchManagerHighlighter.getHitTerms()` with the returned hit before calling `highlight()`; pass the language explicitly to `parseQuery()` when using localized operators without hit metadata.
+
+See [Which query words are highlighted?](../feature-tour/highlighting.md#which-query-words-are-highlighted) for the canonical behavior and [Client-side highlighting](../template-guides/highlighting-snippets.md#client-side-highlighting-since540) for the public JavaScript signatures.
+
 ## A similar-looking word is not matched
 
 **Symptom:** A term clears the n-gram similarity threshold but doesn't appear in search results or autocomplete. For example, `test` doesn't match `best`.
