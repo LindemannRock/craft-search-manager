@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.54.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.54.0...v5.54.1) (2026-08-07)
+
+
+### Fixed
+
+* **widgets:** correct split heading highlights ([1d9ef72](https://github.com/LindemannRock/craft-search-manager/commit/1d9ef72d8dde1282ddd4cf304576e7d3da0fce36))
+
 ## [5.54.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.53.2...v5.54.0) - 2026-08-06
 
 
