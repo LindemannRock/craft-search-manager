@@ -35,15 +35,17 @@ use lindemannrock\searchmanager\tests\TestCase;
  */
 final class RebuildIndexJobBatchAccountingTest extends TestCase
 {
-    private const ALL_FAILED_INDEX = '__sm_rebuild_transform_all_failed';
-    private const PARTIAL_FAILED_INDEX = '__sm_rebuild_transform_partial_failed';
-    private const CREATION_FAILED_INDEX = '__sm_rebuild_transform_creation_failed';
-    private const INTENTIONAL_SKIP_INDEX = '__sm_rebuild_transform_intentional_skip';
-    private const EMPTY_INDEX = '__sm_rebuild_transform_empty';
+    private const ALL_FAILED_INDEX = 'sm-rebuild-transform-all-failed';
+    private const PARTIAL_FAILED_INDEX = 'sm-rebuild-transform-partial-failed';
+    private const CREATION_FAILED_INDEX = 'sm-rebuild-transform-creation-failed';
+    private const INTENTIONAL_SKIP_INDEX = 'sm-rebuild-transform-intentional-skip';
+    private const EMPTY_INDEX = 'sm-rebuild-transform-empty';
+    private const BACKEND = 'sm-rebuild-accounting-backend';
     private const ENTRY_PREFIX = '__sm_rebuild_accounting_';
 
     /** @var list<int> */
     private array $createdEntryIds = [];
+    private mixed $originalConfigCache = null;
 
     public function testExpectedCountSkipUrlPathDoesNotLoadAllElements(): void
     {
@@ -64,7 +66,9 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->originalConfigCache = $this->configCache();
         $this->purgeOwnedRows();
+        $this->insertFileBackend();
         RebuildAccountingTransformer::$failingElementIds = [];
         RebuildCreationFailingTransformer::$constructionCount = 0;
         SearchManager::$plugin->getSettings()->enableCacheWarming = false;
@@ -72,7 +76,7 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
             'search-manager',
             'configIndexValidator',
             new FixedConfigIndexValidator(new ConfigIndexValidationResult(
-                ConfigIndexValidationResult::STATUS_ABSENT,
+                ConfigIndexValidationResult::STATUS_PRESENT,
             )),
         );
     }
@@ -84,6 +88,8 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
             RebuildCreationFailingTransformer::$constructionCount = 0;
             $this->purgeOwnedRows();
             $this->deleteCreatedEntries();
+            $this->setConfigCache($this->originalConfigCache);
+            SearchIndex::clearCache();
         } finally {
             parent::tearDown();
         }
@@ -92,8 +98,13 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
     public function testEveryTransformFailureFailsJobAndStoresZeroCount(): void
     {
         [$first, $second] = $this->createEntries();
-        $index = $this->insertIndex(self::ALL_FAILED_INDEX, (int)$first->siteId, 17);
-        $index->criteria = static fn($query) => $query->id([(int)$first->id, (int)$second->id]);
+        $index = $this->insertIndex(
+            self::ALL_FAILED_INDEX,
+            (int)$first->siteId,
+            17,
+            RebuildAccountingTransformer::class,
+            static fn($query) => $query->id([(int)$first->id, (int)$second->id]),
+        );
         RebuildAccountingTransformer::$failingElementIds = [(int)$first->id, (int)$second->id];
 
         $backend = new RebuildAccountingBackendService();
@@ -113,8 +124,13 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
     public function testPartialTransformFailureIndexesAndCountsOnlySuccessfulElementsButFailsJob(): void
     {
         [$first, $second] = $this->createEntries();
-        $index = $this->insertIndex(self::PARTIAL_FAILED_INDEX, (int)$first->siteId, 17);
-        $index->criteria = static fn($query) => $query->id([(int)$first->id, (int)$second->id]);
+        $index = $this->insertIndex(
+            self::PARTIAL_FAILED_INDEX,
+            (int)$first->siteId,
+            17,
+            RebuildAccountingTransformer::class,
+            static fn($query) => $query->id([(int)$first->id, (int)$second->id]),
+        );
         RebuildAccountingTransformer::$failingElementIds = [(int)$second->id];
 
         $backend = new RebuildAccountingBackendService();
@@ -138,8 +154,8 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
             (int)$entry->siteId,
             17,
             RebuildCreationFailingTransformer::class,
+            static fn($query) => $query->id((int)$entry->id),
         );
-        $index->criteria = static fn($query) => $query->id((int)$entry->id);
 
         $backend = new RebuildAccountingBackendService();
         $this->swapPluginComponent('search-manager', 'backend', $backend);
@@ -157,8 +173,13 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
     public function testIntentionalTransformEventSkipRemainsSuccessful(): void
     {
         [$entry] = $this->createEntries();
-        $index = $this->insertIndex(self::INTENTIONAL_SKIP_INDEX, (int)$entry->siteId, 17);
-        $index->criteria = static fn($query) => $query->id((int)$entry->id);
+        $index = $this->insertIndex(
+            self::INTENTIONAL_SKIP_INDEX,
+            (int)$entry->siteId,
+            17,
+            RebuildAccountingTransformer::class,
+            static fn($query) => $query->id((int)$entry->id),
+        );
 
         $backend = new RebuildAccountingBackendService();
         $this->swapPluginComponent('search-manager', 'backend', $backend);
@@ -168,9 +189,9 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
         SearchManager::$plugin->transformers->on(TransformerService::EVENT_BEFORE_TRANSFORM, $handler);
 
         try {
-            $this->withOnlySearchIndices([$index], static function(): void {
-                (new RebuildIndexJob())->execute(Craft::$app->queue);
-            });
+            (new RebuildIndexJob([
+                'indexHandle' => $index->handle,
+            ]))->execute(Craft::$app->queue);
         } finally {
             SearchManager::$plugin->transformers->off(TransformerService::EVENT_BEFORE_TRANSFORM, $handler);
         }
@@ -184,16 +205,21 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
     public function testGenuinelyEmptyCriteriaMatchRemainsSuccessfulEmptyRebuild(): void
     {
         [$first] = $this->createEntries();
-        $index = $this->insertIndex(self::EMPTY_INDEX, (int)$first->siteId, 17);
-        $index->criteria = static fn($query) => $query->id(-999999999);
+        $index = $this->insertIndex(
+            self::EMPTY_INDEX,
+            (int)$first->siteId,
+            17,
+            RebuildAccountingTransformer::class,
+            static fn($query) => $query->id(-999999999),
+        );
 
         $backend = new RebuildAccountingBackendService();
         $backend->seedDocument(self::EMPTY_INDEX, ['elementId' => 998, 'title' => 'Old document']);
         $this->swapPluginComponent('search-manager', 'backend', $backend);
 
-        $this->withOnlySearchIndices([$index], static function(): void {
-            (new RebuildIndexJob())->execute(Craft::$app->queue);
-        });
+        (new RebuildIndexJob([
+            'indexHandle' => $index->handle,
+        ]))->execute(Craft::$app->queue);
 
         self::assertCount(1, $backend->clearCallsFor(self::EMPTY_INDEX));
         self::assertSame([], $backend->batchCallsFor(self::EMPTY_INDEX));
@@ -249,50 +275,41 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
         int $siteId,
         int $documentCount,
         string $transformerClass = RebuildAccountingTransformer::class,
+        array|\Closure $criteria = [],
     ): SearchIndex {
-        $now = Db::prepareDateForDb(new \DateTimeImmutable());
-        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_indices}}', [
-            'name' => $handle,
-            'handle' => $handle,
-            'elementType' => Entry::class,
-            'siteId' => $siteId,
-            'criteria' => null,
-            'transformerClass' => $transformerClass,
-            'headingLevels' => null,
-            'language' => null,
-            'backend' => null,
-            'enabled' => 1,
-            'enableAnalytics' => 1,
-            'disableStopWords' => 0,
-            'skipEntriesWithoutUrl' => 0,
-            'splitSections' => 0,
-            'retrievableFields' => json_encode(['*'], JSON_THROW_ON_ERROR),
-            'source' => 'database',
-            'lastIndexed' => null,
-            'documentCount' => $documentCount,
-            'dateCreated' => $now,
-            'dateUpdated' => $now,
-            'uid' => StringHelper::UUID(),
-        ])->execute();
-        SearchIndex::clearCache();
+        $this->withConfigFileIndices([
+            $handle => [
+                'name' => $handle,
+                'elementType' => Entry::class,
+                'siteId' => $siteId,
+                'criteria' => $criteria,
+                'transformer' => $transformerClass,
+                'backend' => self::BACKEND,
+                'enabled' => true,
+            ],
+        ]);
 
         $index = SearchIndex::findByHandle($handle);
         self::assertNotNull($index);
+        Craft::$app->getDb()->createCommand()
+            ->update('{{%searchmanager_indices}}', ['documentCount' => $documentCount], ['handle' => $handle])
+            ->execute();
+        $index->documentCount = $documentCount;
 
         return $index;
     }
 
     private function runRebuildExpectingFailure(SearchIndex $index): \RuntimeException
     {
-        return $this->withOnlySearchIndices([$index], function(): \RuntimeException {
-            try {
-                (new RebuildIndexJob())->execute(Craft::$app->queue);
-            } catch (\RuntimeException $e) {
-                return $e;
-            }
+        try {
+            (new RebuildIndexJob([
+                'indexHandle' => $index->handle,
+            ]))->execute(Craft::$app->queue);
+        } catch (\RuntimeException $e) {
+            return $e;
+        }
 
-            self::fail('Expected the rebuild job to report transformation failures.');
-        });
+        self::fail('Expected the rebuild job to report transformation failures.');
     }
 
     private function documentCount(string $handle): int
@@ -336,12 +353,31 @@ final class RebuildIndexJobBatchAccountingTest extends TestCase
         Craft::$app->getDb()->createCommand()
             ->delete('{{%searchmanager_indices}}', ['handle' => $handles])
             ->execute();
+        Craft::$app->getDb()->createCommand()
+            ->delete('{{%searchmanager_backends}}', ['handle' => self::BACKEND])
+            ->execute();
         foreach ($handles as $handle) {
             Craft::$app->getDb()->createCommand()
                 ->delete($this->queueTable(), ['like', 'job', $handle])
                 ->execute();
         }
         SearchIndex::clearCache();
+    }
+
+    private function insertFileBackend(): void
+    {
+        $now = Db::prepareDateForDb(new \DateTimeImmutable());
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_backends}}', [
+            'name' => 'Rebuild Accounting Backend',
+            'handle' => self::BACKEND,
+            'backendType' => 'file',
+            'settings' => '{}',
+            'enabled' => 1,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
     }
 
     private function readPluginSource(string $relativePath): string

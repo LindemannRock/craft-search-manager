@@ -38,8 +38,8 @@ final class RebuildIndexJobPreflightTest extends TestCase
     private const ALL_BAD_INDEX = '__sm_rebuild_all_bad';
     private const ALL_GOOD_INDEX = '__sm_rebuild_all_good';
     private const CLEAR_FAILURE_INDEX = '__sm_rebuild_clear_failure';
-    private const THROWING_CLOSURE_INDEX = '__sm_rebuild_throwing_closure';
-    private const WRONG_TYPE_CLOSURE_INDEX = '__sm_rebuild_wrong_type_closure';
+    private const THROWING_CLOSURE_INDEX = 'sm-rebuild-throwing-closure';
+    private const WRONG_TYPE_CLOSURE_INDEX = 'sm-rebuild-wrong-type-closure';
     private const MIXED_BROKEN_INDEX = 'sm-test-config-load-broken';
     private const MIXED_VALID_INDEX = 'sm-test-config-load-valid';
     private const MIXED_BACKEND = 'sm-test-config-load-backend';
@@ -96,7 +96,6 @@ final class RebuildIndexJobPreflightTest extends TestCase
                 'enabled' => true,
             ],
         ]);
-
         (static function(): void {
             (new RebuildIndexJob([
                 'indexHandle' => self::INVALID_ELEMENT_INDEX,
@@ -126,7 +125,6 @@ final class RebuildIndexJobPreflightTest extends TestCase
                 'enabled' => true,
             ],
         ]);
-
         (static function(): void {
             (new RebuildIndexJob([
                 'indexHandle' => self::FAILED_SYNC_INDEX,
@@ -143,10 +141,26 @@ final class RebuildIndexJobPreflightTest extends TestCase
     public function testThrowingCriteriaClosureFailsBeforeClearingStoredDocuments(): void
     {
         $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
-        $index = $this->indexModel(self::THROWING_CLOSURE_INDEX, User::class, $siteId);
-        $index->criteria = static function(): never {
-            throw new \RuntimeException('Synthetic criteria Closure failure');
-        };
+        $this->withConfigFileIndices([
+            self::THROWING_CLOSURE_INDEX => [
+                'name' => 'Throwing Criteria Closure',
+                'elementType' => User::class,
+                'siteId' => $siteId,
+                'criteria' => static function(): never {
+                    throw new \RuntimeException('Synthetic criteria Closure failure');
+                },
+                'backend' => self::MIXED_BACKEND,
+                'enabled' => true,
+            ],
+        ]);
+        $this->insertFileBackend(self::MIXED_BACKEND);
+        $this->swapPluginComponent(
+            'search-manager',
+            'configIndexValidator',
+            new FixedConfigIndexValidator(new ConfigIndexValidationResult(
+                ConfigIndexValidationResult::STATUS_PRESENT,
+            )),
+        );
 
         $backend = new RebuildPreflightRecordingBackendService();
         $backend->seedDocument(self::THROWING_CLOSURE_INDEX, [
@@ -155,12 +169,11 @@ final class RebuildIndexJobPreflightTest extends TestCase
         ]);
         $this->swapPluginComponent('search-manager', 'backend', $backend);
 
-        $error = $this->withOnlySearchIndices(
-            [$index],
-            fn(): \RuntimeException => $this->captureRuntimeException(static function(): void {
-                (new RebuildIndexJob())->execute(Craft::$app->queue);
-            }),
-        );
+        $error = $this->captureRuntimeException(static function(): void {
+            (new RebuildIndexJob([
+                'indexHandle' => self::THROWING_CLOSURE_INDEX,
+            ]))->execute(Craft::$app->queue);
+        });
 
         self::assertStringContainsString(self::THROWING_CLOSURE_INDEX, $error->getMessage());
         self::assertStringContainsString("site {$siteId}", $error->getMessage());
@@ -176,8 +189,24 @@ final class RebuildIndexJobPreflightTest extends TestCase
     public function testWrongTypeCriteriaClosureFailsBeforeClearingStoredDocuments(): void
     {
         $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
-        $index = $this->indexModel(self::WRONG_TYPE_CLOSURE_INDEX, User::class, $siteId);
-        $index->criteria = static fn(): string => 'not an element query';
+        $this->withConfigFileIndices([
+            self::WRONG_TYPE_CLOSURE_INDEX => [
+                'name' => 'Wrong Type Criteria Closure',
+                'elementType' => User::class,
+                'siteId' => $siteId,
+                'criteria' => static fn(): string => 'not an element query',
+                'backend' => self::MIXED_BACKEND,
+                'enabled' => true,
+            ],
+        ]);
+        $this->insertFileBackend(self::MIXED_BACKEND);
+        $this->swapPluginComponent(
+            'search-manager',
+            'configIndexValidator',
+            new FixedConfigIndexValidator(new ConfigIndexValidationResult(
+                ConfigIndexValidationResult::STATUS_PRESENT,
+            )),
+        );
 
         $backend = new RebuildPreflightRecordingBackendService();
         $backend->seedDocument(self::WRONG_TYPE_CLOSURE_INDEX, [
@@ -186,12 +215,11 @@ final class RebuildIndexJobPreflightTest extends TestCase
         ]);
         $this->swapPluginComponent('search-manager', 'backend', $backend);
 
-        $error = $this->withOnlySearchIndices(
-            [$index],
-            fn(): \RuntimeException => $this->captureRuntimeException(static function(): void {
-                (new RebuildIndexJob())->execute(Craft::$app->queue);
-            }),
-        );
+        $error = $this->captureRuntimeException(static function(): void {
+            (new RebuildIndexJob([
+                'indexHandle' => self::WRONG_TYPE_CLOSURE_INDEX,
+            ]))->execute(Craft::$app->queue);
+        });
 
         self::assertStringContainsString(self::WRONG_TYPE_CLOSURE_INDEX, $error->getMessage());
         self::assertStringContainsString("site {$siteId}", $error->getMessage());
@@ -248,17 +276,16 @@ final class RebuildIndexJobPreflightTest extends TestCase
     public function testClearIndexFalseFailsBeforeBatchIndexing(): void
     {
         $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
-        $index = $this->indexModel(self::CLEAR_FAILURE_INDEX, User::class, $siteId);
+        $this->insertDatabaseIndex(self::CLEAR_FAILURE_INDEX, User::class, $siteId);
         $backend = new RebuildPreflightRecordingBackendService();
         $backend->failClearFor(self::CLEAR_FAILURE_INDEX);
         $this->swapPluginComponent('search-manager', 'backend', $backend);
 
-        $error = $this->withOnlySearchIndices(
-            [$index],
-            fn(): \RuntimeException => $this->captureRuntimeException(static function(): void {
-                (new RebuildIndexJob())->execute(Craft::$app->queue);
-            }),
-        );
+        $error = $this->captureRuntimeException(static function(): void {
+            (new RebuildIndexJob([
+                'indexHandle' => self::CLEAR_FAILURE_INDEX,
+            ]))->execute(Craft::$app->queue);
+        });
 
         self::assertStringContainsString(self::CLEAR_FAILURE_INDEX, $error->getMessage());
         self::assertStringContainsString('backend clear failed', $error->getMessage());

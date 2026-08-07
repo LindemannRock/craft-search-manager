@@ -94,6 +94,9 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 
     protected function executeRebuild($queue): void
     {
+        // Queue workers can retain an index list from before this job was queued.
+        SearchIndex::clearCache();
+
         if ($this->indexHandle) {
             if (!in_array($this->capabilityAction, [
                 DependencyService::ACTION_TARGETED_REBUILD,

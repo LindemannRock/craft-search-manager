@@ -298,13 +298,18 @@ final class IndexMaintenanceCapabilityTest extends TestCase
             array_map(static fn(RebuildIndexJob $job): string => $job->capabilityAction, $indexing->jobs),
         );
 
+        $cachedEnabledHandles = array_map(
+            static fn(SearchIndex $index): string => $index->handle,
+            SearchIndex::findAll(),
+        );
+        self::assertContains($configurationChange, $cachedEnabledHandles);
+        self::assertContains($affected, $cachedEnabledHandles);
+
         Craft::$app->getDb()->createCommand()->update(
             '{{%searchmanager_indices}}',
             ['enabled' => 0],
             ['handle' => [$configurationChange, $affected]],
         )->execute();
-        SearchIndex::clearCache();
-        SearchManager::$plugin->dependencies->clearIndexCatalogue();
 
         $indexing->jobs[0]->execute(Craft::$app->queue);
         $indexing->jobs[1]->execute(Craft::$app->queue);
@@ -321,6 +326,29 @@ final class IndexMaintenanceCapabilityTest extends TestCase
 
         (new RebuildIndexJob(['indexHandle' => $configurationChange]))->execute(Craft::$app->queue);
         self::assertSame(1, $this->backendService->backend->clearCalls, 'Targeted rebuild remains allowed for a healthy disabled index.');
+    }
+
+    public function testQueuedAutomaticRebuildRefreshesBeforeMissingIndexRaceCheck(): void
+    {
+        $handle = self::PREFIX . 'deleted-race';
+        $id = $this->insertIndex($handle, true, self::BACKEND);
+        $indexing = new IndexMaintenanceRecordingIndexingService();
+        $this->swapPluginComponent('search-manager', 'indexing', $indexing);
+
+        self::assertTrue($indexing->rebuildIndexAutomatically($handle));
+        self::assertCount(1, $indexing->jobs);
+        self::assertContains($handle, array_map(
+            static fn(SearchIndex $index): string => $index->handle,
+            SearchIndex::findAll(),
+        ));
+
+        Craft::$app->getDb()->createCommand()
+            ->delete('{{%searchmanager_indices}}', ['id' => $id])
+            ->execute();
+
+        $indexing->jobs[0]->execute(Craft::$app->queue);
+        self::assertSame(0, $this->backendService->backend->clearCalls);
+        self::assertNull(SearchIndex::findByHandle($handle));
     }
 
     public function testRebuildAllPlanNoEligibleCollisionAndExecutionRaceAreTruthful(): void
@@ -344,8 +372,6 @@ final class IndexMaintenanceCapabilityTest extends TestCase
             ['enabled' => 0],
             ['handle' => $enabled],
         )->execute();
-        SearchIndex::clearCache();
-        SearchManager::$plugin->dependencies->clearIndexCatalogue();
         (new RebuildIndexJob([
             'indexHandles' => $plan['participants'],
             'structuralSkips' => $plan['skips'],

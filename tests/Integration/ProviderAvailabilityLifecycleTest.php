@@ -742,19 +742,36 @@ final class ProviderAvailabilityLifecycleTest extends TestCase
 
     public function testRebuildPreflightPreservesStoredBackendWhenProviderIsUnavailable(): void
     {
+        $originalConfig = $this->configCache();
         $dependencies = new ProviderAvailabilityDependencyService([
             ProviderAvailabilityPluginElement::class => 'custom-provider',
         ], []);
         $backend = new ProviderAvailabilityCacheBackend();
         $this->swapPluginComponent('search-manager', 'dependencies', $dependencies);
         $this->swapPluginComponent('search-manager', 'backend', $backend);
-        $index = $this->index('rebuild-provider-affected', ProviderAvailabilityPluginElement::class);
+        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
 
-        $this->withOnlySearchIndices([$index], static function(): void {
-            (new RebuildIndexJob())->execute(Craft::$app->getQueue());
-        });
+        try {
+            $this->withConfigFileIndices([
+                'rebuild-provider-affected' => [
+                    'name' => 'Rebuild Provider Affected',
+                    'elementType' => ProviderAvailabilityPluginElement::class,
+                    'siteId' => $siteId,
+                    'enabled' => true,
+                ],
+            ]);
+            $dependencies->clearIndexCatalogue();
 
-        self::assertSame([], $backend->clearedIndices);
+            (new RebuildIndexJob([
+                'indexHandle' => 'rebuild-provider-affected',
+            ]))->execute(Craft::$app->getQueue());
+
+            self::assertSame([], $backend->clearedIndices);
+        } finally {
+            $this->setConfigCache($originalConfig);
+            SearchIndex::clearCache();
+            $dependencies->clearIndexCatalogue();
+        }
     }
 
     public function testRebuildFinallyAdvancesSchedulerAfterSuccessAndException(): void
