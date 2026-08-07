@@ -1,0 +1,233 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  scripts/test-craft-compat <craft-constraint> [plugin-version] [--install] [--php-version <version>] [--smoke-command <command>] [--skip-smoke] [--keep-project-dev] [--allow-insecure-floor]
+
+Examples:
+  scripts/test-craft-compat '^5.10'
+  scripts/test-craft-compat '^5.10' dev-main
+  scripts/test-craft-compat '^5.10' dev-main --install --php-version 8.3
+  scripts/test-craft-compat '5.10.0' dev-main --allow-insecure-floor
+
+What it does:
+  1. Creates a disposable Craft project under /tmp.
+  2. Pins craftcms/cms to the requested constraint.
+  3. Installs this plugin through a local Composer path repository.
+  4. Optionally starts DDEV, installs Craft, installs the plugin, and runs a smoke test.
+
+The default mode validates Composer installability only. Use --install for the
+full fresh-install smoke test.
+
+The disposable Craft project's require-dev packages are removed by default so
+the check reflects a normal consumer install path. Use --keep-project-dev only
+when you intentionally want to validate the Craft starter project's dev tools.
+
+Composer platform PHP is pinned to the selected PHP version so dependency
+resolution matches the DDEV runtime. The default PHP version is 8.3.
+
+Use --allow-insecure-floor only for historical floor checks where Composer
+blocks an older Craft/dependency patch release because of security advisories.
+Normal release checks should use the latest patch in the supported minor.
+
+When --install is used, the script runs vendor/<package>/scripts/smoke-test if
+it exists. Use --smoke-command for one-off checks, or --skip-smoke to validate
+only install/enabled state.
+USAGE
+}
+
+if [[ $# -lt 1 || "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
+CRAFT_CONSTRAINT="$1"
+PLUGIN_VERSION="dev-main"
+INSTALL_MODE=false
+ALLOW_INSECURE_FLOOR=false
+PHP_VERSION="8.3"
+SMOKE_COMMAND=""
+SKIP_SMOKE=false
+KEEP_PROJECT_DEV=false
+
+shift
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --install)
+      INSTALL_MODE=true
+      ;;
+    --allow-insecure-floor)
+      ALLOW_INSECURE_FLOOR=true
+      ;;
+    --php-version)
+      if [[ -z "${2:-}" ]]; then
+        echo "--php-version requires a value, such as 8.3" >&2
+        exit 1
+      fi
+      PHP_VERSION="$2"
+      shift
+      ;;
+    --smoke-command)
+      if [[ -z "${2:-}" ]]; then
+        echo "--smoke-command requires a command string" >&2
+        exit 1
+      fi
+      SMOKE_COMMAND="$2"
+      shift
+      ;;
+    --skip-smoke)
+      SKIP_SMOKE=true
+      ;;
+    --keep-project-dev)
+      KEEP_PROJECT_DEV=true
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    --*)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+    *)
+      PLUGIN_VERSION="$1"
+      ;;
+  esac
+
+  shift
+done
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PLUGIN_NAME="$(php -r '$data = json_decode(file_get_contents($argv[1]), true); echo $data["name"] ?? "";' "$PLUGIN_DIR/composer.json")"
+PLUGIN_HANDLE="$(php -r '$data = json_decode(file_get_contents($argv[1]), true); echo $data["extra"]["handle"] ?? "";' "$PLUGIN_DIR/composer.json")"
+PLUGIN_TYPE="$(php -r '$data = json_decode(file_get_contents($argv[1]), true); echo $data["type"] ?? "";' "$PLUGIN_DIR/composer.json")"
+
+if [[ -z "$PLUGIN_NAME" || -z "$PLUGIN_HANDLE" || -z "$PLUGIN_TYPE" ]]; then
+  echo "Unable to read package name, type, and extra.handle from composer.json." >&2
+  exit 1
+fi
+
+STAMP="$(date +%Y%m%d%H%M%S)"
+SAFE_CONSTRAINT="$(printf '%s' "$CRAFT_CONSTRAINT" | tr -c '[:alnum:]' '-')"
+PROJECT_DIR="/tmp/craft-compat-${PLUGIN_HANDLE}-${SAFE_CONSTRAINT}-${STAMP}"
+
+echo "Creating disposable Craft project: $PROJECT_DIR"
+composer create-project craftcms/craft "$PROJECT_DIR" --no-interaction --no-scripts --quiet
+
+cd "$PROJECT_DIR"
+
+if [[ "$KEEP_PROJECT_DEV" != true ]]; then
+  echo "Removing disposable Craft project require-dev packages"
+  php -r '$path = "composer.json"; $data = json_decode(file_get_contents($path), true); unset($data["require-dev"]); file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);'
+fi
+
+if [[ "$ALLOW_INSECURE_FLOOR" == true ]]; then
+  echo "Disabling Composer advisory blocking for historical floor validation"
+  composer config --json policy.advisories.block false
+fi
+
+echo "Pinning Composer platform PHP to $PHP_VERSION.0"
+composer config platform.php "$PHP_VERSION.0"
+
+echo "Pinning craftcms/cms to $CRAFT_CONSTRAINT"
+composer require "craftcms/cms:$CRAFT_CONSTRAINT" --no-interaction --no-scripts --update-with-all-dependencies
+
+echo "Configuring local path repository for $PLUGIN_NAME"
+composer config --json repositories.local-plugin "{\"type\":\"path\",\"url\":\"$PLUGIN_DIR\",\"options\":{\"symlink\":false,\"versions\":{\"$PLUGIN_NAME\":\"$PLUGIN_VERSION\"}}}"
+composer config minimum-stability dev
+composer config prefer-stable true
+
+echo "Installing $PLUGIN_NAME:$PLUGIN_VERSION"
+composer require "$PLUGIN_NAME:$PLUGIN_VERSION" --no-interaction --no-scripts --update-with-all-dependencies
+
+echo "Resolved versions:"
+composer show craftcms/cms --no-ansi
+composer show "$PLUGIN_NAME" --no-ansi
+
+COMPAT_DIR=".craft-compat"
+LOCAL_SMOKE_SCRIPT="$PLUGIN_DIR/scripts/smoke-test"
+PROJECT_SMOKE_SCRIPT="$COMPAT_DIR/smoke-test"
+
+if [[ -f "$LOCAL_SMOKE_SCRIPT" ]]; then
+  mkdir -p "$COMPAT_DIR"
+  cp "$LOCAL_SMOKE_SCRIPT" "$PROJECT_SMOKE_SCRIPT"
+  chmod +x "$PROJECT_SMOKE_SCRIPT"
+fi
+
+if [[ "$INSTALL_MODE" != true ]]; then
+  echo "Composer compatibility check passed."
+  echo "Project left at: $PROJECT_DIR"
+  exit 0
+fi
+
+if ! command -v ddev >/dev/null 2>&1; then
+  echo "DDEV is required for --install mode." >&2
+  exit 1
+fi
+
+echo "Starting DDEV fresh-install smoke test"
+ddev config --project-type=craftcms --docroot=web --php-version="$PHP_VERSION" --database=mysql:8.0 --auto >/dev/null
+ddev start
+
+ddev craft install \
+  --interactive=0 \
+  --username=admin \
+  --password=password \
+  --email=test@example.com \
+  --site-name="Craft Compat ${PLUGIN_HANDLE}" \
+  --site-url='$DDEV_PRIMARY_URL'
+
+if [[ "$PLUGIN_TYPE" == "craft-plugin" ]]; then
+  DEPENDENCY_HANDLES="$(php -r '$lock = json_decode(file_get_contents("composer.lock"), true); $target = $argv[1]; foreach (($lock["packages"] ?? []) as $package) { if (($package["name"] ?? "") === $target) { continue; } if (($package["type"] ?? "") !== "craft-plugin") { continue; } $handle = $package["extra"]["handle"] ?? ""; if ($handle !== "") { echo $handle, PHP_EOL; } }' "$PLUGIN_NAME")"
+
+  if [[ -n "$DEPENDENCY_HANDLES" ]]; then
+    echo "Installing required Craft plugin dependencies"
+    while IFS= read -r DEPENDENCY_HANDLE; do
+      [[ -z "$DEPENDENCY_HANDLE" ]] && continue
+      ddev craft plugin/install "$DEPENDENCY_HANDLE"
+    done <<< "$DEPENDENCY_HANDLES"
+  fi
+
+  ddev craft plugin/install "$PLUGIN_HANDLE"
+  PLUGIN_LIST="$(ddev craft plugin/list)"
+  echo "$PLUGIN_LIST"
+
+  if ! grep -Eq "[[:space:]]$PLUGIN_HANDLE[[:space:]].*[[:space:]]Yes[[:space:]]+Yes" <<<"$PLUGIN_LIST"; then
+    echo "Plugin $PLUGIN_HANDLE was not installed and enabled successfully." >&2
+    exit 1
+  fi
+else
+  echo "Package type is $PLUGIN_TYPE; skipping Craft plugin install. Smoke test must validate runtime behavior."
+fi
+
+if [[ "$SKIP_SMOKE" == true ]]; then
+  echo "Smoke test skipped."
+elif [[ -n "$SMOKE_COMMAND" ]]; then
+  echo "Running custom smoke command"
+  ddev exec bash -lc "$SMOKE_COMMAND"
+else
+  SMOKE_SCRIPT="$PROJECT_SMOKE_SCRIPT"
+
+  if ddev exec test -f "$SMOKE_SCRIPT" >/dev/null 2>&1; then
+    echo "Running local plugin smoke test: $SMOKE_SCRIPT"
+    ddev exec env PLUGIN_NAME="$PLUGIN_NAME" PLUGIN_HANDLE="$PLUGIN_HANDLE" PLUGIN_TYPE="$PLUGIN_TYPE" bash "$SMOKE_SCRIPT"
+  elif ddev exec test -f "vendor/$PLUGIN_NAME/scripts/smoke-test" >/dev/null 2>&1; then
+    SMOKE_SCRIPT="vendor/$PLUGIN_NAME/scripts/smoke-test"
+    echo "Running packaged plugin smoke test: $SMOKE_SCRIPT"
+    ddev exec env PLUGIN_NAME="$PLUGIN_NAME" PLUGIN_HANDLE="$PLUGIN_HANDLE" PLUGIN_TYPE="$PLUGIN_TYPE" bash "$SMOKE_SCRIPT"
+  elif [[ "$PLUGIN_TYPE" == "yii2-module" ]]; then
+    echo "No module smoke test found at $PROJECT_SMOKE_SCRIPT or vendor/$PLUGIN_NAME/scripts/smoke-test." >&2
+    echo "Yii module packages must provide scripts/smoke-test because plugin/install does not apply." >&2
+    exit 1
+  else
+    echo "No plugin smoke test found at $SMOKE_SCRIPT; install/enabled state only."
+  fi
+fi
+
+echo "Fresh-install compatibility check passed."
+echo "Project left at: $PROJECT_DIR"

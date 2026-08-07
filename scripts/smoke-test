@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+php craft plugin/list
+
+php craft exec '
+use Craft;
+use lindemannrock\logginglibrary\LoggingLibrary;
+use lindemannrock\searchmanager\models\Settings;
+use lindemannrock\searchmanager\SearchManager;
+
+$plugins = Craft::$app->getPlugins();
+$plugin = $plugins->getPlugin("search-manager");
+
+if (!$plugin instanceof SearchManager) {
+    throw new RuntimeException("Search Manager plugin class was not loaded.");
+}
+
+foreach (["search-manager", "logging-library"] as $handle) {
+    if (!$plugins->isPluginInstalled($handle) || !$plugins->isPluginEnabled($handle)) {
+        throw new RuntimeException("Required Craft plugin is not installed and enabled: {$handle}");
+    }
+}
+
+if (!$plugins->getPlugin("logging-library") instanceof LoggingLibrary) {
+    throw new RuntimeException("Logging Library dependency was not loaded.");
+}
+
+$baseModule = Craft::$app->getModule("lindemannrock-base");
+if (!$baseModule instanceof \yii\base\Module) {
+    throw new RuntimeException("Base module was not registered.");
+}
+
+$settings = $plugin->getSettings();
+if (!$settings instanceof Settings) {
+    throw new RuntimeException("Search Manager settings model was not loaded.");
+}
+
+if ($settings->autoIndex !== true || $settings->replaceNativeSearch !== false || $settings->enableAnalytics !== true) {
+    throw new RuntimeException("Search Manager fresh-install settings defaults are not intact.");
+}
+
+foreach (["analytics", "autocomplete", "backend", "indexing", "setup", "transformers", "widgetConfigs"] as $component) {
+    if (!$plugin->has($component)) {
+        throw new RuntimeException("Missing Search Manager service component: {$component}");
+    }
+    $plugin->get($component);
+}
+
+$backends = array_keys($plugin->backend->getAllBackends());
+if ($backends !== ["algolia", "file", "meilisearch", "mysql", "pgsql", "redis", "typesense"]) {
+    throw new RuntimeException("Search Manager did not register the expected seven backends.");
+}
+
+$defaultWidget = $plugin->widgetConfigs->getDefault();
+if ($defaultWidget === null || $defaultWidget->handle !== "default" || !$defaultWidget->enabled) {
+    throw new RuntimeException("Search Manager default widget configuration was not seeded correctly.");
+}
+
+echo "Search Manager smoke test passed.\n";
+'
