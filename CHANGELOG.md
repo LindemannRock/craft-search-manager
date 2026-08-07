@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.54.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.54.1...v5.54.2) - 2026-08-07
+
+
+### Fixed
+
+* **queue:** clear stale index cache before rebuild ([64877aa](https://github.com/LindemannRock/craft-search-manager/commit/64877aaf5d3e01326523658025c6a009bcb68a29))
+
 ## [5.54.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.54.0...v5.54.1) - 2026-08-07
 
 
