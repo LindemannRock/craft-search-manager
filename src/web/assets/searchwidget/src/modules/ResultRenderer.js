@@ -38,6 +38,7 @@ import { t } from './Translations.js';
  * @typedef {Object} SearchResult
  * @property {string} [backendId] - Unique backend record ID
  * @property {number} [elementId] - Craft element ID
+ * @property {string} [language] - Indexed result language
  * @property {string} title - Result title
  * @property {string} [snippet] - Result match snippet
  * @property {string} [url] - Result URL
@@ -145,7 +146,7 @@ export function renderResultItem(result, index, query, options = {}) {
 
     const highlightedTitle = highlightMatches(title, query, {
         ...highlightOptions,
-        terms: getHitHighlightTerms(result, 'title', query),
+        terms: getHitHighlightTerms(result, sectionHit ? 'heading' : 'title', query, title),
     });
     const highlightedDesc = snippet ? renderSnippetHtml(result, snippet, query, {
         ...highlightOptions,
@@ -457,6 +458,7 @@ function sectionHitToHeading(hit) {
         index: hit.index,
         matchedTerms: hit.matchedTerms,
         matchedPhrases: hit.matchedPhrases,
+        language: hit.language,
         __useBackendDomId: true,
     };
 }
@@ -773,7 +775,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
 
     const highlightedText = highlightMatches(text, query, {
         ...highlightOptions,
-        terms: getHitHighlightTerms(heading, 'title', query),
+        terms: getHitHighlightTerms(heading, 'heading', query, text),
     });
     const highlightedDesc = snippet ? renderSnippetHtml(result, snippet, query, {
         ...highlightOptions,

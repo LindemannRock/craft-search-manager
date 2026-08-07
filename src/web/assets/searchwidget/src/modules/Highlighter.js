@@ -24,6 +24,20 @@ import { isUnsafeNavigationUrl } from './UrlUtils.js';
 const ALLOWED_HIGHLIGHT_TAGS = new Set(['mark', 'em', 'strong', 'u', 'b', 'i', 'span']);
 // Mirrors Highlighter::isValidClassTokenList() in the PHP runtime.
 const CSS_CLASS_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;
+const BOOLEAN_OPERATORS = {
+    en: { and: ['and'], or: ['or'], not: ['not'] },
+    de: { and: ['und'], or: ['oder'], not: ['nicht'] },
+    fr: { and: ['et'], or: ['ou'], not: ['sauf'] },
+    es: { and: ['y'], or: ['o'], not: ['no'] },
+    nl: { and: ['en'], or: ['of'], not: ['niet'] },
+    it: { and: ['e'], or: ['o'], not: ['non'] },
+    pt: { and: ['e'], or: ['ou'], not: ['não', 'nao'] },
+    sv: { and: ['och'], or: ['eller'], not: ['inte'] },
+    da: { and: ['og'], or: ['eller'], not: ['ikke'] },
+    no: { and: ['og'], or: ['eller'], not: ['ikke', 'ikkje'] },
+    ja: { and: ['かつ'], or: ['または', 'もしくは'], not: ['でない', 'ではない'] },
+    ar: { and: ['و'], or: ['أو', 'او'], not: ['ليس', 'لا'] },
+};
 
 /**
  * Escape HTML special characters to prevent XSS
@@ -91,6 +105,7 @@ export function escapeRegex(string) {
  *
  * @param {string} query - The search query to parse
  * @param {'title'|'content'|null} field - Optional display-field scope
+ * @param {string} [language='en'] - Result language for localized operators
  * @returns {string[]} Array of terms suitable for highlighting
  *
  * @example
@@ -101,69 +116,107 @@ export function escapeRegex(string) {
  * parseQueryTerms('title:blog test^2 search*')
  * // Returns: ['blog', 'test', 'search']
  */
-export function parseQueryTerms(query, field = null) {
+export function parseQueryTerms(query, field = null, language = 'en') {
+    return parseQueryTermRecords(query, language)
+        .filter(record => !field || !record.field || record.field === field)
+        .map(record => record.term);
+}
+
+function parseQueryTermRecords(query, language = 'en') {
     if (!query) return [];
-    const terms = [];
+    const records = [];
+    const { operators, negativeOperators } = getBooleanOperators(language);
+    const tokens = query.match(/(?:[a-zA-Z]+:)?"[^"]*"|\S+/g) || [];
+    let excludeNext = false;
 
-    // 1. Extract quoted phrases: "craft cms" → single term
-    const phraseRegex = /"([^"]+)"/g;
-    let match;
-    while ((match = phraseRegex.exec(query)) !== null) {
-        if (match[1].trim()) terms.push(match[1].trim());
-    }
-
-    // 2. Remove quoted phrases from remaining text
-    const remaining = query.replace(/"[^"]*"/g, '');
-
-    // 3. Split on whitespace, clean each token
-    const operators = new Set([
-        'and', 'or', 'not',           // English
-        'und', 'oder', 'nicht',        // German
-        'et', 'ou', 'sauf',           // French
-        'y', 'o', 'no',              // Spanish
-    ]);
-
-    remaining.split(/\s+/).filter(w => w.length > 0).forEach(word => {
+    tokens.forEach(token => {
+        let word = token;
         let termField = null;
-        const fieldMatch = word.match(/^(title|content):(.*)$/i);
+        const fieldMatch = word.match(/^([a-zA-Z]+):(.*)$/);
         if (fieldMatch) {
-            termField = fieldMatch[1].toLowerCase();
+            const requestedField = fieldMatch[1].toLowerCase();
+            termField = requestedField === 'title' || requestedField === 'content'
+                ? requestedField
+                : null;
             word = fieldMatch[2];
-        } else {
-            word = word.replace(/^[a-zA-Z]+:/, '');
         }
+        const quoted = word.startsWith('"') && word.endsWith('"');
+        word = word.replace(/^"|"$/g, '');
+        const normalizedOperator = normalizeForHighlight(word);
+
+        if (!quoted && operators.has(normalizedOperator)) {
+            excludeNext = negativeOperators.has(normalizedOperator);
+            return;
+        }
+        if (excludeNext) {
+            excludeNext = false;
+            return;
+        }
+
         word = word.replace(/\*/g, '');          // wildcards
         word = word.replace(/\^\d+(\.\d+)?/, ''); // boost markers (^2, ^1.5)
         word = word.replace(/"/g, '');           // stray quotes
-        if (!word || operators.has(word.toLowerCase()) || (field && termField && termField !== field)) return;
-        terms.push(word);
+        if (!word) return;
+        records.push({ term: word, field: termField });
     });
 
-    // 4. Apply camelCase splitting (existing feature)
+    // Apply camelCase splitting (existing feature)
     const withCamel = [];
-    terms.forEach(word => {
-        withCamel.push(word);
-        const parts = word.split(/(?<=[a-z])(?=[A-Z])/);
+    records.forEach(record => {
+        withCamel.push(record);
+        const parts = record.term.split(/(?<=[a-z])(?=[A-Z])/);
         if (parts.length > 1) {
-            parts.forEach(p => { if (p.length >= 3) withCamel.push(p); });
+            parts.forEach(part => {
+                if (part.length >= 3) {
+                    withCamel.push({ ...record, term: part });
+                }
+            });
         }
     });
 
     return withCamel;
 }
 
+function getBooleanOperators(language) {
+    const languageCode = String(language || 'en')
+        .trim()
+        .toLowerCase()
+        .replace(/_/g, '-')
+        .split('-')[0];
+    const localized = BOOLEAN_OPERATORS[languageCode] || BOOLEAN_OPERATORS.en;
+    const operators = new Set([
+        ...BOOLEAN_OPERATORS.en.and,
+        ...BOOLEAN_OPERATORS.en.or,
+        ...BOOLEAN_OPERATORS.en.not,
+        ...localized.and,
+        ...localized.or,
+        ...localized.not,
+    ].map(normalizeForHighlight));
+    const negativeOperators = new Set([
+        ...BOOLEAN_OPERATORS.en.not,
+        ...localized.not,
+    ].map(normalizeForHighlight));
+
+    return { operators, negativeOperators };
+}
+
 /**
  * Resolve the explicit terms for one rendered hit area.
  *
  * @param {Object} hit - Search hit with the locked matched-term contract
- * @param {'title'|'snippet'} area - Rendered result area
+ * @param {'title'|'heading'|'snippet'} area - Rendered result area
  * @param {string} query - Original query
+ * @param {string} [displayedText] - Displayed heading text for exact projection
  * @returns {string[]} Explicit terms; an empty array means highlight nothing
  * @since 5.53.2
  */
-export function getHitHighlightTerms(hit, area, query) {
+export function getHitHighlightTerms(hit, area, query, displayedText = '') {
+    if (area === 'heading') {
+        return getHeadingHighlightTerms(hit, query, displayedText);
+    }
+
     const field = area === 'snippet' ? 'content' : 'title';
-    const queryTerms = parseQueryTerms(query, field);
+    const queryTerms = parseQueryTerms(query, field, hit && hit.language);
 
     if (query && queryTerms.length === 0) {
         return [];
@@ -177,6 +230,131 @@ export function getHitHighlightTerms(hit, area, query) {
     const terms = fieldTerms.length > 0 ? fieldTerms : queryTerms;
 
     return [...phrases, ...terms];
+}
+
+/**
+ * Project one split hit's field-level match metadata onto its displayed heading.
+ * Section headings are indexed as content, but an unscoped term may also be
+ * reported through the parent title. Only resolved terms that occur in the
+ * displayed heading are eligible; explicit title-only queries remain excluded.
+ */
+function getHeadingHighlightTerms(hit, query, displayedText) {
+    const queryRecords = parseQueryTermRecords(query, hit && hit.language);
+    const queryTerms = queryRecords
+        .filter(record => record.field !== 'title')
+        .map(record => record.term);
+    if (query && queryTerms.length === 0) {
+        return [];
+    }
+
+    const matchedTerms = hit && hit.matchedTerms;
+    const titleTerms = matchedTerms && Array.isArray(matchedTerms.title)
+        ? matchedTerms.title
+        : [];
+    const contentTerms = matchedTerms && Array.isArray(matchedTerms.content)
+        ? matchedTerms.content
+        : [];
+    const matchedPhrases = hit && Array.isArray(hit.matchedPhrases)
+        ? hit.matchedPhrases
+        : [];
+    const eligiblePhrases = projectHeadingMatchedTerms(matchedPhrases, queryRecords, 'content');
+    const hasMatchedTerms = titleTerms.length > 0 || contentTerms.length > 0;
+    const projectedTerms = hasMatchedTerms
+        ? [
+            ...projectHeadingMatchedTerms(titleTerms, queryRecords, 'title'),
+            ...projectHeadingMatchedTerms(contentTerms, queryRecords, 'content'),
+        ]
+        : queryTerms;
+
+    return [...eligiblePhrases, ...projectedTerms]
+        .filter(term => termOccursInText(displayedText, term));
+}
+
+function projectHeadingMatchedTerms(matchedTerms, queryRecords, sourceField) {
+    return matchedTerms.filter(term => {
+        const matchingRecords = bestMatchingQueryRecords(term, queryRecords);
+        return matchingRecords.some(record => (
+            sourceField === 'title' ? record.field === null : record.field !== 'title'
+        ));
+    });
+}
+
+function bestMatchingQueryRecords(term, queryRecords) {
+    const scored = queryRecords.map(record => ({
+        record,
+        score: queryTermMatchScore(record.term, term),
+    }));
+    const bestScore = Math.max(0, ...scored.map(candidate => candidate.score));
+
+    return scored
+        .filter(candidate => candidate.score > 0 && candidate.score === bestScore)
+        .map(candidate => candidate.record);
+}
+
+function queryTermMatchScore(queryTerm, matchedTerm) {
+    const queryTokens = normalizedWordTokens(queryTerm);
+    const matchedTokens = normalizedWordTokens(matchedTerm);
+    if (queryTokens.length === 0 || matchedTokens.length === 0) return 0;
+
+    if (queryTokens.some(queryToken => matchedTokens.includes(queryToken))) {
+        return 3;
+    }
+    if (queryTokens.some(queryToken => matchedTokens.some(matchedToken => (
+        isStrictPrefix(queryToken, matchedToken) || isStrictPrefix(matchedToken, queryToken)
+    )))) {
+        return 2;
+    }
+    if (queryTokens.length === 1 && matchedTokens.length === 1
+        && isLikelyFuzzyMatch(queryTokens[0], matchedTokens[0])) {
+        return 1;
+    }
+
+    return 0;
+}
+
+function isLikelyFuzzyMatch(left, right) {
+    const maxLength = Math.max(Array.from(left).length, Array.from(right).length);
+    if (maxLength < 4) return false;
+
+    return editDistance(left, right) <= (maxLength >= 8 ? 2 : 1);
+}
+
+function editDistance(left, right) {
+    const leftChars = Array.from(left);
+    const rightChars = Array.from(right);
+    let previous = rightChars.map((character, index) => index);
+    previous.push(rightChars.length);
+
+    for (let leftIndex = 1; leftIndex <= leftChars.length; leftIndex += 1) {
+        const current = [leftIndex];
+        for (let rightIndex = 1; rightIndex <= rightChars.length; rightIndex += 1) {
+            current[rightIndex] = Math.min(
+                current[rightIndex - 1] + 1,
+                previous[rightIndex] + 1,
+                previous[rightIndex - 1] + (leftChars[leftIndex - 1] === rightChars[rightIndex - 1] ? 0 : 1),
+            );
+        }
+        previous = current;
+    }
+
+    return previous[rightChars.length];
+}
+
+function termOccursInText(text, term) {
+    if (!text) return true;
+
+    const words = textWords(text);
+    const tokens = normalizedWordTokens(term);
+    if (tokens.length === 0) return false;
+    const lastStart = words.length - tokens.length;
+
+    for (let i = 0; i <= lastStart; i += 1) {
+        if (tokens.every((token, offset) => words[i + offset].normalized === token)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**

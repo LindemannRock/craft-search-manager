@@ -905,7 +905,11 @@ class SearchWidgetBase extends HTMLElement {
             return;
         }
 
-        const terms = [...new Set(parseQueryTerms(query).map(t => t.trim()).filter(t => t.length >= 2))];
+        const language = String(document.documentElement.lang || 'en')
+            .trim()
+            .toLowerCase()
+            .replace(/_/g, '-') || 'en';
+        const terms = [...new Set(parseQueryTerms(query, null, language).map(t => t.trim()).filter(t => t.length >= 2))];
         if (terms.length === 0) {
             return;
         }

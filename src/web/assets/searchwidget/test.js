@@ -78,7 +78,7 @@ if (fs.existsSync(highlighterFile)) {
     test('Source uses normalized highlight tag for markup', source.includes('return applyHighlightRanges(text, termList, safeTag, classAttr, queryTerms);'));
     test('Source does not render raw className in class attribute', !source.includes('classes.push(className);'));
     test('Source escapes constructed class attribute', source.includes("const classAttr = ` class=\"${escapeHtml(classes.join(' '))}\"`;"));
-    test('Source preserves dotted filename-like queries as one highlight term', source.includes('terms.push(word);'));
+    test('Source preserves dotted filename-like queries as one highlight term', source.includes('records.push({ term: word, field: termField });'));
 }
 
 const widgetBaseFile = path.join(SRC_DIR, 'core', 'SearchWidgetBase.js');
@@ -366,7 +366,7 @@ try {
     test('None mode and the default render no marker', hiddenMarker.rowClass === '' && hiddenMarker.titlePrefix === '' && defaultMarker.titlePrefix === '');
     test('Unpromoted results never get a marker', unpromotedMarker.rowClass === '' && unpromotedMarker.titlePrefix === '' && unpromotedMarker.blockMarkup === '');
 
-    const { sanitizeUrl, getHitHighlightTerms, highlightMatches } = loadHighlighterModule();
+    const { sanitizeUrl, getHitHighlightTerms, highlightMatches, parseQueryTerms } = loadHighlighterModule();
     const emptyMatchedTermsHit = { matchedTerms: { title: [], content: [] } };
     const crossMatchedTermsHit = { matchedTerms: { title: ['search'], content: ['search'] } };
     const titleScopedTitleTerms = getHitHighlightTerms(emptyMatchedTermsHit, 'title', 'title:search');
@@ -411,6 +411,208 @@ try {
         && highlightMatches('Testing Tools', 'title:test content:tool', {
             terms: getHitHighlightTerms(prefixScopedHit, 'snippet', 'title:test content:tool'),
         }) === 'Testing <mark class="sm-highlight">Tool</mark>s',
+    );
+
+    const splitHeadingHit = {
+        matchedTerms: { title: ['search'], content: ['phrase'] },
+        matchedPhrases: [],
+    };
+    test(
+        'Displayed split headings project matched title and content terms that occur in the heading',
+        getHitHighlightTerms(splitHeadingHit, 'heading', 'phrase search', 'Phrase search').join(',') === 'search,phrase'
+        && highlightMatches('Phrase search', 'phrase search', {
+            terms: getHitHighlightTerms(splitHeadingHit, 'heading', 'phrase search', 'Phrase search'),
+        }) === '<mark class="sm-highlight">Phrase</mark> <mark class="sm-highlight">search</mark>',
+    );
+
+    const builtInHit = {
+        matchedTerms: { title: ['backends'], content: ['built'] },
+        matchedPhrases: [],
+    };
+    test(
+        'Default AND heading projection uses effective matched terms after hyphen tokenization and stop-word removal',
+        highlightMatches('Built-in backends', 'built-in backends', {
+            terms: getHitHighlightTerms(builtInHit, 'heading', 'built-in backends', 'Built-in backends'),
+        }) === '<mark class="sm-highlight">Built</mark>-in <mark class="sm-highlight">backends</mark>',
+    );
+    test(
+        'Explicit AND and localized AND preserve the same per-hit heading projection',
+        ['built AND backends', 'built UND backends'].every(query => (
+            highlightMatches('Built-in backends', query, {
+                terms: getHitHighlightTerms(builtInHit, 'heading', query, 'Built-in backends'),
+            }) === '<mark class="sm-highlight">Built</mark>-in <mark class="sm-highlight">backends</mark>'
+        )),
+    );
+
+    const quotedHeadingHit = {
+        matchedTerms: { title: [], content: [] },
+        matchedPhrases: ['built-in backends'],
+    };
+    test(
+        'Quoted split-heading phrases retain one contiguous phrase highlight',
+        highlightMatches('Built-in backends', '"built-in backends"', {
+            terms: getHitHighlightTerms(quotedHeadingHit, 'heading', '"built-in backends"', 'Built-in backends'),
+        }) === '<mark class="sm-highlight">Built-in backends</mark>',
+    );
+
+    const orFirstHit = { matchedTerms: { title: ['alpha'], content: [] }, matchedPhrases: [] };
+    const orSecondHit = { matchedTerms: { title: [], content: ['beta'] }, matchedPhrases: [] };
+    test(
+        'OR heading projection highlights only the terms matched by each hit',
+        highlightMatches('Alpha beta', 'alpha OR beta', {
+            terms: getHitHighlightTerms(orFirstHit, 'heading', 'alpha OR beta', 'Alpha beta'),
+        }) === '<mark class="sm-highlight">Alpha</mark> beta'
+        && highlightMatches('Alpha beta', 'alpha OR beta', {
+            terms: getHitHighlightTerms(orSecondHit, 'heading', 'alpha OR beta', 'Alpha beta'),
+        }) === 'Alpha <mark class="sm-highlight">beta</mark>',
+    );
+
+    const excludedHeadingHit = { matchedTerms: { title: ['public'], content: [] }, matchedPhrases: [] };
+    test(
+        'Excluded NOT terms are never projected into split headings',
+        highlightMatches('Public draft', 'public NOT draft', {
+            terms: getHitHighlightTerms(excludedHeadingHit, 'heading', 'public NOT draft', 'Public draft'),
+        }) === '<mark class="sm-highlight">Public</mark> draft',
+    );
+
+    const scopedHeadingHit = { matchedTerms: { title: ['parent'], content: ['child'] }, matchedPhrases: [] };
+    test(
+        'Explicit title and content scopes remain restrictive for displayed split headings',
+        getHitHighlightTerms(scopedHeadingHit, 'heading', 'title:parent', 'Parent child').length === 0
+        && highlightMatches('Parent child', 'content:child', {
+            terms: getHitHighlightTerms(scopedHeadingHit, 'heading', 'content:child', 'Parent child'),
+        }) === 'Parent <mark class="sm-highlight">child</mark>',
+    );
+    const mixedScopeCases = [
+        {
+            query: 'title:parent child',
+            expectedTerms: 'child',
+            expectedHtml: 'Parent <mark class="sm-highlight">child</mark>',
+        },
+        {
+            query: 'parent title:child',
+            expectedTerms: 'parent',
+            expectedHtml: '<mark class="sm-highlight">Parent</mark> child',
+        },
+        {
+            query: 'content:parent child',
+            expectedTerms: 'child',
+            expectedHtml: 'Parent <mark class="sm-highlight">child</mark>',
+        },
+        {
+            query: 'title:parent content:child',
+            expectedTerms: 'child',
+            expectedHtml: 'Parent <mark class="sm-highlight">child</mark>',
+        },
+        {
+            query: 'title:parent parent',
+            expectedTerms: 'parent',
+            expectedHtml: '<mark class="sm-highlight">Parent</mark> child',
+        },
+    ];
+    test(
+        'Mixed scoped and unscoped heading terms preserve term-level provenance',
+        mixedScopeCases.every(({ query, expectedTerms, expectedHtml }) => {
+            const terms = getHitHighlightTerms(scopedHeadingHit, 'heading', query, 'Parent child');
+            return terms.join(',') === expectedTerms
+                && highlightMatches('Parent child', query, { terms }) === expectedHtml;
+        }),
+    );
+
+    const expansionCases = [
+        {
+            label: 'boost',
+            text: 'Ranking guide',
+            query: 'ranking^2',
+            hit: { matchedTerms: { title: [], content: ['ranking'] }, matchedPhrases: [] },
+            expected: '<mark class="sm-highlight">Ranking</mark> guide',
+        },
+        {
+            label: 'wildcard prefix',
+            text: 'Testing guide',
+            query: 'test*',
+            hit: { matchedTerms: { title: [], content: ['testing'] }, matchedPhrases: [] },
+            expected: '<mark class="sm-highlight">Test</mark>ing guide',
+        },
+        {
+            label: 'typo fuzzy expansion',
+            text: 'Jacket guide',
+            query: 'jaket',
+            hit: { matchedTerms: { title: [], content: ['jacket'] }, matchedPhrases: [] },
+            expected: '<mark class="sm-highlight">Jacket</mark> guide',
+        },
+        {
+            label: 'case and accent folding',
+            text: 'CAFÉ guide',
+            query: 'cafe',
+            hit: { matchedTerms: { title: [], content: ['café'] }, matchedPhrases: [] },
+            expected: '<mark class="sm-highlight">CAFÉ</mark> guide',
+        },
+    ];
+    test(
+        'Boost, wildcard, fuzzy, case, and accent families retain matched heading provenance',
+        expansionCases.every(({ text, query, hit, expected }) => (
+            highlightMatches(text, query, {
+                terms: getHitHighlightTerms(hit, 'heading', query, text),
+            }) === expected
+        )),
+    );
+
+    test(
+        'Missing matched-term metadata retains raw-query heading fallback',
+        highlightMatches('Fallback heading', 'fallback', {
+            terms: getHitHighlightTerms({}, 'heading', 'fallback', 'Fallback heading'),
+        }) === '<mark class="sm-highlight">Fallback</mark> heading',
+    );
+    test(
+        'Raw highlighting fallback excludes English and localized NOT operands',
+        parseQueryTerms('public NOT draft').join(',') === 'public'
+        && parseQueryTerms('offen NICHT entwurf', null, 'de').join(',') === 'offen'
+        && highlightMatches('Public draft', 'public NOT draft') === '<mark class="sm-highlight">Public</mark> draft',
+    );
+    const localizedBooleanCases = [
+        { language: 'en', and: 'AND', or: 'OR', not: 'NOT' },
+        { language: 'de', and: 'UND', or: 'ODER', not: 'NICHT' },
+        { language: 'fr', and: 'ET', or: 'OU', not: 'SAUF' },
+        { language: 'es', and: 'Y', or: 'O', not: 'NO' },
+        { language: 'nl', and: 'EN', or: 'OF', not: 'NIET' },
+        { language: 'it', and: 'E', or: 'O', not: 'NON' },
+        { language: 'pt', and: 'E', or: 'OU', not: 'NÃO' },
+        { language: 'sv', and: 'OCH', or: 'ELLER', not: 'INTE' },
+        { language: 'da', and: 'OG', or: 'ELLER', not: 'IKKE' },
+        { language: 'no', and: 'OG', or: 'ELLER', not: 'IKKJE' },
+        { language: 'ja', and: 'かつ', or: 'もしくは', not: 'ではない' },
+        { language: 'ar', and: 'و', or: 'او', not: 'لا' },
+    ];
+    test(
+        'All supported result languages recognize representative AND, OR, and NOT operators',
+        localizedBooleanCases.every(({ language, and, or, not }) => (
+            parseQueryTerms(`alpha ${and} beta`, null, language).join(',') === 'alpha,beta'
+            && parseQueryTerms(`alpha ${or} beta`, null, language).join(',') === 'alpha,beta'
+            && parseQueryTerms(`alpha ${not} beta`, null, language).join(',') === 'alpha'
+        )),
+    );
+    test(
+        'Localized boolean variants follow normalized regional result languages',
+        parseQueryTerms('aberto NAO rascunho', null, 'pt_BR').join(',') === 'aberto'
+        && parseQueryTerms('openbaar NIET concept', null, 'nl-NL').join(',') === 'openbaar'
+        && parseQueryTerms('公開 または 下書き', null, 'ja-JP').join(',') === '公開,下書き'
+        && parseQueryTerms('عام أو مسودة', null, 'ar-EG').join(',') === 'عام,مسودة',
+    );
+    test(
+        'Ambiguous common and one-letter localized operators remain terms outside their language',
+        parseQueryTerms('alpha Y beta', null, 'en').join(',') === 'alpha,Y,beta'
+        && parseQueryTerms('alpha O beta', null, 'en').join(',') === 'alpha,O,beta'
+        && parseQueryTerms('alpha NO beta', null, 'en').join(',') === 'alpha,NO,beta'
+        && parseQueryTerms('alpha E beta', null, 'en').join(',') === 'alpha,E,beta'
+        && parseQueryTerms('alpha EN beta', null, 'de').join(',') === 'alpha,EN,beta'
+        && parseQueryTerms('alpha OF beta', null, 'de').join(',') === 'alpha,OF,beta'
+        && parseQueryTerms('alpha NIET beta', null, 'de').join(',') === 'alpha,NIET,beta',
+    );
+    test(
+        'Quoted phrases retain explicit display-field scope in raw fallback',
+        parseQueryTerms('title:"parent guide" content:"child guide"', 'title').join(',') === 'parent guide'
+        && parseQueryTerms('title:"parent guide" content:"child guide"', 'content').join(',') === 'child guide',
     );
 
     const testToolSource = fs.readFileSync(path.join(__dirname, '..', 'testtool', 'src', 'test-tool.js'), 'utf8');
@@ -585,6 +787,91 @@ try {
     test('Flat section hits render section title and section URL', flatSectionHtml.includes('Install') && flatSectionHtml.includes('href="/guide-a#install'));
     test('Flat section hits use backendId for DOM identity and elementId for analytics identity', flatSectionHtml.includes('data-id="101_1_install" data-element-id="101"'));
 
+    const headingProjectionHit = {
+        elementId: 808,
+        siteId: 1,
+        backendId: '808_1_phrase-search',
+        title: 'Search features',
+        url: '/search-features',
+        source: 'Docs',
+        type: 'source-doc',
+        sectionType: 'heading',
+        sectionId: 'phrase-search',
+        sectionTitle: 'Phrase search',
+        sectionLevel: 2,
+        sectionUrl: '/search-features#phrase-search',
+        sectionIndex: 1,
+        snippet: 'The phrase matcher searches content only.',
+        score: 42,
+        index: 'docs',
+        matchedTerms: { title: ['search'], content: ['phrase'] },
+        matchedPhrases: [],
+    };
+    const flatHeadingProjectionHtml = renderResults([headingProjectionHit], 'phrase search', {
+        resultsLayout: 'default',
+        listboxId: 'flat-heading-projection',
+        highlightDestinationPersistQuery: true,
+    });
+    test(
+        'Flat split rows highlight every matched displayed heading term without changing snippets, URLs, or identities',
+        flatHeadingProjectionHtml.includes('<mark class="sm-highlight">Phrase</mark> <mark class="sm-highlight">search</mark>')
+        && flatHeadingProjectionHtml.includes('The <mark class="sm-highlight">phrase</mark> matcher searches content only.')
+        && flatHeadingProjectionHtml.includes('href="/search-features?smq=phrase+search#phrase-search"')
+        && flatHeadingProjectionHtml.includes('data-id="808_1_phrase-search" data-element-id="808"'),
+    );
+
+    const hierarchyHeadingProjectionHtml = renderResults([
+        {
+            ...headingProjectionHit,
+            sectionTitle: 'Phrase search',
+            sectionId: 'phrase-search',
+            sectionLevel: 2,
+            sectionIndex: 1,
+        },
+        {
+            ...headingProjectionHit,
+            backendId: '808_1_backend-search',
+            sectionTitle: 'Backend search',
+            sectionId: 'backend-search',
+            sectionLevel: 3,
+            sectionUrl: '/search-features#backend-search',
+            sectionIndex: 2,
+            score: 40,
+            matchedTerms: { title: ['search'], content: ['backend'] },
+        },
+    ], 'phrase search OR backend', {
+        resultsLayout: 'hierarchical',
+        listboxId: 'hierarchy-heading-projection',
+        hierarchyMaxHeadings: 3,
+    });
+    test(
+        'Hierarchical H2 and H3 children use each section hit\'s own matched heading projection',
+        hierarchyHeadingProjectionHtml.includes('<mark class="sm-highlight">Phrase</mark> <mark class="sm-highlight">search</mark>')
+        && hierarchyHeadingProjectionHtml.includes('<mark class="sm-highlight">Backend</mark> <mark class="sm-highlight">search</mark>')
+        && hierarchyHeadingProjectionHtml.includes('sm-hierarchy-level-2')
+        && hierarchyHeadingProjectionHtml.includes('sm-hierarchy-level-3'),
+    );
+
+    const localizedHierarchyHtml = renderResults([{
+        ...headingProjectionHit,
+        language: 'nl-NL',
+        backendId: '808_1_openbaar-concept',
+        sectionTitle: 'Openbaar NIET concept',
+        sectionId: 'openbaar-concept',
+        sectionUrl: '/search-features#openbaar-concept',
+        matchedTerms: { title: [], content: [] },
+    }], 'openbaar NIET concept', {
+        resultsLayout: 'hierarchical',
+        listboxId: 'localized-hierarchy-projection',
+        hierarchyMaxHeadings: 3,
+    });
+    test(
+        'Hierarchical projection preserves child result language for localized boolean fallback',
+        localizedHierarchyHtml.includes('<mark class="sm-highlight">Openbaar</mark> NIET concept')
+        && !localizedHierarchyHtml.includes('<mark class="sm-highlight">NIET</mark>')
+        && !localizedHierarchyHtml.includes('<mark class="sm-highlight">concept</mark>'),
+    );
+
     const pageModeHtml = renderResults([{
         elementId: 404,
         backendId: '404_1',
@@ -597,6 +884,26 @@ try {
         listboxId: 'plain-list',
     });
     test('Page-mode hits use backendId DOM identity and elementId analytics identity', pageModeHtml.includes('data-id="404_1" data-element-id="404"'));
+
+    const nonSplitControlHtml = renderResults([{
+        elementId: 909,
+        backendId: '909_1',
+        title: 'Search reference',
+        url: '/reference',
+        entrySection: 'Pages',
+        snippet: 'Phrase details stay in the snippet.',
+        matchedTerms: { title: ['search'], content: ['phrase'] },
+        matchedPhrases: [],
+    }], 'phrase search', {
+        resultsLayout: 'default',
+        listboxId: 'non-split-control',
+    });
+    test(
+        'Non-split page titles and snippets retain their field-specific highlighting',
+        nonSplitControlHtml.includes('<mark class="sm-highlight">Search</mark> reference')
+        && nonSplitControlHtml.includes('<mark class="sm-highlight">Phrase</mark> details stay in the snippet.')
+        && !nonSplitControlHtml.includes('<mark class="sm-highlight">reference</mark>'),
+    );
 
     const mixedHtml = renderResults([splitHits[0], {
         elementId: 505,
@@ -669,10 +976,92 @@ async function runWidgetInstanceBehaviorTests() {
         browser = await chromium.launch();
         const page = await browser.newPage();
 
+        const { renderResults } = loadRendererModule();
+        const browserPageHtml = renderResults([{
+            elementId: 1001,
+            backendId: '1001_1',
+            title: 'Search features',
+            url: '/search-features',
+            snippet: 'Phrase overview',
+            matchedTerms: { title: ['search'], content: ['phrase'] },
+            matchedPhrases: [],
+        }], 'phrase search', {
+            listboxId: 'browser-page',
+        });
+        const browserSectionHit = {
+            elementId: 1001,
+            siteId: 1,
+            backendId: '1001_1_phrase-search',
+            title: 'Search features',
+            url: '/search-features',
+            source: 'Docs',
+            sectionType: 'heading',
+            sectionId: 'phrase-search',
+            sectionTitle: 'Phrase search',
+            sectionLevel: 2,
+            sectionUrl: '/search-features#phrase-search',
+            sectionIndex: 1,
+            snippet: 'Phrase overview',
+            score: 20,
+            matchedTerms: { title: ['search'], content: ['phrase'] },
+            matchedPhrases: [],
+        };
+        const browserFlatHtml = renderResults([browserSectionHit], 'phrase search', {
+            listboxId: 'browser-flat',
+        });
+        const browserHierarchyHtml = renderResults([
+            browserSectionHit,
+            {
+                ...browserSectionHit,
+                backendId: '1001_1_backend-search',
+                sectionId: 'backend-search',
+                sectionTitle: 'Backend search',
+                sectionLevel: 3,
+                sectionUrl: '/search-features#backend-search',
+                sectionIndex: 2,
+                score: 18,
+                matchedTerms: { title: ['search'], content: ['backend'] },
+            },
+        ], 'phrase search OR backend', {
+            resultsLayout: 'hierarchical',
+            hierarchyMaxHeadings: 3,
+            listboxId: 'browser-hierarchy',
+        });
+
         await page.setContent(`
             <!doctype html>
             <html>
                 <body>
+                    <div id="browser-page">${browserPageHtml}</div>
+                    <div id="browser-flat">${browserFlatHtml}</div>
+                    <div id="browser-hierarchy">${browserHierarchyHtml}</div>
+                </body>
+            </html>
+        `);
+        const browserHeadingProjection = await page.evaluate(() => ({
+            pageMarks: Array.from(document.querySelectorAll('#browser-page .sm-result-title mark')).map(mark => mark.textContent),
+            flatMarks: Array.from(document.querySelectorAll('#browser-flat .sm-result-title mark')).map(mark => mark.textContent),
+            hierarchyMarks: Array.from(document.querySelectorAll('#browser-hierarchy .sm-hierarchy-child .sm-result-title mark')).map(mark => mark.textContent),
+            hierarchyLevels: Array.from(document.querySelectorAll('#browser-hierarchy .sm-hierarchy-child')).map(row => (
+                row.classList.contains('sm-hierarchy-level-2') ? 2 : 3
+            )),
+        }));
+        test('Browser rendering keeps page/H1 title highlighting field-specific',
+            browserHeadingProjection.pageMarks.join(',') === 'Search');
+        test('Browser rendering highlights both matched terms in a flat split heading',
+            browserHeadingProjection.flatMarks.join(',') === 'Phrase,search');
+        test('Browser rendering applies per-hit projection to hierarchical H2 and H3 headings',
+            browserHeadingProjection.hierarchyMarks.join(',') === 'Phrase,search,Backend,search'
+            && browserHeadingProjection.hierarchyLevels.join(',') === '2,3');
+
+        await page.setContent(`
+            <!doctype html>
+            <html>
+                <body>
+                    <main id="destination-content">Public draft</main>
+                    <main id="destination-localized">Openbaar NIET concept</main>
+                    <main id="destination-ambiguous">Alpha NIET beta</main>
+                    <main id="destination-fallback">Public draft</main>
                     <search-modal id="widget-a" trigger-hotkey="k"></search-modal>
                     <search-modal id="widget-b" trigger-hotkey="k"></search-modal>
                 </body>
@@ -680,6 +1069,39 @@ async function runWidgetInstanceBehaviorTests() {
         `);
         await page.addScriptTag({ path: mainFile });
         await waitForWidgets(page, ['widget-a', 'widget-b']);
+
+        const destinationMarks = await page.evaluate(() => {
+            const widget = document.getElementById('widget-a');
+            widget.highlightDestinationNodes('public NOT draft', '#destination-content', 'not-query');
+            return Array.from(document.querySelectorAll('#destination-content mark')).map(mark => mark.textContent);
+        });
+        test('Browser destination highlighting excludes NOT operands', destinationMarks.join(',') === 'Public');
+
+        const localizedDestinationMarks = await page.evaluate(() => {
+            const widget = document.getElementById('widget-a');
+            const pageLanguage = document.documentElement.lang;
+
+            document.documentElement.lang = 'nl-NL';
+            widget.highlightDestinationNodes('openbaar NIET concept', '#destination-localized', 'localized-query');
+            const localized = Array.from(document.querySelectorAll('#destination-localized mark')).map(mark => mark.textContent);
+
+            document.documentElement.lang = 'de-DE';
+            widget.highlightDestinationNodes('alpha NIET beta', '#destination-ambiguous', 'ambiguous-query');
+            const ambiguous = Array.from(document.querySelectorAll('#destination-ambiguous mark')).map(mark => mark.textContent);
+
+            document.documentElement.lang = 'zz-ZZ';
+            widget.highlightDestinationNodes('public NOT draft', '#destination-fallback', 'fallback-query');
+            const fallback = Array.from(document.querySelectorAll('#destination-fallback mark')).map(mark => mark.textContent);
+
+            document.documentElement.lang = pageLanguage;
+            return { localized, ambiguous, fallback };
+        });
+        test(
+            'Browser destination highlighting uses normalized page language with English fallback and locale isolation',
+            localizedDestinationMarks.localized.join(',') === 'Openbaar'
+            && localizedDestinationMarks.ambiguous.join(',') === 'Alpha,NIET,beta'
+            && localizedDestinationMarks.fallback.join(',') === 'Public'
+        );
 
         await page.evaluate(() => {
             document.getElementById('widget-a').shadowRoot.querySelector('.sm-trigger').click();
