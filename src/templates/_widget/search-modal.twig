@@ -189,10 +189,7 @@
 {% set mergedStyles = resolvedStyles %}
 
 {# Register the bundled SearchModalWidget JS #}
-{% set searchWidgetAsset = view.registerAssetBundle('lindemannrock\\searchmanager\\web\\assets\\searchwidget\\SearchWidgetAsset') %}
-{% do view.registerJsFile(searchWidgetAsset.baseUrl ~ '/SearchModalWidget.js', {
-    position: 3
-}) %}
+{% do view.registerAssetBundle('lindemannrock\\searchmanager\\web\\assets\\searchwidget\\SearchWidgetAsset') %}
 
 {# Render the widget #}
 <search-modal

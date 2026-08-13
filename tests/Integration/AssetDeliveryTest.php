@@ -82,7 +82,7 @@ final class AssetDeliveryTest extends TestCase
         $publicationRoot = $this->createOwnedTempDirectory('asset-publication');
         $packageDist = Craft::getAlias('@lindemannrock/searchmanager/web/assets/searchwidget/dist');
         $baseUrl = 'https://cdn.example.test/search-manager-widget';
-        $assetManager = new class([ 'basePath' => $publicationRoot, 'baseUrl' => '/runtime-resources', 'blockedPath' => $packageDist, 'bundles' => [ SearchWidgetAsset::class => [ 'basePath' => $packageDist, 'baseUrl' => $baseUrl, ], ], ]) extends AssetManager {
+        $assetManager = new class([ 'basePath' => $publicationRoot, 'baseUrl' => '/runtime-resources', 'appendTimestamp' => true, 'blockedPath' => $packageDist, 'bundles' => [ SearchWidgetAsset::class => [ 'basePath' => $packageDist, 'baseUrl' => $baseUrl, ], ], ]) extends AssetManager {
             public string $blockedPath;
 
             /** @var list<string> */
@@ -137,10 +137,18 @@ final class AssetDeliveryTest extends TestCase
             self::assertSame($packageDist, $view->assetBundles[SearchWidgetAsset::class]->basePath);
             self::assertSame($baseUrl, $view->assetBundles[SearchWidgetAsset::class]->baseUrl);
             self::assertSame(['SearchModalWidget.js'], $view->assetBundles[SearchWidgetAsset::class]->js);
-            self::assertSame(
-                [$baseUrl . '/SearchModalWidget.js'],
-                array_keys($view->jsFiles[View::POS_END] ?? []),
+            self::assertSame(['position' => View::POS_END], $view->assetBundles[SearchWidgetAsset::class]->jsOptions);
+
+            $assetHtml = $view->getBodyHtml();
+            $scriptCount = preg_match_all(
+                '/<script[^>]+src="([^"]*SearchModalWidget\.js(?:\?[^"]*)?)"[^>]*><\/script>/',
+                $assetHtml,
+                $scriptMatches,
             );
+
+            self::assertSame(1, $scriptCount, $assetHtml);
+            self::assertStringStartsWith($baseUrl . '/SearchModalWidget.js', html_entity_decode($scriptMatches[1][0]));
+            self::assertNotContains($packageDist, $assetManager->publicationPaths);
         } finally {
             $view->clear();
             Craft::$app->set('assetManager', $originalAssetManager);

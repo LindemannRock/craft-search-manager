@@ -9,6 +9,7 @@
 namespace lindemannrock\searchmanager\web\assets\searchwidget;
 
 use craft\web\AssetBundle;
+use craft\web\View;
 
 /**
  * Frontend search widget asset bundle.
@@ -26,6 +27,10 @@ class SearchWidgetAsset extends AssetBundle
 
         $this->js = [
             'SearchModalWidget.js',
+        ];
+
+        $this->jsOptions = [
+            'position' => View::POS_END,
         ];
 
         parent::init();
