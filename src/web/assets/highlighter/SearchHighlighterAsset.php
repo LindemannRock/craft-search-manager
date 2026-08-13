@@ -28,7 +28,7 @@ class SearchHighlighterAsset extends AssetBundle
      */
     public function init(): void
     {
-        $this->sourcePath = __DIR__ . '/dist';
+        $this->sourcePath = '@lindemannrock/searchmanager/web/assets/highlighter/dist';
 
         $this->js = [
             'SearchManagerHighlighter.js',

@@ -23,7 +23,7 @@ class TestToolAsset extends AssetBundle
      */
     public function init(): void
     {
-        $this->sourcePath = __DIR__ . '/dist';
+        $this->sourcePath = '@lindemannrock/searchmanager/web/assets/testtool/dist';
 
         $this->depends = [
             SearchHighlighterAsset::class,

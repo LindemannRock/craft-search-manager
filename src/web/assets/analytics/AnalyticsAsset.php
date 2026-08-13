@@ -24,7 +24,7 @@ class AnalyticsAsset extends AssetBundle
      */
     public function init(): void
     {
-        $this->sourcePath = __DIR__ . '/dist';
+        $this->sourcePath = '@lindemannrock/searchmanager/web/assets/analytics/dist';
 
         $this->depends = [
             \lindemannrock\base\web\assets\analytics\AnalyticsAsset::class,

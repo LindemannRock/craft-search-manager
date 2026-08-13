@@ -24,7 +24,7 @@ class WidgetPreviewAsset extends AssetBundle
      */
     public function init(): void
     {
-        $this->sourcePath = __DIR__ . '/dist';
+        $this->sourcePath = '@lindemannrock/searchmanager/web/assets/widgetpreview/dist';
 
         $this->js = [
             'widget-preview.js',

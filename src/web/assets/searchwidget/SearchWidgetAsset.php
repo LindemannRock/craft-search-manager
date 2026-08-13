@@ -6,26 +6,26 @@
  * @copyright Copyright (c) 2026 LindemannRock
  */
 
-namespace lindemannrock\searchmanager\web\assets\widgetconfig;
+namespace lindemannrock\searchmanager\web\assets\searchwidget;
 
 use craft\web\AssetBundle;
 
 /**
- * Widget config CP interactions.
+ * Frontend search widget asset bundle.
  *
- * @since 5.53.0
+ * @since 5.54.3
  */
-class WidgetConfigAsset extends AssetBundle
+class SearchWidgetAsset extends AssetBundle
 {
     /**
      * @inheritdoc
      */
     public function init(): void
     {
-        $this->sourcePath = '@lindemannrock/searchmanager/web/assets/widgetconfig/dist';
+        $this->sourcePath = '@lindemannrock/searchmanager/web/assets/searchwidget/dist';
 
         $this->js = [
-            'widget-config.js',
+            'SearchModalWidget.js',
         ];
 
         parent::init();

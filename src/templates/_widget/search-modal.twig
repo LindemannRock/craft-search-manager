@@ -189,7 +189,8 @@
 {% set mergedStyles = resolvedStyles %}
 
 {# Register the bundled SearchModalWidget JS #}
-{% do view.registerJsFile(craft.app.assetManager.getPublishedUrl('@searchmanager/web/assets/searchwidget/dist', true) ~ '/SearchModalWidget.js', {
+{% set searchWidgetAsset = view.registerAssetBundle('lindemannrock\\searchmanager\\web\\assets\\searchwidget\\SearchWidgetAsset') %}
+{% do view.registerJsFile(searchWidgetAsset.baseUrl ~ '/SearchModalWidget.js', {
     position: 3
 }) %}
 
