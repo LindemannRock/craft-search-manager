@@ -139,7 +139,7 @@ Get autocomplete suggestions for a partial query.
 
 ## Highlighting
 
-### `registerHighlighter()` @since(5.40.0)
+### `registerHighlighter()` @since(5.39.0)
 
 Register the standalone `SearchManagerHighlighter` JavaScript utility. After calling this, `window.SearchManagerHighlighter` is available in your JavaScript with:
 
@@ -156,7 +156,7 @@ Register the standalone `SearchManagerHighlighter` JavaScript utility. After cal
 See [Client-Side Highlighting](../template-guides/highlighting-snippets.md#client-side-highlighting) for full usage examples.
 
 > [!TIP]
-> The JS highlighter includes smart features like camelCase splitting (e.g., searching "date" highlights the "Date" part of "DateRangeHelper"), longest-first matching to avoid nested tags, and automatic range merging for overlapping matches.
+> The JS highlighter includes smart features like camelCase splitting (e.g., searching "date" highlights the "Date" part of "DateRangeHelper"), longest-first matching to avoid nested tags, and overlap resolution that keeps the earliest match and drops anything that would nest inside it.
 
 ### `highlight(text, terms, options)`
 

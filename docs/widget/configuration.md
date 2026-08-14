@@ -230,12 +230,27 @@ The widget uses `highlightTag` and `highlightClass` client-side for titles and s
 
 ### Destination highlighting
 
+`highlightDestinationEnabled` is the master switch for this group: the other three only do anything while it's on. The CP shows this directly — the three fields on the widget's **Destination Highlighting** tab collapse out of sight when the master lightswitch is off.
+
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `highlightDestinationEnabled` | `bool` | `true` | Highlight search terms on the destination page after navigating from a result |
-| `highlightDestinationPersistQuery` | `bool` | `true` | Append the search query to the destination URL so the page knows what to highlight |
-| `highlightDestinationQueryParam` | `string` | `'smq'` | URL parameter name for the persisted search query |
+| `highlightDestinationEnabled` | `bool` | `true` | Master switch. Highlight search terms on the destination page after navigating from a result, and append the query to result URLs |
+| `highlightDestinationPersistQuery` | `bool` | `true` | Child of the master switch. Append the search query to the destination URL so the page knows what to highlight |
+| `highlightDestinationQueryParam` | `string` | `'smq'` | URL parameter name for the persisted search query. Must start with a letter; letters, numbers, hyphens, and underscores only, up to 32 characters |
 | `highlightDestinationContentSelector` | `string` | `'main, article, [data-search-content]'` | CSS selector for page content areas to scan for highlighting |
+
+The query parameter is written onto a result URL only when **both** toggles are on. Turning the master switch off therefore stops both halves at once: no parameter is appended to result links, and pages carrying one are not highlighted.
+
+The child toggle is useful because the two halves are not symmetrical. With `highlightDestinationEnabled: true` and `highlightDestinationPersistQuery: false`, the widget stops *writing* the parameter but keeps *reading* it. Pages still highlight when the parameter arrives from somewhere else — a shared or bookmarked link, or your own API-driven results page appending it — while the widget's own result URLs stay clean. That's the pairing for a site whose results come from a custom search UI, with the widget present on landing pages purely to do the highlighting.
+
+The parameter is read by the widget on the *landing* page, using that widget's own values — so two things have to line up across the pages involved:
+
+- **The parameter name must match** on the widget that writes the link and the widget that reads it. Two widget configs with different `highlightDestinationQueryParam` values will not talk to each other.
+- **The content selector must match the landing page's markup.** The default `main, article, [data-search-content]` targets the `<main>` and `<article>` *elements* — not `<div id="main">`. When the selector matches nothing, the widget stops without an error or console warning, so a layout that wraps content in a plain `<div>` looks exactly like a broken feature. Add `data-search-content` to that wrapper (it's already in the default selector) or set a selector that matches your markup.
+
+Values are validated on save: the selector rejects characters that don't belong in a CSS selector, and the parameter name rejects anything outside the format above.
+
+See [Highlighting & Snippets → Highlighting matches on the destination page](../feature-tour/highlighting.md#highlighting-matches-on-the-destination-page) for how the whole flow fits together, including the requirement that the destination page include the widget at all.
 
 ### Analytics
 

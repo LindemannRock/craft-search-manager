@@ -269,7 +269,7 @@ Enable `snippetIncludeCodeBlocks` when code is the primary content users are sea
 
 Keep it disabled (the default) for documentation sites, blogs, and general content where code blocks are supplementary and prose snippets provide better context.
 
-## Client-side highlighting @since(5.40.0)
+## Client-side highlighting @since(5.39.0)
 
 Search Manager provides a standalone JavaScript highlighter for use in custom search UIs — the same highlighter used by the [Search Widget](../widget/overview.md).
 
@@ -337,7 +337,7 @@ const hl = SearchManagerHighlighter.create({
 const html = hl('Some text to highlight', 'text');
 ```
 
-#### `parseQuery(query, field = null, language = 'en')` @since(5.43.0)
+#### `parseQuery(query, field = null, language = 'en')`
 
 Parse a search query into an array of highlight-ready terms. It handles quoted phrases, boolean operators, field prefixes, wildcards, and boost markers. Pass `field` as `'title'` or `'content'` to retain only terms eligible for that display area. Pass the result language when localized operators may appear; regional forms such as `nl-NL` are normalized to their base language. English operators are always recognized as a fallback.
 

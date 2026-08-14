@@ -12,6 +12,8 @@ The simplest integration — one line in your layout template:
 
 This renders a trigger button and the search modal. Users press CMD+K (or Ctrl+K) or click the button to open search.
 
+Put it in a shared layout rather than on individual templates. Beyond the obvious — search reachable from anywhere — the widget is also what highlights search terms on the page a visitor lands on after clicking a result, and it can only do that on pages that include it. See [Highlighting matches on the destination page](../feature-tour/highlighting.md#highlighting-matches-on-the-destination-page).
+
 ## Complete example
 
 Reference a saved widget config, then override anything per-include:

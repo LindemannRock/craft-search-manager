@@ -68,7 +68,38 @@ See [Permissions](../developers/permissions.md#dashboard-access) for the complet
 
 Algolia, Meilisearch, and Typesense receive the original query and apply provider-native syntax, so do not assume the built-in operator rules apply there. In a custom JavaScript UI, prefer `SearchManagerHighlighter.getHitTerms()` with the returned hit before calling `highlight()`; pass the language explicitly to `parseQuery()` when using localized operators without hit metadata.
 
-See [Which query words are highlighted?](../feature-tour/highlighting.md#which-query-words-are-highlighted) for the canonical behavior and [Client-side highlighting](../template-guides/highlighting-snippets.md#client-side-highlighting-since540) for the public JavaScript signatures.
+Destination-page highlighting is deliberately looser than this — it has no hit metadata to work from. See [On the destination page](../feature-tour/highlighting.md#on-the-destination-page) if a word you expected to stay unmarked is highlighted after a click-through.
+
+See [Which query words are highlighted?](../feature-tour/highlighting.md#which-query-words-are-highlighted) for the canonical behavior and [Client-side highlighting](../template-guides/highlighting-snippets.md#client-side-highlighting) for the public JavaScript signatures.
+
+## Nothing is highlighted on the page after clicking a result
+
+**Symptom:** The search widget's results are highlighted correctly, but the page a visitor lands on shows no highlights at all — with or without `?smq=…` in the address bar.
+
+**Cause:** One of three things, in the order worth checking.
+
+**Fix / checks:**
+
+1. **The destination page has no widget on it.** This is the common one. Destination highlighting runs from the `<search-modal>` element as it mounts, so the *landing* page has to include the widget too — not just the pages where people start a search. There is no separate site-wide script that does this. Move `{% include 'search-manager/_widget/search-modal' %}` into a shared layout so every page that can receive a click-through has it.
+
+2. **The content selector matches nothing.** The default `main, article, [data-search-content]` targets the `<main>` and `<article>` *elements*. A layout that wraps content in `<div id="main">` or `<div class="content">` matches none of them, and the widget stops silently — no error, no console warning. Add `data-search-content` to the wrapper you want scanned (that attribute is already in the default selector), or set **Destination Highlighting Content Selector** to a selector that matches your markup.
+
+3. **The query never made it into the URL.** If the address bar has no `?smq=…` after the click, the link was built without it. Check that both **Enable Destination Highlighting** and **Persist Query in URL** are on for the widget that produced the result link — the parameter is written only when both are on. If the two pages use different widget configs, also confirm they use the same **Destination Highlighting Query Parameter**: a widget reading `smq` will ignore a URL carrying `q`.
+
+See [Highlighting matches on the destination page](../feature-tour/highlighting.md#highlighting-matches-on-the-destination-page) for the full flow, and [Widget Configuration → Destination highlighting](../widget/configuration.md#destination-highlighting) for the four settings involved.
+
+## `?smq=` is being added to my URLs
+
+**Symptom:** Clicking a search result appends something like `?smq=redis+performance` to the URL, and analytics starts reporting those as separate page variants.
+
+**Cause:** That's the search query being handed to the destination page so it can highlight the same terms. The parameter name is configurable and defaults to `smq`.
+
+**Fix / checks:**
+
+- To keep it but avoid a clash with an existing parameter, rename it in **Destination Highlighting Query Parameter** on the widget config.
+- To stop it entirely, turn **Persist Query in URL** off. Result links stay clean; pages still highlight if a URL arrives carrying the parameter from elsewhere.
+- To turn off destination highlighting altogether, switch **Enable Destination Highlighting** off — that stops both the parameter and the highlighting.
+- In analytics, the usual treatment is to strip the parameter so the variants collapse back into one page.
 
 ## A similar-looking word is not matched
 

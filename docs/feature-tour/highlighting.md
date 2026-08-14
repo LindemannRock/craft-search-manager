@@ -16,7 +16,7 @@ Both highlighting and snippets work on any text you pass in — they're not limi
 
 ## Which query words are highlighted?
 
-The bundled widget highlights what each result actually matched, not every word the visitor typed. On the built-in MySQL, PostgreSQL, Redis, and File backends, these rules work together:
+In a **results list** — the bundled widget's own, or one you render from the matched-term metadata on each hit — Search Manager highlights what each result actually matched, not every word the visitor typed. On the built-in MySQL, PostgreSQL, Redis, and File backends, these rules work together:
 
 - Unquoted adjacent terms use **AND** by default. If the strict intersection has no results, the built-in engine can broaden to related results as described in [Multi-word query returns nothing](../resources/troubleshooting.md#multi-word-query-returns-nothing-or-related-results).
 - Hyphens and other punctuation are token boundaries. For example, `built-in` is processed as `built` and `in`.
@@ -30,6 +30,18 @@ Boolean and field operators narrow this further. With `alpha OR beta`, each resu
 Split-section results follow the same per-hit rule. Whether the result is a flat split row or an H2/H3 child in a hierarchical layout, every term that actually matched and occurs in the displayed heading is highlighted. The parent page title and snippets keep their own field-specific highlighting.
 
 These query semantics belong to the built-in backends. Algolia, Meilisearch, and Typesense receive the original query unchanged and apply their native query syntax. See [Advanced operators](../template-guides/advanced-operators.md) for the complete backend boundary and [Multi-language support](multi-language.md#stop-words) for stop-word controls.
+
+### On the destination page
+
+Everything above is about a results list, where the widget knows which terms each hit matched because the search response tells it. A destination page has none of that: a visitor arrives with nothing but a query string in the URL. So destination highlighting applies a deliberately simpler rule.
+
+Search Manager parses the query out of the URL — quoted phrases stay whole, boolean operators and any `NOT` operand are dropped, and wildcards, boost markers, and `title:`/`content:` prefixes are stripped — then marks every remaining term of two or more characters wherever it appears in the scanned content. (Localized operators are recognized from the `lang` attribute on the page's `<html>` element, falling back to English.) Three differences from the results list are worth knowing:
+
+- **Stop words are not filtered.** In the `Choose from 7 search backends` example above, `from` stays unhighlighted in the results list but *is* highlighted on the destination page.
+- **Field scopes are not applied.** `title:release` highlights "release" in body text too, because a destination page has no field metadata to scope against.
+- **Matching is plain and case-insensitive, not word-aware.** A term also paints inside longer words, so `?smq=test` marks the "test" in "latest" — where the results list would leave it alone.
+
+This is a reading aid, not a second search: it shows visitors roughly where their words appear on the page they landed on. If you need the exact matched-term rules on the destination page, render the highlighting yourself with `craft.searchManager.highlight()` — see [Highlighting text in Twig](#highlighting-text-in-twig) and [Highlighting matches on the destination page](#highlighting-matches-on-the-destination-page).
 
 ## Server-side highlighting
 
@@ -149,10 +161,15 @@ See [Widget Configuration → Result Highlighting](../widget/configuration.md#re
 
 After a visitor clicks a result, the widget can also highlight the same search terms on the page they land on — independent of the in-results highlighting above (`highlightResultsEnabled`), which only affects the results list itself.
 
-1. User types a search query and clicks a result.
-2. The widget appends the query to the destination URL (e.g., `/blog/my-post?smq=redis+performance`).
-3. The widget script on the destination page reads the `smq` parameter on load.
-4. Matching terms in the configured content areas are wrapped in `<mark>` tags.
+1. A visitor types a search query and clicks a result.
+2. The widget appends the query to the destination URL (for example, `/blog/my-post?smq=redis+performance`).
+3. On the destination page, a `<search-modal>` element reads the `smq` parameter as it mounts.
+4. Matching terms inside the configured content areas are wrapped in `<mark class="sm-highlight sm-page-highlight">`.
+
+> [!IMPORTANT]
+> Step 3 is the one that catches people out. Destination highlighting runs from the widget element itself — there's no separate site-wide script doing it in the background. **The page a visitor lands on has to include the widget too.** Put `{% include 'search-manager/_widget/search-modal' %}` in a shared layout rather than only on the pages where people start a search; otherwise you'll search from a page that has the widget, click through to one that doesn't, and get nothing.
+
+The widget on the destination page reads the parameter using **its own** settings. If the two pages use different widget configs, the query parameter name has to match on both, and the content selector has to fit the landing page's markup.
 
 > [!TIP]
 > Change the query parameter if `smq` conflicts with an existing one on your site — for example, set it to `q` or `highlight`.
@@ -160,6 +177,76 @@ After a visitor clicks a result, the widget can also highlight the same search t
 > [!NOTE]
 > Highlighting only happens if the search query is actually appended to the destination URL. If that's turned off, the destination page has no way to know what to highlight, even with destination highlighting itself enabled.
 
-These options live on each widget config's **Destination Highlighting** tab, in a config-file widget override, or as Twig parameters per-include. See [Widget Configuration → Destination Highlighting](../widget/configuration.md#destination-highlighting) for the full parameter table.
+These options live on each widget config's **Destination Highlighting** tab, in a config-file widget override, or as Twig parameters per-include. See [Widget Configuration → Destination Highlighting](../widget/configuration.md#destination-highlighting) for the full parameter table, including how the master toggle gates the other three.
 
 When multiple widgets are included on the same page, each one registers independently using a keyed internal registry — highlights from one widget will not be duplicated or overridden by another.
+
+For what gets marked once the parameter is read — and how it differs from the results list — see [On the destination page](#on-the-destination-page).
+
+#### Which parts of the page are scanned
+
+`highlightDestinationContentSelector` decides where the widget looks. Its default, `main, article, [data-search-content]`, covers the two standard HTML5 content elements plus an opt-in hook.
+
+Watch the first one: `main` matches the `<main>` **element**, not `<div id="main">`. If your layout wraps content in a non-semantic container, the selector matches nothing — and the widget stops silently. There's no error, no console warning, and nothing highlighted, which looks identical to "the feature isn't working." Two ways to fix it:
+
+- Add `data-search-content` to the wrapper you want scanned. That attribute is already in the default selector, so nothing needs configuring:
+
+  ```twig
+  <div id="main" class="content" data-search-content>
+      {{ entry.body }}
+  </div>
+  ```
+
+- Or point the setting at a selector that matches your markup, such as `#main, .content`.
+
+Everything inside a matched element is scanned except `<script>`, `<style>`, `<noscript>`, and `<textarea>` content, text that already sits inside a `<mark>` or an existing highlight element, and anything inside a nested `<search-modal>`.
+
+#### Styling destination highlights
+
+Destination highlights are styled separately from the widget's own results. A widget style preset — including its **Result Highlighting** colors — sets its custom properties on the `<search-modal>` element itself, so they reach the widget and everything inside it but never the rest of the page. Instead, the first time the widget highlights a page it injects one global rule:
+
+```css
+.sm-page-highlight {
+    background: var(--sm-highlight-bg, #fef08a);
+    color: var(--sm-highlight-color, #854d0e);
+    border-radius: 0.15em;
+    padding: 0 0.08em;
+}
+```
+
+To match your branding, define those two custom properties globally in your site CSS:
+
+```css
+:root {
+    --sm-highlight-bg: #cbe4ff;
+    --sm-highlight-color: #0b3d66;
+}
+```
+
+Custom properties are the reliable hook here: the widget's rule is appended to `<head>` at runtime, so it wins over a same-specificity `.sm-page-highlight` rule in your own stylesheet. To change anything the properties don't cover — padding, radius, font weight — use a more specific selector such as `mark.sm-page-highlight`.
+
+#### Highlighting a destination page without the widget
+
+The turnkey behavior above is widget-only, but you're not stuck if you've built your own search UI on the REST or GraphQL API. Two supported paths give you the same end result with a little more wiring — you read the query parameter and decide what to scan; Search Manager supplies the highlighting.
+
+- **Server-side, in Twig.** Read the parameter and wrap the text as you render it, using the same helper described in [Highlighting text in Twig](#highlighting-text-in-twig):
+
+  ```twig
+  {% set highlightQuery = craft.app.request.getParam('smq') %}
+
+  <h1>
+      {%- if highlightQuery -%}
+          {{ craft.searchManager.highlight(entry.title, highlightQuery, { field: 'title' })|raw }}
+      {%- else -%}
+          {{ entry.title }}
+      {%- endif -%}
+  </h1>
+  ```
+
+  Guard for the parameter being absent, as above — the helper expects a query, not `null`. And remember it strips HTML from whatever you give it unless you pass `stripTags: false`, so aim it at plain-text values (titles, summaries, plain-text custom fields) rather than at rich-text body content.
+
+- **Client-side, with the standalone highlighter.** `craft.searchManager.registerHighlighter()` loads `window.SearchManagerHighlighter` independently of the widget, so a page with no `<search-modal>` on it can still highlight. Walk the elements you care about and pass their text through `highlight()` — see [Client-side highlighting](../template-guides/highlighting-snippets.md#client-side-highlighting).
+
+Either way, something has to put the parameter on the URL in the first place. If your result links come from the bundled widget, keep both **Enable Destination Highlighting** and **Persist Query in URL** on for it. If they come from your own results UI, append the parameter there.
+
+Both paths hand you the highlighting primitive and leave the URL read and DOM traversal to you. The widget is the only thing that does the whole job — read the parameter, find the content areas, mark the terms, skip what shouldn't be touched, and inject the styles.
