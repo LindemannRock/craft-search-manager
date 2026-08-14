@@ -7,6 +7,7 @@ Control the search modal from your own JavaScript — open it from a custom butt
 - Open, close, or toggle the modal from your own buttons or app logic
 - Listen for opens, closes, searches, result clicks, and errors to wire up analytics or a custom UI
 - Reuse the widget's term highlighter in a search UI you build yourself — see [Standalone highlighter](#standalone-highlighter)
+- Highlight a destination page without rendering the widget there
 
 ## Accessing the widget
 
@@ -182,7 +183,12 @@ The same highlighting logic used internally by the widget is available as a stan
 ```twig
 {% do craft.searchManager.registerHighlighter() %}
 
-<script>
+{% js %}
 const html = SearchManagerHighlighter.highlight('My page title', 'page');
-</script>
+SearchManagerHighlighter.highlightFromUrl().then((destinationResult) => {
+    console.log(destinationResult.status);
+});
+{% endjs %}
 ```
+
+`highlightFromUrl(options)` @since(5.55.0) is explicit: registering the asset alone does not scan the page. It defaults to the `smq` URL parameter and `main, article, [data-search-content]` scopes, then resolves with an outcome such as `applied`, `no-query`, `no-scopes`, `no-terms`, `duplicate`, `superseded`, `invalid-selector`, `query-too-long`, or `unsupported-environment`. Repeated calls reconcile the same parameter/selector channel: a changed query or page language removes only that channel's prior marks before applying the new run, while different channels and author markup remain independent. Every result includes `markCount` and `removedMarkCount`. See [Client-Side Highlighting](../template-guides/highlighting-snippets.md#highlightfromurloptions) for options, retry/force behavior, matching rules, and the complete return contract.

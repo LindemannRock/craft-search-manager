@@ -375,6 +375,52 @@ const html = SearchManagerHighlighter.highlight(
 
 For OR queries, this highlights only the terms matched by that hit. For split results, it highlights every matched term that occurs in the displayed heading. See [Which query words are highlighted?](../feature-tour/highlighting.md#which-query-words-are-highlighted) for the canonical behavior, including stop words, hyphens, phrases, and field scopes.
 
+#### `highlightFromUrl(options)` @since(5.55.0)
+
+Apply destination-page highlighting without placing a `<search-modal>` on the page. The method reads the query from the current URL, waits for DOM readiness when needed, scans the configured scopes, and returns a Promise with an inspectable result.
+
+```twig
+{% do craft.searchManager.registerHighlighter() %}
+
+{% js %}
+SearchManagerHighlighter.highlightFromUrl().then((highlightResult) => {
+    if (highlightResult.status === 'invalid-selector') {
+        console.error('Check the destination highlight selector.', highlightResult.reason);
+    }
+});
+{% endjs %}
+```
+
+Loading the standalone asset does not activate destination highlighting. The call is always explicit.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `param` | `string` | `'smq'` | URL query-parameter name |
+| `selector` | `string` | `'main, article, [data-search-content]'` | CSS selector for content scopes |
+| `force` | `boolean` | `false` | Re-scan after an identical successful call, for content added by an SPA |
+
+Every result includes `status`, `param`, `selector`, `query`, `language`, `scopeCount`, `markCount`, and `removedMarkCount`. `markCount` is the number added by this call; `removedMarkCount` is the number of prior marks owned by the same channel that were restored to text. `reason` is included when diagnostic detail is available.
+
+| Status | Meaning | Retained in the shared registry? |
+|--------|---------|----------------------------------|
+| `applied` | Eligible scopes were scanned; `markCount` can be zero when the terms do not occur | Yes, as the channel's current run |
+| `duplicate` | An identical pending or completed run already owns the work | N/A — reports the existing claim |
+| `superseded` | A newer run replaced this pending run before it could mutate the DOM | No — the newer run owns the channel |
+| `no-query` | The URL has no non-empty value for the effective parameter; prior channel-owned marks are removed | No |
+| `no-scopes` | The selector matched no elements | No new claim |
+| `no-terms` | Parsing left no terms of at least two characters; prior channel-owned marks are removed | No |
+| `query-too-long` | The URL query exceeds the 256-character public limit; prior channel-owned marks are removed | No |
+| `invalid-selector` | The browser rejected the CSS selector | No |
+| `unsupported-environment` | Required browser DOM APIs are unavailable | No |
+
+The window-level registry is shared by the separately built widget and standalone bundles. A **channel** is the effective parameter plus selector; a **run** is that channel plus the trimmed query and normalized `<html lang>` value. Pending and applied calls for the same run are duplicates. If a new query or language arrives on the same channel, it supersedes pending work before that work can paint, removes the exact mark elements owned by the channel's prior run, restores their matched text as normalized text nodes, and then applies only the new terms. If the query disappears, exceeds the limit, or has no eligible terms, cleanup still happens before the corresponding result is returned.
+
+Ownership is exact rather than class-based. Updating one channel never unwraps another channel's marks, and pre-existing author `<mark>`, `.sm-highlight`, or `.sm-page-highlight` elements are never claimed merely because their markup resembles Search Manager output. Failed/no-scope outcomes remain retryable. After a successful run, use `{ force: true }` only when dynamic content has been added inside an already-scanned scope; current-run and author highlight elements are skipped, so a forced retry adds marks only to new eligible text. The API does not watch SPA navigation or DOM mutations automatically.
+
+This API deliberately uses the destination-page contract, not `highlight()`'s word-aware result matching: terms shorter than two characters and `NOT` operands are excluded; localized operators come from the page language; field prefixes are stripped but not enforced; remaining terms use case-insensitive substring matching. Script, style, noscript, textarea, existing mark/highlight, and nested widget content are excluded, while text inside `code` and `pre` remains eligible. Query terms are regex-escaped and new marks receive matched text through `textContent`.
+
+The first applied run injects the `.sm-page-highlight` rule documented under [Styling destination highlights](../feature-tour/highlighting.md#styling-destination-highlights). Sites with a strict CSP that blocks inline styles should ship that rule in an allowed stylesheet; the marks still use `sm-highlight sm-page-highlight`.
+
 ### Phrase highlighting
 
 When the search backend returns `matchedPhrases` and `matchedTerms` on each hit, pass them as the `terms` option for precise phrase-aware highlighting:
@@ -408,7 +454,7 @@ The JavaScript highlighter includes several smart features:
 <input type="text" id="search-input" placeholder="Search...">
 <div id="results"></div>
 
-<script>
+{% js %}
 document.getElementById('search-input').addEventListener('input', async function() {
     const query = this.value.trim();
     if (query.length < 2) return;
@@ -428,7 +474,7 @@ document.getElementById('search-input').addEventListener('input', async function
         </div>`;
     }).join('');
 });
-</script>
+{% endjs %}
 ```
 
 ## Next steps

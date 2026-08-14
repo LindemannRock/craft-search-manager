@@ -55,6 +55,7 @@ class SearchManagerVariable
      * - `create(options)` — create a reusable highlighter function
      * - `parseQuery(query, field, language)` — parse a query into highlight-ready terms
      * - `getHitTerms(hit, area, query, displayedText)` — terms one result actually matched
+     * - `highlightFromUrl(options)` — highlight destination-page content from the URL (@since 5.55.0)
      *
      * @since 5.39.0
      */

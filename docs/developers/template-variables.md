@@ -149,10 +149,19 @@ Register the standalone `SearchManagerHighlighter` JavaScript utility. After cal
 - `create(options)` — create a reusable highlighter function with preset options
 - `parseQuery(query, field = null, language = 'en')` — parse a query string into highlight-ready terms (returns a string array)
 - `getHitTerms(hit, area, query, displayedText = '')` @since(5.53.2) — resolve the terms one result actually matched (returns a string array)
+- `highlightFromUrl(options)` @since(5.55.0) — explicitly apply destination-page highlighting from the current URL (returns a Promise with an inspectable status)
 
 ```twig
 {% do craft.searchManager.registerHighlighter() %}
+
+{% js %}
+SearchManagerHighlighter.highlightFromUrl().then((result) => {
+    console.log(result.status);
+});
+{% endjs %}
 ```
+
+Repeated calls share a parameter/selector channel across widget and standalone bundles. A changed query or page language removes only that channel's prior marks before applying the new run; the Promise reports additions through `markCount`, removals through `removedMarkCount`, and pending work replaced by a newer run as `superseded`.
 
 See [Client-Side Highlighting](../template-guides/highlighting-snippets.md#client-side-highlighting) for full usage examples.
 

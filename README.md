@@ -22,7 +22,7 @@ Advanced multi-backend search management for Craft CMS with BM25 ranking, analyt
 - **Commerce Indexing** — Index Craft Commerce Products and Variants when Commerce is installed
 - **Link Manager Indexing** — Index SmartLink Manager and ShortLink Manager links when either plugin is installed
 - **Section Search** — SourceDoc and AutoTransformer-family indices can opt into flat intro/heading section hits with unique backend IDs
-- **Highlighting & Snippets** — Highlight matched terms and show contextual excerpts
+- **Highlighting & Snippets** — Highlight matched terms, show contextual excerpts, and add widget-free destination-page highlighting
 - **Autocomplete** — Search-as-you-type suggestions with separate caching
 - **Query Rules** — Synonyms, section/category/element boosting, redirects
 - **Promotions** — Pin elements to fixed positions in search results

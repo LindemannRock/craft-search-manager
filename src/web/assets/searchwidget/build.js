@@ -42,12 +42,12 @@ function getModalOptions(sourceRoot) {
 
 function getHighlighterOptions(sourceRoot) {
     return {
-        entryPoints: [path.join(sourceRoot, 'modules/Highlighter.js')],
+        entryPoints: [path.join(sourceRoot, 'entries/SearchManagerHighlighter.js')],
         bundle: true,
         format: 'iife',
         globalName: 'SearchManagerHighlighter',
         footer: {
-            // Expose named exports on the global: highlight, escapeHtml, escapeRegex, create, parseQuery
+            // Expose named exports on the documented global surface.
             js: [
                 'if(typeof window!=="undefined"){',
                 '  var _h=SearchManagerHighlighter;',
@@ -57,7 +57,8 @@ function getHighlighterOptions(sourceRoot) {
                 '    escapeRegex:_h.escapeRegex,',
                 '    create:_h.createHighlighter,',
                 '    parseQuery:_h.parseQueryTerms,',
-                '    getHitTerms:_h.getHitHighlightTerms',
+                '    getHitTerms:_h.getHitHighlightTerms,',
+                '    highlightFromUrl:_h.highlightFromUrl',
                 '  };',
                 '}',
             ].join(''),

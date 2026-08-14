@@ -28,7 +28,8 @@ import { createStateManager, DEFAULT_STATE } from './StateManager.js';
 import { performSearch, trackClick, trackSearch } from '../modules/SearchService.js';
 import { loadRecentlyViewed, saveRecentlyViewed, clearRecentlyViewed } from '../modules/RecentlyViewed.js';
 import { applyStylesToElement } from '../modules/StyleUtils.js';
-import { parseQueryTerms, escapeRegex, sanitizeUrl } from '../modules/Highlighter.js';
+import { sanitizeUrl } from '../modules/Highlighter.js';
+import { highlightFromUrl } from '../modules/PageHighlighter.js';
 import { appendQueryParam } from '../modules/UrlUtils.js';
 import {
     renderResults,
@@ -52,8 +53,6 @@ import {
     updateComboboxAria,
 } from '../modules/A11yUtils.js';
 
-const PAGE_HIGHLIGHT_STYLE_ID = 'sm-page-highlight-style';
-const PAGE_HIGHLIGHT_REGISTRY = '__smPageHighlightRegistry';
 const HOTKEY_HANDLED_FLAG = '__searchManagerHotkeyHandled';
 
 let activeOpenWidget = null;
@@ -839,191 +838,14 @@ class SearchWidgetBase extends HTMLElement {
      * parameter is present (for example, ?smq=redis).
      */
     applyDestinationPageHighlight() {
-        if (!this.config.highlightDestinationEnabled || typeof window === 'undefined' || typeof document === 'undefined') {
-            return;
+        if (!this.config.highlightDestinationEnabled) {
+            return Promise.resolve({ status: 'disabled' });
         }
 
-        const queryParamName = this.config.highlightDestinationQueryParam || 'smq';
-        const selector = this.config.highlightDestinationContentSelector || 'main, article, [data-search-content]';
-        const query = new URLSearchParams(window.location.search).get(queryParamName);
-
-        if (!query || !query.trim()) {
-            return;
-        }
-
-        const registry = this.getPageHighlightRegistry();
-        const key = `${queryParamName}::${selector}`;
-        if (registry.has(key)) {
-            return;
-        }
-        registry.add(key);
-
-        const run = () => {
-            this.ensurePageHighlightStyles();
-            this.highlightDestinationNodes(query.trim(), selector, key);
-        };
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', run, { once: true });
-        } else {
-            window.requestAnimationFrame(run);
-        }
-    }
-
-    /**
-     * Inject global styles for page-level highlights.
-     */
-    ensurePageHighlightStyles() {
-        if (document.getElementById(PAGE_HIGHLIGHT_STYLE_ID)) {
-            return;
-        }
-
-        const style = document.createElement('style');
-        style.id = PAGE_HIGHLIGHT_STYLE_ID;
-        style.textContent = `
-            .sm-page-highlight {
-                background: var(--sm-highlight-bg, #fef08a);
-                color: var(--sm-highlight-color, #854d0e);
-                border-radius: 0.15em;
-                padding: 0 0.08em;
-            }
-        `;
-
-        document.head.appendChild(style);
-    }
-
-    /**
-     * Highlight matching text in configured destination content areas.
-     *
-     * @param {string} query - Search query to highlight
-     * @param {string} selector - CSS selector for content scopes
-     * @param {string} key - De-duplication key for this highlight run
-     */
-    highlightDestinationNodes(query, selector, key) {
-        const scopes = Array.from(document.querySelectorAll(selector));
-        if (scopes.length === 0) {
-            return;
-        }
-
-        const language = String(document.documentElement.lang || 'en')
-            .trim()
-            .toLowerCase()
-            .replace(/_/g, '-') || 'en';
-        const terms = [...new Set(parseQueryTerms(query, null, language).map(t => t.trim()).filter(t => t.length >= 2))];
-        if (terms.length === 0) {
-            return;
-        }
-
-        const pattern = terms
-            .map(term => escapeRegex(term))
-            .filter(Boolean)
-            .sort((a, b) => b.length - a.length)
-            .join('|');
-
-        if (!pattern) {
-            return;
-        }
-
-        const regex = new RegExp(`(${pattern})`, 'gi');
-        scopes.forEach((scope) => {
-            if (scope.getAttribute('data-sm-highlighted') === key) {
-                return;
-            }
-            this.highlightTextNodesInScope(scope, regex);
-            scope.setAttribute('data-sm-highlighted', key);
+        return highlightFromUrl({
+            param: this.config.highlightDestinationQueryParam,
+            selector: this.config.highlightDestinationContentSelector,
         });
-    }
-
-    /**
-     * Wrap matching text nodes with <mark class="sm-page-highlight">.
-     *
-     * @param {Element} scope - Root element to process
-     * @param {RegExp} regex - Global, case-insensitive regex
-     */
-    highlightTextNodesInScope(scope, regex) {
-        const walker = document.createTreeWalker(
-            scope,
-            NodeFilter.SHOW_TEXT,
-            {
-                acceptNode: (node) => {
-                    const text = node.nodeValue;
-                    if (!text || !text.trim()) {
-                        return NodeFilter.FILTER_REJECT;
-                    }
-
-                    const parent = node.parentElement;
-                    if (!parent) {
-                        return NodeFilter.FILTER_REJECT;
-                    }
-
-                    if (parent.closest('script, style, noscript, textarea, mark, .sm-highlight, .sm-page-highlight, search-modal')) {
-                        return NodeFilter.FILTER_REJECT;
-                    }
-
-                    return NodeFilter.FILTER_ACCEPT;
-                },
-            }
-        );
-
-        const textNodes = [];
-        while (walker.nextNode()) {
-            textNodes.push(walker.currentNode);
-        }
-
-        textNodes.forEach((node) => {
-            const text = node.nodeValue || '';
-            regex.lastIndex = 0;
-            if (!regex.test(text)) {
-                return;
-            }
-
-            const fragment = document.createDocumentFragment();
-            let cursor = 0;
-
-            regex.lastIndex = 0;
-            const matches = text.matchAll(regex);
-            for (const match of matches) {
-                const matchText = match[0];
-                const matchIndex = match.index ?? -1;
-
-                if (matchIndex < 0) {
-                    continue;
-                }
-
-                if (matchIndex > cursor) {
-                    fragment.appendChild(document.createTextNode(text.slice(cursor, matchIndex)));
-                }
-
-                const mark = document.createElement('mark');
-                mark.className = 'sm-highlight sm-page-highlight';
-                mark.textContent = matchText;
-                fragment.appendChild(mark);
-
-                cursor = matchIndex + matchText.length;
-            }
-
-            if (cursor < text.length) {
-                fragment.appendChild(document.createTextNode(text.slice(cursor)));
-            }
-
-            node.parentNode?.replaceChild(fragment, node);
-        });
-    }
-
-    /**
-     * Get or initialize the global page-highlight registry.
-     *
-     * @returns {Set<string>} Registry of applied highlight keys
-     */
-    getPageHighlightRegistry() {
-        const existing = window[PAGE_HIGHLIGHT_REGISTRY];
-        if (existing instanceof Set) {
-            return existing;
-        }
-
-        const registry = new Set();
-        window[PAGE_HIGHLIGHT_REGISTRY] = registry;
-        return registry;
     }
 
     // =========================================================================

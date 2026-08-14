@@ -15,7 +15,9 @@ use craft\web\AssetBundle;
  *
  * Standalone client-side text highlighter for use in custom search UIs.
  * Exposes `window.SearchManagerHighlighter` with `highlight()`, `escapeHtml()`,
- * `escapeRegex()`, and `create()` methods.
+ * `escapeRegex()`, `create()`, `parseQuery()`, `getHitTerms()`, and
+ * `highlightFromUrl()` methods. Destination-page orchestration through
+ * `highlightFromUrl()` is available since 5.55.0.
  *
  * @author    LindemannRock
  * @package   SearchManager

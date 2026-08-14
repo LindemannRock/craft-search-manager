@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const esbuild = require('esbuild');
+const { pathToFileURL } = require('url');
 const { chromium } = require('@playwright/test');
 const { build, getOutputPaths } = require('./build.js');
 
@@ -50,6 +51,7 @@ for (const file of REQUIRED_FILES) {
 
 // Test 4: Files contain expected content
 const mainFile = path.join(DIST_DIR, 'SearchModalWidget.js');
+const standaloneFile = path.join(__dirname, '..', 'highlighter', 'dist', 'SearchManagerHighlighter.js');
 if (fs.existsSync(mainFile)) {
     const content = fs.readFileSync(mainFile, 'utf8');
     test('Contains customElements.define', content.includes('customElements.define'));
@@ -87,8 +89,19 @@ if (fs.existsSync(widgetBaseFile)) {
     test('Stale search responses are discarded before state updates', source.includes('requestId !== this.searchSequence'));
     test('Stale search failures are discarded before error state', (source.match(/requestId !== this\.searchSequence/g) || []).length >= 2);
     test('Source does not abort in-flight searches', !source.includes('new AbortController'));
-    test('Destination page highlighter can mark code/pre text nodes', !source.includes("parent.closest('script, style, noscript, textarea, code, pre, mark"));
+    test('Widget delegates destination-page highlighting to the shared module', source.includes('return highlightFromUrl({'));
+    test('Widget retains no destination-page DOM walker', !source.includes('createTreeWalker'));
     test('Widget forwards its runtime type to analytics tracking', source.includes('widgetType: this.widgetType'));
+}
+
+const pageHighlighterFile = path.join(SRC_DIR, 'modules', 'PageHighlighter.js');
+if (fs.existsSync(pageHighlighterFile)) {
+    const source = fs.readFileSync(pageHighlighterFile, 'utf8');
+    test('Shared page highlighter can mark code/pre text nodes', !source.includes("textarea, code, pre, mark"));
+    test('Shared page highlighter bounds URL queries at 256 characters', source.includes('const MAX_QUERY_LENGTH = 256;'));
+    test('Shared page highlighter creates marks with textContent', source.includes('mark.textContent = matchText;'));
+    test('Shared page highlighter escapes terms before regex construction', source.includes('.map(term => escapeRegex(term))'));
+    test('Shared page highlighter has no top-level browser access', !source.match(/^const .*\b(?:window|document)\b/m));
 }
 
 const urlUtilsFile = path.join(SRC_DIR, 'modules', 'UrlUtils.js');
@@ -121,6 +134,20 @@ function loadHighlighterModule() {
     const outfile = path.join(tmpDir, 'Highlighter.cjs');
     esbuild.buildSync({
         entryPoints: [path.join(SRC_DIR, 'modules', 'Highlighter.js')],
+        bundle: true,
+        platform: 'node',
+        format: 'cjs',
+        outfile,
+        logLevel: 'silent',
+    });
+    return require(outfile);
+}
+
+function loadPageHighlighterModule() {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-widget-page-highlighter-'));
+    const outfile = path.join(tmpDir, 'PageHighlighter.cjs');
+    esbuild.buildSync({
+        entryPoints: [path.join(SRC_DIR, 'modules', 'PageHighlighter.js')],
         bundle: true,
         platform: 'node',
         format: 'cjs',
@@ -1058,10 +1085,6 @@ async function runWidgetInstanceBehaviorTests() {
             <!doctype html>
             <html>
                 <body>
-                    <main id="destination-content">Public draft</main>
-                    <main id="destination-localized">Openbaar NIET concept</main>
-                    <main id="destination-ambiguous">Alpha NIET beta</main>
-                    <main id="destination-fallback">Public draft</main>
                     <search-modal id="widget-a" trigger-hotkey="k"></search-modal>
                     <search-modal id="widget-b" trigger-hotkey="k"></search-modal>
                 </body>
@@ -1069,39 +1092,6 @@ async function runWidgetInstanceBehaviorTests() {
         `);
         await page.addScriptTag({ path: mainFile });
         await waitForWidgets(page, ['widget-a', 'widget-b']);
-
-        const destinationMarks = await page.evaluate(() => {
-            const widget = document.getElementById('widget-a');
-            widget.highlightDestinationNodes('public NOT draft', '#destination-content', 'not-query');
-            return Array.from(document.querySelectorAll('#destination-content mark')).map(mark => mark.textContent);
-        });
-        test('Browser destination highlighting excludes NOT operands', destinationMarks.join(',') === 'Public');
-
-        const localizedDestinationMarks = await page.evaluate(() => {
-            const widget = document.getElementById('widget-a');
-            const pageLanguage = document.documentElement.lang;
-
-            document.documentElement.lang = 'nl-NL';
-            widget.highlightDestinationNodes('openbaar NIET concept', '#destination-localized', 'localized-query');
-            const localized = Array.from(document.querySelectorAll('#destination-localized mark')).map(mark => mark.textContent);
-
-            document.documentElement.lang = 'de-DE';
-            widget.highlightDestinationNodes('alpha NIET beta', '#destination-ambiguous', 'ambiguous-query');
-            const ambiguous = Array.from(document.querySelectorAll('#destination-ambiguous mark')).map(mark => mark.textContent);
-
-            document.documentElement.lang = 'zz-ZZ';
-            widget.highlightDestinationNodes('public NOT draft', '#destination-fallback', 'fallback-query');
-            const fallback = Array.from(document.querySelectorAll('#destination-fallback mark')).map(mark => mark.textContent);
-
-            document.documentElement.lang = pageLanguage;
-            return { localized, ambiguous, fallback };
-        });
-        test(
-            'Browser destination highlighting uses normalized page language with English fallback and locale isolation',
-            localizedDestinationMarks.localized.join(',') === 'Openbaar'
-            && localizedDestinationMarks.ambiguous.join(',') === 'Alpha,NIET,beta'
-            && localizedDestinationMarks.fallback.join(',') === 'Public'
-        );
 
         await page.evaluate(() => {
             document.getElementById('widget-a').shadowRoot.querySelector('.sm-trigger').click();
@@ -1660,8 +1650,462 @@ async function runWidgetInstanceBehaviorTests() {
     }
 }
 
+async function runDestinationPageHighlightBehaviorTests() {
+    if (!fs.existsSync(mainFile) || !fs.existsSync(standaloneFile)) {
+        test('Destination-page behavior tests can load both shipped bundles', false);
+        return;
+    }
+
+    let browser = null;
+    const fixtureUrl = pathToFileURL(path.join(__dirname, 'test-modal.html')).href;
+    const openPage = async (page, query = '', param = 'smq') => {
+        const suffix = query ? `?${encodeURIComponent(param)}=${encodeURIComponent(query)}` : '';
+        await page.goto(`${fixtureUrl}${suffix}`);
+    };
+    const loadStandalone = page => page.addScriptTag({ path: standaloneFile });
+
+    try {
+        browser = await chromium.launch();
+        const page = await browser.newPage();
+
+        await openPage(page, 'craft');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>Craft CMS</main></body></html>');
+        await loadStandalone(page);
+        const standaloneOnly = await page.evaluate(async () => {
+            const result = await window.SearchManagerHighlighter.highlightFromUrl();
+            return {
+                result,
+                marks: Array.from(document.querySelectorAll('main mark')).map(mark => mark.textContent),
+                modalCount: document.querySelectorAll('search-modal').length,
+                methodType: typeof window.SearchManagerHighlighter.highlightFromUrl,
+                retainedMethods: ['highlight', 'escapeHtml', 'escapeRegex', 'create', 'parseQuery', 'getHitTerms']
+                    .every(method => typeof window.SearchManagerHighlighter[method] === 'function'),
+            };
+        });
+        test('Standalone bundle exposes highlightFromUrl on its global surface', standaloneOnly.methodType === 'function');
+        test('Standalone barrel retains every existing documented global method', standaloneOnly.retainedMethods);
+        test('Standalone bundle highlights a real URL query without a search-modal',
+            standaloneOnly.result.status === 'applied'
+            && standaloneOnly.result.markCount === 1
+            && standaloneOnly.marks.join(',') === 'Craft'
+            && standaloneOnly.modalCount === 0);
+
+        await openPage(page, 'widget');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>Widget destination</main><search-modal id="adapter-widget"></search-modal></body></html>');
+        await page.addScriptTag({ path: mainFile });
+        await waitForWidgets(page, ['adapter-widget']);
+        await page.waitForFunction(() => document.querySelectorAll('main mark').length === 1);
+        const widgetOnlyMarks = await page.locator('main mark').allTextContents();
+        test('Widget bundle thin adapter highlights a real URL query', widgetOnlyMarks.join(',') === 'Widget');
+
+        await openPage(page, 'shared');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>Shared destination</main></body></html>');
+        await loadStandalone(page);
+        await page.addScriptTag({ path: mainFile });
+        const sharedBundles = await page.evaluate(async () => {
+            const first = window.SearchManagerHighlighter.highlightFromUrl();
+            const pendingDuplicate = window.SearchManagerHighlighter.highlightFromUrl();
+            const widget = document.createElement('search-modal');
+            widget.id = 'shared-widget';
+            document.body.appendChild(widget);
+            const firstResult = await first;
+            const pendingResult = await pendingDuplicate;
+            const duplicate = await window.SearchManagerHighlighter.highlightFromUrl();
+            history.replaceState(null, '', '?smq=destination');
+            const replacementWidget = document.createElement('search-modal');
+            replacementWidget.id = 'shared-replacement-widget';
+            document.body.appendChild(replacementWidget);
+            for (let attempt = 0; attempt < 20; attempt++) {
+                if (document.querySelector('main mark')?.textContent === 'destination') {
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+            const crossBundleDuplicate = await window.SearchManagerHighlighter.highlightFromUrl();
+            return {
+                firstResult,
+                pendingResult,
+                duplicate,
+                crossBundleDuplicate,
+                marks: document.querySelectorAll('main mark').length,
+                markText: document.querySelector('main mark')?.textContent,
+                nestedMarks: document.querySelectorAll('mark mark').length,
+                registrySize: window.__smPageHighlightRegistry.size,
+            };
+        });
+        test('Widget and standalone bundles share pending/applied registry identity',
+            sharedBundles.firstResult.status === 'applied'
+            && sharedBundles.pendingResult.status === 'duplicate'
+            && sharedBundles.pendingResult.reason === 'pending'
+            && sharedBundles.duplicate.status === 'duplicate'
+            && sharedBundles.crossBundleDuplicate.status === 'duplicate'
+            && sharedBundles.marks === 1
+            && sharedBundles.markText === 'destination'
+            && sharedBundles.nestedMarks === 0
+            && sharedBundles.registrySize === 1);
+
+        await openPage(page, 'Needle', 'find');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><div class="custom-scope">Needle haystack</div><main>Needle default</main></body></html>');
+        await loadStandalone(page);
+        const customOptions = await page.evaluate(async () => {
+            const result = await window.SearchManagerHighlighter.highlightFromUrl({
+                param: 'find',
+                selector: '.custom-scope',
+            });
+            return {
+                result,
+                customMarks: document.querySelectorAll('.custom-scope mark').length,
+                defaultMarks: document.querySelectorAll('main mark').length,
+            };
+        });
+        test('Custom param and selector options restrict destination highlighting',
+            customOptions.result.status === 'applied'
+            && customOptions.customMarks === 1
+            && customOptions.defaultMarks === 0);
+
+        await openPage(page);
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>No query</main></body></html>');
+        await loadStandalone(page);
+        const noQuery = await page.evaluate(() => window.SearchManagerHighlighter.highlightFromUrl());
+        test('Missing URL query returns no-query without marks',
+            noQuery.status === 'no-query' && noQuery.markCount === 0);
+
+        await openPage(page, 'later');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><div id="mount"></div></body></html>');
+        await loadStandalone(page);
+        const retryContract = await page.evaluate(async () => {
+            const noScopes = await window.SearchManagerHighlighter.highlightFromUrl();
+            const main = document.createElement('main');
+            main.textContent = 'Later content';
+            document.getElementById('mount').appendChild(main);
+            const retry = await window.SearchManagerHighlighter.highlightFromUrl();
+            main.appendChild(document.createTextNode(' later update'));
+            const duplicate = await window.SearchManagerHighlighter.highlightFromUrl();
+            const beforeForce = main.querySelectorAll('mark').length;
+            const forced = await window.SearchManagerHighlighter.highlightFromUrl({ force: true });
+            return {
+                noScopes,
+                retry,
+                duplicate,
+                forced,
+                beforeForce,
+                afterForce: main.querySelectorAll('mark').length,
+            };
+        });
+        test('No-scope attempts remain retryable without force',
+            retryContract.noScopes.status === 'no-scopes'
+            && retryContract.retry.status === 'applied'
+            && retryContract.retry.markCount === 1);
+        test('Applied calls are one-shot until force explicitly rescans dynamic content',
+            retryContract.duplicate.status === 'duplicate'
+            && retryContract.beforeForce === 1
+            && retryContract.forced.status === 'applied'
+            && retryContract.forced.markCount === 1
+            && retryContract.forced.removedMarkCount === 0
+            && retryContract.afterForce === 2);
+
+        await openPage(page, 'alpha');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>alpha beta</main></body></html>');
+        await loadStandalone(page);
+        const changedQuery = await page.evaluate(async () => {
+            const first = await window.SearchManagerHighlighter.highlightFromUrl();
+            history.replaceState(null, '', '?smq=beta');
+            const second = await window.SearchManagerHighlighter.highlightFromUrl();
+            const main = document.querySelector('main');
+            return {
+                first,
+                second,
+                marks: Array.from(main.querySelectorAll('mark')).map(mark => mark.textContent),
+                childNodeTypes: Array.from(main.childNodes).map(node => node.nodeType),
+                emptyMarks: main.querySelectorAll('mark:empty').length,
+                nestedMarks: main.querySelectorAll('mark mark').length,
+                legacyClaims: main.hasAttribute('data-sm-highlighted'),
+            };
+        });
+        test('Changed queries reconcile one channel and leave only current-run marks',
+            changedQuery.first.status === 'applied'
+            && changedQuery.second.status === 'applied'
+            && changedQuery.second.removedMarkCount === 1
+            && changedQuery.marks.join(',') === 'beta');
+        test('Channel cleanup restores normalized text without legacy, empty, or nested marks',
+            changedQuery.childNodeTypes.join(',') === '3,1'
+            && changedQuery.emptyMarks === 0
+            && changedQuery.nestedMarks === 0
+            && changedQuery.legacyClaims === false);
+
+        await openPage(page, 'alpha');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>alpha beta</main></body></html>');
+        await loadStandalone(page);
+        const removedQuery = await page.evaluate(async () => {
+            await window.SearchManagerHighlighter.highlightFromUrl();
+            history.replaceState(null, '', location.pathname);
+            const result = await window.SearchManagerHighlighter.highlightFromUrl();
+            return {
+                result,
+                marks: document.querySelectorAll('main mark').length,
+                text: document.querySelector('main').textContent,
+                childNodes: document.querySelector('main').childNodes.length,
+            };
+        });
+        test('Removing the URL query clears prior channel-owned marks',
+            removedQuery.result.status === 'no-query'
+            && removedQuery.result.removedMarkCount === 1
+            && removedQuery.marks === 0
+            && removedQuery.text === 'alpha beta'
+            && removedQuery.childNodes === 1);
+
+        await openPage(page, 'alpha');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>alpha beta</main></body></html>');
+        await loadStandalone(page);
+        const ineligibleReplacements = await page.evaluate(async () => {
+            await window.SearchManagerHighlighter.highlightFromUrl();
+            history.replaceState(null, '', `?smq=${'x'.repeat(257)}`);
+            const overlong = await window.SearchManagerHighlighter.highlightFromUrl();
+            history.replaceState(null, '', '?smq=beta');
+            await window.SearchManagerHighlighter.highlightFromUrl();
+            history.replaceState(null, '', '?smq=a%20OR%20b');
+            const noTerms = await window.SearchManagerHighlighter.highlightFromUrl();
+            return {
+                overlong,
+                noTerms,
+                marks: document.querySelectorAll('main mark').length,
+                text: document.querySelector('main').textContent,
+                childNodes: document.querySelector('main').childNodes.length,
+            };
+        });
+        test('Overlong and no-term replacement runs clear prior channel-owned marks',
+            ineligibleReplacements.overlong.status === 'query-too-long'
+            && ineligibleReplacements.overlong.removedMarkCount === 1
+            && ineligibleReplacements.noTerms.status === 'no-terms'
+            && ineligibleReplacements.noTerms.removedMarkCount === 1
+            && ineligibleReplacements.marks === 0
+            && ineligibleReplacements.text === 'alpha beta'
+            && ineligibleReplacements.childNodes === 1);
+
+        await openPage(page, 'alpha');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>alpha beta gamma</main></body></html>');
+        await loadStandalone(page);
+        const supersededPending = await page.evaluate(async () => {
+            await window.SearchManagerHighlighter.highlightFromUrl();
+            let readyState = 'loading';
+            Object.defineProperty(document, 'readyState', {
+                configurable: true,
+                get: () => readyState,
+            });
+            history.replaceState(null, '', '?smq=beta');
+            const oldRun = window.SearchManagerHighlighter.highlightFromUrl();
+            history.replaceState(null, '', '?smq=gamma');
+            const newRun = window.SearchManagerHighlighter.highlightFromUrl();
+            readyState = 'interactive';
+            document.dispatchEvent(new Event('DOMContentLoaded'));
+            const [oldResult, newResult] = await Promise.all([oldRun, newRun]);
+            return {
+                oldResult,
+                newResult,
+                marks: Array.from(document.querySelectorAll('main mark')).map(mark => mark.textContent),
+            };
+        });
+        test('A newer pending run supersedes the old run before it can paint',
+            supersededPending.oldResult.status === 'superseded'
+            && supersededPending.oldResult.reason === 'newer-run'
+            && supersededPending.oldResult.removedMarkCount === 1
+            && supersededPending.newResult.status === 'applied'
+            && supersededPending.marks.join(',') === 'gamma');
+
+        await openPage(page, 'alpha');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main><div class="channel-a">alpha beta</div><div class="channel-b">alpha beta</div></main></body></html>');
+        await loadStandalone(page);
+        const independentChannels = await page.evaluate(async () => {
+            await window.SearchManagerHighlighter.highlightFromUrl({ selector: '.channel-a' });
+            await window.SearchManagerHighlighter.highlightFromUrl({ selector: '.channel-b' });
+            const channelBMark = document.querySelector('.channel-b mark');
+            history.replaceState(null, '', '?smq=beta');
+            const updated = await window.SearchManagerHighlighter.highlightFromUrl({ selector: '.channel-a' });
+            return {
+                updated,
+                channelAMarks: Array.from(document.querySelectorAll('.channel-a mark')).map(mark => mark.textContent),
+                channelBMarks: Array.from(document.querySelectorAll('.channel-b mark')).map(mark => mark.textContent),
+                channelBIdentityPreserved: document.querySelector('.channel-b mark') === channelBMark,
+                registrySize: window.__smPageHighlightRegistry.size,
+            };
+        });
+        test('Different selector channels retain independent marks and ownership',
+            independentChannels.updated.status === 'applied'
+            && independentChannels.updated.removedMarkCount === 1
+            && independentChannels.channelAMarks.join(',') === 'beta'
+            && independentChannels.channelBMarks.join(',') === 'alpha'
+            && independentChannels.channelBIdentityPreserved
+            && independentChannels.registrySize === 2);
+
+        await openPage(page, 'alpha');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main><mark id="author-mark">alpha</mark><span id="author-highlight" class="sm-highlight">alpha</span><span id="ordinary">alpha beta</span></main></body></html>');
+        await loadStandalone(page);
+        const authorMarkup = await page.evaluate(async () => {
+            const authorMark = document.getElementById('author-mark');
+            const authorHighlight = document.getElementById('author-highlight');
+            await window.SearchManagerHighlighter.highlightFromUrl();
+            history.replaceState(null, '', '?smq=beta');
+            const updated = await window.SearchManagerHighlighter.highlightFromUrl();
+            return {
+                updated,
+                authorMarkPreserved: document.getElementById('author-mark') === authorMark,
+                authorHighlightPreserved: document.getElementById('author-highlight') === authorHighlight,
+                authorMarkText: authorMark.textContent,
+                authorHighlightText: authorHighlight.textContent,
+                ordinaryMarks: Array.from(document.querySelectorAll('#ordinary mark')).map(mark => mark.textContent),
+            };
+        });
+        test('Reconciliation never unwraps pre-existing author mark/highlight elements',
+            authorMarkup.updated.removedMarkCount === 1
+            && authorMarkup.authorMarkPreserved
+            && authorMarkup.authorHighlightPreserved
+            && authorMarkup.authorMarkText === 'alpha'
+            && authorMarkup.authorHighlightText === 'alpha'
+            && authorMarkup.ordinaryMarks.join(',') === 'beta');
+
+        await openPage(page, 'alpha NIET beta');
+        await page.setContent('<!doctype html><html lang="de-DE"><head></head><body><main>alpha NIET beta</main></body></html>');
+        await loadStandalone(page);
+        const changedLanguage = await page.evaluate(async () => {
+            const first = await window.SearchManagerHighlighter.highlightFromUrl();
+            document.documentElement.lang = 'nl-NL';
+            const second = await window.SearchManagerHighlighter.highlightFromUrl();
+            return {
+                first,
+                second,
+                marks: Array.from(document.querySelectorAll('main mark')).map(mark => mark.textContent),
+            };
+        });
+        test('Changed page language reconciles the channel as a new run',
+            changedLanguage.first.markCount === 3
+            && changedLanguage.second.status === 'applied'
+            && changedLanguage.second.removedMarkCount === 3
+            && changedLanguage.marks.join(',') === 'alpha');
+
+        await openPage(page, 'invalid');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>Invalid selector</main></body></html>');
+        await loadStandalone(page);
+        const invalidSelector = await page.evaluate(() => (
+            window.SearchManagerHighlighter.highlightFromUrl({ selector: '[' })
+        ));
+        test('Invalid selectors resolve as invalid-selector instead of rejecting',
+            invalidSelector.status === 'invalid-selector' && invalidSelector.reason.length > 0);
+
+        await openPage(page, 'scheduled');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>Scheduled content</main></body></html>');
+        await loadStandalone(page);
+        const domLoading = await page.evaluate(async () => {
+            let readyState = 'loading';
+            Object.defineProperty(document, 'readyState', {
+                configurable: true,
+                get: () => readyState,
+            });
+            const pending = window.SearchManagerHighlighter.highlightFromUrl();
+            await Promise.resolve();
+            const before = document.querySelectorAll('main mark').length;
+            readyState = 'interactive';
+            document.dispatchEvent(new Event('DOMContentLoaded'));
+            const result = await pending;
+            return { before, result, after: document.querySelectorAll('main mark').length };
+        });
+        test('DOM-loading calls wait for DOMContentLoaded before applying marks',
+            domLoading.before === 0 && domLoading.result.status === 'applied' && domLoading.after === 1);
+
+        const queryCases = [
+            { language: 'en', query: 'public NOT draft', text: 'Public draft', expected: 'Public' },
+            { language: 'nl-NL', query: 'openbaar NIET concept', text: 'Openbaar NIET concept', expected: 'Openbaar' },
+            { language: 'de-DE', query: 'alpha NIET beta', text: 'Alpha NIET beta', expected: 'Alpha,NIET,beta' },
+            { language: 'zz-ZZ', query: 'public NOT draft', text: 'Public draft', expected: 'Public' },
+        ];
+        const queryOutcomes = [];
+        for (const scenario of queryCases) {
+            await openPage(page, scenario.query);
+            await page.setContent(`<!doctype html><html lang="${scenario.language}"><head></head><body><main>${scenario.text}</main></body></html>`);
+            await loadStandalone(page);
+            queryOutcomes.push(await page.evaluate(async () => {
+                const result = await window.SearchManagerHighlighter.highlightFromUrl();
+                return {
+                    status: result.status,
+                    language: result.language,
+                    marks: Array.from(document.querySelectorAll('main mark')).map(mark => mark.textContent).join(','),
+                };
+            }));
+        }
+        test('Destination highlighting excludes English and localized NOT operands',
+            queryOutcomes[0].marks === queryCases[0].expected
+            && queryOutcomes[1].marks === queryCases[1].expected);
+        test('Destination highlighting keeps locale isolation and English fallback',
+            queryOutcomes[2].marks === queryCases[2].expected
+            && queryOutcomes[3].marks === queryCases[3].expected
+            && queryOutcomes.map(outcome => outcome.status).every(status => status === 'applied'));
+
+        await openPage(page, 'needle');
+        await page.setContent(`<!doctype html><html lang="en"><head></head><body><main>
+            Needle visible
+            <script>const needle = true;</script>
+            <style>.needle { color: red; }</style>
+            <noscript>Needle noscript</noscript>
+            <textarea>Needle textarea</textarea>
+            <mark>Needle existing mark</mark>
+            <span class="sm-highlight">Needle existing highlight</span>
+            <code>Needle code</code>
+            <pre>Needle pre</pre>
+            <search-modal highlight-destination-enabled="false">Needle nested widget</search-modal>
+        </main></body></html>`);
+        await loadStandalone(page);
+        const exclusions = await page.evaluate(async () => {
+            const result = await window.SearchManagerHighlighter.highlightFromUrl();
+            return {
+                result,
+                allMarks: document.querySelectorAll('main mark').length,
+                pageMarks: document.querySelectorAll('main mark.sm-page-highlight').length,
+                codeMarks: document.querySelectorAll('code mark.sm-page-highlight').length,
+                preMarks: document.querySelectorAll('pre mark.sm-page-highlight').length,
+                nestedMarks: document.querySelectorAll('mark mark').length,
+                highlightedMarks: document.querySelectorAll('.sm-highlight mark').length,
+                widgetMarks: document.querySelectorAll('search-modal mark').length,
+            };
+        });
+        test('Destination walker preserves exclusions and existing highlights while marking code/pre',
+            exclusions.result.status === 'applied'
+            && exclusions.result.markCount === 3
+            && exclusions.allMarks === 4
+            && exclusions.pageMarks === 3
+            && exclusions.codeMarks === 1
+            && exclusions.preMarks === 1
+            && exclusions.nestedMarks === 0
+            && exclusions.highlightedMarks === 0
+            && exclusions.widgetMarks === 0);
+
+        await openPage(page, 'a OR b');
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>A or B</main></body></html>');
+        await loadStandalone(page);
+        const noTerms = await page.evaluate(() => window.SearchManagerHighlighter.highlightFromUrl());
+        test('Queries without two-character terms return no-terms', noTerms.status === 'no-terms');
+
+        await openPage(page, 'x'.repeat(257));
+        await page.setContent('<!doctype html><html lang="en"><head></head><body><main>Bounded query</main></body></html>');
+        await loadStandalone(page);
+        const overlong = await page.evaluate(() => window.SearchManagerHighlighter.highlightFromUrl());
+        test('URL queries over 256 characters return query-too-long without work',
+            overlong.status === 'query-too-long' && overlong.scopeCount === 0 && overlong.markCount === 0);
+    } catch (error) {
+        console.error(error);
+        test('Destination-page behavior tests execute', false);
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
+}
+
 (async () => {
+    const { highlightFromUrl } = loadPageHighlighterModule();
+    const unsupported = await highlightFromUrl();
+    test('PageHighlighter imports safely and reports unsupported non-browser environments',
+        unsupported.status === 'unsupported-environment');
     await runBuildParityTests();
+    await runDestinationPageHighlightBehaviorTests();
     await runWidgetInstanceBehaviorTests();
 
     // Summary

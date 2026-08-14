@@ -2,7 +2,7 @@
 
 Show visitors exactly where their search terms matched. Search Manager wraps matched words in a tag of your choosing and pulls short excerpts of surrounding text — so results, and the page a visitor lands on after clicking one, show the hit in context.
 
-There are two independent ways to get this: highlight and snippet text yourself in PHP/Twig (or read plain-text snippets off the REST/GraphQL response), or let the frontend search widget do it for you — both in its results list and on the destination page after a click. Pick the section below that matches how you're building your search experience.
+There are three ways to get this: highlight and snippet text yourself in PHP/Twig (or read plain-text snippets off the REST/GraphQL response), let the frontend search widget do it for you, or run the standalone browser highlighter on a destination page without rendering the widget there. Pick the section below that matches how you're building your search experience.
 
 ## What you'll use it for
 
@@ -42,6 +42,8 @@ Search Manager parses the query out of the URL — quoted phrases stay whole, bo
 - **Matching is plain and case-insensitive, not word-aware.** A term also paints inside longer words, so `?smq=test` marks the "test" in "latest" — where the results list would leave it alone.
 
 This is a reading aid, not a second search: it shows visitors roughly where their words appear on the page they landed on. If you need the exact matched-term rules on the destination page, render the highlighting yourself with `craft.searchManager.highlight()` — see [Highlighting text in Twig](#highlighting-text-in-twig) and [Highlighting matches on the destination page](#highlighting-matches-on-the-destination-page).
+
+Destination-page URL queries are limited to 256 Unicode characters, matching Search Manager's public query limit. Longer values are left unprocessed.
 
 ## Server-side highlighting
 
@@ -167,7 +169,7 @@ After a visitor clicks a result, the widget can also highlight the same search t
 4. Matching terms inside the configured content areas are wrapped in `<mark class="sm-highlight sm-page-highlight">`.
 
 > [!IMPORTANT]
-> Step 3 is the one that catches people out. Destination highlighting runs from the widget element itself — there's no separate site-wide script doing it in the background. **The page a visitor lands on has to include the widget too.** Put `{% include 'search-manager/_widget/search-modal' %}` in a shared layout rather than only on the pages where people start a search; otherwise you'll search from a page that has the widget, click through to one that doesn't, and get nothing.
+> Step 3 is the one that catches people out. The widget's automatic activation runs from the widget element itself. **If you rely on that activation, the page a visitor lands on has to include the widget too.** Put `{% include 'search-manager/_widget/search-modal' %}` in a shared layout rather than only on the pages where people start a search. A widget-free landing page can instead register the standalone asset and explicitly call `SearchManagerHighlighter.highlightFromUrl()` as shown below; loading that asset alone does not run anything.
 
 The widget on the destination page reads the parameter using **its own** settings. If the two pages use different widget configs, the query parameter name has to match on both, and the content selector has to fit the landing page's markup.
 
@@ -179,7 +181,7 @@ The widget on the destination page reads the parameter using **its own** setting
 
 These options live on each widget config's **Destination Highlighting** tab, in a config-file widget override, or as Twig parameters per-include. See [Widget Configuration → Destination Highlighting](../widget/configuration.md#destination-highlighting) for the full parameter table, including how the master toggle gates the other three.
 
-When multiple widgets are included on the same page, each one registers independently using a keyed internal registry — highlights from one widget will not be duplicated or overridden by another.
+Multiple widgets and explicit standalone calls coordinate through one window-level registry, even though the widget and standalone files are separate bundles. A channel is the effective parameter plus selector; a run adds the trimmed query and normalized page language. Identical pending or completed runs are duplicates. When the query or language changes on the same channel, Search Manager removes only that channel's prior marks, restores their text, and applies the new run. Other channels and author-written mark/highlight elements stay untouched.
 
 For what gets marked once the parameter is read — and how it differs from the results list — see [On the destination page](#on-the-destination-page).
 
@@ -187,7 +189,7 @@ For what gets marked once the parameter is read — and how it differs from the 
 
 `highlightDestinationContentSelector` decides where the widget looks. Its default, `main, article, [data-search-content]`, covers the two standard HTML5 content elements plus an opt-in hook.
 
-Watch the first one: `main` matches the `<main>` **element**, not `<div id="main">`. If your layout wraps content in a non-semantic container, the selector matches nothing — and the widget stops silently. There's no error, no console warning, and nothing highlighted, which looks identical to "the feature isn't working." Two ways to fix it:
+Watch the first one: `main` matches the `<main>` **element**, not `<div id="main">`. If your layout wraps content in a non-semantic container, the selector matches nothing. This does not produce an unconditional console warning because a shared layout can legitimately register the asset on pages without content scopes. An explicit `highlightFromUrl()` call resolves with `status: 'no-scopes'`, while the widget adapter simply does no work. Two ways to provide a scope are:
 
 - Add `data-search-content` to the wrapper you want scanned. That attribute is already in the default selector, so nothing needs configuring:
 
@@ -203,7 +205,7 @@ Everything inside a matched element is scanned except `<script>`, `<style>`, `<n
 
 #### Styling destination highlights
 
-Destination highlights are styled separately from the widget's own results. A widget style preset — including its **Result Highlighting** colors — sets its custom properties on the `<search-modal>` element itself, so they reach the widget and everything inside it but never the rest of the page. Instead, the first time the widget highlights a page it injects one global rule:
+Destination highlights are styled separately from the widget's own results. A widget style preset — including its **Result Highlighting** colors — sets its custom properties on the `<search-modal>` element itself, so they reach the widget and everything inside it but never the rest of the page. Instead, the shared page highlighter injects one global rule the first time it applies marks:
 
 ```css
 .sm-page-highlight {
@@ -223,11 +225,13 @@ To match your branding, define those two custom properties globally in your site
 }
 ```
 
-Custom properties are the reliable hook here: the widget's rule is appended to `<head>` at runtime, so it wins over a same-specificity `.sm-page-highlight` rule in your own stylesheet. To change anything the properties don't cover — padding, radius, font weight — use a more specific selector such as `mark.sm-page-highlight`.
+Custom properties are the reliable hook here: the shared page highlighter's rule is appended to `<head>` at runtime, so it wins over a same-specificity `.sm-page-highlight` rule in your own stylesheet. To change anything the properties don't cover — padding, radius, font weight — use a more specific selector such as `mark.sm-page-highlight`.
+
+Under a strict Content Security Policy that rejects inline styles, the browser may refuse that injected rule even though the `<mark>` elements are still added. Define `.sm-page-highlight` in your allowed site stylesheet in that environment; the API does not add a nonce or create a second CSS delivery system.
 
 #### Highlighting a destination page without the widget
 
-The turnkey behavior above is widget-only, but you're not stuck if you've built your own search UI on the REST or GraphQL API. Two supported paths give you the same end result with a little more wiring — you read the query parameter and decide what to scan; Search Manager supplies the highlighting.
+The same destination-page orchestration is available without a `<search-modal>`. Choose the client-side API when you want the widget's URL reading, matching, exclusions, DOM traversal, styling, and cross-bundle de-duplication; choose Twig when you need exact server-side control over individual values.
 
 - **Server-side, in Twig.** Read the parameter and wrap the text as you render it, using the same helper described in [Highlighting text in Twig](#highlighting-text-in-twig):
 
@@ -245,8 +249,24 @@ The turnkey behavior above is widget-only, but you're not stuck if you've built 
 
   Guard for the parameter being absent, as above — the helper expects a query, not `null`. And remember it strips HTML from whatever you give it unless you pass `stripTags: false`, so aim it at plain-text values (titles, summaries, plain-text custom fields) rather than at rich-text body content.
 
-- **Client-side, with the standalone highlighter.** `craft.searchManager.registerHighlighter()` loads `window.SearchManagerHighlighter` independently of the widget, so a page with no `<search-modal>` on it can still highlight. Walk the elements you care about and pass their text through `highlight()` — see [Client-side highlighting](../template-guides/highlighting-snippets.md#client-side-highlighting).
+- **Client-side, with the standalone highlighter.** `craft.searchManager.registerHighlighter()` loads `window.SearchManagerHighlighter` independently of the widget. Call `highlightFromUrl()` explicitly; loading the bundle alone never modifies the page:
+
+  ```twig
+  {% do craft.searchManager.registerHighlighter() %}
+
+  {% js %}
+  SearchManagerHighlighter.highlightFromUrl().then((result) => {
+      if (!['applied', 'no-query', 'no-scopes', 'duplicate', 'superseded'].includes(result.status)) {
+          console.warn('Destination highlighting:', result);
+      }
+  });
+  {% endjs %}
+  ```
+
+  The zero-argument defaults are `param: 'smq'` and `selector: 'main, article, [data-search-content]'`. Pass `{ param: 'q', selector: '#content' }` to override them. The Promise resolves to an inspectable status instead of warning unconditionally; see [`highlightFromUrl()`](../template-guides/highlighting-snippets.md#highlightfromurloptions) for every result and option.
 
 Either way, something has to put the parameter on the URL in the first place. If your result links come from the bundled widget, keep both **Enable Destination Highlighting** and **Persist Query in URL** on for it. If they come from your own results UI, append the parameter there.
 
-Both paths hand you the highlighting primitive and leave the URL read and DOM traversal to you. The widget is the only thing that does the whole job — read the parameter, find the content areas, mark the terms, skip what shouldn't be touched, and inject the styles.
+Calls are one-shot after a successful identical run. A newer run supersedes older pending work before it can paint. Changing the query or `<html lang>` on the same parameter/selector channel reconciles the page instead of accumulating stale marks: only marks created by that channel are restored to text, affected parents are normalized, and the new terms are applied. Removing the query, exceeding the 256-character limit, or changing to a query with no eligible terms also clears that channel's prior marks. The result's `removedMarkCount` reports how many were restored; a superseded pending call resolves with `status: 'superseded'`.
+
+A `no-scopes`, `no-terms`, invalid-selector, or unsupported-environment outcome does not retain a new claim, so a later normal call can retry. For a SPA that adds content inside an already-scanned scope after `status: 'applied'`, call `highlightFromUrl({ force: true })`; current-run marks and author markup remain excluded while new text is scanned. Search Manager does not observe route or DOM changes automatically.
