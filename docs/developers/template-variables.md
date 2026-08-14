@@ -147,7 +147,8 @@ Register the standalone `SearchManagerHighlighter` JavaScript utility. After cal
 - `escapeHtml(text)` — escape HTML special characters
 - `escapeRegex(string)` — escape regex special characters
 - `create(options)` — create a reusable highlighter function with preset options
-- `parseQuery(query)` — parse a query string into highlight-ready terms (returns a string array)
+- `parseQuery(query, field = null, language = 'en')` — parse a query string into highlight-ready terms (returns a string array)
+- `getHitTerms(hit, area, query, displayedText = '')` @since(5.53.2) — resolve the terms one result actually matched (returns a string array)
 
 ```twig
 {% do craft.searchManager.registerHighlighter() %}

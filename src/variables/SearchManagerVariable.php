@@ -53,6 +53,8 @@ class SearchManagerVariable
      * - `escapeHtml(text)` — escape HTML special characters
      * - `escapeRegex(string)` — escape regex special characters
      * - `create(options)` — create a reusable highlighter function
+     * - `parseQuery(query, field, language)` — parse a query into highlight-ready terms
+     * - `getHitTerms(hit, area, query, displayedText)` — terms one result actually matched
      *
      * @since 5.39.0
      */
