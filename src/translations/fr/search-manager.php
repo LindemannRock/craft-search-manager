@@ -792,6 +792,27 @@ return [
     'Enable Cache Warming' => 'Activer le préchauffage du cache',
     'Cache Search Results' => 'Mettre en cache les résultats de recherche',
     'Cache Storage Method' => 'Méthode de stockage du cache',
+    'Choose where disposable cache data is stored. File caching automatically uses the application cache on ephemeral hosts.' => 'Choisissez où sont stockées les données temporaires du cache. La mise en cache dans des fichiers utilise automatiquement le cache d\'application sur les hôtes éphémères.',
+    'File cache' => 'Cache de fichiers',
+    'Application cache' => 'Cache d\'application',
+    'Using managed cache' => 'Utilisation du cache géré',
+    'This host has an ephemeral filesystem, so the application cache is used automatically.' => 'Cet hôte dispose d\'un système de fichiers éphémère ; le cache d\'application est donc utilisé automatiquement.',
+    'Using Redis cache' => 'Utilisation du cache Redis',
+    'Using database cache' => 'Utilisation du cache de base de données',
+    'Using file cache' => 'Utilisation du cache de fichiers',
+    'Using filesystem cache' => 'Utilisation du cache du système de fichiers',
+    'Using application cache' => 'Utilisation du cache d\'application',
+    'Cross-request persistence could not be confirmed.' => 'La persistance entre les requêtes n\'a pas pu être confirmée.',
+    'Caching disabled' => 'Mise en cache désactivée',
+    'No suitable cross-request cache is available. Values are recomputed as needed.' => 'Aucun cache inter-requêtes adapté n\'est disponible. Les valeurs sont recalculées au besoin.',
+    'Managed cache' => 'Cache géré',
+    'Redis cache' => 'Cache Redis',
+    'Database cache' => 'Cache de base de données',
+    'Filesystem cache' => 'Cache du système de fichiers',
+    'Best effort' => 'Au mieux',
+    'Recomputed as needed' => 'Recalculé au besoin',
+    'Inactive' => 'Inactif',
+    'No cache families enabled' => 'Aucune famille de caches activée',
     'Cache Invalidation' => 'Invalidation du cache',
     'Cache Device Detection' => 'Mettre en cache la détection des appareils',
     'Search Results Cache Duration' => 'Durée du cache des résultats de recherche',
@@ -803,15 +824,12 @@ return [
     'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'Nombre de requêtes populaires à pré-cacher après la reconstruction de l\'index. Les requêtes proviennent des données analytiques.',
     'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'Effacer automatiquement le cache de recherche lorsque des entrées sont sauvegardées ou supprimées. Désactivez pour les sites à fort trafic afin de réduire l\'instabilité du cache.',
     'Higher values warm more cache but take longer to complete' => 'Des valeurs plus élevées préchauffent plus de cache mais prennent plus de temps',
-    'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.' => 'Comment stocker les données du cache. Utilisez Redis/Base de données pour les environnements à charge équilibrée ou multi-serveurs.',
     'When disabled, cache expires naturally based on Cache Duration setting' => 'Lorsque désactivé, le cache expire naturellement selon le paramètre de durée du cache',
-    'Redis/Database (load-balanced, multi-server, cloud hosting)' => 'Redis/Base de données (charge équilibrée, multi-serveurs, hébergement cloud)',
     'Cache Hit Rate' => 'Taux de succès du cache',
     'Cache Hits' => 'Succès du cache',
     'Cache Misses' => 'Échecs du cache',
     'Cache Status' => 'Statut du cache',
     'Cache Management' => 'Gestion du cache',
-    'Total cached entries' => 'Total des entrées en cache',
     'Clear Cache on Element Save' => 'Vider le cache lors de la sauvegarde d\'un élément',
     '10 queries (Light)' => '10 requêtes (Léger)',
     '25 queries (Moderate)' => '25 requêtes (Modéré)',
@@ -823,9 +841,6 @@ return [
     'Min: 60 (1 minute), Max: 604800 (7 days)' => 'Min : 60 (1 minute), Max : 604800 (7 jours)',
     'Min: 60 (1 minute), Max: 86400 (1 day)' => 'Min : 60 (1 minute), Max : 86400 (1 jour)',
     'Search Results Caching' => 'Mise en cache des résultats de recherche',
-    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Emplacement du cache :</strong> <code>{path}</code>',
-    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Emplacement du cache :</strong> Utilisation du cache Redis configuré par Craft depuis <code>config/app.php</code>',
-    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis non configuré :</strong> Pour utiliser le cache Redis, installez <code>yiisoft/yii2-redis</code> et configurez-le dans <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">En savoir plus</a>',
     'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Durée du cache en secondes. Actuel : <strong id="cacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Durée du cache en secondes. Actuel : <strong id="autocompleteCacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Durée du cache en secondes. Actuel : <strong id="deviceDetectionCacheDuration-human"></strong>',
@@ -838,10 +853,10 @@ return [
 • Le cache est vidé automatiquement lorsque le contenu change (si activé ci-dessous)',
     '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
-• Uses the same storage method as search results (file or Redis)<br>
+• Uses the same cache storage as search results<br>
 • Cache is cleared when content is re-indexed' => '<strong>Fonctionnement :</strong><br>
 • Les suggestions d\'autocomplétion sont mises en cache par préfixe de requête, index et langue<br>
-• Utilise la même méthode de stockage que les résultats de recherche (File ou Redis)<br>
+• Utilise le même stockage de cache que les résultats de recherche<br>
 • Le cache est vidé lorsque le contenu est réindexé',
     '<strong>How it works:</strong><br>
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
@@ -1920,7 +1935,7 @@ return [
     'Export failed. Check logs for details.' => 'L\'exportation a échoué. Consultez les journaux pour plus de détails.',
 
     // Utilities / diagnostics
-    'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Surveillez les index de recherche, videz le cache de fichiers et gérez votre infrastructure de recherche.',
+    'Monitor search indices, clear disposable caches, and manage your search infrastructure.' => 'Surveillez les index de recherche, effacez les caches temporaires et gérez votre infrastructure de recherche.',
     'Manage Backends' => 'Gérer les backends',
     'Manage Settings' => 'Gérer les paramètres',
     'Clear Storage' => 'Vider le stockage',
@@ -1963,7 +1978,6 @@ return [
     'Failed to clear search cache' => 'Échec du vidage du cache de recherche',
     'Failed to sync count' => 'Échec de la synchronisation du compte',
     'File' => 'Fichier',
-    'File System (default, single server)' => 'Système de fichiers (par défaut, serveur unique)',
     'Not configured' => 'Non configuré',
     '{count} row' => '{count} ligne',
     '{count} rows' => '{count} lignes',

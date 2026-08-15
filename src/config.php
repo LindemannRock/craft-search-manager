@@ -174,8 +174,8 @@ return [
 
         /**
          * Cache Storage Method
-         * 'file' = File system (default, single server)
-         * 'redis' = Redis/Database (load-balanced, multi-server, cloud hosting)
+         * 'file' = Plugin-owned file cache on durable hosts
+         * 'redis' or 'craft' = Craft's configured application cache
          * Default: 'file'
          */
         // 'cacheStorageMethod' => 'file',

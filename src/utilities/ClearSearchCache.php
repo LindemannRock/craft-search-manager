@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\utilities;
 
 use Craft;
 use craft\base\Utility;
+use lindemannrock\searchmanager\cache\CacheStoragePresenter;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\CacheStorageService;
@@ -99,24 +100,41 @@ class ClearSearchCache extends Utility
                 ->count();
         }
 
-        // Count cache files (only for file storage)
-        $deviceCacheFiles = 0;
-        $searchCacheFiles = 0;
-        $autocompleteCacheFiles = 0;
+        $cacheFileCounts = null;
         $storageOptions = [];
         $rebuildAllPlan = null;
 
         $cacheStorage = new CacheStorageService();
-        $effectiveCacheStorage = $cacheStorage->getEffectiveStorage();
+        $cacheDecision = $cacheStorage->getStorageDecision();
+        $enabledCacheFamilies = [
+            'search' => $settings->enableCache,
+            'autocomplete' => $settings->enableAutocompleteCache,
+            'device' => $settings->cacheDeviceDetection,
+        ];
+        $hasEnabledCacheFamilies = in_array(true, $enabledCacheFamilies, true);
+        $cachePresenter = new CacheStoragePresenter();
+        $cachePresentation = $cachePresenter->present(
+            $cacheDecision,
+            $hasEnabledCacheFamilies,
+        );
         if (
             $user->getIdentity()
             && $user->checkPermission('searchManager:clearCache')
-            && $effectiveCacheStorage === CacheStorageService::STORAGE_FILE
+            && $cacheDecision->usesFileCache()
         ) {
-            $deviceCacheFiles = $cacheStorage->countFiles('device');
-            $searchCacheFiles = $cacheStorage->countFiles('search');
-            $autocompleteCacheFiles = $cacheStorage->countFiles('autocomplete');
+            $cacheFileCounts = [];
+            foreach ($enabledCacheFamilies as $family => $enabled) {
+                if ($enabled) {
+                    $cacheFileCounts[$family] = $cacheStorage->countFiles($family);
+                }
+            }
         }
+
+        $cacheFamilies = $cachePresenter->presentFamilies(
+            $cacheDecision,
+            $enabledCacheFamilies,
+            $cacheFileCounts,
+        );
 
         if ($user->getIdentity() && $user->checkPermission('searchManager:rebuildIndices')) {
             $storageOptions = SearchManager::$plugin->storageMaintenance->getProjection()['storageOptions'];
@@ -129,12 +147,9 @@ class ClearSearchCache extends Utility
             'backendDistribution' => $backendDistribution,
             'defaultBackendName' => $defaultBackendName,
             'indices' => $indices,
-            'deviceCacheFiles' => $deviceCacheFiles,
-            'searchCacheFiles' => $searchCacheFiles,
-            'autocompleteCacheFiles' => $autocompleteCacheFiles,
-            // The current template has only enumerable-file and non-enumerable
-            // application-cache branches. Public wording is handled later.
-            'storageMethod' => $effectiveCacheStorage === CacheStorageService::STORAGE_FILE ? 'file' : 'redis',
+            'cacheStorage' => $cachePresentation,
+            'cacheFamilies' => $cacheFamilies,
+            'cacheFileCounts' => $cacheFileCounts,
             'analyticsCount' => $analyticsCount,
             'storageOptions' => $storageOptions,
             'rebuildAllPlan' => $rebuildAllPlan,

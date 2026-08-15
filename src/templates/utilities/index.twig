@@ -37,7 +37,7 @@
     },
     page: {
         title: 'Overview'|t('search-manager'),
-        description: 'Monitor search indices, clear file cache, and manage your search infrastructure.'|t('search-manager'),
+        description: 'Monitor search indices, clear disposable caches, and manage your search infrastructure.'|t('search-manager'),
     },
 } %}
 
@@ -97,44 +97,26 @@
 
     {# Cache Status Card #}
     {% if canClearCache %}
-    {% if storageMethod == 'redis' %}
         {% set cacheSubBoxes = [] %}
-        {% if settings.enableCache %}
-            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: '✓', label: 'Search'|t('search-manager')}]) %}
-        {% endif %}
-        {% if settings.enableAutocompleteCache %}
-            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: '✓', label: 'Autocomplete'|t('search-manager')}]) %}
-        {% endif %}
-        {% if settings.cacheDeviceDetection %}
-            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: '✓', label: 'Devices'|t('search-manager')}]) %}
-        {% endif %}
+        {% for family in cacheFamilies %}
+            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: family.value, label: family.label|t('search-manager')}]) %}
+        {% endfor %}
+
+        {% set cacheCardColor = cacheStorage.utilityStatusType == 'warning'
+            ? lrPaletteColor('amber').color
+            : (cacheStorage.utilityStatusType == 'info'
+                ? lrPaletteColor('sky').color
+                : (cacheStorage.utilityStatusType == 'inactive'
+                    ? lrPaletteColor('gray').color
+                    : lrPaletteColor('emerald').color)) %}
 
         {% include 'lindemannrock-base/_components/unified-card' with {
-            title: 'Cache Status'|t('search-manager') ~ ' (Redis)',
-            color: lrPaletteColor('emerald').color,
-            value: 'Active'|t('search-manager'),
+            title: 'Cache Status'|t('search-manager'),
+            color: cacheCardColor,
+            value: cacheStorage.utilityValue|t('search-manager'),
+            description: cacheStorage.utilityDescription|t('search-manager'),
             subBoxes: cacheSubBoxes,
         } only %}
-    {% else %}
-        {% set cacheSubBoxes = [] %}
-        {% if settings.enableCache %}
-            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: searchCacheFiles, label: 'Search'|t('search-manager')}]) %}
-        {% endif %}
-        {% if settings.enableAutocompleteCache %}
-            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: autocompleteCacheFiles, label: 'Autocomplete'|t('search-manager')}]) %}
-        {% endif %}
-        {% if settings.cacheDeviceDetection %}
-            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: deviceCacheFiles, label: 'Devices'|t('search-manager')}]) %}
-        {% endif %}
-
-        {% include 'lindemannrock-base/_components/unified-card' with {
-            title: 'Cache Status'|t('search-manager') ~ ' (File)',
-            color: lrPaletteColor('emerald').color,
-            value: searchCacheFiles + autocompleteCacheFiles + deviceCacheFiles,
-            description: 'Total cached entries'|t('search-manager'),
-            subBoxes: cacheSubBoxes,
-        } only %}
-    {% endif %}
     {% endif %}
 {% endblock %}
 
@@ -216,21 +198,21 @@
                 {% set cacheButtons = cacheButtons|merge([{
                     id: 'clear-search-cache',
                     label: 'Clear Search Cache'|t('search-manager'),
-                    count: storageMethod != 'redis' ? searchCacheFiles : null,
+                    count: cacheFileCounts ? cacheFileCounts.search ?? 0 : null,
                 }]) %}
             {% endif %}
             {% if settings.enableAutocompleteCache %}
                 {% set cacheButtons = cacheButtons|merge([{
                     id: 'clear-autocomplete-cache',
                     label: 'Clear Autocomplete Cache'|t('search-manager'),
-                    count: storageMethod != 'redis' ? autocompleteCacheFiles : null,
+                    count: cacheFileCounts ? cacheFileCounts.autocomplete ?? 0 : null,
                 }]) %}
             {% endif %}
             {% if settings.cacheDeviceDetection %}
                 {% set cacheButtons = cacheButtons|merge([{
                     id: 'clear-device-cache',
                     label: 'Clear Device Cache'|t('search-manager'),
-                    count: storageMethod != 'redis' ? deviceCacheFiles : null,
+                    count: cacheFileCounts ? cacheFileCounts.device ?? 0 : null,
                 }]) %}
             {% endif %}
             {% if settings.cacheDeviceDetection or settings.enableCache or settings.enableAutocompleteCache %}

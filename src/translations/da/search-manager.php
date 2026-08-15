@@ -792,6 +792,27 @@ return [
     'Enable Cache Warming' => 'Aktiver Cache-opvarmning',
     'Cache Search Results' => 'Cache søgeresultater',
     'Cache Storage Method' => 'Metode for cache-lagring',
+    'Choose where disposable cache data is stored. File caching automatically uses the application cache on ephemeral hosts.' => 'Vælg, hvor midlertidige cache-data gemmes. Filcache bruger automatisk applikationscachen på flygtige værter.',
+    'File cache' => 'Filcache',
+    'Application cache' => 'Applikationscache',
+    'Using managed cache' => 'Bruger administreret cache',
+    'This host has an ephemeral filesystem, so the application cache is used automatically.' => 'Denne vært har et flygtigt filsystem, så applikationscachen bruges automatisk.',
+    'Using Redis cache' => 'Bruger Redis-cache',
+    'Using database cache' => 'Bruger databasecache',
+    'Using file cache' => 'Bruger filcache',
+    'Using filesystem cache' => 'Bruger filsystemcache',
+    'Using application cache' => 'Bruger applikationscache',
+    'Cross-request persistence could not be confirmed.' => 'Persistens på tværs af anmodninger kunne ikke bekræftes.',
+    'Caching disabled' => 'Caching deaktiveret',
+    'No suitable cross-request cache is available. Values are recomputed as needed.' => 'Ingen egnet cache på tværs af anmodninger er tilgængelig. Værdier genberegnes efter behov.',
+    'Managed cache' => 'Administreret cache',
+    'Redis cache' => 'Redis-cache',
+    'Database cache' => 'Databasecache',
+    'Filesystem cache' => 'Filsystemcache',
+    'Best effort' => 'Bedste indsats',
+    'Recomputed as needed' => 'Genberegnes efter behov',
+    'Inactive' => 'Inaktiv',
+    'No cache families enabled' => 'Ingen cachefamilier er aktiveret',
     'Cache Invalidation' => 'Cache-invalidering',
     'Cache Device Detection' => 'Cach enhedsregistrering',
     'Search Results Cache Duration' => 'Varighed for søgeresultat-Cache',
@@ -803,15 +824,12 @@ return [
     'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'Antal populære forespørgsler der skal præ-caches efter indeksgenopbygning. Forespørgsler hentes fra analysedata.',
     'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'Ryd automatisk søgecachen når poster gemmes eller slettes. Deaktiver for websteder med høj trafik for at reducere cache-ustabilitet.',
     'Higher values warm more cache but take longer to complete' => 'Højere værdier opvarmer mere cache men tager længere tid at fuldføre',
-    'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.' => 'Sådan lagres cache-data. Brug Redis/Database til belastningsbalancerede eller flerservermiljøer.',
     'When disabled, cache expires naturally based on Cache Duration setting' => 'Når deaktiveret udløber cachen naturligt baseret på Cache-varighedsindstillingen',
-    'Redis/Database (load-balanced, multi-server, cloud hosting)' => 'Redis/Database (belastningsbalancering, flerserver, cloudhosting)',
     'Cache Hit Rate' => 'Cache-klikrate',
     'Cache Hits' => 'Cache-klik',
     'Cache Misses' => 'Cache-misser',
     'Cache Status' => 'Cache-status',
     'Cache Management' => 'Cache-administration',
-    'Total cached entries' => 'Samlede cachede poster',
     'Clear Cache on Element Save' => 'Ryd Cache ved elementgemning',
     '10 queries (Light)' => '10 forespørgsler (Let)',
     '25 queries (Moderate)' => '25 forespørgsler (Moderat)',
@@ -823,9 +841,6 @@ return [
     'Min: 60 (1 minute), Max: 604800 (7 days)' => 'Min: 60 (1 minut), Maks: 604800 (7 dage)',
     'Min: 60 (1 minute), Max: 86400 (1 day)' => 'Min: 60 (1 minut), Maks: 86400 (1 dag)',
     'Search Results Caching' => 'Caching af søgeresultater',
-    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Cache-placering:</strong> <code>{path}</code>',
-    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Cache-placering:</strong> Bruger Craft\'s konfigurerede Redis-cache fra <code>config/app.php</code>',
-    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis ikke konfigureret:</strong> For at bruge Redis-caching skal du installere <code>yiisoft/yii2-redis</code> og konfigurere det i <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Lær mere</a>',
     'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Cache-varighed i sekunder. Nuværende: <strong id="cacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Cache-varighed i sekunder. Nuværende: <strong id="autocompleteCacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Cache-varighed i sekunder. Nuværende: <strong id="deviceDetectionCacheDuration-human"></strong>',
@@ -838,10 +853,10 @@ return [
 • Cache ryddes automatisk, når indhold ændres (hvis aktiveret nedenfor)',
     '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
-• Uses the same storage method as search results (file or Redis)<br>
+• Uses the same cache storage as search results<br>
 • Cache is cleared when content is re-indexed' => '<strong>Sådan fungerer det:</strong><br>
 • Autofuldførelse-forslag caches pr. forespørgselspræfiks, indeks og sprog<br>
-• Bruger samme lagringsmetode som søgeresultater (fil eller Redis)<br>
+• Bruger samme cachelagring som søgeresultater<br>
 • Cache ryddes, når indhold genindekseres',
     '<strong>How it works:</strong><br>
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
@@ -1920,7 +1935,7 @@ return [
     'Export failed. Check logs for details.' => 'Eksport mislykkedes. Kontrollér logfilerne for detaljer.',
 
     // Utilities / diagnostics
-    'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Overvåg søgeindekser, ryd fil-Cache og administrer din søgeinfrastruktur.',
+    'Monitor search indices, clear disposable caches, and manage your search infrastructure.' => 'Overvåg søgeindekser, ryd midlertidige cacher, og administrer søgeinfrastrukturen.',
     'Manage Backends' => 'Administrer backends',
     'Manage Settings' => 'Administrer indstillinger',
     'Clear Storage' => 'Ryd lagring',
@@ -1963,7 +1978,6 @@ return [
     'Failed to clear search cache' => 'Kunne ikke rydde søge-Cache',
     'Failed to sync count' => 'Kunne ikke synkronisere antal',
     'File' => 'Fil',
-    'File System (default, single server)' => 'Filsystem (standard, enkelt server)',
     'Not configured' => 'Ikke konfigureret',
     '{count} row' => '{count} række',
     '{count} rows' => '{count} rækker',

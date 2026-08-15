@@ -792,6 +792,27 @@ return [
     'Enable Cache Warming' => 'تفعيل تسخين Cache',
     'Cache Search Results' => 'تخزين نتائج البحث في Cache',
     'Cache Storage Method' => 'طريقة تخزين Cache',
+    'Choose where disposable cache data is stored. File caching automatically uses the application cache on ephemeral hosts.' => 'اختر مكان تخزين بيانات Cache المؤقتة. يستخدم Cache الملفات Cache التطبيق تلقائياً على المضيفات ذات أنظمة الملفات المؤقتة.',
+    'File cache' => 'Cache الملفات',
+    'Application cache' => 'Cache التطبيق',
+    'Using managed cache' => 'استخدام Cache مُدار',
+    'This host has an ephemeral filesystem, so the application cache is used automatically.' => 'يحتوي هذا المضيف على نظام ملفات مؤقت، لذلك يُستخدم Cache التطبيق تلقائياً.',
+    'Using Redis cache' => 'استخدام Cache Redis',
+    'Using database cache' => 'استخدام Cache قاعدة البيانات',
+    'Using file cache' => 'استخدام Cache الملفات',
+    'Using filesystem cache' => 'استخدام Cache نظام الملفات',
+    'Using application cache' => 'استخدام Cache التطبيق',
+    'Cross-request persistence could not be confirmed.' => 'تعذّر تأكيد استمرار البيانات بين الطلبات.',
+    'Caching disabled' => 'Cache معطّل',
+    'No suitable cross-request cache is available. Values are recomputed as needed.' => 'لا يتوفر Cache مناسب للاستخدام بين الطلبات. تتم إعادة حساب القيم حسب الحاجة.',
+    'Managed cache' => 'Cache مُدار',
+    'Redis cache' => 'Cache Redis',
+    'Database cache' => 'Cache قاعدة البيانات',
+    'Filesystem cache' => 'Cache نظام الملفات',
+    'Best effort' => 'أفضل جهد',
+    'Recomputed as needed' => 'إعادة الحساب حسب الحاجة',
+    'Inactive' => 'غير نشط',
+    'No cache families enabled' => 'لا توجد عائلات Cache مفعّلة',
     'Cache Invalidation' => 'إبطال Cache',
     'Cache Device Detection' => 'تخزين كشف الأجهزة مؤقتاً',
     'Search Results Cache Duration' => 'مدة Cache نتائج البحث',
@@ -803,15 +824,12 @@ return [
     'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'عدد الاستعلامات الشائعة المراد تخزينها مسبقاً في Cache بعد إعادة بناء الفهرس. يتم سحب الاستعلامات من بيانات التحليلات.',
     'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'مسح Cache البحث تلقائياً عند حفظ الإدخالات أو حذفها. قم بالتعطيل للمواقع ذات حركة المرور العالية لتقليل تذبذب Cache.',
     'Higher values warm more cache but take longer to complete' => 'القيم الأعلى تسخن المزيد من Cache ولكن تستغرق وقتاً أطول لإكمالها',
-    'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.' => 'كيفية تخزين بيانات Cache. استخدم Redis/قاعدة البيانات للبيئات ذات موازنة التحميل أو متعددة الخوادم.',
     'When disabled, cache expires naturally based on Cache Duration setting' => 'عند التعطيل، تنتهي صلاحية Cache بشكل طبيعي بناءً على إعداد مدة Cache',
-    'Redis/Database (load-balanced, multi-server, cloud hosting)' => 'Redis/قاعدة البيانات (موازنة تحميل، خوادم متعددة، استضافة سحابية)',
     'Cache Hit Rate' => 'معدل إصابة Cache',
     'Cache Hits' => 'إصابات Cache',
     'Cache Misses' => 'إخفاقات Cache',
     'Cache Status' => 'حالة Cache',
     'Cache Management' => 'إدارة Cache',
-    'Total cached entries' => 'إجمالي الإدخالات المخزنة مؤقتاً',
     'Clear Cache on Element Save' => 'مسح Cache عند حفظ العنصر',
     '10 queries (Light)' => '10 استعلامات (خفيف)',
     '25 queries (Moderate)' => '25 استعلام (معتدل)',
@@ -823,9 +841,6 @@ return [
     'Min: 60 (1 minute), Max: 604800 (7 days)' => 'الحد الأدنى: 60 (دقيقة واحدة)، الحد الأقصى: 604800 (7 أيام)',
     'Min: 60 (1 minute), Max: 86400 (1 day)' => 'الحد الأدنى: 60 (دقيقة واحدة)، الحد الأقصى: 86400 (يوم واحد)',
     'Search Results Caching' => 'تخزين نتائج البحث في Cache',
-    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>موقع Cache:</strong> <code>{path}</code>',
-    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>موقع Cache:</strong> استخدام Cache Redis المكوَّن في Craft من <code>config/app.php</code>',
-    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis غير مكوَّن:</strong> لاستخدام Cache Redis، ثبّت <code>yiisoft/yii2-redis</code> وكوّنه في <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">معرفة المزيد</a>',
     'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'مدة Cache بالثواني. الحالية: <strong id="cacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'مدة Cache بالثواني. الحالية: <strong id="autocompleteCacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'مدة Cache بالثواني. الحالية: <strong id="deviceDetectionCacheDuration-human"></strong>',
@@ -838,10 +853,10 @@ return [
 • يُمسح Cache تلقائياً عند تغيير المحتوى (إذا كان مفعّلاً أدناه)',
     '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
-• Uses the same storage method as search results (file or Redis)<br>
+• Uses the same cache storage as search results<br>
 • Cache is cleared when content is re-indexed' => '<strong>كيفية العمل:</strong><br>
 • تُخزَّن اقتراحات الإكمال التلقائي في Cache لكل بادئة استعلام وفهرس ولغة<br>
-• يستخدم نفس طريقة التخزين كنتائج البحث (file أو Redis)<br>
+• يستخدم تخزين Cache نفسه المستخدم لنتائج البحث<br>
 • يُمسح Cache عند إعادة فهرسة المحتوى',
     '<strong>How it works:</strong><br>
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
@@ -1920,7 +1935,7 @@ return [
     'Export failed. Check logs for details.' => 'فشل التصدير. تحقق من السجلات للحصول على التفاصيل.',
 
     // Utilities / diagnostics
-    'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'مراقبة فهارس البحث ومسح Cache الملفات وإدارة البنية التحتية للبحث الخاصة بك.',
+    'Monitor search indices, clear disposable caches, and manage your search infrastructure.' => 'راقب فهارس البحث وامسح بيانات Cache المؤقتة وأدر البنية التحتية للبحث.',
     'Manage Backends' => 'إدارة الواجهات الخلفية',
     'Manage Settings' => 'إدارة الإعدادات',
     'Clear Storage' => 'مسح التخزين',
@@ -1963,7 +1978,6 @@ return [
     'Failed to clear search cache' => 'فشل في مسح Cache البحث',
     'Failed to sync count' => 'فشل في مزامنة العدد',
     'File' => 'ملف',
-    'File System (default, single server)' => 'نظام الملفات (افتراضي، خادم واحد)',
     'Not configured' => 'غير مُكوَّن',
     '{count} row' => '{count} صف',
     '{count} rows' => '{count} صفوف',

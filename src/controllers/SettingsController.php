@@ -17,6 +17,7 @@ use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\base\helpers\PluginThemeStyleHelper;
 use lindemannrock\base\helpers\SettingsPostHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\cache\CacheStoragePresenter;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
@@ -29,6 +30,7 @@ use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\CacheStorageService;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 use lindemannrock\searchmanager\transformers\CommerceTransformer;
 use yii\web\BadRequestHttpException;
@@ -1571,8 +1573,40 @@ class SettingsController extends Controller
                 ]);
             }
             )(),
+            'cache' => array_merge($variables, [
+                'cacheStorage' => $this->cacheStorageTemplateVariables($settings),
+            ]),
             default => $variables,
         };
+    }
+
+    /**
+     * @return array{
+     *     selectedChoice: 'file'|'application',
+     *     applicationToken: string,
+     *     presentations: array{file: array<string, bool|string|null>, application: array<string, bool|string|null>}
+     * }
+     */
+    private function cacheStorageTemplateVariables(Settings $settings): array
+    {
+        $storage = new CacheStorageService();
+        $presenter = new CacheStoragePresenter();
+        $applicationToken = $presenter->applicationOptionToken($settings->cacheStorageMethod);
+        $fileDecision = $storage->getStorageDecision('file');
+        $applicationDecision = $storage->getStorageDecision($applicationToken);
+
+        return [
+            'selectedChoice' => $settings->cacheStorageMethod === 'file' ? 'file' : 'application',
+            'applicationToken' => $applicationToken,
+            'presentations' => [
+                'file' => $presenter->present(
+                    $fileDecision,
+                    true,
+                    $storage->getDisplayFilePath($fileDecision),
+                ),
+                'application' => $presenter->present($applicationDecision),
+            ],
+        ];
     }
 
     /**

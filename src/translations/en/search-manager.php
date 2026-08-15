@@ -792,6 +792,27 @@ return [
     'Enable Cache Warming' => 'Enable Cache Warming',
     'Cache Search Results' => 'Cache Search Results',
     'Cache Storage Method' => 'Cache Storage Method',
+    'Choose where disposable cache data is stored. File caching automatically uses the application cache on ephemeral hosts.' => 'Choose where disposable cache data is stored. File caching automatically uses the application cache on ephemeral hosts.',
+    'File cache' => 'File cache',
+    'Application cache' => 'Application cache',
+    'Using managed cache' => 'Using managed cache',
+    'This host has an ephemeral filesystem, so the application cache is used automatically.' => 'This host has an ephemeral filesystem, so the application cache is used automatically.',
+    'Using Redis cache' => 'Using Redis cache',
+    'Using database cache' => 'Using database cache',
+    'Using file cache' => 'Using file cache',
+    'Using filesystem cache' => 'Using filesystem cache',
+    'Using application cache' => 'Using application cache',
+    'Cross-request persistence could not be confirmed.' => 'Cross-request persistence could not be confirmed.',
+    'Caching disabled' => 'Caching disabled',
+    'No suitable cross-request cache is available. Values are recomputed as needed.' => 'No suitable cross-request cache is available. Values are recomputed as needed.',
+    'Managed cache' => 'Managed cache',
+    'Redis cache' => 'Redis cache',
+    'Database cache' => 'Database cache',
+    'Filesystem cache' => 'Filesystem cache',
+    'Best effort' => 'Best effort',
+    'Recomputed as needed' => 'Recomputed as needed',
+    'Inactive' => 'Inactive',
+    'No cache families enabled' => 'No cache families enabled',
     'Cache Invalidation' => 'Cache Invalidation',
     'Cache Device Detection' => 'Cache Device Detection',
     'Search Results Cache Duration' => 'Search Results Cache Duration',
@@ -803,15 +824,12 @@ return [
     'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.',
     'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.',
     'Higher values warm more cache but take longer to complete' => 'Higher values warm more cache but take longer to complete',
-    'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.' => 'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.',
     'When disabled, cache expires naturally based on Cache Duration setting' => 'When disabled, cache expires naturally based on Cache Duration setting',
-    'Redis/Database (load-balanced, multi-server, cloud hosting)' => 'Redis/Database (load-balanced, multi-server, cloud hosting)',
     'Cache Hit Rate' => 'Cache Hit Rate',
     'Cache Hits' => 'Cache Hits',
     'Cache Misses' => 'Cache Misses',
     'Cache Status' => 'Cache Status',
     'Cache Management' => 'Cache Management',
-    'Total cached entries' => 'Total cached entries',
     'Clear Cache on Element Save' => 'Clear Cache on Element Save',
     '10 queries (Light)' => '10 queries (Light)',
     '25 queries (Moderate)' => '25 queries (Moderate)',
@@ -823,9 +841,6 @@ return [
     'Min: 60 (1 minute), Max: 604800 (7 days)' => 'Min: 60 (1 minute), Max: 604800 (7 days)',
     'Min: 60 (1 minute), Max: 86400 (1 day)' => 'Min: 60 (1 minute), Max: 86400 (1 day)',
     'Search Results Caching' => 'Search Results Caching',
-    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Cache Location:</strong> <code>{path}</code>',
-    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>',
-    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>',
     'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>',
@@ -838,10 +853,10 @@ return [
 • Cache is automatically cleared when content changes (if enabled below)',
     '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
-• Uses the same storage method as search results (file or Redis)<br>
+• Uses the same cache storage as search results<br>
 • Cache is cleared when content is re-indexed' => '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
-• Uses the same storage method as search results (file or Redis)<br>
+• Uses the same cache storage as search results<br>
 • Cache is cleared when content is re-indexed',
     '<strong>How it works:</strong><br>
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
@@ -1920,7 +1935,7 @@ return [
     'Export failed. Check logs for details.' => 'Export failed. Check logs for details.',
 
     // Utilities / diagnostics
-    'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Monitor search indices, clear file cache, and manage your search infrastructure.',
+    'Monitor search indices, clear disposable caches, and manage your search infrastructure.' => 'Monitor search indices, clear disposable caches, and manage your search infrastructure.',
     'Manage Backends' => 'Manage Backends',
     'Manage Settings' => 'Manage Settings',
     'Clear Storage' => 'Clear Storage',
@@ -1963,7 +1978,6 @@ return [
     'Failed to clear search cache' => 'Failed to clear search cache',
     'Failed to sync count' => 'Failed to sync count',
     'File' => 'File',
-    'File System (default, single server)' => 'File System (default, single server)',
     'Not configured' => 'Not configured',
     '{count} row' => '{count} row',
     '{count} rows' => '{count} rows',

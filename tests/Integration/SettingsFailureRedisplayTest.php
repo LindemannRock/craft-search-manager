@@ -100,7 +100,7 @@ final class SettingsFailureRedisplayTest extends TestCase
             'highlighting' => ['settings'],
             'autocomplete' => ['settings'],
             'snippets' => ['settings'],
-            'cache' => ['settings'],
+            'cache' => ['settings', 'cacheStorage'],
             'interface' => ['settings'],
             'test' => ['settings', 'cacheEnabled', 'backends', 'snippetOptions', 'testIndexChoices', 'indexSiteIds'],
         ];

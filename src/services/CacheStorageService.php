@@ -17,6 +17,7 @@ use lindemannrock\base\cache\CacheBackendStatus;
 use lindemannrock\base\cache\ScopedCache;
 use lindemannrock\base\cache\ScopedCacheResult;
 use lindemannrock\base\helpers\PluginHelper;
+use lindemannrock\searchmanager\cache\CacheStorageDecision;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -46,25 +47,79 @@ final class CacheStorageService
     /** @var array<string, true> */
     private static array $loggedFailures = [];
 
-    public function getEffectiveStorage(): string
+    public function getStorageDecision(?string $configuredStorage = null): CacheStorageDecision
     {
-        $configured = SearchManager::$plugin->getSettings()->cacheStorageMethod;
+        $configuredStorage ??= SearchManager::$plugin->getSettings()->cacheStorageMethod;
         $ephemeral = App::isEphemeral();
 
-        if ($configured === 'file' && !$ephemeral) {
-            return self::STORAGE_FILE;
+        if ($configuredStorage === 'file' && !$ephemeral) {
+            return new CacheStorageDecision(
+                $configuredStorage,
+                CacheStorageDecision::EFFECTIVE_FILE,
+                false,
+                CacheBackendStatus::fromCache(null),
+                null,
+                CacheStorageDecision::PERSISTENCE_CONFIRMED,
+                false,
+                true,
+                CacheStorageDecision::REASON_DURABLE_FILE,
+            );
         }
 
-        if (!in_array($configured, ['file', 'redis', 'craft'], true)) {
-            return self::STORAGE_DISABLED;
+        if (!in_array($configuredStorage, ['file', 'redis', 'craft'], true)) {
+            return new CacheStorageDecision(
+                $configuredStorage,
+                CacheStorageDecision::EFFECTIVE_DISABLED,
+                $ephemeral,
+                CacheBackendStatus::fromCache(null),
+                null,
+                CacheStorageDecision::PERSISTENCE_UNSUITABLE,
+                false,
+                false,
+                CacheStorageDecision::REASON_UNKNOWN_TOKEN,
+            );
         }
 
         $cache = PluginHelper::getApplicationCacheOrLog(SearchManager::$plugin->id . ':disposable-cache');
         $status = CacheBackendStatus::fromCache($cache);
+        $fileStorageBypassed = $configuredStorage === 'file';
 
-        return $status->supportsCrossRequest($ephemeral)
-            ? self::STORAGE_APPLICATION
-            : self::STORAGE_DISABLED;
+        if ($status->supportsCrossRequest($ephemeral)) {
+            return new CacheStorageDecision(
+                $configuredStorage,
+                CacheStorageDecision::EFFECTIVE_APPLICATION,
+                $ephemeral,
+                $status,
+                $cache,
+                $status->crossRequestPersistent === true
+                    ? CacheStorageDecision::PERSISTENCE_CONFIRMED
+                    : CacheStorageDecision::PERSISTENCE_UNKNOWN,
+                $fileStorageBypassed,
+                false,
+                $fileStorageBypassed
+                    ? CacheStorageDecision::REASON_EPHEMERAL_FILE_APPLICATION
+                    : CacheStorageDecision::REASON_APPLICATION,
+            );
+        }
+
+        return new CacheStorageDecision(
+            $configuredStorage,
+            CacheStorageDecision::EFFECTIVE_DISABLED,
+            $ephemeral,
+            $status,
+            $cache,
+            CacheStorageDecision::PERSISTENCE_UNSUITABLE,
+            $fileStorageBypassed,
+            false,
+            $fileStorageBypassed
+                ? CacheStorageDecision::REASON_EPHEMERAL_FILE_UNSUITABLE
+                : CacheStorageDecision::REASON_APPLICATION_UNSUITABLE,
+        );
+    }
+
+    public function getEffectiveStorage(): string
+    {
+        return $this->getStorageDecision()->effectiveStorage;
     }
 
     public function read(string $family, string $scope, string $itemIdentity, int $ttl): ScopedCacheResult
@@ -72,8 +127,10 @@ final class CacheStorageService
         $this->assertOwnedFamily($family);
         $this->assertItemIdentity($itemIdentity);
 
-        return match ($this->getEffectiveStorage()) {
-            self::STORAGE_APPLICATION => $this->readApplicationCache($family, $scope, $itemIdentity),
+        $decision = $this->getStorageDecision();
+
+        return match ($decision->effectiveStorage) {
+            self::STORAGE_APPLICATION => $this->readApplicationCache($decision, $family, $scope, $itemIdentity),
             self::STORAGE_FILE => $this->readFileCache($family, $scope, $itemIdentity, $ttl),
             default => ScopedCacheResult::miss(),
         };
@@ -88,8 +145,10 @@ final class CacheStorageService
             return false;
         }
 
-        return match ($this->getEffectiveStorage()) {
-            self::STORAGE_APPLICATION => $this->writeApplicationCache($family, $scope, $itemIdentity, $value, $ttl),
+        $decision = $this->getStorageDecision();
+
+        return match ($decision->effectiveStorage) {
+            self::STORAGE_APPLICATION => $this->writeApplicationCache($decision, $family, $scope, $itemIdentity, $value, $ttl),
             self::STORAGE_FILE => $this->writeFileCache($family, $scope, $itemIdentity, $value),
             default => false,
         };
@@ -99,8 +158,10 @@ final class CacheStorageService
     {
         $this->assertOwnedFamily($family);
 
-        return match ($this->getEffectiveStorage()) {
-            self::STORAGE_APPLICATION => $this->invalidateApplicationScope($family, $scope),
+        $decision = $this->getStorageDecision();
+
+        return match ($decision->effectiveStorage) {
+            self::STORAGE_APPLICATION => $this->invalidateApplicationScope($decision, $family, $scope),
             self::STORAGE_FILE => $this->clearFileScope($family, $scope),
             default => true,
         };
@@ -110,8 +171,10 @@ final class CacheStorageService
     {
         $this->assertOwnedFamily($family);
 
-        return match ($this->getEffectiveStorage()) {
-            self::STORAGE_APPLICATION => $this->invalidateApplicationFamily($family),
+        $decision = $this->getStorageDecision();
+
+        return match ($decision->effectiveStorage) {
+            self::STORAGE_APPLICATION => $this->invalidateApplicationFamily($decision, $family),
             self::STORAGE_FILE => $this->clearFileFamily($family),
             default => true,
         };
@@ -121,7 +184,7 @@ final class CacheStorageService
     {
         $this->assertOwnedFamily($family);
 
-        if ($this->getEffectiveStorage() !== self::STORAGE_FILE) {
+        if (!$this->getStorageDecision()->usesFileCache()) {
             return 0;
         }
 
@@ -150,17 +213,15 @@ final class CacheStorageService
 
     public function getDriverLabel(): string
     {
-        $effective = $this->getEffectiveStorage();
-        if ($effective === self::STORAGE_FILE) {
+        $decision = $this->getStorageDecision();
+        if ($decision->usesFileCache()) {
             return 'file';
         }
-        if ($effective === self::STORAGE_DISABLED) {
+        if ($decision->isDisabled()) {
             return 'none';
         }
 
-        $cache = PluginHelper::getApplicationCacheOrLog(SearchManager::$plugin->id . ':cache-driver');
-
-        return match (CacheBackendStatus::fromCache($cache)->backend) {
+        return match ($decision->backendStatus->backend) {
             CacheBackendStatus::BACKEND_REDIS => 'redis',
             CacheBackendStatus::BACKEND_MANAGED => 'managed',
             CacheBackendStatus::BACKEND_DATABASE => 'database',
@@ -170,9 +231,23 @@ final class CacheStorageService
         };
     }
 
-    private function readApplicationCache(string $family, string $scope, string $itemIdentity): ScopedCacheResult
+    public function getDisplayFilePath(?CacheStorageDecision $decision = null): ?string
     {
-        $cache = $this->getScopedCache($family);
+        $decision ??= $this->getStorageDecision();
+        if (!$decision->canResolveFilePath || !$decision->usesFileCache()) {
+            return null;
+        }
+
+        return PluginHelper::getCacheBasePath(SearchManager::$plugin);
+    }
+
+    private function readApplicationCache(
+        CacheStorageDecision $decision,
+        string $family,
+        string $scope,
+        string $itemIdentity,
+    ): ScopedCacheResult {
+        $cache = $this->getScopedCache($decision, $family);
         if ($cache === null) {
             return ScopedCacheResult::failure();
         }
@@ -186,13 +261,14 @@ final class CacheStorageService
     }
 
     private function writeApplicationCache(
+        CacheStorageDecision $decision,
         string $family,
         string $scope,
         string $itemIdentity,
         array $value,
         int $ttl,
     ): bool {
-        $cache = $this->getScopedCache($family);
+        $cache = $this->getScopedCache($decision, $family);
         $written = $cache?->set($itemIdentity, $value, $ttl, $scope) === true;
         if (!$written) {
             $this->logFailure($family, 'write');
@@ -201,9 +277,9 @@ final class CacheStorageService
         return $written;
     }
 
-    private function invalidateApplicationScope(string $family, string $scope): bool
+    private function invalidateApplicationScope(CacheStorageDecision $decision, string $family, string $scope): bool
     {
-        $invalidated = $this->getScopedCache($family)?->invalidateScope($scope) === true;
+        $invalidated = $this->getScopedCache($decision, $family)?->invalidateScope($scope) === true;
         if (!$invalidated) {
             $this->logFailure($family, 'invalidate-scope');
         }
@@ -211,9 +287,9 @@ final class CacheStorageService
         return $invalidated;
     }
 
-    private function invalidateApplicationFamily(string $family): bool
+    private function invalidateApplicationFamily(CacheStorageDecision $decision, string $family): bool
     {
-        $invalidated = $this->getScopedCache($family)?->invalidateFamily() === true;
+        $invalidated = $this->getScopedCache($decision, $family)?->invalidateFamily() === true;
         if (!$invalidated) {
             $this->logFailure($family, 'invalidate-family');
         }
@@ -221,11 +297,11 @@ final class CacheStorageService
         return $invalidated;
     }
 
-    private function getScopedCache(string $family): ?ScopedCache
+    private function getScopedCache(CacheStorageDecision $decision, string $family): ?ScopedCache
     {
         $this->assertOwnedFamily($family);
 
-        $cache = PluginHelper::getApplicationCacheOrLog(SearchManager::$plugin->id . ':' . $family);
+        $cache = $decision->applicationCache;
         if ($cache === null) {
             return null;
         }

@@ -792,6 +792,27 @@ return [
     'Enable Cache Warming' => 'Aktivera cacheuppvärmning',
     'Cache Search Results' => 'Cacha sökresultat',
     'Cache Storage Method' => 'Metod för cachelagring',
+    'Choose where disposable cache data is stored. File caching automatically uses the application cache on ephemeral hosts.' => 'Välj var tillfälliga cachedata lagras. Filcache använder automatiskt applikationscachen på efemära värdar.',
+    'File cache' => 'Filcache',
+    'Application cache' => 'Applikationscache',
+    'Using managed cache' => 'Använder hanterad cache',
+    'This host has an ephemeral filesystem, so the application cache is used automatically.' => 'Den här värden har ett efemärt filsystem, så applikationscachen används automatiskt.',
+    'Using Redis cache' => 'Använder Redis-cache',
+    'Using database cache' => 'Använder databascache',
+    'Using file cache' => 'Använder filcache',
+    'Using filesystem cache' => 'Använder filsystemscache',
+    'Using application cache' => 'Använder applikationscache',
+    'Cross-request persistence could not be confirmed.' => 'Beständighet mellan begäranden kunde inte bekräftas.',
+    'Caching disabled' => 'Caching inaktiverad',
+    'No suitable cross-request cache is available. Values are recomputed as needed.' => 'Ingen lämplig cache mellan begäranden är tillgänglig. Värdena beräknas om vid behov.',
+    'Managed cache' => 'Hanterad cache',
+    'Redis cache' => 'Redis-cache',
+    'Database cache' => 'Databascache',
+    'Filesystem cache' => 'Filsystemscache',
+    'Best effort' => 'Bästa möjliga',
+    'Recomputed as needed' => 'Beräknas om vid behov',
+    'Inactive' => 'Inaktiv',
+    'No cache families enabled' => 'Inga cachefamiljer aktiverade',
     'Cache Invalidation' => 'Cacheogiltigförklaring',
     'Cache Device Detection' => 'Cacha enhetsidentifiering',
     'Search Results Cache Duration' => 'Varaktighet för sökresultat-Cache',
@@ -803,15 +824,12 @@ return [
     'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'Antal populära frågor att förcacha efter indexåteruppbyggnad. Frågor hämtas från analysdata.',
     'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'Rensa sökcachen automatiskt när poster sparas eller raderas. Inaktivera för webbplatser med hög trafik för att minska cacheinstabilitet.',
     'Higher values warm more cache but take longer to complete' => 'Högre värden värmer upp mer cache men tar längre tid att slutföra',
-    'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.' => 'Hur cachedata ska lagras. Använd Redis/Databas för lastbalanserade eller flerservermiljöer.',
     'When disabled, cache expires naturally based on Cache Duration setting' => 'När inaktiverat löper cachen ut naturligt baserat på inställningen för Cacheduration',
-    'Redis/Database (load-balanced, multi-server, cloud hosting)' => 'Redis/Databas (lastbalansering, flerserver, molnhosting)',
     'Cache Hit Rate' => 'Cacheträffprocent',
     'Cache Hits' => 'Cacheträffar',
     'Cache Misses' => 'Cachemissar',
     'Cache Status' => 'Cachestatus',
     'Cache Management' => 'Cachehantering',
-    'Total cached entries' => 'Totalt antal cachade poster',
     'Clear Cache on Element Save' => 'Rensa Cache vid sparande av element',
     '10 queries (Light)' => '10 frågor (Lätt)',
     '25 queries (Moderate)' => '25 frågor (Måttlig)',
@@ -823,9 +841,6 @@ return [
     'Min: 60 (1 minute), Max: 604800 (7 days)' => 'Min: 60 (1 minut), Max: 604800 (7 dagar)',
     'Min: 60 (1 minute), Max: 86400 (1 day)' => 'Min: 60 (1 minut), Max: 86400 (1 dag)',
     'Search Results Caching' => 'Caching av sökresultat',
-    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Cacheplats:</strong> <code>{path}</code>',
-    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Cacheplats:</strong> Använder Crafts konfigurerade Redis-cache från <code>config/app.php</code>',
-    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis inte konfigurerat:</strong> För att använda Redis-caching, installera <code>yiisoft/yii2-redis</code> och konfigurera det i <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Läs mer</a>',
     'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Cachevaraktighet i sekunder. Aktuell: <strong id="cacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Cachevaraktighet i sekunder. Aktuell: <strong id="autocompleteCacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Cachevaraktighet i sekunder. Aktuell: <strong id="deviceDetectionCacheDuration-human"></strong>',
@@ -838,10 +853,10 @@ return [
 • Cache rensas automatiskt när innehåll ändras (om aktiverat nedan)',
     '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
-• Uses the same storage method as search results (file or Redis)<br>
+• Uses the same cache storage as search results<br>
 • Cache is cleared when content is re-indexed' => '<strong>Så här fungerar det:</strong><br>
 • Autocomplete-förslag cachas per frågeprefixet, index och språk<br>
-• Använder samma lagringsmetod som sökresultat (fil eller Redis)<br>
+• Använder samma cachelagring som sökresultaten<br>
 • Cache rensas när innehåll indexeras om',
     '<strong>How it works:</strong><br>
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
@@ -1920,7 +1935,7 @@ return [
     'Export failed. Check logs for details.' => 'Exporten misslyckades. Kontrollera loggarna för detaljer.',
 
     // Utilities / diagnostics
-    'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Övervaka sökindex, rensa fil-Cache och hantera din sökinfrastruktur.',
+    'Monitor search indices, clear disposable caches, and manage your search infrastructure.' => 'Övervaka sökindex, rensa tillfälliga cacheminnen och hantera sökinfrastrukturen.',
     'Manage Backends' => 'Hantera backends',
     'Manage Settings' => 'Hantera inställningar',
     'Clear Storage' => 'Rensa lagring',
@@ -1963,7 +1978,6 @@ return [
     'Failed to clear search cache' => 'Misslyckades att rensa sök-Cache',
     'Failed to sync count' => 'Misslyckades att synkronisera antal',
     'File' => 'Fil',
-    'File System (default, single server)' => 'Filsystem (standard, enskild server)',
     'Not configured' => 'Inte konfigurerad',
     '{count} row' => '{count} rad',
     '{count} rows' => '{count} rader',

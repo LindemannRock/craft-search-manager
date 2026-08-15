@@ -792,6 +792,27 @@ return [
     'Enable Cache Warming' => 'Cache-opwarming inschakelen',
     'Cache Search Results' => 'Zoekresultaten cachen',
     'Cache Storage Method' => 'Cache-opslagmethode',
+    'Choose where disposable cache data is stored. File caching automatically uses the application cache on ephemeral hosts.' => 'Kies waar tijdelijke cachegegevens worden opgeslagen. Bestandscaching gebruikt op vluchtige hosts automatisch de applicatiecache.',
+    'File cache' => 'Bestandscache',
+    'Application cache' => 'Applicatiecache',
+    'Using managed cache' => 'Beheerde cache wordt gebruikt',
+    'This host has an ephemeral filesystem, so the application cache is used automatically.' => 'Deze host heeft een vluchtig bestandssysteem, waardoor de applicatiecache automatisch wordt gebruikt.',
+    'Using Redis cache' => 'Redis-cache wordt gebruikt',
+    'Using database cache' => 'Databasecache wordt gebruikt',
+    'Using file cache' => 'Bestandscache wordt gebruikt',
+    'Using filesystem cache' => 'Bestandssysteemcache wordt gebruikt',
+    'Using application cache' => 'Applicatiecache wordt gebruikt',
+    'Cross-request persistence could not be confirmed.' => 'Opslag tussen aanvragen kon niet worden bevestigd.',
+    'Caching disabled' => 'Caching uitgeschakeld',
+    'No suitable cross-request cache is available. Values are recomputed as needed.' => 'Er is geen geschikte cache tussen aanvragen beschikbaar. Waarden worden indien nodig opnieuw berekend.',
+    'Managed cache' => 'Beheerde cache',
+    'Redis cache' => 'Redis-cache',
+    'Database cache' => 'Databasecache',
+    'Filesystem cache' => 'Bestandssysteemcache',
+    'Best effort' => 'Best effort',
+    'Recomputed as needed' => 'Opnieuw berekend indien nodig',
+    'Inactive' => 'Inactief',
+    'No cache families enabled' => 'Geen cachefamilies ingeschakeld',
     'Cache Invalidation' => 'Cache-invalidatie',
     'Cache Device Detection' => 'Apparaatdetectie cachen',
     'Search Results Cache Duration' => 'Cacheduur van zoekresultaten',
@@ -803,15 +824,12 @@ return [
     'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'Aantal populaire zoekopdrachten om vooraf te cachen na indexherindexering. Zoekopdrachten worden uit analysegegevens gehaald.',
     'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'Zoekcache automatisch wissen wanneer items worden opgeslagen of verwijderd. Schakel uit voor sites met veel verkeer om cache-instabiliteit te verminderen.',
     'Higher values warm more cache but take longer to complete' => 'Hogere waarden warmen meer cache op maar duren langer',
-    'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.' => 'Hoe cachegegevens worden opgeslagen. Gebruik Redis/Database voor omgevingen met taakverdeling of meerdere servers.',
     'When disabled, cache expires naturally based on Cache Duration setting' => 'Wanneer uitgeschakeld, verloopt cache natuurlijk op basis van de instelling voor cacheduur',
-    'Redis/Database (load-balanced, multi-server, cloud hosting)' => 'Redis/Database (taakverdeling, meerdere servers, cloudhosting)',
     'Cache Hit Rate' => 'Cache-hitpercentage',
     'Cache Hits' => 'Cache-hits',
     'Cache Misses' => 'Cache-missers',
     'Cache Status' => 'Cachestatus',
     'Cache Management' => 'Cachebeheer',
-    'Total cached entries' => 'Totaal gecachte vermeldingen',
     'Clear Cache on Element Save' => 'Cache wissen bij opslaan van element',
     '10 queries (Light)' => '10 zoekopdrachten (Licht)',
     '25 queries (Moderate)' => '25 zoekopdrachten (Matig)',
@@ -823,9 +841,6 @@ return [
     'Min: 60 (1 minute), Max: 604800 (7 days)' => 'Min: 60 (1 minuut), Max: 604800 (7 dagen)',
     'Min: 60 (1 minute), Max: 86400 (1 day)' => 'Min: 60 (1 minuut), Max: 86400 (1 dag)',
     'Search Results Caching' => 'Caching van zoekresultaten',
-    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Cachelocatie:</strong> <code>{path}</code>',
-    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Cachelocatie:</strong> Gebruik van de geconfigureerde Redis-cache van Craft uit <code>config/app.php</code>',
-    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis niet geconfigureerd:</strong> Om Redis-caching te gebruiken, installeer <code>yiisoft/yii2-redis</code> en configureer dit in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Meer informatie</a>',
     'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Cacheduur in seconden. Huidig: <strong id="cacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Cacheduur in seconden. Huidig: <strong id="autocompleteCacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Cacheduur in seconden. Huidig: <strong id="deviceDetectionCacheDuration-human"></strong>',
@@ -838,10 +853,10 @@ return [
 • Cache wordt automatisch gewist wanneer inhoud wijzigt (indien hieronder ingeschakeld)',
     '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
-• Uses the same storage method as search results (file or Redis)<br>
+• Uses the same cache storage as search results<br>
 • Cache is cleared when content is re-indexed' => '<strong>Hoe het werkt:</strong><br>
 • Suggesties voor automatisch aanvullen worden gecached per queryprefix, index en taal<br>
-• Gebruikt dezelfde opslagmethode als zoekresultaten (bestand of Redis)<br>
+• Gebruikt dezelfde cacheopslag als zoekresultaten<br>
 • Cache wordt gewist wanneer inhoud opnieuw wordt geïndexeerd',
     '<strong>How it works:</strong><br>
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
@@ -1920,7 +1935,7 @@ return [
     'Export failed. Check logs for details.' => 'Export mislukt. Controleer de logboeken voor details.',
 
     // Utilities / diagnostics
-    'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Zoekindexen bewaken, bestandscache wissen en uw zoekinfrastructuur beheren.',
+    'Monitor search indices, clear disposable caches, and manage your search infrastructure.' => 'Zoekindexen bewaken, tijdelijke caches wissen en uw zoekinfrastructuur beheren.',
     'Manage Backends' => 'Backends beheren',
     'Manage Settings' => 'Instellingen beheren',
     'Clear Storage' => 'Opslag wissen',
@@ -1963,7 +1978,6 @@ return [
     'Failed to clear search cache' => 'Zoekcache wissen mislukt',
     'Failed to sync count' => 'Aantal synchroniseren mislukt',
     'File' => 'Bestand',
-    'File System (default, single server)' => 'Bestandssysteem (standaard, enkele server)',
     'Not configured' => 'Niet geconfigureerd',
     '{count} row' => '{count} rij',
     '{count} rows' => '{count} rijen',

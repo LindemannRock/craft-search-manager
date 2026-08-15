@@ -792,6 +792,27 @@ return [
     'Enable Cache Warming' => 'キャッシュウォーミングを有効にする',
     'Cache Search Results' => '検索結果をキャッシュに保存',
     'Cache Storage Method' => 'キャッシュストレージ方式',
+    'Choose where disposable cache data is stored. File caching automatically uses the application cache on ephemeral hosts.' => '一時的なキャッシュデータの保存先を選択してください。エフェメラルホストでは、ファイルキャッシュが自動的にアプリケーションキャッシュを使用します。',
+    'File cache' => 'ファイルキャッシュ',
+    'Application cache' => 'アプリケーションキャッシュ',
+    'Using managed cache' => 'マネージドキャッシュを使用中',
+    'This host has an ephemeral filesystem, so the application cache is used automatically.' => 'このホストにはエフェメラルなファイルシステムがあるため、アプリケーションキャッシュが自動的に使用されます。',
+    'Using Redis cache' => 'Redis キャッシュを使用中',
+    'Using database cache' => 'データベースキャッシュを使用中',
+    'Using file cache' => 'ファイルキャッシュを使用中',
+    'Using filesystem cache' => 'ファイルシステムキャッシュを使用中',
+    'Using application cache' => 'アプリケーションキャッシュを使用中',
+    'Cross-request persistence could not be confirmed.' => 'リクエスト間の永続性を確認できませんでした。',
+    'Caching disabled' => 'キャッシュは無効です',
+    'No suitable cross-request cache is available. Values are recomputed as needed.' => 'リクエスト間で利用できる適切なキャッシュがありません。値は必要に応じて再計算されます。',
+    'Managed cache' => 'マネージドキャッシュ',
+    'Redis cache' => 'Redis キャッシュ',
+    'Database cache' => 'データベースキャッシュ',
+    'Filesystem cache' => 'ファイルシステムキャッシュ',
+    'Best effort' => 'ベストエフォート',
+    'Recomputed as needed' => '必要に応じて再計算',
+    'Inactive' => '非アクティブ',
+    'No cache families enabled' => 'キャッシュファミリーは有効になっていません',
     'Cache Invalidation' => 'キャッシュ無効化',
     'Cache Device Detection' => 'デバイス検出をキャッシュする',
     'Search Results Cache Duration' => '検索結果キャッシュの有効期間',
@@ -803,15 +824,12 @@ return [
     'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'インデックス再構築後にプリキャッシュする人気クエリの数。クエリはアナリティクスデータから取得されます。',
     'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'エントリの保存または削除時に検索キャッシュを自動的に削除します。高トラフィックサイトではキャッシュスラッシングを減らすために無効にしてください。',
     'Higher values warm more cache but take longer to complete' => '値が高いほど多くのキャッシュがウォーミングされますが、完了に時間がかかります',
-    'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.' => 'キャッシュデータの保存方法です。ロードバランシングやマルチサーバー環境では Redis/データベースを使用してください。',
     'When disabled, cache expires naturally based on Cache Duration setting' => '無効にすると、キャッシュはキャッシュ有効期間の設定に基づいて自然に期限切れになります',
-    'Redis/Database (load-balanced, multi-server, cloud hosting)' => 'Redis/データベース（ロードバランシング、マルチサーバー、クラウドホスティング）',
     'Cache Hit Rate' => 'キャッシュヒット率',
     'Cache Hits' => 'キャッシュヒット',
     'Cache Misses' => 'キャッシュミス',
     'Cache Status' => 'キャッシュのステータス',
     'Cache Management' => 'キャッシュ管理',
-    'Total cached entries' => 'キャッシュされたエントリーの合計',
     'Clear Cache on Element Save' => 'エレメント保存時にキャッシュを削除する',
     '10 queries (Light)' => '10 クエリ（軽量）',
     '25 queries (Moderate)' => '25 クエリ（中程度）',
@@ -823,9 +841,6 @@ return [
     'Min: 60 (1 minute), Max: 604800 (7 days)' => '最小: 60（1 分）、最大: 604800（7 日）',
     'Min: 60 (1 minute), Max: 86400 (1 day)' => '最小: 60（1 分）、最大: 86400（1 日）',
     'Search Results Caching' => '検索結果のキャッシュ',
-    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>キャッシュの場所:</strong> <code>{path}</code>',
-    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>キャッシュの場所:</strong> <code>config/app.php</code> で設定された Craft の Redis キャッシュを使用しています',
-    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis 未設定:</strong> Redis キャッシュを使用するには、<code>yiisoft/yii2-redis</code> をインストールして <code>config/app.php</code> で設定してください。<a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">詳細を見る</a>',
     'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'キャッシュ時間（秒単位）。現在: <strong id="cacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'キャッシュ時間（秒単位）。現在: <strong id="autocompleteCacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'キャッシュ時間（秒単位）。現在: <strong id="deviceDetectionCacheDuration-human"></strong>',
@@ -838,10 +853,10 @@ return [
 • コンテンツが変更されると、キャッシュは自動的に削除されます（以下で有効にした場合）',
     '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
-• Uses the same storage method as search results (file or Redis)<br>
+• Uses the same cache storage as search results<br>
 • Cache is cleared when content is re-indexed' => '<strong>仕組み:</strong><br>
 • オートコンプリートの候補はクエリプレフィックス、インデックス、言語ごとにキャッシュされます<br>
-• 検索結果と同じストレージ方法（ファイルまたは Redis）を使用します<br>
+• 検索結果と同じキャッシュストレージを使用します<br>
 • コンテンツが再インデックスされるとキャッシュは削除されます',
     '<strong>How it works:</strong><br>
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
@@ -1920,7 +1935,7 @@ return [
     'Export failed. Check logs for details.' => 'エクスポートに失敗しました。詳細はログを確認してください。',
 
     // Utilities / diagnostics
-    'Monitor search indices, clear file cache, and manage your search infrastructure.' => '検索インデックスの監視、ファイルキャッシュの削除、検索インフラストラクチャの管理。',
+    'Monitor search indices, clear disposable caches, and manage your search infrastructure.' => '検索インデックスの監視、一時キャッシュの削除、検索インフラストラクチャの管理を行います。',
     'Manage Backends' => 'バックエンドを管理',
     'Manage Settings' => '設定を管理する',
     'Clear Storage' => 'ストレージを削除する',
@@ -1963,7 +1978,6 @@ return [
     'Failed to clear search cache' => '検索キャッシュの削除に失敗しました',
     'Failed to sync count' => 'カウントの同期に失敗しました',
     'File' => 'ファイル',
-    'File System (default, single server)' => 'ファイルシステム（デフォルト、単一サーバー）',
     'Not configured' => '未設定',
     '{count} row' => '{count} 行',
     '{count} rows' => '{count} 行',

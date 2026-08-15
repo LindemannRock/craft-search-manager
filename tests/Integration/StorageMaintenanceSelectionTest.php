@@ -15,9 +15,11 @@ use craft\helpers\FileHelper;
 use craft\web\Request;
 use craft\web\Response;
 use craft\web\View;
+use lindemannrock\searchmanager\cache\CacheStoragePresenter;
 use lindemannrock\searchmanager\controllers\UtilitiesController;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\CacheStorageService;
 use lindemannrock\searchmanager\services\StorageMaintenanceService;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -311,6 +313,15 @@ final class StorageMaintenanceSelectionTest extends TestCase
         $_SERVER['REQUEST_METHOD'] = 'GET';
 
         try {
+            $settings = SearchManager::$plugin->getSettings();
+            $cacheDecision = (new CacheStorageService())->getStorageDecision();
+            $enabledCacheFamilies = [
+                'search' => $settings->enableCache,
+                'autocomplete' => $settings->enableAutocompleteCache,
+                'device' => $settings->cacheDeviceDetection,
+            ];
+            $cachePresenter = new CacheStoragePresenter();
+
             return Craft::$app->getView()->renderTemplate(
                 'search-manager/utilities/index',
                 [
@@ -319,12 +330,17 @@ final class StorageMaintenanceSelectionTest extends TestCase
                     'backendDistribution' => [],
                     'defaultBackendName' => null,
                     'indices' => [],
-                    'deviceCacheFiles' => 0,
-                    'searchCacheFiles' => 0,
-                    'autocompleteCacheFiles' => 0,
-                    'storageMethod' => 'file',
+                    'cacheStorage' => $cachePresenter->present(
+                        $cacheDecision,
+                        in_array(true, $enabledCacheFamilies, true),
+                    ),
+                    'cacheFamilies' => $cachePresenter->presentFamilies(
+                        $cacheDecision,
+                        $enabledCacheFamilies,
+                    ),
+                    'cacheFileCounts' => null,
                     'analyticsCount' => 0,
-                    'settings' => SearchManager::$plugin->getSettings(),
+                    'settings' => $settings,
                     'storageOptions' => $storageOptions,
                     'currentUser' => new class() {
                         public function can(string $permission): bool

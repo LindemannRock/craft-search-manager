@@ -110,7 +110,7 @@ class UtilitiesController extends Controller
 
         try {
             $cacheStorage = new CacheStorageService();
-            $fileCount = $cacheStorage->getEffectiveStorage() === CacheStorageService::STORAGE_FILE
+            $fileCount = $cacheStorage->getStorageDecision()->usesFileCache()
                 ? $cacheStorage->countFiles('device')
                 : null;
             SearchManager::$plugin->deviceDetection->clearCache();
@@ -146,7 +146,7 @@ class UtilitiesController extends Controller
 
         try {
             $cacheStorage = new CacheStorageService();
-            $fileCount = $cacheStorage->getEffectiveStorage() === CacheStorageService::STORAGE_FILE
+            $fileCount = $cacheStorage->getStorageDecision()->usesFileCache()
                 ? $cacheStorage->countFiles('search')
                 : null;
             SearchManager::$plugin->backend->clearAllSearchCache();
@@ -182,7 +182,7 @@ class UtilitiesController extends Controller
 
         try {
             $cacheStorage = new CacheStorageService();
-            $fileCount = $cacheStorage->getEffectiveStorage() === CacheStorageService::STORAGE_FILE
+            $fileCount = $cacheStorage->getStorageDecision()->usesFileCache()
                 ? $cacheStorage->countFiles('autocomplete')
                 : null;
             SearchManager::$plugin->autocomplete->clearCache();
@@ -219,7 +219,7 @@ class UtilitiesController extends Controller
         try {
             $cacheStorage = new CacheStorageService();
             $totalFiles = null;
-            if ($cacheStorage->getEffectiveStorage() === CacheStorageService::STORAGE_FILE) {
+            if ($cacheStorage->getStorageDecision()->usesFileCache()) {
                 $totalFiles = $cacheStorage->countFiles('search')
                     + $cacheStorage->countFiles('autocomplete')
                     + $cacheStorage->countFiles('device');
