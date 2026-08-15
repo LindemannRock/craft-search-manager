@@ -538,7 +538,7 @@ class Settings extends Model
             // Cache (search results)
             'enableCache' => Craft::t('search-manager', 'Cache Search Results'),
             'cacheDuration' => Craft::t('search-manager', 'Search Results Cache Duration'),
-            'cacheStorageMethod' => Craft::t('search-manager', 'Cache Storage Method'),
+            'cacheStorageMethod' => Craft::t('lindemannrock-base', 'Cache Storage Method'),
             'clearCacheOnSave' => Craft::t('search-manager', 'Clear Cache on Element Save'),
             'enableCacheWarming' => Craft::t('search-manager', 'Enable Cache Warming'),
             'cacheWarmingQueryCount' => Craft::t('search-manager', 'Popular Queries to Warm'),

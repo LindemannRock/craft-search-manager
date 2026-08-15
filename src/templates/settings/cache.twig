@@ -36,35 +36,15 @@
 
 		<h2 class="first">{{ "Cache Storage Settings"|t('search-manager') }}</h2>
 
-		{{ forms.selectField({
-			label: 'Cache Storage Method'|t('search-manager'),
-			instructions: 'Choose where disposable cache data is stored. File caching automatically uses the application cache on ephemeral hosts.'|t('search-manager'),
-			id: 'cacheStorageMethod',
-			name: 'settings[cacheStorageMethod]',
-			value: cacheStorage.selectedChoice == 'file' ? 'file' : cacheStorage.applicationToken,
-			options: [
-				{ value: 'file', label: 'File cache'|t('search-manager') },
-				{ value: cacheStorage.applicationToken, label: 'Application cache'|t('search-manager') },
-			],
-			disabled: settings.isOverriddenByConfig('cacheStorageMethod'),
-			errors: settings.getErrors('cacheStorageMethod'),
-			warning: settings.isOverriddenByConfig('cacheStorageMethod') ?
-				"This is being overridden by the <code>cacheStorageMethod</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-		}) }}
-
-		{% for choice, presentation in cacheStorage.presentations %}
-			<div data-cache-storage-status="{{ choice }}" class="{{ cacheStorage.selectedChoice != choice ? 'hidden' }}">
-				{% set statusMessage %}
-					<strong>{{ presentation.heading|t('search-manager') }}</strong>
-					{% if presentation.explanation %}<br>{{ presentation.explanation|t('search-manager') }}{% endif %}
-					{% if presentation.filePath %}<br><code>{{ presentation.filePath }}</code>{% endif %}
-				{% endset %}
-				{% include 'lindemannrock-base/_components/info-box' with {
-					message: statusMessage|trim,
-					type: presentation.statusType,
-				} %}
-			</div>
-		{% endfor %}
+		{% include 'lindemannrock-base/_partials/field-cache-storage' with {
+			settings: settings,
+			pluginHandle: 'search-manager',
+			configuredStorageToken: settings.cacheStorageMethod,
+			applicationOptionToken: cacheStorage.applicationToken,
+			filePresentation: cacheStorage.filePresentation,
+			applicationPresentation: cacheStorage.applicationPresentation,
+			filePath: cacheStorage.filePath,
+		} only %}
 
 		<hr>
 
@@ -323,19 +303,6 @@
 {% endblock %}
 
 {% js %}
-// Toggle cache storage status based on the unsaved selection.
-const cacheStorageMethod = document.getElementById('cacheStorageMethod');
-const cacheStorageStatuses = document.querySelectorAll('[data-cache-storage-status]');
-
-if (cacheStorageMethod && cacheStorageStatuses.length) {
-	cacheStorageMethod.addEventListener('change', function() {
-		const selectedChoice = cacheStorageMethod.value === 'file' ? 'file' : 'application';
-		cacheStorageStatuses.forEach((status) => {
-			status.classList.toggle('hidden', status.dataset.cacheStorageStatus !== selectedChoice);
-		});
-	});
-}
-
 // Convert seconds to human-readable duration
 const secondsToHumanI18n = {
 	second: {{ 'second'|t('search-manager')|json_encode|raw }},

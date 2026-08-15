@@ -11,13 +11,13 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\services;
 
 use Craft;
-use craft\helpers\App;
 use craft\helpers\FileHelper;
 use lindemannrock\base\cache\CacheBackendStatus;
+use lindemannrock\base\cache\DisposableCacheStorageDecision;
+use lindemannrock\base\cache\DisposableCacheStorageResolver;
 use lindemannrock\base\cache\ScopedCache;
 use lindemannrock\base\cache\ScopedCacheResult;
 use lindemannrock\base\helpers\PluginHelper;
-use lindemannrock\searchmanager\cache\CacheStorageDecision;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -47,73 +47,13 @@ final class CacheStorageService
     /** @var array<string, true> */
     private static array $loggedFailures = [];
 
-    public function getStorageDecision(?string $configuredStorage = null): CacheStorageDecision
+    public function getStorageDecision(?string $configuredStorage = null): DisposableCacheStorageDecision
     {
         $configuredStorage ??= SearchManager::$plugin->getSettings()->cacheStorageMethod;
-        $ephemeral = App::isEphemeral();
 
-        if ($configuredStorage === 'file' && !$ephemeral) {
-            return new CacheStorageDecision(
-                $configuredStorage,
-                CacheStorageDecision::EFFECTIVE_FILE,
-                false,
-                CacheBackendStatus::fromCache(null),
-                null,
-                CacheStorageDecision::PERSISTENCE_CONFIRMED,
-                false,
-                true,
-                CacheStorageDecision::REASON_DURABLE_FILE,
-            );
-        }
-
-        if (!in_array($configuredStorage, ['file', 'redis', 'craft'], true)) {
-            return new CacheStorageDecision(
-                $configuredStorage,
-                CacheStorageDecision::EFFECTIVE_DISABLED,
-                $ephemeral,
-                CacheBackendStatus::fromCache(null),
-                null,
-                CacheStorageDecision::PERSISTENCE_UNSUITABLE,
-                false,
-                false,
-                CacheStorageDecision::REASON_UNKNOWN_TOKEN,
-            );
-        }
-
-        $cache = PluginHelper::getApplicationCacheOrLog(SearchManager::$plugin->id . ':disposable-cache');
-        $status = CacheBackendStatus::fromCache($cache);
-        $fileStorageBypassed = $configuredStorage === 'file';
-
-        if ($status->supportsCrossRequest($ephemeral)) {
-            return new CacheStorageDecision(
-                $configuredStorage,
-                CacheStorageDecision::EFFECTIVE_APPLICATION,
-                $ephemeral,
-                $status,
-                $cache,
-                $status->crossRequestPersistent === true
-                    ? CacheStorageDecision::PERSISTENCE_CONFIRMED
-                    : CacheStorageDecision::PERSISTENCE_UNKNOWN,
-                $fileStorageBypassed,
-                false,
-                $fileStorageBypassed
-                    ? CacheStorageDecision::REASON_EPHEMERAL_FILE_APPLICATION
-                    : CacheStorageDecision::REASON_APPLICATION,
-            );
-        }
-
-        return new CacheStorageDecision(
-            $configuredStorage,
-            CacheStorageDecision::EFFECTIVE_DISABLED,
-            $ephemeral,
-            $status,
-            $cache,
-            CacheStorageDecision::PERSISTENCE_UNSUITABLE,
-            $fileStorageBypassed,
-            false,
-            $fileStorageBypassed
-                ? CacheStorageDecision::REASON_EPHEMERAL_FILE_UNSUITABLE
-                : CacheStorageDecision::REASON_APPLICATION_UNSUITABLE,
+        return (new DisposableCacheStorageResolver())->resolve(
+            configuredStorageToken: $configuredStorage,
+            diagnosticContext: SearchManager::$plugin->id . ':disposable-cache',
         );
     }
 
@@ -231,10 +171,10 @@ final class CacheStorageService
         };
     }
 
-    public function getDisplayFilePath(?CacheStorageDecision $decision = null): ?string
+    public function getDisplayFilePath(?DisposableCacheStorageDecision $decision = null): ?string
     {
         $decision ??= $this->getStorageDecision();
-        if (!$decision->canResolveFilePath || !$decision->usesFileCache()) {
+        if (!$decision->filePathEligible || !$decision->usesFileCache()) {
             return null;
         }
 
@@ -242,7 +182,7 @@ final class CacheStorageService
     }
 
     private function readApplicationCache(
-        CacheStorageDecision $decision,
+        DisposableCacheStorageDecision $decision,
         string $family,
         string $scope,
         string $itemIdentity,
@@ -261,7 +201,7 @@ final class CacheStorageService
     }
 
     private function writeApplicationCache(
-        CacheStorageDecision $decision,
+        DisposableCacheStorageDecision $decision,
         string $family,
         string $scope,
         string $itemIdentity,
@@ -277,7 +217,7 @@ final class CacheStorageService
         return $written;
     }
 
-    private function invalidateApplicationScope(CacheStorageDecision $decision, string $family, string $scope): bool
+    private function invalidateApplicationScope(DisposableCacheStorageDecision $decision, string $family, string $scope): bool
     {
         $invalidated = $this->getScopedCache($decision, $family)?->invalidateScope($scope) === true;
         if (!$invalidated) {
@@ -287,7 +227,7 @@ final class CacheStorageService
         return $invalidated;
     }
 
-    private function invalidateApplicationFamily(CacheStorageDecision $decision, string $family): bool
+    private function invalidateApplicationFamily(DisposableCacheStorageDecision $decision, string $family): bool
     {
         $invalidated = $this->getScopedCache($decision, $family)?->invalidateFamily() === true;
         if (!$invalidated) {
@@ -297,7 +237,7 @@ final class CacheStorageService
         return $invalidated;
     }
 
-    private function getScopedCache(CacheStorageDecision $decision, string $family): ?ScopedCache
+    private function getScopedCache(DisposableCacheStorageDecision $decision, string $family): ?ScopedCache
     {
         $this->assertOwnedFamily($family);
 

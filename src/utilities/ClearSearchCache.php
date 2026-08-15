@@ -10,7 +10,8 @@ namespace lindemannrock\searchmanager\utilities;
 
 use Craft;
 use craft\base\Utility;
-use lindemannrock\searchmanager\cache\CacheStoragePresenter;
+use lindemannrock\base\cache\DisposableCacheStorageDecision;
+use lindemannrock\base\cache\DisposableCacheStoragePresenter;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\CacheStorageService;
@@ -112,7 +113,7 @@ class ClearSearchCache extends Utility
             'device' => $settings->cacheDeviceDetection,
         ];
         $hasEnabledCacheFamilies = in_array(true, $enabledCacheFamilies, true);
-        $cachePresenter = new CacheStoragePresenter();
+        $cachePresenter = new DisposableCacheStoragePresenter();
         $cachePresentation = $cachePresenter->present(
             $cacheDecision,
             $hasEnabledCacheFamilies,
@@ -130,7 +131,7 @@ class ClearSearchCache extends Utility
             }
         }
 
-        $cacheFamilies = $cachePresenter->presentFamilies(
+        $cacheFamilies = self::presentCacheFamilies(
             $cacheDecision,
             $enabledCacheFamilies,
             $cacheFileCounts,
@@ -155,5 +156,41 @@ class ClearSearchCache extends Utility
             'rebuildAllPlan' => $rebuildAllPlan,
             'settings' => $settings,
         ]);
+    }
+
+    /**
+     * Keep Search Manager's family labels and file counts consumer-owned.
+     *
+     * @param array{search: bool, autocomplete: bool, device: bool} $enabledFamilies
+     * @param array<string, int>|null $fileCounts
+     * @return list<array{family: string, label: string, value: int|string}>
+     */
+    private static function presentCacheFamilies(
+        DisposableCacheStorageDecision $decision,
+        array $enabledFamilies,
+        ?array $fileCounts = null,
+    ): array {
+        $labels = [
+            'search' => 'Search',
+            'autocomplete' => 'Autocomplete',
+            'device' => 'Devices',
+        ];
+        $families = [];
+
+        foreach ($enabledFamilies as $family => $enabled) {
+            if (!$enabled) {
+                continue;
+            }
+
+            $families[] = [
+                'family' => $family,
+                'label' => $labels[$family],
+                'value' => $decision->usesFileCache()
+                    ? ($fileCounts[$family] ?? 0)
+                    : ($decision->isDisabled() ? '—' : '✓'),
+            ];
+        }
+
+        return $families;
     }
 }

@@ -102,19 +102,19 @@
             {% set cacheSubBoxes = cacheSubBoxes|merge([{value: family.value, label: family.label|t('search-manager')}]) %}
         {% endfor %}
 
-        {% set cacheCardColor = cacheStorage.utilityStatusType == 'warning'
+        {% set cacheCardColor = cacheStorage.utilitySeverity == 'warning'
             ? lrPaletteColor('amber').color
-            : (cacheStorage.utilityStatusType == 'info'
+            : (cacheStorage.utilitySeverity == 'info'
                 ? lrPaletteColor('sky').color
-                : (cacheStorage.utilityStatusType == 'inactive'
+                : (cacheStorage.utilitySeverity == 'inactive'
                     ? lrPaletteColor('gray').color
                     : lrPaletteColor('emerald').color)) %}
 
         {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Cache Status'|t('search-manager'),
             color: cacheCardColor,
-            value: cacheStorage.utilityValue|t('search-manager'),
-            description: cacheStorage.utilityDescription|t('search-manager'),
+            value: cacheStorage.utilityValueKey|t('lindemannrock-base'),
+            description: cacheStorage.utilityDescriptionKey|t('lindemannrock-base'),
             subBoxes: cacheSubBoxes,
         } only %}
     {% endif %}
