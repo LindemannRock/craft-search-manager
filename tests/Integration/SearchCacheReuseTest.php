@@ -14,7 +14,6 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\StringHelper;
 use craft\web\Request;
-use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\searchmanager\backends\AbstractSearchEngineBackend;
 use lindemannrock\searchmanager\backends\BaseBackend;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
@@ -27,7 +26,7 @@ use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
 use lindemannrock\searchmanager\tests\Support\OwnedAnalyticsTracker;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
-use yii\caching\ArrayCache;
+use yii\caching\Cache;
 
 /**
  * Local regression coverage for the backend search cache as used by public
@@ -277,6 +276,38 @@ final class SearchCacheReuseTest extends TestCase
         $this->assertFalse($differentType['meta']['cached'], 'changing type must fragment the cache');
     }
 
+    public function testCacheIdentitySeparatesIndexQueryEditionSiteLanguageAndResultOptions(): void
+    {
+        $method = new \ReflectionMethod(BackendService::class, '_generateCacheKey');
+        $service = SearchManager::$plugin->backend;
+        $baseOptions = ['siteId' => 1, 'language' => 'en', 'limit' => 20];
+        $this->forcePluginEdition(SearchManager::EDITION_STANDARD);
+        $base = $method->invoke($service, 'dev_content', 'Portable Query', $baseOptions);
+        self::assertIsString($base);
+
+        $analyticsOnly = $method->invoke($service, 'dev_content', 'portable query', $baseOptions + [
+            'source' => 'widget',
+            'platform' => 'web',
+            'skipAnalytics' => true,
+            'sessionId' => 'session',
+            'apiKeyId' => 42,
+        ]);
+        self::assertSame($base, $analyticsOnly);
+
+        foreach ([
+            ['dev_other', 'Portable Query', $baseOptions],
+            ['dev_content', 'Different Query', $baseOptions],
+            ['dev_content', 'Portable Query', array_replace($baseOptions, ['siteId' => 2])],
+            ['dev_content', 'Portable Query', array_replace($baseOptions, ['language' => 'de'])],
+            ['dev_content', 'Portable Query', array_replace($baseOptions, ['limit' => 10])],
+        ] as [$index, $query, $options]) {
+            self::assertNotSame($base, $method->invoke($service, $index, $query, $options));
+        }
+
+        $this->forcePluginEdition(SearchManager::EDITION_PRO);
+        self::assertNotSame($base, $method->invoke($service, 'dev_content', 'Portable Query', $baseOptions));
+    }
+
     // 3. Widget-style option shape (resultsLimit=100 canonical search) creates + reuses cache.
     public function testWidgetStyleSearchCreatesAndReusesCache(): void
     {
@@ -346,7 +377,7 @@ final class SearchCacheReuseTest extends TestCase
     #[DataProvider('localStorageFamilyProvider')]
     public function testFailedLocalSearchIsNotCachedAndSuccessfulEmptyRetryIsReusable(string $family): void
     {
-        $this->withIsolatedSearchCache(function(CacheWriteRecordingArrayCache $cache) use ($family): void {
+        $this->withIsolatedSearchCache(function(CacheWriteRecordingPersistentCache $cache) use ($family): void {
             $storage = $this->emptyFailureStorage();
             $storage->failNextTotal(1);
             $backend = new CacheFailureBackend($storage, $family);
@@ -381,7 +412,7 @@ final class SearchCacheReuseTest extends TestCase
 
     public function testAdvancedLocalSearchFailureIsNotCachedAndRemainsNondisclosed(): void
     {
-        $this->withIsolatedSearchCache(function(CacheWriteRecordingArrayCache $cache): void {
+        $this->withIsolatedSearchCache(function(CacheWriteRecordingPersistentCache $cache): void {
             $storage = $this->emptyFailureStorage();
             $storage->failNextTotal(1);
             $backend = new CacheFailureBackend($storage, 'mysql');
@@ -401,7 +432,7 @@ final class SearchCacheReuseTest extends TestCase
 
     public function testLocalBackendSetupFailureIsNotCachedAndNextRequestRetriesSetup(): void
     {
-        $this->withIsolatedSearchCache(function(CacheWriteRecordingArrayCache $cache): void {
+        $this->withIsolatedSearchCache(function(CacheWriteRecordingPersistentCache $cache): void {
             $backend = new CacheFailureBackend($this->emptyFailureStorage(), 'file');
             $backend->setupFailuresRemaining = 1;
             $service = $this->installCacheFailureBackend($backend);
@@ -421,7 +452,7 @@ final class SearchCacheReuseTest extends TestCase
 
     public function testSynonymFailureKeepsSuccessfulSiblingButPreventsAggregateCaching(): void
     {
-        $this->withIsolatedSearchCache(function(CacheWriteRecordingArrayCache $cache): void {
+        $this->withIsolatedSearchCache(function(CacheWriteRecordingPersistentCache $cache): void {
             $storage = $this->hitFailureStorage('pr160success', 1, 101);
             $backend = new CacheFailureBackend($storage, 'pgsql');
             $backend->failQueries['pr160broken'] = true;
@@ -466,7 +497,7 @@ final class SearchCacheReuseTest extends TestCase
         string $query,
         array $expandedQueries,
     ): void {
-        $this->withIsolatedSearchCache(function(CacheWriteRecordingArrayCache $cache) use ($query, $expandedQueries): void {
+        $this->withIsolatedSearchCache(function(CacheWriteRecordingPersistentCache $cache) use ($query, $expandedQueries): void {
             $handle = $this->requireAnalyticsIndexHandle();
             $failedQuery = current(array_filter(
                 $expandedQueries,
@@ -550,7 +581,7 @@ final class SearchCacheReuseTest extends TestCase
 
     public function testMultiSiteFailureKeepsSuccessfulSiteAndRetriesFailedSite(): void
     {
-        $this->withIsolatedSearchCache(function(CacheWriteRecordingArrayCache $cache): void {
+        $this->withIsolatedSearchCache(function(CacheWriteRecordingPersistentCache $cache): void {
             $storage = $this->hitFailureStorage('pr160site', 2, 202);
             $storage->failNextTotal(1, 2);
             $backend = new CacheFailureBackend($storage, 'redis');
@@ -573,7 +604,7 @@ final class SearchCacheReuseTest extends TestCase
 
     public function testMultiIndexFailureRetriesOnlyFailedChildAndDoesNotLeakState(): void
     {
-        $this->withIsolatedSearchCache(function(CacheWriteRecordingArrayCache $cache): void {
+        $this->withIsolatedSearchCache(function(CacheWriteRecordingPersistentCache $cache): void {
             $failedStorage = $this->emptyFailureStorage();
             $failedStorage->failNextTotal(1, 2);
             $successfulStorage = $this->hitFailureStorage('pr160multi', 1, 303);
@@ -605,7 +636,7 @@ final class SearchCacheReuseTest extends TestCase
 
     public function testFailedLocalSearchStillRecordsAnalyticsUnlessExplicitlySkipped(): void
     {
-        $this->withIsolatedSearchCache(function(CacheWriteRecordingArrayCache $cache): void {
+        $this->withIsolatedSearchCache(function(CacheWriteRecordingPersistentCache $cache): void {
             $handle = $this->requireAnalyticsIndexHandle();
             $query = $this->markerQuery();
             $storage = $this->emptyFailureStorage();
@@ -705,7 +736,7 @@ final class SearchCacheReuseTest extends TestCase
     }
 
     /**
-     * @param callable(CacheWriteRecordingArrayCache): void $callback
+     * @param callable(CacheWriteRecordingPersistentCache): void $callback
      */
     private function withIsolatedSearchCache(callable $callback): void
     {
@@ -713,7 +744,7 @@ final class SearchCacheReuseTest extends TestCase
         $originalStorageMethod = $settings->cacheStorageMethod;
         $originalIndexPrefix = $settings->indexPrefix;
         $originalCache = Craft::$app->getCache();
-        $cache = new CacheWriteRecordingArrayCache();
+        $cache = new CacheWriteRecordingPersistentCache();
         $settings->enableCache = true;
         $settings->cacheStorageMethod = 'redis';
         $settings->indexPrefix = 'fs3_';
@@ -761,25 +792,83 @@ final class SearchCacheReuseTest extends TestCase
 /**
  * @since 5.54.0
  */
-final class CacheWriteRecordingArrayCache extends ArrayCache
+final class CacheWriteRecordingPersistentCache extends Cache
 {
+    /** @var array<string, mixed> */
+    private array $values = [];
+
     /** @var list<string> */
     public array $setKeys = [];
+
+    /** @var list<int> */
+    public array $setDurations = [];
 
     public function set($key, $value, $duration = null, $dependency = null)
     {
         $this->setKeys[] = (string)$key;
+        $this->setDurations[] = (int)$duration;
 
         return parent::set($key, $value, $duration, $dependency);
     }
 
+    protected function getValue($key)
+    {
+        return $this->values[$key] ?? false;
+    }
+
+    protected function getValues($keys)
+    {
+        return array_map(fn(string $key): mixed => $this->getValue($key), $keys);
+    }
+
+    protected function setValue($key, $value, $duration)
+    {
+        $this->values[$key] = $value;
+
+        return true;
+    }
+
+    protected function setValues($data, $duration)
+    {
+        foreach ($data as $key => $value) {
+            $this->setValue($key, $value, $duration);
+        }
+
+        return [];
+    }
+
+    protected function addValue($key, $value, $duration)
+    {
+        if (array_key_exists($key, $this->values)) {
+            return false;
+        }
+        $this->values[$key] = $value;
+
+        return true;
+    }
+
+    protected function deleteValue($key)
+    {
+        unset($this->values[$key]);
+
+        return true;
+    }
+
+    protected function flushValues()
+    {
+        $this->values = [];
+
+        return true;
+    }
+
     public function searchCacheWriteCount(): int
     {
-        $prefix = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search');
-
         return count(array_filter(
             $this->setKeys,
-            static fn(string $key): bool => str_starts_with($key, $prefix),
+            static fn(string $key): bool => str_contains(
+                $key,
+                ':plugin:search-manager:family:search:item:',
+            ),
         ));
     }
 }

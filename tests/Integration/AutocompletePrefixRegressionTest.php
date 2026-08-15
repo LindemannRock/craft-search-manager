@@ -11,19 +11,17 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
-use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
 use lindemannrock\searchmanager\tests\TestCase;
-use yii\caching\ArrayCache;
 use yii\redis\Cache;
 use yii\redis\Connection;
 
 /**
- * Regression coverage for audit #217.
+ * Regression coverage for autocomplete prefix behavior and caching.
  */
 final class AutocompletePrefixRegressionTest extends TestCase
 {
@@ -58,6 +56,22 @@ final class AutocompletePrefixRegressionTest extends TestCase
         self::assertNotSame($base, $differentLimit);
         self::assertNotSame($base, $differentFuzzy);
         self::assertNotSame($differentLimit, $differentFuzzy);
+    }
+
+    public function testCacheKeySeparatesIndexQuerySiteAndLanguage(): void
+    {
+        $service = SearchManager::$plugin->autocomplete;
+        $method = new \ReflectionMethod($service, 'generateCacheKey');
+        $base = $method->invoke($service, 'suggest', 'dev_content', 'pro', 1, 'en', 10, true);
+
+        foreach ([
+            ['suggest', 'dev_other', 'pro', 1, 'en', 10, true],
+            ['suggest', 'dev_content', 'prod', 1, 'en', 10, true],
+            ['suggest', 'dev_content', 'pro', 2, 'en', 10, true],
+            ['suggest', 'dev_content', 'pro', 1, 'de', 10, true],
+        ] as $identity) {
+            self::assertNotSame($base, $method->invoke($service, ...$identity));
+        }
     }
 
     public function testPrefixAutocompleteQueriesStorageByPrefixInsteadOfGlobalTopThousandPool(): void
@@ -286,12 +300,12 @@ final class AutocompletePrefixRegressionTest extends TestCase
             $first = SearchManager::$plugin->autocomplete->suggest('pr160', 'autocomplete-failure', $options);
             self::assertSame([], $first);
             self::assertSame(1, $storage->termDocumentCalls);
-            self::assertSame([], $redis->setMembers($this->autocompleteTrackingSet()));
+            self::assertSame([], $redis->itemSetKeys(SearchManager::$plugin->getSettings()->autocompleteCacheDuration));
 
             $second = SearchManager::$plugin->autocomplete->suggest('pr160', 'autocomplete-failure', $options);
             self::assertSame([], $second);
             self::assertSame(2, $storage->termDocumentCalls);
-            self::assertCount(1, $redis->setMembers($this->autocompleteTrackingSet()));
+            self::assertCount(1, $redis->itemSetKeys(SearchManager::$plugin->getSettings()->autocompleteCacheDuration));
 
             $third = SearchManager::$plugin->autocomplete->suggest('pr160', 'autocomplete-failure', $options);
             self::assertSame([], $third);
@@ -299,7 +313,7 @@ final class AutocompletePrefixRegressionTest extends TestCase
         });
     }
 
-    public function testRedisAutocompleteKeysExposeExactPrefixedIndexAndPreserveHashIdentity(): void
+    public function testRedisAutocompleteUsesScopedHashedIdentityAndFiniteTtl(): void
     {
         $this->withIsolatedRedisAutocompleteCache(function(AutocompleteFakeRedisConnection $redis): void {
             $storage = new AutocompleteFailureRecordingStorage(
@@ -319,18 +333,17 @@ final class AutocompletePrefixRegressionTest extends TestCase
             self::assertSame(['product', 'profile'], SearchManager::$plugin->autocomplete->suggest('pro', 'news', $options));
             self::assertSame(['product', 'profile'], SearchManager::$plugin->autocomplete->suggest('pro', 'news', $options));
 
-            $keys = $redis->setMembers($this->autocompleteTrackingSet());
+            $keys = $redis->itemSetKeys(SearchManager::$plugin->getSettings()->autocompleteCacheDuration);
             self::assertCount(1, $keys);
-            $fullIndex = SearchManager::$plugin->getSettings()->getFullIndexName('news');
-            $expectedPrefix = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $fullIndex . ':';
-            self::assertStringStartsWith($expectedPrefix, $keys[0]);
-            self::assertMatchesRegularExpression('/^[a-f0-9]{32}$/', substr($keys[0], strlen($expectedPrefix)));
+            self::assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $keys[0]);
+            self::assertStringNotContainsString('pro', $keys[0]);
             self::assertSame(1, $storage->termDocumentCalls);
             self::assertTrue($redis->hasSetCommandWithTtl(SearchManager::$plugin->getSettings()->autocompleteCacheDuration));
+            self::assertSame([], array_intersect(['SADD', 'SMEMBERS', 'SREM', 'KEYS', 'SCAN'], $redis->commands));
         });
     }
 
-    public function testRedisSelectiveClearIsDelimiterSafeAndOldOpaqueKeysRemainUntouched(): void
+    public function testRedisSelectiveClearInvalidatesOnlyTheCanonicalIndexScope(): void
     {
         $this->withIsolatedRedisAutocompleteCache(function(AutocompleteFakeRedisConnection $redis, Cache $cache): void {
             $storage = new AutocompleteFailureRecordingStorage(
@@ -348,34 +361,28 @@ final class AutocompletePrefixRegressionTest extends TestCase
             $service->suggest('new', 'news', $options);
             $service->suggest('new', 'news-archive', $options);
 
-            $oldOpaqueKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . str_repeat('a', 32);
-            $cache->set($oldOpaqueKey, ['legacy'], 300);
-            $redis->executeCommand('SADD', [$this->autocompleteTrackingSet(), $oldOpaqueKey]);
+            $sentinelKey = 'search-manager-autocomplete-unrelated-sentinel';
+            $cache->set($sentinelKey, ['unrelated'], 300);
+            self::assertSame(2, $storage->termDocumentCalls);
 
             $service->clearCache('news');
 
-            $remaining = $redis->setMembers($this->autocompleteTrackingSet());
-            $newsPrefix = $this->autocompleteIndexPrefix('news');
-            $archivePrefix = $this->autocompleteIndexPrefix('news-archive');
-            self::assertFalse((bool)array_filter($remaining, static fn(string $key): bool => str_starts_with($key, $newsPrefix)));
-            self::assertTrue((bool)array_filter($remaining, static fn(string $key): bool => str_starts_with($key, $archivePrefix)));
-            self::assertContains($oldOpaqueKey, $remaining);
-            self::assertSame(['legacy'], $cache->get($oldOpaqueKey));
-
-            $storage->getTermsForAutocompleteCalls = [];
             self::assertSame(['newsroom'], $service->suggest('new', 'news', $options));
-            self::assertNotEmpty($storage->getTermsForAutocompleteCalls, 'The new format must not read the old opaque entry.');
+            self::assertSame(3, $storage->termDocumentCalls);
+            self::assertSame(['newsroom'], $service->suggest('new', 'news-archive', $options));
+            self::assertSame(3, $storage->termDocumentCalls);
+            self::assertSame(['unrelated'], $cache->get($sentinelKey));
 
-            self::assertNotContains('SCAN', $redis->commands);
-            self::assertNotContains('KEYS', $redis->commands);
+            self::assertSame([], array_intersect(['SADD', 'SMEMBERS', 'SREM', 'KEYS', 'SCAN'], $redis->commands));
 
             $service->clearCache();
-            self::assertSame([], $redis->setMembers($this->autocompleteTrackingSet()));
-            self::assertFalse($cache->get($oldOpaqueKey));
+            self::assertSame(['newsroom'], $service->suggest('new', 'news-archive', $options));
+            self::assertSame(4, $storage->termDocumentCalls);
+            self::assertSame(['unrelated'], $cache->get($sentinelKey));
         });
     }
 
-    public function testRedisUnavailableFallsBackToUnchangedPerIndexFileCache(): void
+    public function testUnsuitableApplicationCacheRecomputesWithoutFileFallback(): void
     {
         $settings = SearchManager::$plugin->getSettings();
         $originalStorageMethod = $settings->cacheStorageMethod;
@@ -384,7 +391,7 @@ final class AutocompletePrefixRegressionTest extends TestCase
         $settings->enableAutocompleteCache = true;
         $settings->cacheStorageMethod = 'redis';
         $settings->indexPrefix = 'fs3_';
-        Craft::$app->set('cache', new ArrayCache());
+        Craft::$app->set('cache', new \yii\caching\ArrayCache());
         $storage = new AutocompleteFailureRecordingStorage(
             termDocs: [],
             titleByElement: [],
@@ -402,11 +409,11 @@ final class AutocompletePrefixRegressionTest extends TestCase
             $service->clearCache($handle);
             self::assertSame(['fallback'], $service->suggest('fall', $handle, $options));
             self::assertSame(['fallback'], $service->suggest('fall', $handle, $options));
-            self::assertSame(1, $storage->termDocumentCalls);
+            self::assertSame(2, $storage->termDocumentCalls);
 
             $service->clearCache($handle);
             self::assertSame(['fallback'], $service->suggest('fall', $handle, $options));
-            self::assertSame(2, $storage->termDocumentCalls);
+            self::assertSame(3, $storage->termDocumentCalls);
         } finally {
             $service->clearCache($handle);
             Craft::$app->set('cache', $originalCache);
@@ -415,7 +422,7 @@ final class AutocompletePrefixRegressionTest extends TestCase
         }
     }
 
-    public function testMutationProducerAndSearchCacheKeepTheirEstablishedInvalidationStructures(): void
+    public function testMutationProducerAndSearchCacheUseScopedInvalidationStructures(): void
     {
         $indexingSource = file_get_contents(dirname(__DIR__, 2) . '/src/services/IndexingService.php');
         $searchCacheSource = file_get_contents(dirname(__DIR__, 2) . '/src/services/BackendService.php');
@@ -427,7 +434,7 @@ final class AutocompletePrefixRegressionTest extends TestCase
             $indexingSource,
         );
         self::assertStringContainsString(
-            "PluginHelper::getCacheKeyPrefix(SearchManager::\$plugin->id, 'search') . \$fullIndexName . ':' . \$cacheKey",
+            "invalidateScope('search', \$fullIndexName)",
             $searchCacheSource,
         );
     }
@@ -455,18 +462,6 @@ final class AutocompletePrefixRegressionTest extends TestCase
             $settings->cacheStorageMethod = $originalStorageMethod;
             $settings->indexPrefix = $originalIndexPrefix;
         }
-    }
-
-    private function autocompleteTrackingSet(): string
-    {
-        return PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete');
-    }
-
-    private function autocompleteIndexPrefix(string $handle): string
-    {
-        return PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete')
-            . SearchManager::$plugin->getSettings()->getFullIndexName($handle)
-            . ':';
     }
 }
 
@@ -643,9 +638,6 @@ final class AutocompleteFakeRedisConnection extends Connection
     /** @var array<string, mixed> */
     private array $strings = [];
 
-    /** @var array<string, array<string, true>> */
-    private array $sets = [];
-
     public function executeCommand(string $name, array $params = [])
     {
         $name = strtoupper($name);
@@ -656,10 +648,7 @@ final class AutocompleteFakeRedisConnection extends Connection
             'GET' => $this->strings[(string)$params[0]] ?? null,
             'SET' => $this->setString($params),
             'DEL' => $this->deleteKeys($params),
-            'SADD' => $this->addSetMember((string)$params[0], (string)$params[1]),
-            'SMEMBERS' => array_keys($this->sets[(string)$params[0]] ?? []),
-            'SREM' => $this->removeSetMember((string)$params[0], (string)$params[1]),
-            'EXISTS' => isset($this->strings[(string)$params[0]]) || isset($this->sets[(string)$params[0]]) ? 1 : 0,
+            'EXISTS' => isset($this->strings[(string)$params[0]]) ? 1 : 0,
             default => throw new \RuntimeException('Unsupported fake Redis command: ' . $name),
         };
     }
@@ -667,9 +656,19 @@ final class AutocompleteFakeRedisConnection extends Connection
     /**
      * @return list<string>
      */
-    public function setMembers(string $key): array
+    public function itemSetKeys(int $duration): array
     {
-        return array_keys($this->sets[$key] ?? []);
+        return array_values(array_filter(
+            array_map(
+                static fn(array $record): string => $record['name'] === 'SET'
+                    && ($record['params'][2] ?? null) === 'PX'
+                    && ($record['params'][3] ?? null) === $duration * 1000
+                    ? (string)($record['params'][0] ?? '')
+                    : '',
+                $this->commandRecords,
+            ),
+            static fn(string $key): bool => $key !== '',
+        ));
     }
 
     public function hasSetCommandWithTtl(int $duration): bool
@@ -709,34 +708,8 @@ final class AutocompleteFakeRedisConnection extends Connection
                 unset($this->strings[$key]);
                 $deleted++;
             }
-            if (isset($this->sets[$key])) {
-                unset($this->sets[$key]);
-                $deleted++;
-            }
         }
 
         return $deleted;
-    }
-
-    private function addSetMember(string $key, string $member): int
-    {
-        $added = isset($this->sets[$key][$member]) ? 0 : 1;
-        $this->sets[$key][$member] = true;
-
-        return $added;
-    }
-
-    private function removeSetMember(string $key, string $member): int
-    {
-        if (!isset($this->sets[$key][$member])) {
-            return 0;
-        }
-
-        unset($this->sets[$key][$member]);
-        if ($this->sets[$key] === []) {
-            unset($this->sets[$key]);
-        }
-
-        return 1;
     }
 }

@@ -9,7 +9,6 @@
 namespace lindemannrock\searchmanager\services;
 
 use craft\base\Component;
-use lindemannrock\base\helpers\CacheHelper;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\base\traits\DeviceDetectionTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -85,13 +84,7 @@ class DeviceDetectionService extends Component
      */
     public function clearCache(): void
     {
-        $settings = SearchManager::$plugin->getSettings();
-
-        if ($settings->cacheStorageMethod === 'redis') {
-            CacheHelper::clearTrackedRedisKeys(SearchManager::$plugin->id, 'device');
-        } else {
-            CacheHelper::clearCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'device'));
-        }
+        (new CacheStorageService())->invalidateFamily('device');
 
         $this->deviceDetection = null;
     }
@@ -110,7 +103,6 @@ class DeviceDetectionService extends Component
             'pluginHandle' => SearchManager::$plugin->id,
             'cachePath' => PluginHelper::getCachePath(SearchManager::$plugin, 'device'),
             'cacheKeyPrefix' => PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'device'),
-            'cacheKeySet' => PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'device'),
             'includeLanguage' => true,
             'includePlatform' => false,
         ];

@@ -8,8 +8,6 @@
 
 namespace lindemannrock\searchmanager\services;
 
-use Craft;
-use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\backends\AbstractSearchEngineBackend;
 use lindemannrock\searchmanager\backends\AlgoliaBackend;
@@ -1245,40 +1243,7 @@ class BackendService extends Component
      */
     private function _getCacheDriver(): string
     {
-        $settings = SearchManager::$plugin->getSettings();
-        if ($settings->cacheStorageMethod !== 'redis') {
-            return 'file';
-        }
-
-        $cache = \Craft::$app->getCache();
-        $className = get_class($cache);
-        $classNameLower = strtolower($className);
-
-        // Extract simple name from class (case-insensitive)
-        if (str_contains($classNameLower, 'redis')) {
-            return 'redis';
-        }
-        if (str_contains($classNameLower, 'memcache')) {
-            return 'memcached';
-        }
-        if (str_contains($classNameLower, 'file')) {
-            return 'file';
-        }
-        if (str_contains($classNameLower, 'apcu') || str_contains($classNameLower, '\\apc')) {
-            return 'apcu';
-        }
-        if (str_contains($classNameLower, 'dummy') || str_contains($classNameLower, 'array')) {
-            return 'none';
-        }
-        if (str_contains($classNameLower, 'db') || str_contains($classNameLower, 'database')) {
-            return 'database';
-        }
-
-        // Return shortened class name as fallback
-        $parts = explode('\\', $className);
-        $driverName = strtolower(str_replace(['Cache', 'cache'], '', end($parts)));
-
-        return $driverName ?: 'unknown';
+        return (new CacheStorageService())->getDriverLabel();
     }
 
     /**
@@ -1343,54 +1308,24 @@ class BackendService extends Component
     private function _getFromCache(string $indexName, string $query, array $options): ?array
     {
         $settings = SearchManager::$plugin->getSettings();
-        $fullIndexName = $settings->getFullIndexName($indexName);
+        $fullIndexName = (new CacheStorageService())->getFullIndexName($indexName);
         $cacheKey = $this->_generateCacheKey($fullIndexName, $query, $options);
         if ($cacheKey === null) {
             return null;
         }
 
-        // Include full index name (with prefix) in key path for per-index cache clearing
-        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $fullIndexName . ':' . $cacheKey;
-
-        // Use Redis/database cache if configured
-        if ($settings->cacheStorageMethod === 'redis') {
-            $cached = Craft::$app->cache->get($fullCacheKey);
-            if ($cached !== false) {
-                $this->logDebug('Cache hit (Redis)', ['cacheKey' => $cacheKey, 'query' => $query]);
-                return $cached;
-            }
+        $cached = (new CacheStorageService())->read(
+            'search',
+            $fullIndexName,
+            $cacheKey,
+            (int)$settings->cacheDuration,
+        );
+        if (!$cached->isHit() || !is_array($cached->value)) {
             return null;
         }
 
-        // Use file-based cache (default)
-        $cachePath = $this->_getCachePath($fullIndexName);
-        $cacheFile = $cachePath . $cacheKey . '.cache';
-
-        if (!file_exists($cacheFile)) {
-            return null;
-        }
-
-        // Check if cache is expired
-        $mtime = filemtime($cacheFile);
-        if (time() - $mtime > $settings->cacheDuration) {
-            @unlink($cacheFile);
-            $this->logDebug('Cache expired and deleted', ['cacheKey' => $cacheKey]);
-            return null;
-        }
-
-        $data = file_get_contents($cacheFile);
-        $this->logDebug('Cache hit (File)', ['cacheKey' => $cacheKey, 'query' => $query]);
-
-        // Use JSON instead of unserialize to prevent object injection attacks
-        $decoded = json_decode($data, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            // Invalid JSON (possibly old serialized format) - delete and return miss
-            @unlink($cacheFile);
-            $this->logDebug('Cache invalid JSON, deleted', ['cacheKey' => $cacheKey]);
-            return null;
-        }
-
-        return $decoded;
+        $this->logDebug('Search cache hit', ['cacheKey' => $cacheKey, 'query' => $query]);
+        return $cached->value;
     }
 
     /**
@@ -1405,62 +1340,19 @@ class BackendService extends Component
     private function _saveToCache(string $indexName, string $query, array $options, array $results): void
     {
         $settings = SearchManager::$plugin->getSettings();
-        $fullIndexName = $settings->getFullIndexName($indexName);
+        $fullIndexName = (new CacheStorageService())->getFullIndexName($indexName);
         $cacheKey = $this->_generateCacheKey($fullIndexName, $query, $options);
         if ($cacheKey === null) {
             return;
         }
 
-        // Include full index name (with prefix) in key path for per-index cache clearing
-        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $fullIndexName . ':' . $cacheKey;
-
-        // Use Redis/database cache if configured
-        if ($settings->cacheStorageMethod === 'redis') {
-            $cache = Craft::$app->cache;
-            $cache->set($fullCacheKey, $results, $settings->cacheDuration);
-
-            // Track key in set for selective deletion
-            $redisCache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
-            if ($redisCache !== null) {
-                $redis = $redisCache->redis;
-                $redis->executeCommand('SADD', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search'), $fullCacheKey]);
-            }
-
-            $this->logDebug('Results cached (Redis)', ['cacheKey' => $cacheKey, 'query' => $query]);
-            return;
-        }
-
-        // Use file-based cache (default)
-        try {
-            $cachePath = $this->_getCachePath($fullIndexName);
-
-            // Create directory if it doesn't exist
-            if (!is_dir($cachePath)) {
-                \craft\helpers\FileHelper::createDirectory($cachePath);
-            }
-
-            $cacheFile = $cachePath . $cacheKey . '.cache';
-            // Use JSON instead of serialize to prevent object injection attacks on read
-            file_put_contents($cacheFile, json_encode($results, JSON_THROW_ON_ERROR));
-            $this->logDebug('Results cached (File)', ['cacheKey' => $cacheKey, 'query' => $query]);
-        } catch (\Throwable $e) {
-            // Cache failure shouldn't crash the search - log and continue
-            $this->logError('Failed to cache results', [
-                'cacheKey' => $cacheKey,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Get cache path for an index
-     *
-     * @param string $indexName
-     * @return string
-     */
-    private function _getCachePath(string $indexName): string
-    {
-        return PluginHelper::getCachePath(SearchManager::$plugin, 'search') . $indexName . '/';
+        (new CacheStorageService())->write(
+            'search',
+            $fullIndexName,
+            $cacheKey,
+            $results,
+            (int)$settings->cacheDuration,
+        );
     }
 
     /**
@@ -1471,42 +1363,10 @@ class BackendService extends Component
      */
     public function clearSearchCache(string $indexName): void
     {
-        $settings = SearchManager::$plugin->getSettings();
-        $fullIndexName = $settings->getFullIndexName($indexName);
+        $fullIndexName = (new CacheStorageService())->getFullIndexName($indexName);
 
-        if ($settings->cacheStorageMethod === 'redis') {
-            // Clear Redis cache for specific index
-            $cache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
-            if ($cache !== null) {
-                $redis = $cache->redis;
-
-                // Get all search cache keys from tracking set
-                $allKeys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]) ?: [];
-
-                // Filter keys for this specific index using the index-prefixed key format
-                // Key format: {prefix}{indexName}:{hash}
-                $indexPrefix = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $fullIndexName . ':';
-                foreach ($allKeys as $key) {
-                    if (strpos($key, $indexPrefix) === 0) {
-                        // Delete individual key for this index only
-                        $cache->delete($key);
-                        // Remove from tracking set
-                        $redis->executeCommand('SREM', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search'), $key]);
-                    }
-                }
-
-                $this->logInfo('Cleared search cache for index (Redis)', ['index' => $indexName]);
-                return;
-            }
-        }
-
-        // Clear file cache (fallback/default)
-        $cachePath = $this->_getCachePath($fullIndexName);
-
-        if (is_dir($cachePath)) {
-            \craft\helpers\FileHelper::clearDirectory($cachePath);
-            $this->logInfo('Cleared search cache for index (File)', ['index' => $indexName]);
-        }
+        (new CacheStorageService())->invalidateScope('search', $fullIndexName);
+        $this->logInfo('Cleared search cache for index', ['index' => $indexName]);
     }
 
     /**
@@ -1516,36 +1376,7 @@ class BackendService extends Component
      */
     public function clearAllSearchCache(): void
     {
-        $settings = SearchManager::$plugin->getSettings();
-
-        if ($settings->cacheStorageMethod === 'redis') {
-            // Clear Redis cache
-            $cache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
-            if ($cache !== null) {
-                $redis = $cache->redis;
-
-                // Get all search cache keys from tracking set
-                $keys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]) ?: [];
-
-                // Delete all search cache keys
-                foreach ($keys as $key) {
-                    $cache->delete($key);
-                }
-
-                // Clear the tracking set
-                $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]);
-
-                $this->logInfo('Cleared all search cache (Redis)');
-                return;
-            }
-        }
-
-        // Clear file cache (fallback/default)
-        $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
-
-        if (is_dir($cachePath)) {
-            \craft\helpers\FileHelper::clearDirectory($cachePath);
-            $this->logInfo('Cleared all search cache (File)');
-        }
+        (new CacheStorageService())->invalidateFamily('search');
+        $this->logInfo('Cleared all search cache');
     }
 }

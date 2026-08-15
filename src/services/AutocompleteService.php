@@ -9,7 +9,6 @@
 namespace lindemannrock\searchmanager\services;
 
 use Craft;
-use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CacheKeyHelper;
 use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
@@ -121,7 +120,7 @@ class AutocompleteService extends Component
             : implode(' ', $parsed->tokens) . ($parsed->lastTokenIncomplete ? "\u{0001}typing" : '');
 
         // Apply index prefix to get full index name (matches how data is stored)
-        $fullIndexHandle = $settings->getFullIndexName($indexHandle);
+        $fullIndexHandle = (new CacheStorageService())->getFullIndexName($indexHandle);
 
         // Check cache first
         $this->logDebug('Autocomplete cache check', [
@@ -777,49 +776,14 @@ class AutocompleteService extends Component
         }
 
         $settings = SearchManager::$plugin->getSettings();
-        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $indexHandle . ':' . $cacheKey;
+        $cached = (new CacheStorageService())->read(
+            'autocomplete',
+            $indexHandle,
+            $cacheKey,
+            (int)$settings->autocompleteCacheDuration,
+        );
 
-        // Use Redis/database cache if configured
-        if ($settings->cacheStorageMethod === 'redis') {
-            $cache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
-            if ($cache !== null) {
-                $cached = $cache->get($fullCacheKey);
-                if ($cached !== false) {
-                    return $cached;
-                }
-                return null;
-            }
-        }
-
-        // Use file-based cache (default)
-        $cachePath = $this->getCachePath($indexHandle);
-        $cacheFile = $cachePath . $cacheKey . '.cache';
-
-        if (!file_exists($cacheFile)) {
-            return null;
-        }
-
-        // Check if cache is expired
-        $mtime = filemtime($cacheFile);
-        if (time() - $mtime > $settings->autocompleteCacheDuration) {
-            @unlink($cacheFile);
-            return null;
-        }
-
-        $content = file_get_contents($cacheFile);
-        if ($content === false) {
-            return null;
-        }
-
-        // Use JSON instead of unserialize to prevent object injection attacks
-        $data = json_decode($content, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            // Invalid JSON (possibly old serialized format) - delete and return miss
-            @unlink($cacheFile);
-            return null;
-        }
-
-        return is_array($data) ? $data : null;
+        return $cached->isHit() && is_array($cached->value) ? $cached->value : null;
     }
 
     /**
@@ -832,8 +796,6 @@ class AutocompleteService extends Component
         }
 
         $settings = SearchManager::$plugin->getSettings();
-        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $indexHandle . ':' . $cacheKey;
-
         $this->logDebug('Saving to autocomplete cache', [
             'cacheKey' => $cacheKey,
             'storageMethod' => $settings->cacheStorageMethod,
@@ -841,65 +803,13 @@ class AutocompleteService extends Component
             'dataCount' => count($data),
         ]);
 
-        // Use Redis/database cache if configured
-        if ($settings->cacheStorageMethod === 'redis') {
-            $cache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
-            if ($cache !== null) {
-                try {
-                    $cache->set($fullCacheKey, $data, $settings->autocompleteCacheDuration);
-
-                    // Track key in set for selective deletion
-                    $redis = $cache->redis;
-                    $redis->executeCommand('SADD', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete'), $fullCacheKey]);
-
-                    $this->logDebug('Saved to Redis autocomplete cache', ['key' => $fullCacheKey]);
-                } catch (\Throwable $e) {
-                    $this->logError('Failed to save to Redis autocomplete cache', [
-                        'key' => $fullCacheKey,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-
-                return;
-            }
-        }
-
-        // Use file-based cache (default)
-        try {
-            $cachePath = $this->getCachePath($indexHandle);
-
-            // Create directory if it doesn't exist
-            if (!is_dir($cachePath)) {
-                \craft\helpers\FileHelper::createDirectory($cachePath);
-                $this->logDebug('Created autocomplete cache directory', ['path' => $cachePath]);
-            }
-
-            $cacheFile = $cachePath . $cacheKey . '.cache';
-            // Use JSON instead of serialize to prevent object injection attacks on read
-            $result = file_put_contents($cacheFile, json_encode($data, JSON_THROW_ON_ERROR));
-
-            if ($result === false) {
-                $this->logError('Failed to write autocomplete cache file', ['file' => $cacheFile]);
-            } else {
-                $this->logDebug('Saved to file autocomplete cache', [
-                    'file' => $cacheFile,
-                    'bytes' => $result,
-                ]);
-            }
-        } catch (\Throwable $e) {
-            $this->logError('Failed to save to file autocomplete cache', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Get cache path for autocomplete
-     */
-    private function getCachePath(?string $indexHandle = null): string
-    {
-        $base = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
-        return $indexHandle ? $base . $indexHandle . '/' : $base;
+        (new CacheStorageService())->write(
+            'autocomplete',
+            $indexHandle,
+            $cacheKey,
+            $data,
+            (int)$settings->autocompleteCacheDuration,
+        );
     }
 
     /**
@@ -907,39 +817,7 @@ class AutocompleteService extends Component
      */
     private function getCacheDriver(): string
     {
-        $settings = SearchManager::$plugin->getSettings();
-        if ($settings->cacheStorageMethod !== 'redis') {
-            return 'file';
-        }
-
-        $cache = Craft::$app->cache;
-        if ($cache instanceof \yii\redis\Cache) {
-            return 'redis';
-        }
-
-        $className = get_class($cache);
-        $classNameLower = strtolower($className);
-
-        if (str_contains($classNameLower, 'memcache')) {
-            return 'memcached';
-        }
-        if (str_contains($classNameLower, 'file')) {
-            return 'file';
-        }
-        if (str_contains($classNameLower, 'apcu') || str_contains($classNameLower, '\\apc')) {
-            return 'apcu';
-        }
-        if (str_contains($classNameLower, 'dummy') || str_contains($classNameLower, 'array')) {
-            return 'none';
-        }
-        if (str_contains($classNameLower, 'db') || str_contains($classNameLower, 'database')) {
-            return 'database';
-        }
-
-        $parts = explode('\\', $className);
-        $driverName = strtolower(str_replace(['Cache', 'cache'], '', end($parts)));
-
-        return $driverName ?: 'unknown';
+        return (new CacheStorageService())->getDriverLabel();
     }
 
     /**
@@ -947,49 +825,13 @@ class AutocompleteService extends Component
      */
     public function clearCache(?string $indexHandle = null): void
     {
-        $settings = SearchManager::$plugin->getSettings();
-        $fullIndexHandle = null;
-        if ($indexHandle !== null) {
-            $fullIndexHandle = $settings->getFullIndexName($indexHandle);
+        $cacheStorage = new CacheStorageService();
+        if ($indexHandle === null) {
+            $cacheStorage->invalidateFamily('autocomplete');
+        } else {
+            $cacheStorage->invalidateScope('autocomplete', $cacheStorage->getFullIndexName($indexHandle));
         }
 
-        if ($settings->cacheStorageMethod === 'redis') {
-            $cache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
-            if ($cache !== null) {
-                $redis = $cache->redis;
-                $keys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]);
-                $indexPrefix = $fullIndexHandle === null
-                    ? null
-                    : PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $fullIndexHandle . ':';
-
-                if (!empty($keys)) {
-                    foreach ($keys as $key) {
-                        // If indexHandle specified, only delete keys for that index
-                        if ($indexPrefix === null || str_starts_with((string)$key, $indexPrefix)) {
-                            $cache->delete($key);
-                            if ($indexPrefix !== null) {
-                                $redis->executeCommand('SREM', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete'), $key]);
-                            }
-                        }
-                    }
-                }
-
-                if ($indexPrefix === null) {
-                    $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]);
-                }
-
-                $this->logInfo('Cleared autocomplete cache (Redis)', ['index' => $indexHandle]);
-                return;
-            }
-        }
-
-        // File-based cache
-        $cachePath = $this->getCachePath($fullIndexHandle);
-
-        if (is_dir($cachePath)) {
-            \craft\helpers\FileHelper::clearDirectory($cachePath);
-        }
-
-        $this->logInfo('Cleared autocomplete cache (file)', ['index' => $indexHandle]);
+        $this->logInfo('Cleared autocomplete cache', ['index' => $indexHandle]);
     }
 }

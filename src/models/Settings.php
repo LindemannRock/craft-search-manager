@@ -242,7 +242,7 @@ class Settings extends Model
     public int $cacheDuration = 3600;
 
     /**
-     * @var string Cache storage method (file or redis)
+     * @var string Cache storage method (file, redis, or forward-compatible craft)
      */
     public string $cacheStorageMethod = 'file';
 
@@ -466,7 +466,7 @@ class Settings extends Model
             [['autoIndex', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableFuzzy', 'highlightResultsEnabled', 'enableAutocomplete', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
             [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
-            [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
+            [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis', 'craft']],
             [['batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'deviceDetectionCacheDuration', 'snippetMaxLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
             [['lastIndexedDebounceSeconds'], 'integer', 'min' => 0, 'max' => 3600],
             [['syncBatchSize'], 'integer', 'min' => 1, 'max' => 1000],

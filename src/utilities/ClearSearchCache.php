@@ -10,9 +10,9 @@ namespace lindemannrock\searchmanager\utilities;
 
 use Craft;
 use craft\base\Utility;
-use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\CacheStorageService;
 
 /**
  * Clear Search Cache utility
@@ -106,11 +106,16 @@ class ClearSearchCache extends Utility
         $storageOptions = [];
         $rebuildAllPlan = null;
 
-        // Only count files when using file storage (Redis counts are not displayed)
-        if ($user->getIdentity() && $user->checkPermission('searchManager:clearCache') && $settings->cacheStorageMethod === 'file') {
-            $deviceCacheFiles = self::countCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'device'));
-            $searchCacheFiles = self::countCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'search'));
-            $autocompleteCacheFiles = self::countCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete'));
+        $cacheStorage = new CacheStorageService();
+        $effectiveCacheStorage = $cacheStorage->getEffectiveStorage();
+        if (
+            $user->getIdentity()
+            && $user->checkPermission('searchManager:clearCache')
+            && $effectiveCacheStorage === CacheStorageService::STORAGE_FILE
+        ) {
+            $deviceCacheFiles = $cacheStorage->countFiles('device');
+            $searchCacheFiles = $cacheStorage->countFiles('search');
+            $autocompleteCacheFiles = $cacheStorage->countFiles('autocomplete');
         }
 
         if ($user->getIdentity() && $user->checkPermission('searchManager:rebuildIndices')) {
@@ -127,34 +132,13 @@ class ClearSearchCache extends Utility
             'deviceCacheFiles' => $deviceCacheFiles,
             'searchCacheFiles' => $searchCacheFiles,
             'autocompleteCacheFiles' => $autocompleteCacheFiles,
-            'storageMethod' => $settings->cacheStorageMethod,
+            // The current template has only enumerable-file and non-enumerable
+            // application-cache branches. Public wording is handled later.
+            'storageMethod' => $effectiveCacheStorage === CacheStorageService::STORAGE_FILE ? 'file' : 'redis',
             'analyticsCount' => $analyticsCount,
             'storageOptions' => $storageOptions,
             'rebuildAllPlan' => $rebuildAllPlan,
             'settings' => $settings,
         ]);
-    }
-
-    /**
-     * Count cached files recursively in a directory
-     */
-    private static function countCacheFiles(string $path): int
-    {
-        if (!is_dir($path)) {
-            return 0;
-        }
-
-        $count = 0;
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS)
-        );
-
-        foreach ($iterator as $file) {
-            if ($file->isFile() && str_ends_with($file->getFilename(), '.cache')) {
-                $count++;
-            }
-        }
-
-        return $count;
     }
 }

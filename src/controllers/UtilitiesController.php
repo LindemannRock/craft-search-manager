@@ -9,11 +9,10 @@
 namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
-use craft\helpers\FileHelper;
 use craft\web\Controller;
-use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\CacheStorageService;
 use yii\web\Response;
 
 /**
@@ -110,38 +109,14 @@ class UtilitiesController extends Controller
         $this->requireAcceptsJson();
 
         try {
-            $settings = SearchManager::$plugin->getSettings();
-            $cache = $settings->cacheStorageMethod === 'redis'
-                ? PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id)
+            $cacheStorage = new CacheStorageService();
+            $fileCount = $cacheStorage->getEffectiveStorage() === CacheStorageService::STORAGE_FILE
+                ? $cacheStorage->countFiles('device')
                 : null;
-
-            if ($cache !== null) {
-                $redis = $cache->redis;
-
-                // Get all device cache keys from tracking set
-                $keys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'device')]) ?: [];
-
-                // Delete device cache keys
-                foreach ($keys as $key) {
-                    $cache->delete($key);
-                }
-
-                // Clear the tracking set
-                $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'device')]);
-
-                $message = Craft::t('search-manager', 'Device cache cleared successfully');
-            } else {
-                $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'device');
-                $fileCount = 0;
-
-                if (is_dir($cachePath)) {
-                    $files = glob($cachePath . '/*.cache');
-                    $fileCount = count($files ?: []);
-                    FileHelper::clearDirectory($cachePath);
-                }
-
-                $message = Craft::t('search-manager', 'Device cache cleared successfully ({count} files)', ['count' => $fileCount]);
-            }
+            SearchManager::$plugin->deviceDetection->clearCache();
+            $message = $fileCount === null
+                ? Craft::t('search-manager', 'Device cache cleared successfully')
+                : Craft::t('search-manager', 'Device cache cleared successfully ({count} files)', ['count' => $fileCount]);
 
             $this->logInfo('Device cache cleared via utility');
 
@@ -170,23 +145,14 @@ class UtilitiesController extends Controller
         $this->requireAcceptsJson();
 
         try {
-            $settings = SearchManager::$plugin->getSettings();
-
-            if ($settings->cacheStorageMethod === 'redis') {
-                SearchManager::$plugin->backend->clearAllSearchCache();
-                $message = Craft::t('search-manager', 'Search cache cleared successfully');
-            } else {
-                $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
-                $fileCount = 0;
-
-                if (is_dir($cachePath)) {
-                    $files = glob($cachePath . '/*.cache');
-                    $fileCount = count($files ?: []);
-                    FileHelper::clearDirectory($cachePath);
-                }
-
-                $message = Craft::t('search-manager', 'Search cache cleared successfully ({count} files)', ['count' => $fileCount]);
-            }
+            $cacheStorage = new CacheStorageService();
+            $fileCount = $cacheStorage->getEffectiveStorage() === CacheStorageService::STORAGE_FILE
+                ? $cacheStorage->countFiles('search')
+                : null;
+            SearchManager::$plugin->backend->clearAllSearchCache();
+            $message = $fileCount === null
+                ? Craft::t('search-manager', 'Search cache cleared successfully')
+                : Craft::t('search-manager', 'Search cache cleared successfully ({count} files)', ['count' => $fileCount]);
 
             $this->logInfo('Search cache cleared via utility');
 
@@ -215,24 +181,14 @@ class UtilitiesController extends Controller
         $this->requireAcceptsJson();
 
         try {
-            SearchManager::$plugin->autocomplete->clearCache();
-
-            $settings = SearchManager::$plugin->getSettings();
-            $cache = $settings->cacheStorageMethod === 'redis'
-                ? PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id)
+            $cacheStorage = new CacheStorageService();
+            $fileCount = $cacheStorage->getEffectiveStorage() === CacheStorageService::STORAGE_FILE
+                ? $cacheStorage->countFiles('autocomplete')
                 : null;
-
-            if ($cache !== null) {
-                $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully');
-            } else {
-                $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
-                $fileCount = 0;
-                if (is_dir($cachePath)) {
-                    $files = glob($cachePath . '/*.cache');
-                    $fileCount = count($files ?: []);
-                }
-                $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully ({count} files)', ['count' => $fileCount]);
-            }
+            SearchManager::$plugin->autocomplete->clearCache();
+            $message = $fileCount === null
+                ? Craft::t('search-manager', 'Autocomplete cache cleared successfully')
+                : Craft::t('search-manager', 'Autocomplete cache cleared successfully ({count} files)', ['count' => $fileCount]);
 
             $this->logInfo('Autocomplete cache cleared via utility');
 
@@ -261,70 +217,20 @@ class UtilitiesController extends Controller
         $this->requireAcceptsJson();
 
         try {
-            $settings = SearchManager::$plugin->getSettings();
-
-            $cache = $settings->cacheStorageMethod === 'redis'
-                ? PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id)
-                : null;
-
-            if ($cache !== null) {
-                $redis = $cache->redis;
-
-                // Get all cache keys from tracking sets
-                $searchKeys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]) ?: [];
-                $deviceKeys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'device')]) ?: [];
-                $autocompleteKeys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]) ?: [];
-
-                // Delete search cache keys
-                foreach ($searchKeys as $key) {
-                    $cache->delete($key);
-                }
-
-                // Delete device cache keys
-                foreach ($deviceKeys as $key) {
-                    $cache->delete($key);
-                }
-
-                // Delete autocomplete cache keys
-                foreach ($autocompleteKeys as $key) {
-                    $cache->delete($key);
-                }
-
-                // Clear the tracking sets
-                $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]);
-                $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'device')]);
-                $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]);
-
-                $message = Craft::t('search-manager', 'All caches cleared successfully');
-            } else {
-                $totalFiles = 0;
-
-                // Clear device cache
-                $deviceCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'device');
-                if (is_dir($deviceCachePath)) {
-                    $files = glob($deviceCachePath . '/*.cache');
-                    $totalFiles += count($files ?: []);
-                    FileHelper::clearDirectory($deviceCachePath);
-                }
-
-                // Clear search cache
-                $searchCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
-                if (is_dir($searchCachePath)) {
-                    $files = glob($searchCachePath . '/*.cache');
-                    $totalFiles += count($files ?: []);
-                    FileHelper::clearDirectory($searchCachePath);
-                }
-
-                // Clear autocomplete cache
-                $autocompleteCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
-                if (is_dir($autocompleteCachePath)) {
-                    $files = glob($autocompleteCachePath . '/*.cache');
-                    $totalFiles += count($files ?: []);
-                    FileHelper::clearDirectory($autocompleteCachePath);
-                }
-
-                $message = Craft::t('search-manager', 'All caches cleared successfully ({count} files)', ['count' => $totalFiles]);
+            $cacheStorage = new CacheStorageService();
+            $totalFiles = null;
+            if ($cacheStorage->getEffectiveStorage() === CacheStorageService::STORAGE_FILE) {
+                $totalFiles = $cacheStorage->countFiles('search')
+                    + $cacheStorage->countFiles('autocomplete')
+                    + $cacheStorage->countFiles('device');
             }
+
+            SearchManager::$plugin->backend->clearAllSearchCache();
+            SearchManager::$plugin->autocomplete->clearCache();
+            SearchManager::$plugin->deviceDetection->clearCache();
+            $message = $totalFiles === null
+                ? Craft::t('search-manager', 'All caches cleared successfully')
+                : Craft::t('search-manager', 'All caches cleared successfully ({count} files)', ['count' => $totalFiles]);
 
             $this->logInfo('All caches cleared via utility');
 

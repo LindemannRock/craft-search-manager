@@ -62,10 +62,10 @@ final class SettingsCacheInvalidationOrderTest extends TestCase
         self::assertIsInt($autocompleteClear);
         self::assertIsInt($deviceClear);
         self::assertLessThan($deviceClear, $autocompleteClear);
-        self::assertStringContainsString("clearTrackedRedisKeys(SearchManager::\$plugin->id, 'device')", $deviceService);
+        self::assertStringContainsString("invalidateFamily('device')", $deviceService);
         self::assertStringContainsString("PluginHelper::getCachePath(SearchManager::\$plugin, 'device')", $deviceService);
         self::assertStringContainsString("PluginHelper::getCacheKeyPrefix(SearchManager::\$plugin->id, 'device')", $deviceService);
-        self::assertStringContainsString("PluginHelper::getCacheKeySet(SearchManager::\$plugin->id, 'device')", $deviceService);
+        self::assertStringNotContainsString('cacheKeySet', $deviceService);
     }
 
     #[Depends('testSettingsRowSnapshotRestoresByteIdenticallyAfterSaveToDatabase')]

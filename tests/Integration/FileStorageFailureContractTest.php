@@ -15,7 +15,6 @@ use craft\db\Query;
 use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\FileHelper;
-use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\searchmanager\backends\AbstractSearchEngineBackend;
 use lindemannrock\searchmanager\events\IndexEvent;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
@@ -30,7 +29,7 @@ use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use yii\base\Event;
-use yii\caching\ArrayCache;
+use yii\caching\Cache;
 
 /**
  * Regression coverage for File-storage failure File-storage failure truth.
@@ -416,7 +415,7 @@ final class FileStorageFailureContractTest extends TestCase
 
     public function testFileSearchReadFailureIsPrivateNotCachedAndSuccessfulEmptyRetryIsCacheable(): void
     {
-        $this->withIsolatedSearchCache(function(FileStorageFailureRecordingArrayCache $cache): void {
+        $this->withIsolatedSearchCache(function(FileStorageFailureRecordingPersistentCache $cache): void {
             $handle = 'search-cache';
             $storage = $this->makeStorage($handle);
             $backend = new FileStorageFailureLocalBackend($storage);
@@ -467,7 +466,7 @@ final class FileStorageFailureContractTest extends TestCase
         $settings->enableAutocompleteCache = true;
         $settings->cacheStorageMethod = 'redis';
         $settings->indexPrefix = 'pr170_';
-        Craft::$app->set('cache', new ArrayCache());
+        Craft::$app->set('cache', new FileStorageFailureRecordingPersistentCache());
 
         try {
             SearchManager::$plugin->autocomplete->clearCache($handle);
@@ -675,7 +674,7 @@ final class FileStorageFailureContractTest extends TestCase
     }
 
     /**
-     * @param callable(FileStorageFailureRecordingArrayCache): void $callback
+     * @param callable(FileStorageFailureRecordingPersistentCache): void $callback
      */
     private function withIsolatedSearchCache(callable $callback): void
     {
@@ -684,7 +683,7 @@ final class FileStorageFailureContractTest extends TestCase
         $originalStorage = $settings->cacheStorageMethod;
         $originalPrefix = $settings->indexPrefix;
         $originalCache = Craft::$app->getCache();
-        $cache = new FileStorageFailureRecordingArrayCache();
+        $cache = new FileStorageFailureRecordingPersistentCache();
         $settings->enableCache = true;
         $settings->cacheStorageMethod = 'redis';
         $settings->indexPrefix = 'pr170_';
@@ -829,8 +828,11 @@ final class FileStorageFailureBackendService extends BackendService
 /**
  * @since 5.54.0
  */
-final class FileStorageFailureRecordingArrayCache extends ArrayCache
+final class FileStorageFailureRecordingPersistentCache extends Cache
 {
+    /** @var array<string, mixed> */
+    private array $values = [];
+
     /** @var list<string> */
     public array $setKeys = [];
 
@@ -841,13 +843,61 @@ final class FileStorageFailureRecordingArrayCache extends ArrayCache
         return parent::set($key, $value, $duration, $dependency);
     }
 
+    protected function getValue($key)
+    {
+        return $this->values[$key] ?? false;
+    }
+
+    protected function getValues($keys)
+    {
+        return array_map(fn(string $key): mixed => $this->getValue($key), $keys);
+    }
+
+    protected function setValue($key, $value, $duration)
+    {
+        $this->values[$key] = $value;
+
+        return true;
+    }
+
+    protected function setValues($data, $duration)
+    {
+        foreach ($data as $key => $value) {
+            $this->values[$key] = $value;
+        }
+
+        return [];
+    }
+
+    protected function addValue($key, $value, $duration)
+    {
+        if (array_key_exists($key, $this->values)) {
+            return false;
+        }
+        $this->values[$key] = $value;
+
+        return true;
+    }
+
+    protected function deleteValue($key)
+    {
+        unset($this->values[$key]);
+
+        return true;
+    }
+
+    protected function flushValues()
+    {
+        $this->values = [];
+
+        return true;
+    }
+
     public function searchCacheWriteCount(): int
     {
-        $prefix = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search');
-
         return count(array_filter(
             $this->setKeys,
-            static fn(string $key): bool => str_starts_with($key, $prefix),
+            static fn(string $key): bool => str_contains($key, ':plugin:search-manager:family:search:item:'),
         ));
     }
 }
