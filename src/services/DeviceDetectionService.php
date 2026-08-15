@@ -84,9 +84,13 @@ class DeviceDetectionService extends Component
      */
     public function clearCache(): void
     {
-        (new CacheStorageService())->invalidateFamily('device');
-
-        $this->deviceDetection = null;
+        try {
+            if (!(new CacheStorageService())->invalidateFamily('device')) {
+                throw new \RuntimeException('Device cache invalidation failed.');
+            }
+        } finally {
+            $this->deviceDetection = null;
+        }
     }
 
     /**

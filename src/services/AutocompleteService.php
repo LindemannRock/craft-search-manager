@@ -120,7 +120,7 @@ class AutocompleteService extends Component
             : implode(' ', $parsed->tokens) . ($parsed->lastTokenIncomplete ? "\u{0001}typing" : '');
 
         // Apply index prefix to get full index name (matches how data is stored)
-        $fullIndexHandle = (new CacheStorageService())->getFullIndexName($indexHandle);
+        $fullIndexHandle = $settings->getFullIndexName($indexHandle);
 
         // Check cache first
         $this->logDebug('Autocomplete cache check', [
@@ -769,7 +769,7 @@ class AutocompleteService extends Component
     /**
      * Get from autocomplete cache
      */
-    private function getFromCache(?string $cacheKey, string $indexHandle): ?array
+    private function getFromCache(?string $cacheKey, string $fullIndexName): ?array
     {
         if ($cacheKey === null) {
             return null;
@@ -778,7 +778,7 @@ class AutocompleteService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $cached = (new CacheStorageService())->read(
             'autocomplete',
-            $indexHandle,
+            $fullIndexName,
             $cacheKey,
             (int)$settings->autocompleteCacheDuration,
         );
@@ -789,7 +789,7 @@ class AutocompleteService extends Component
     /**
      * Save to autocomplete cache
      */
-    private function saveToCache(?string $cacheKey, array $data, string $indexHandle): void
+    private function saveToCache(?string $cacheKey, array $data, string $fullIndexName): void
     {
         if ($cacheKey === null) {
             return;
@@ -805,7 +805,7 @@ class AutocompleteService extends Component
 
         (new CacheStorageService())->write(
             'autocomplete',
-            $indexHandle,
+            $fullIndexName,
             $cacheKey,
             $data,
             (int)$settings->autocompleteCacheDuration,
@@ -826,10 +826,15 @@ class AutocompleteService extends Component
     public function clearCache(?string $indexHandle = null): void
     {
         $cacheStorage = new CacheStorageService();
-        if ($indexHandle === null) {
-            $cacheStorage->invalidateFamily('autocomplete');
-        } else {
-            $cacheStorage->invalidateScope('autocomplete', $cacheStorage->getFullIndexName($indexHandle));
+        $invalidated = $indexHandle === null
+            ? $cacheStorage->invalidateFamily('autocomplete')
+            : $cacheStorage->invalidateScope(
+                'autocomplete',
+                SearchManager::$plugin->getSettings()->getFullIndexName($indexHandle),
+            );
+
+        if (!$invalidated) {
+            throw new \RuntimeException('Autocomplete cache invalidation failed.');
         }
 
         $this->logInfo('Cleared autocomplete cache', ['index' => $indexHandle]);

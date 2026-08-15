@@ -22,6 +22,9 @@ use lindemannrock\searchmanager\SearchManager;
 /**
  * Resolves and operates Search Manager's disposable cache storage.
  *
+ * Index scopes are canonical full index names. Logical index handles are
+ * normalized by their owning caller before crossing this boundary.
+ *
  * @since 5.55.0
  */
 final class CacheStorageService
@@ -30,7 +33,15 @@ final class CacheStorageService
     public const STORAGE_FILE = 'file';
     public const STORAGE_DISABLED = 'disabled';
 
+    /** @var array<string, true> */
+    private const OWNED_FAMILIES = [
+        'search' => true,
+        'autocomplete' => true,
+        'device' => true,
+    ];
+
     private const FILE_SCOPE_PATTERN = '/\A[a-zA-Z0-9][a-zA-Z0-9._-]*\z/D';
+    private const ITEM_IDENTITY_PATTERN = '/\A[a-f0-9]{32}\z/D';
 
     /** @var array<string, true> */
     private static array $loggedFailures = [];
@@ -56,19 +67,11 @@ final class CacheStorageService
             : self::STORAGE_DISABLED;
     }
 
-    public function getFullIndexName(string $indexName): string
-    {
-        $settings = SearchManager::$plugin->getSettings();
-        $prefix = $settings->indexPrefix ?? '';
-        if ($prefix !== '' && str_starts_with($indexName, $prefix)) {
-            return $indexName;
-        }
-
-        return $settings->getFullIndexName($indexName);
-    }
-
     public function read(string $family, string $scope, string $itemIdentity, int $ttl): ScopedCacheResult
     {
+        $this->assertOwnedFamily($family);
+        $this->assertItemIdentity($itemIdentity);
+
         return match ($this->getEffectiveStorage()) {
             self::STORAGE_APPLICATION => $this->readApplicationCache($family, $scope, $itemIdentity),
             self::STORAGE_FILE => $this->readFileCache($family, $scope, $itemIdentity, $ttl),
@@ -78,6 +81,9 @@ final class CacheStorageService
 
     public function write(string $family, string $scope, string $itemIdentity, array $value, int $ttl): bool
     {
+        $this->assertOwnedFamily($family);
+        $this->assertItemIdentity($itemIdentity);
+
         if ($ttl <= 0) {
             return false;
         }
@@ -91,6 +97,8 @@ final class CacheStorageService
 
     public function invalidateScope(string $family, string $scope): bool
     {
+        $this->assertOwnedFamily($family);
+
         return match ($this->getEffectiveStorage()) {
             self::STORAGE_APPLICATION => $this->invalidateApplicationScope($family, $scope),
             self::STORAGE_FILE => $this->clearFileScope($family, $scope),
@@ -100,6 +108,8 @@ final class CacheStorageService
 
     public function invalidateFamily(string $family): bool
     {
+        $this->assertOwnedFamily($family);
+
         return match ($this->getEffectiveStorage()) {
             self::STORAGE_APPLICATION => $this->invalidateApplicationFamily($family),
             self::STORAGE_FILE => $this->clearFileFamily($family),
@@ -109,6 +119,8 @@ final class CacheStorageService
 
     public function countFiles(string $family): int
     {
+        $this->assertOwnedFamily($family);
+
         if ($this->getEffectiveStorage() !== self::STORAGE_FILE) {
             return 0;
         }
@@ -211,6 +223,8 @@ final class CacheStorageService
 
     private function getScopedCache(string $family): ?ScopedCache
     {
+        $this->assertOwnedFamily($family);
+
         $cache = PluginHelper::getApplicationCacheOrLog(SearchManager::$plugin->id . ':' . $family);
         if ($cache === null) {
             return null;
@@ -319,6 +333,8 @@ final class CacheStorageService
 
     private function getFilePath(string $family, ?string $scope = null): string
     {
+        $this->assertOwnedFamily($family);
+
         $path = PluginHelper::getCachePath(SearchManager::$plugin, $family);
         if ($scope === null) {
             return $path;
@@ -328,6 +344,20 @@ final class CacheStorageService
         }
 
         return $path . $scope . DIRECTORY_SEPARATOR;
+    }
+
+    private function assertOwnedFamily(string $family): void
+    {
+        if (!isset(self::OWNED_FAMILIES[$family])) {
+            throw new \InvalidArgumentException('Unsupported Search Manager cache family.');
+        }
+    }
+
+    private function assertItemIdentity(string $itemIdentity): void
+    {
+        if (preg_match(self::ITEM_IDENTITY_PATTERN, $itemIdentity) !== 1) {
+            throw new \InvalidArgumentException('Search Manager cache item identity must be a lowercase MD5 hash.');
+        }
     }
 
     private function logFailure(string $family, string $operation, ?\Throwable $exception = null): void

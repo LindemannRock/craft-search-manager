@@ -363,6 +363,37 @@ final class SearchCacheReuseTest extends TestCase
         $this->assertTrue($withAttribution['meta']['cached'], 'widget attribution/analytics options must not fragment the cache');
     }
 
+    public function testLogicalHandlesThatStartWithThePrefixKeepDistinctReusableScopes(): void
+    {
+        $this->withIsolatedSearchCache(function(CacheWriteRecordingPersistentCache $cache): void {
+            self::assertSame(0, $cache->searchCacheWriteCount());
+            $settings = SearchManager::$plugin->getSettings();
+            $settings->indexPrefix = 'site_';
+            self::assertSame('site_search', $settings->getFullIndexName('search'));
+            self::assertSame('site_site_search', $settings->getFullIndexName('site_search'));
+
+            $backend = new CacheFailureBackend($this->emptyFailureStorage(), 'file');
+            $service = $this->installCacheFailureBackend($backend);
+            $options = ['siteId' => 1, 'skipAnalytics' => true];
+            $query = 'prefixscope';
+
+            self::assertFalse($service->search('search', $query, $options)['meta']['cached']);
+            self::assertTrue($service->search('search', $query, $options)['meta']['cached']);
+            self::assertFalse($service->search('site_search', $query, $options)['meta']['cached']);
+            self::assertTrue($service->search('site_search', $query, $options)['meta']['cached']);
+            self::assertSame(2, $backend->searchCalls);
+
+            $service->clearSearchCache('site_search');
+            self::assertTrue($service->search('search', $query, $options)['meta']['cached']);
+            self::assertFalse($service->search('site_search', $query, $options)['meta']['cached']);
+            self::assertSame(3, $backend->searchCalls);
+
+            $service->clearSearchCache('search');
+            self::assertFalse($service->search('search', $query, $options)['meta']['cached']);
+            self::assertSame(4, $backend->searchCalls);
+        });
+    }
+
     /**
      * @return iterable<string, array{string}>
      */

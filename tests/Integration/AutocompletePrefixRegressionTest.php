@@ -382,6 +382,45 @@ final class AutocompletePrefixRegressionTest extends TestCase
         });
     }
 
+    public function testLogicalHandlesThatStartWithThePrefixKeepDistinctReusableScopes(): void
+    {
+        $this->withIsolatedRedisAutocompleteCache(function(AutocompleteFakeRedisConnection $redis, Cache $cache): void {
+            self::assertSame([], $redis->commands);
+            self::assertInstanceOf(Cache::class, $cache);
+            $settings = SearchManager::$plugin->getSettings();
+            $settings->indexPrefix = 'site_';
+            self::assertSame('site_search', $settings->getFullIndexName('search'));
+            self::assertSame('site_site_search', $settings->getFullIndexName('site_search'));
+
+            $storage = new AutocompleteFailureRecordingStorage(
+                termDocs: [],
+                titleByElement: [],
+                docLengths: [],
+                totalDocs: 0,
+                avgDocLength: 0.0,
+                autocompleteTerms: ['prefixscope' => 4],
+            );
+            $this->swapPluginComponent('search-manager', 'backend', new AutocompletePrefixBackendService($storage));
+            $service = SearchManager::$plugin->autocomplete;
+            $options = ['limit' => 5, 'minLength' => 1, 'siteId' => 1, 'fuzzy' => false];
+
+            self::assertSame(['prefixscope'], $service->suggest('prefix', 'search', $options));
+            self::assertSame(['prefixscope'], $service->suggest('prefix', 'search', $options));
+            self::assertSame(['prefixscope'], $service->suggest('prefix', 'site_search', $options));
+            self::assertSame(['prefixscope'], $service->suggest('prefix', 'site_search', $options));
+            self::assertSame(2, $storage->termDocumentCalls);
+
+            $service->clearCache('site_search');
+            self::assertSame(['prefixscope'], $service->suggest('prefix', 'search', $options));
+            self::assertSame(['prefixscope'], $service->suggest('prefix', 'site_search', $options));
+            self::assertSame(3, $storage->termDocumentCalls);
+
+            $service->clearCache('search');
+            self::assertSame(['prefixscope'], $service->suggest('prefix', 'search', $options));
+            self::assertSame(4, $storage->termDocumentCalls);
+        });
+    }
+
     public function testUnsuitableApplicationCacheRecomputesWithoutFileFallback(): void
     {
         $settings = SearchManager::$plugin->getSettings();

@@ -225,9 +225,7 @@ class UtilitiesController extends Controller
                     + $cacheStorage->countFiles('device');
             }
 
-            SearchManager::$plugin->backend->clearAllSearchCache();
-            SearchManager::$plugin->autocomplete->clearCache();
-            SearchManager::$plugin->deviceDetection->clearCache();
+            $this->clearAllDisposableCaches();
             $message = $totalFiles === null
                 ? Craft::t('search-manager', 'All caches cleared successfully')
                 : Craft::t('search-manager', 'All caches cleared successfully ({count} files)', ['count' => $totalFiles]);
@@ -355,6 +353,26 @@ class UtilitiesController extends Controller
                 'success' => false,
                 'error' => Craft::t('search-manager', 'Failed to get storage statistics'),
             ]);
+        }
+    }
+
+    private function clearAllDisposableCaches(): void
+    {
+        $failed = false;
+        foreach ([
+            static fn() => SearchManager::$plugin->backend->clearAllSearchCache(),
+            static fn() => SearchManager::$plugin->autocomplete->clearCache(),
+            static fn() => SearchManager::$plugin->deviceDetection->clearCache(),
+        ] as $clearCache) {
+            try {
+                $clearCache();
+            } catch (\Throwable) {
+                $failed = true;
+            }
+        }
+
+        if ($failed) {
+            throw new \RuntimeException('One or more disposable cache invalidations failed.');
         }
     }
 }

@@ -270,7 +270,7 @@ class BackendService extends Component
     /**
      * Index a document
      *
-     * @param string $indexName
+     * @param string $indexName Logical index handle
      * @param array $data
      * @return bool
      */
@@ -282,7 +282,7 @@ class BackendService extends Component
     /**
      * Index a document and return backend existence metadata.
      *
-     * @param string $indexName
+     * @param string $indexName Logical index handle
      * @param array $data
      * @return array{success: bool, wasCreated: bool|null}
      * @since 5.53.0
@@ -1308,7 +1308,7 @@ class BackendService extends Component
     private function _getFromCache(string $indexName, string $query, array $options): ?array
     {
         $settings = SearchManager::$plugin->getSettings();
-        $fullIndexName = (new CacheStorageService())->getFullIndexName($indexName);
+        $fullIndexName = $settings->getFullIndexName($indexName);
         $cacheKey = $this->_generateCacheKey($fullIndexName, $query, $options);
         if ($cacheKey === null) {
             return null;
@@ -1340,7 +1340,7 @@ class BackendService extends Component
     private function _saveToCache(string $indexName, string $query, array $options, array $results): void
     {
         $settings = SearchManager::$plugin->getSettings();
-        $fullIndexName = (new CacheStorageService())->getFullIndexName($indexName);
+        $fullIndexName = $settings->getFullIndexName($indexName);
         $cacheKey = $this->_generateCacheKey($fullIndexName, $query, $options);
         if ($cacheKey === null) {
             return;
@@ -1363,9 +1363,11 @@ class BackendService extends Component
      */
     public function clearSearchCache(string $indexName): void
     {
-        $fullIndexName = (new CacheStorageService())->getFullIndexName($indexName);
+        $fullIndexName = SearchManager::$plugin->getSettings()->getFullIndexName($indexName);
 
-        (new CacheStorageService())->invalidateScope('search', $fullIndexName);
+        if (!(new CacheStorageService())->invalidateScope('search', $fullIndexName)) {
+            throw new \RuntimeException('Search cache invalidation failed.');
+        }
         $this->logInfo('Cleared search cache for index', ['index' => $indexName]);
     }
 
@@ -1376,7 +1378,9 @@ class BackendService extends Component
      */
     public function clearAllSearchCache(): void
     {
-        (new CacheStorageService())->invalidateFamily('search');
+        if (!(new CacheStorageService())->invalidateFamily('search')) {
+            throw new \RuntimeException('Search cache invalidation failed.');
+        }
         $this->logInfo('Cleared all search cache');
     }
 }

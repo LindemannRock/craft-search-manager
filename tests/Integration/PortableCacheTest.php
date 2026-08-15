@@ -77,10 +77,11 @@ final class PortableCacheTest extends TestCase
         $service = new CacheStorageService();
 
         foreach (['redis', 'craft'] as $storageMethod) {
+            $identity = self::identity($storageMethod);
             SearchManager::$plugin->getSettings()->cacheStorageMethod = $storageMethod;
             self::assertSame(CacheStorageService::STORAGE_APPLICATION, $service->getEffectiveStorage());
-            self::assertTrue($service->write('search', 'prefix_content', $storageMethod, ['hits' => []], 73));
-            $result = $service->read('search', 'prefix_content', $storageMethod, 73);
+            self::assertTrue($service->write('search', 'prefix_content', $identity, ['hits' => []], 73));
+            $result = $service->read('search', 'prefix_content', $identity, 73);
             self::assertTrue($result->isHit());
             self::assertSame(['hits' => []], $result->value);
         }
@@ -108,14 +109,16 @@ final class PortableCacheTest extends TestCase
         SearchManager::$plugin->getSettings()->cacheStorageMethod = 'redis';
         self::assertSame(CacheStorageService::STORAGE_APPLICATION, $service->getEffectiveStorage());
         self::assertSame('managed', $service->getDriverLabel());
-        self::assertTrue($service->write('autocomplete', 'prefix_news', 'identity', ['news'], 61));
-        self::assertSame(['news'], $service->read('autocomplete', 'prefix_news', 'identity', 61)->value);
+        $autocompleteIdentity = self::identity('identity');
+        self::assertTrue($service->write('autocomplete', 'prefix_news', $autocompleteIdentity, ['news'], 61));
+        self::assertSame(['news'], $service->read('autocomplete', 'prefix_news', $autocompleteIdentity, 61)->value);
 
         $_SERVER['CRAFT_EPHEMERAL'] = true;
         SearchManager::$plugin->getSettings()->cacheStorageMethod = 'file';
         self::assertSame(CacheStorageService::STORAGE_APPLICATION, $service->getEffectiveStorage());
-        self::assertTrue($service->write('search', 'prefix_news', 'ephemeral', [], 47));
-        self::assertTrue($service->read('search', 'prefix_news', 'ephemeral', 47)->isHit());
+        $searchIdentity = self::identity('ephemeral');
+        self::assertTrue($service->write('search', 'prefix_news', $searchIdentity, [], 47));
+        self::assertTrue($service->read('search', 'prefix_news', $searchIdentity, 47)->isHit());
         if (property_exists($cache, 'setDurations')) {
             self::assertContains(47, $cache->setDurations);
         }
@@ -131,8 +134,9 @@ final class PortableCacheTest extends TestCase
         self::assertSame(CacheBackendStatus::BACKEND_DATABASE, CacheBackendStatus::fromCache($cache)->backend);
         self::assertSame(CacheStorageService::STORAGE_APPLICATION, $service->getEffectiveStorage());
         self::assertSame('database', $service->getDriverLabel());
-        self::assertTrue($service->write('autocomplete', 'prefix_content', 'db-item', ['database'], 89));
-        self::assertSame(['database'], $service->read('autocomplete', 'prefix_content', 'db-item', 89)->value);
+        $identity = self::identity('db-item');
+        self::assertTrue($service->write('autocomplete', 'prefix_content', $identity, ['database'], 89));
+        self::assertSame(['database'], $service->read('autocomplete', 'prefix_content', $identity, 89)->value);
     }
 
     public function testScopedFamiliesPreserveFalseyValuesAndInvalidateWithoutFlushing(): void
@@ -142,22 +146,23 @@ final class PortableCacheTest extends TestCase
         SearchManager::$plugin->getSettings()->cacheStorageMethod = 'craft';
         $service = new CacheStorageService();
         $sentinel = new ScopedCache($cache, 'unrelated-plugin', 'sentinel');
+        $identity = self::identity('empty');
         self::assertTrue($sentinel->set('keep', 'safe', 300));
 
-        self::assertTrue($service->write('search', 'prefix_a', 'empty', [], 37));
-        self::assertTrue($service->write('search', 'prefix_b', 'empty', ['b'], 37));
-        self::assertTrue($service->write('autocomplete', 'prefix_a', 'empty', ['a'], 41));
-        self::assertTrue($service->read('search', 'prefix_a', 'empty', 37)->isHit());
-        self::assertSame([], $service->read('search', 'prefix_a', 'empty', 37)->value);
+        self::assertTrue($service->write('search', 'prefix_a', $identity, [], 37));
+        self::assertTrue($service->write('search', 'prefix_b', $identity, ['b'], 37));
+        self::assertTrue($service->write('autocomplete', 'prefix_a', $identity, ['a'], 41));
+        self::assertTrue($service->read('search', 'prefix_a', $identity, 37)->isHit());
+        self::assertSame([], $service->read('search', 'prefix_a', $identity, 37)->value);
 
         self::assertTrue($service->invalidateScope('search', 'prefix_a'));
-        self::assertTrue($service->read('search', 'prefix_a', 'empty', 37)->isMiss());
-        self::assertSame(['b'], $service->read('search', 'prefix_b', 'empty', 37)->value);
-        self::assertSame(['a'], $service->read('autocomplete', 'prefix_a', 'empty', 41)->value);
+        self::assertTrue($service->read('search', 'prefix_a', $identity, 37)->isMiss());
+        self::assertSame(['b'], $service->read('search', 'prefix_b', $identity, 37)->value);
+        self::assertSame(['a'], $service->read('autocomplete', 'prefix_a', $identity, 41)->value);
 
         self::assertTrue($service->invalidateFamily('search'));
-        self::assertTrue($service->read('search', 'prefix_b', 'empty', 37)->isMiss());
-        self::assertSame(['a'], $service->read('autocomplete', 'prefix_a', 'empty', 41)->value);
+        self::assertTrue($service->read('search', 'prefix_b', $identity, 37)->isMiss());
+        self::assertSame(['a'], $service->read('autocomplete', 'prefix_a', $identity, 41)->value);
         self::assertSame('safe', $sentinel->get('keep')->value);
         self::assertSame(0, $cache->flushCalls);
     }
@@ -169,8 +174,8 @@ final class PortableCacheTest extends TestCase
         SearchManager::$plugin->getSettings()->cacheStorageMethod = 'redis';
         $service = new CacheStorageService();
 
-        self::assertFalse($service->write('search', 'prefix_content', 'zero', [], 0));
-        self::assertFalse($service->write('autocomplete', 'prefix_content', 'negative', [], -1));
+        self::assertFalse($service->write('search', 'prefix_content', self::identity('zero'), [], 0));
+        self::assertFalse($service->write('autocomplete', 'prefix_content', self::identity('negative'), [], -1));
         self::assertSame([], $cache->setDurations);
     }
 
@@ -181,14 +186,16 @@ final class PortableCacheTest extends TestCase
         SearchManager::$plugin->getSettings()->cacheStorageMethod = 'redis';
         $service = new CacheStorageService();
         $cache->throwGet = true;
+        $failureIdentity = self::identity('failure');
 
-        self::assertTrue($service->read('search', 'prefix_content', 'failure', 60)->isFailure());
-        self::assertFalse($service->write('search', 'prefix_content', 'failure', [], 60));
+        self::assertTrue($service->read('search', 'prefix_content', $failureIdentity, 60)->isFailure());
+        self::assertFalse($service->write('search', 'prefix_content', $failureIdentity, [], 60));
 
         Craft::$app->set('cache', new ArrayCache());
         self::assertSame(CacheStorageService::STORAGE_DISABLED, $service->getEffectiveStorage());
-        self::assertTrue($service->read('search', 'prefix_content', 'miss', 60)->isMiss());
-        self::assertFalse($service->write('search', 'prefix_content', 'miss', [], 60));
+        $missIdentity = self::identity('miss');
+        self::assertTrue($service->read('search', 'prefix_content', $missIdentity, 60)->isMiss());
+        self::assertFalse($service->write('search', 'prefix_content', $missIdentity, [], 60));
     }
 
     public function testEphemeralFileWithUnsuitableCacheNeverChangesRuntimeCacheFiles(): void
@@ -200,21 +207,23 @@ final class PortableCacheTest extends TestCase
         $service = new CacheStorageService();
         $scope = 'portable-ephemeral-file';
         $path = PluginHelper::getCachePath(SearchManager::$plugin, 'search') . $scope . DIRECTORY_SEPARATOR;
+        $sentinelIdentity = self::identity('owned-sentinel');
+        $newIdentity = self::identity('new-item');
         FileHelper::createDirectory($path);
-        $sentinel = $path . 'owned-sentinel.cache';
+        $sentinel = $path . $sentinelIdentity . '.cache';
         file_put_contents($sentinel, 'owned');
         $mtime = filemtime($sentinel);
 
         try {
             self::assertSame(CacheStorageService::STORAGE_DISABLED, $service->getEffectiveStorage());
-            self::assertTrue($service->read('search', $scope, 'owned-sentinel', 60)->isMiss());
-            self::assertFalse($service->write('search', $scope, 'new-item', [], 60));
+            self::assertTrue($service->read('search', $scope, $sentinelIdentity, 60)->isMiss());
+            self::assertFalse($service->write('search', $scope, $newIdentity, [], 60));
             self::assertTrue($service->invalidateScope('search', $scope));
             self::assertTrue($service->invalidateFamily('search'));
             self::assertSame(0, $service->countFiles('search'));
             self::assertSame('owned', file_get_contents($sentinel));
             self::assertSame($mtime, filemtime($sentinel));
-            self::assertFileDoesNotExist($path . 'new-item.cache');
+            self::assertFileDoesNotExist($path . $newIdentity . '.cache');
         } finally {
             FileHelper::removeDirectory($path);
         }
@@ -226,36 +235,108 @@ final class PortableCacheTest extends TestCase
         $settings->cacheStorageMethod = 'file';
         $_SERVER['CRAFT_EPHEMERAL'] = false;
         $service = new CacheStorageService();
-        $effectivePrefix = SearchManager::$plugin->getSettings()->indexPrefix ?? '';
-        $firstScope = $service->getFullIndexName('alpha');
-        $secondScope = $service->getFullIndexName($effectivePrefix . 'beta');
+        $effectivePrefix = $settings->indexPrefix ?? '';
+        $firstScope = $settings->getFullIndexName('alpha');
+        $secondScope = $settings->getFullIndexName($effectivePrefix . 'beta');
+        $firstIdentity = self::identity('first');
+        $secondIdentity = self::identity('second');
         self::assertSame($effectivePrefix . 'alpha', $firstScope);
-        self::assertSame($effectivePrefix . 'beta', $secondScope);
+        self::assertSame($effectivePrefix . $effectivePrefix . 'beta', $secondScope);
         $root = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
 
         try {
             self::assertSame(CacheStorageService::STORAGE_FILE, $service->getEffectiveStorage());
-            self::assertTrue($service->write('search', $firstScope, 'first', ['hits' => []], 30));
-            self::assertTrue($service->write('search', $secondScope, 'second', ['hits' => [2]], 30));
-            self::assertSame(['hits' => []], $service->read('search', $firstScope, 'first', 30)->value);
+            self::assertTrue($service->write('search', $firstScope, $firstIdentity, ['hits' => []], 30));
+            self::assertTrue($service->write('search', $secondScope, $secondIdentity, ['hits' => [2]], 30));
+            self::assertSame(['hits' => []], $service->read('search', $firstScope, $firstIdentity, 30)->value);
             self::assertJsonStringEqualsJsonString(
                 json_encode(['hits' => []], JSON_THROW_ON_ERROR),
-                (string)file_get_contents($root . $firstScope . '/first.cache'),
+                (string)file_get_contents($root . $firstScope . '/' . $firstIdentity . '.cache'),
             );
             self::assertSame(2, $service->countFiles('search'));
 
-            touch($root . $firstScope . '/first.cache', time() - 31);
-            self::assertTrue($service->read('search', $firstScope, 'first', 30)->isMiss());
-            self::assertFileDoesNotExist($root . $firstScope . '/first.cache');
-            self::assertSame(['hits' => [2]], $service->read('search', $secondScope, 'second', 30)->value);
+            touch($root . $firstScope . '/' . $firstIdentity . '.cache', time() - 31);
+            self::assertTrue($service->read('search', $firstScope, $firstIdentity, 30)->isMiss());
+            self::assertFileDoesNotExist($root . $firstScope . '/' . $firstIdentity . '.cache');
+            self::assertSame(['hits' => [2]], $service->read('search', $secondScope, $secondIdentity, 30)->value);
 
             self::assertTrue($service->invalidateScope('search', $firstScope));
-            self::assertSame(['hits' => [2]], $service->read('search', $secondScope, 'second', 30)->value);
+            self::assertSame(['hits' => [2]], $service->read('search', $secondScope, $secondIdentity, 30)->value);
             self::assertTrue($service->invalidateFamily('search'));
-            self::assertTrue($service->read('search', $secondScope, 'second', 30)->isMiss());
+            self::assertTrue($service->read('search', $secondScope, $secondIdentity, 30)->isMiss());
         } finally {
             FileHelper::removeDirectory($root . $firstScope);
             FileHelper::removeDirectory($root . $secondScope);
+        }
+    }
+
+    public function testFileBoundaryRejectsTraversalAndMalformedOwnershipWithoutChangingASentinel(): void
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $settings->cacheStorageMethod = 'file';
+        $_SERVER['CRAFT_EPHEMERAL'] = false;
+        $service = new CacheStorageService();
+        $searchRoot = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
+        $cacheRoot = dirname(rtrim($searchRoot, DIRECTORY_SEPARATOR)) . DIRECTORY_SEPARATOR;
+        FileHelper::createDirectory($cacheRoot);
+        $sentinel = $cacheRoot . 'portable-boundary-sentinel.cache';
+        file_put_contents($sentinel, 'owned');
+        $mtime = filemtime($sentinel);
+        $validIdentity = self::identity('valid');
+
+        try {
+            $this->assertInvalidArgument(
+                static fn() => $service->write('../outside', 'scope', $validIdentity, [], 60),
+            );
+            $this->assertInvalidArgument(
+                static fn() => $service->write('search', 'scope', '../../sentinel', [], 60),
+            );
+            $this->assertInvalidArgument(
+                static fn() => $service->countFiles('search/../../outside'),
+            );
+            self::assertTrue($service->read('search', '../outside', $validIdentity, 60)->isFailure());
+            self::assertFalse($service->write('search', '../outside', $validIdentity, [], 60));
+            self::assertFalse($service->invalidateScope('search', '../outside'));
+            self::assertSame('owned', file_get_contents($sentinel));
+            self::assertSame($mtime, filemtime($sentinel));
+        } finally {
+            @unlink($sentinel);
+        }
+    }
+
+    public function testApplicationBoundaryRejectsUnsupportedFamiliesBeforeCacheOperations(): void
+    {
+        $cache = new PortablePersistentCache();
+        Craft::$app->set('cache', $cache);
+        SearchManager::$plugin->getSettings()->cacheStorageMethod = 'redis';
+        $service = new CacheStorageService();
+        $identity = self::identity('valid');
+
+        $this->assertInvalidArgument(
+            static fn() => $service->read('outside', 'scope', $identity, 60),
+        );
+        $this->assertInvalidArgument(
+            static fn() => $service->write('search', 'scope', strtoupper($identity), [], 60),
+        );
+        $this->assertInvalidArgument(
+            static fn() => $service->invalidateFamily('search/../outside'),
+        );
+        self::assertSame([], $cache->setDurations);
+        self::assertSame(0, $cache->flushCalls);
+    }
+
+    private static function identity(string $seed): string
+    {
+        return md5($seed);
+    }
+
+    private function assertInvalidArgument(callable $callback): void
+    {
+        try {
+            $callback();
+            self::fail('Expected invalid cache ownership input to be rejected.');
+        } catch (\InvalidArgumentException) {
+            $this->addToAssertionCount(1);
         }
     }
 }
