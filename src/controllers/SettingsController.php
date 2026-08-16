@@ -83,6 +83,9 @@ class SettingsController extends Controller
             'configIndicesValid' => $setupStatus['configIndicesValid'],
             'configIndicesClean' => $setupStatus['configIndicesClean'],
             'configIndexFindingGroups' => $setupStatus['configIndexFindingGroups'],
+            'backendReadinessValid' => $setupStatus['backendReadinessValid'],
+            'backendReadinessClean' => $setupStatus['backendReadinessClean'],
+            'backendReadinessFindingGroups' => $setupStatus['backendReadinessFindingGroups'],
         ]);
     }
 

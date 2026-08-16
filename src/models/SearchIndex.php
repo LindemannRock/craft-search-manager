@@ -13,6 +13,7 @@ use craft\base\ElementInterface;
 use craft\base\Model;
 use craft\db\Query;
 use craft\elements\Entry;
+use craft\helpers\App;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
@@ -355,19 +356,45 @@ class SearchIndex extends Model
      */
     public function validateBackendHandle(string $attribute): void
     {
-        $handle = $this->$attribute;
-        if ($handle === null || $handle === '') {
+        $selectedHandle = trim((string)$this->$attribute);
+        $effectiveHandle = $selectedHandle !== ''
+            ? $selectedHandle
+            : trim((string)SearchManager::$plugin->getSettings()->defaultBackendHandle);
+        if ($effectiveHandle === '') {
             return;
         }
 
-        $backend = ConfiguredBackend::findByHandle($handle);
+        $backend = ConfiguredBackend::findByHandle($effectiveHandle);
         if (!$backend) {
-            $this->addError($attribute, Craft::t('search-manager', 'Selected backend does not exist.'));
+            if ($selectedHandle !== '') {
+                $this->addError($attribute, Craft::t('search-manager', 'Selected backend does not exist.'));
+            }
             return;
         }
 
         if (!$backend->enabled) {
-            $this->addError($attribute, Craft::t('search-manager', 'Selected backend is disabled.'));
+            if ($selectedHandle !== '') {
+                $this->addError($attribute, Craft::t('search-manager', 'Selected backend is disabled.'));
+            }
+            return;
+        }
+
+        if ($backend->backendType !== 'file' || !App::isEphemeral() || $this->source === 'config') {
+            return;
+        }
+
+        $persistedRow = $this->id === null
+            ? false
+            : (new Query())
+                ->select(['backend'])
+                ->from('{{%searchmanager_indices}}')
+                ->where(['id' => $this->id])
+                ->one();
+        $persistedEffectiveHandle = is_array($persistedRow)
+            ? trim((string)($persistedRow['backend'] ?: SearchManager::$plugin->getSettings()->defaultBackendHandle))
+            : null;
+        if ($persistedEffectiveHandle !== $effectiveHandle) {
+            $this->addError($attribute, Craft::t('search-manager', 'Backend is not available. Check your settings.'));
         }
     }
 

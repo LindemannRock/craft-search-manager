@@ -13,6 +13,7 @@ use craft\base\Component;
 use craft\base\ElementInterface;
 use craft\base\Model;
 use craft\db\Query;
+use craft\helpers\App;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
@@ -1299,6 +1300,11 @@ class DependencyService extends Component
             return $identity;
         }
 
+        if ($configuredBackend->backendType === 'file' && App::isEphemeral()) {
+            $identity['reasonCode'] = 'backend-unavailable';
+            return $identity;
+        }
+
         $backend = SearchManager::$plugin->backend->createBackendFromConfig($configuredBackend);
         $identity['constructible'] = $backend instanceof BackendInterface;
         if (!$identity['constructible']) {
@@ -1369,6 +1375,7 @@ class DependencyService extends Component
             'backend-configuration-invalid' => 'The selected backend configuration is invalid. Correct it before using this action.',
             'backend-type-unsupported' => 'The selected backend type is not supported.',
             'backend-not-constructible' => 'The selected backend cannot be initialized from its configuration.',
+            'backend-unavailable' => 'Backend is not available. Check your settings.',
             'backend-index-identity-invalid' => 'The index storage identity is invalid. Correct the index prefix or handle before using this action.',
             'backend-count-unsupported' => 'This backend does not support syncing the document count.',
             'index-disabled' => 'Disabled indices are excluded from automatic and Rebuild All operations.',

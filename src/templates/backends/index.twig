@@ -249,6 +249,7 @@
 
 {% block rowActions %}
     {% set isDefault = defaultBackendHandle == item.handle %}
+    {% set isUnavailable = item.handle in unavailableBackendHandles %}
     {% set itemId = item.id ?: item.handle %}
     {% set canEditItem = canEdit and item.canEdit() %}
 
@@ -279,7 +280,7 @@
         label: 'Set as Default'|t('search-manager'),
         jsAction: 'set-default',
         data: {name: item.name},
-        hideIf: isDefaultFromConfig or isDefault,
+        hideIf: isDefaultFromConfig or isDefault or isUnavailable,
         permission: 'searchManager:editBackends',
     }]) %}
 
@@ -314,6 +315,7 @@
 
 {% block tableRow %}
     {% set canEditItem = canEdit and item.canEdit() %}
+    {% set isUnavailable = item.handle in unavailableBackendHandles %}
 
     {# Name #}
     <td>
@@ -355,8 +357,8 @@
     {# Status badge #}
     <td>
         {% include 'lindemannrock-base/_components/badge' with {
-            label: item.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager'),
-            value: item.enabled ? 'enabled' : 'disabled',
+            label: isUnavailable ? 'Unavailable'|t('lindemannrock-base') : (item.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager')),
+            value: isUnavailable ? 'error' : (item.enabled ? 'enabled' : 'disabled'),
             colorSet: 'status',
         } only %}
     </td>

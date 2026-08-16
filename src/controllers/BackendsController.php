@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\db\Query;
+use craft\helpers\App;
 use craft\web\Controller;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
@@ -153,6 +154,7 @@ class BackendsController extends Controller
             'defaultBackendHandle' => $defaultBackendHandle,
             'defaultBackend' => $defaultBackend,
             'isDefaultFromConfig' => $this->isDefaultBackendFromConfig(),
+            'unavailableBackendHandles' => $this->unavailableBackendHandles($backends),
             'collisionHandles' => $collisionHandles,
             'statusFilter' => $statusFilter,
             'typeFilter' => $typeFilter,
@@ -239,6 +241,7 @@ class BackendsController extends Controller
             'dbDriver' => $dbDriver,
             'defaultBackendHandle' => $settings->defaultBackendHandle,
             'isDefaultFromConfig' => $this->isDefaultBackendFromConfig(),
+            'backendUnavailable' => $this->isUnavailable($backend),
         ]);
     }
 
@@ -270,6 +273,7 @@ class BackendsController extends Controller
             'dbDriver' => $dbDriver,
             'defaultBackendHandle' => $settings->defaultBackendHandle,
             'isDefaultFromConfig' => $this->isDefaultBackendFromConfig(),
+            'backendUnavailable' => $this->isUnavailable($backend),
         ]);
     }
 
@@ -343,6 +347,7 @@ class BackendsController extends Controller
                 'dbDriver' => Craft::$app->getDb()->getDriverName(),
                 'defaultBackendHandle' => $pluginSettings->defaultBackendHandle,
                 'isDefaultFromConfig' => $this->isDefaultBackendFromConfig(),
+                'backendUnavailable' => $this->isUnavailable($backend),
             ]);
         }
 
@@ -558,23 +563,34 @@ class BackendsController extends Controller
             $supportsBrowse = $backendAdapter->supportsBrowse();
             $supportsMultipleQueries = $backendAdapter->supportsMultipleQueries();
 
+            $fileBackendAvailable = $configuredBackend->backendType === 'file'
+                ? $backendAdapter->isAvailable()
+                : null;
+
             // Get indices from the backend
             $indices = [];
-            try {
-                $indices = $backendAdapter->listIndices();
-            } catch (\Throwable) {
-                $this->logWarning('Failed to list indices from backend', [
-                    'backend' => $configuredBackend->handle,
-                    'classification' => 'backend-list-failed',
-                ]);
+            if ($fileBackendAvailable !== false) {
+                try {
+                    $indices = $backendAdapter->listIndices();
+                } catch (\Throwable) {
+                    $this->logWarning('Failed to list indices from backend', [
+                        'backend' => $configuredBackend->handle,
+                        'classification' => 'backend-list-failed',
+                    ]);
+                }
             }
 
-            return $this->asJson([
+            $response = [
                 'success' => true,
                 'supportsBrowse' => $supportsBrowse,
                 'supportsMultipleQueries' => $supportsMultipleQueries,
                 'indices' => $indices,
-            ]);
+            ];
+            if ($fileBackendAvailable !== null) {
+                $response['available'] = $fileBackendAvailable;
+            }
+
+            return $this->asJson($response);
         } catch (\Throwable) {
             $this->logError('Failed to get backend info', [
                 'operation' => 'backend-info',
@@ -764,6 +780,13 @@ class BackendsController extends Controller
             ]);
         }
 
+        if ($this->isUnavailable($backend)) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Backend is not available. Check your settings.'),
+            ]);
+        }
+
         if (!$this->assignDefaultBackend($backend, 'Default backend changed')) {
             return $this->asJson([
                 'success' => false,
@@ -782,6 +805,10 @@ class BackendsController extends Controller
      */
     protected function assignDefaultBackend(ConfiguredBackend $backend, string $logMessage): bool
     {
+        if ($this->isUnavailable($backend)) {
+            return false;
+        }
+
         $settings = SearchManager::$plugin->getSettings();
         if ($settings->defaultBackendHandle === $backend->handle) {
             return true;
@@ -822,7 +849,7 @@ class BackendsController extends Controller
         }
 
         foreach (ConfiguredBackend::findAll() as $backend) {
-            if ($backend->enabled) {
+            if ($backend->enabled && !$this->isUnavailable($backend)) {
                 return $this->assignDefaultBackend(
                     $backend,
                     'Auto-set default backend (first enabled backend)',
@@ -856,5 +883,29 @@ class BackendsController extends Controller
     private function isDefaultBackendFromConfig(): bool
     {
         return SearchManager::$plugin->getSettings()->isOverriddenByConfig('defaultBackendHandle');
+    }
+
+    private function isUnavailable(ConfiguredBackend $backend): bool
+    {
+        return App::isEphemeral() && $backend->backendType === 'file';
+    }
+
+    /**
+     * @param list<ConfiguredBackend> $backends
+     * @return list<string>
+     */
+    private function unavailableBackendHandles(array $backends): array
+    {
+        if (!App::isEphemeral()) {
+            return [];
+        }
+
+        return array_values(array_map(
+            static fn(ConfiguredBackend $backend): string => $backend->handle,
+            array_filter(
+                $backends,
+                static fn(ConfiguredBackend $backend): bool => $backend->backendType === 'file',
+            ),
+        ));
     }
 }

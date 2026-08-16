@@ -8,6 +8,7 @@
 
 namespace lindemannrock\searchmanager\search\storage;
 
+use craft\helpers\App;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
@@ -69,6 +70,10 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     public function __construct(string $indexHandle, ?string $customBasePath = null)
     {
         $this->setLoggingHandle('search-manager');
+
+        if (App::isEphemeral()) {
+            throw new \RuntimeException('File index storage is unavailable on ephemeral filesystems.');
+        }
 
         // Validate handle against path traversal
         if (preg_match('/[\/\\\\]|\.\./', $indexHandle)) {

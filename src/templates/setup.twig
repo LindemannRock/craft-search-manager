@@ -4,7 +4,7 @@
 {% set title = 'Set up {pluginName}'|t('search-manager', {
     pluginName: searchHelper.fullName,
 }) %}
-{% set allComplete = ipSaltConfigured and configIndicesValid %}
+{% set allComplete = ipSaltConfigured and configIndicesValid and backendReadinessValid %}
 {% set searchFullNameHtml = searchHelper.fullName|e %}
 
 {% set ipSaltIncompleteBody %}
@@ -79,6 +79,31 @@
     {% endfor %}
 {% endif %}
 
+{% set backendReadinessTasks = [] %}
+
+{% if backendReadinessFindingGroups is not empty %}
+    {% for group in backendReadinessFindingGroups %}
+        {% set groupBody %}
+            {% include 'search-manager/_components/_index-findings' with {
+                findings: group.findings,
+                listClass: 'lr-setup-task__list',
+            } only %}
+        {% endset %}
+        {% set backendReadinessTasks = backendReadinessTasks|merge([{
+            done: false,
+            heading: loop.first ? 'Backends'|t('search-manager') : null,
+            description: loop.first ? 'Select a valid default backend or index backend before using this action.'|t('search-manager') : null,
+            incomplete: {
+                heading: group.handle is null
+                    ? 'Default Backend'|t('search-manager')
+                    : ('Index'|t('search-manager') ~ ': ' ~ group.handle),
+                bodyHtml: groupBody,
+                status: 'error',
+            },
+        }]) %}
+    {% endfor %}
+{% endif %}
+
 {% set setupConfig = {
     plugin: {
         handle: 'search-manager',
@@ -120,7 +145,7 @@
             ],
             footerHtml: ipSaltFooter,
         },
-    }]|merge(configIndexTasks),
+    }]|merge(configIndexTasks)|merge(backendReadinessTasks),
 } %}
 
 {% block content %}

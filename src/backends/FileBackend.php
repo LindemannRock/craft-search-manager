@@ -8,6 +8,7 @@
 
 namespace lindemannrock\searchmanager\backends;
 
+use craft\helpers\App;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\search\storage\FileStorage;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
@@ -38,11 +39,6 @@ class FileBackend extends AbstractSearchEngineBackend
         $customPath = $settings['storagePath'] ?? null;
 
         $this->_basePath = FileBackendStoragePathHelper::resolve($customPath);
-
-        // Ensure directory exists
-        if (!is_dir($this->_basePath)) {
-            mkdir($this->_basePath, 0775, true);
-        }
     }
 
     /**
@@ -77,7 +73,20 @@ class FileBackend extends AbstractSearchEngineBackend
      */
     public function isAvailable(): bool
     {
-        return is_writable(dirname($this->_basePath)) || is_writable($this->_basePath);
+        if (App::isEphemeral()) {
+            return false;
+        }
+
+        $probePath = $this->_basePath;
+        while (!file_exists($probePath)) {
+            $parentPath = dirname($probePath);
+            if ($parentPath === $probePath) {
+                return false;
+            }
+            $probePath = $parentPath;
+        }
+
+        return is_dir($probePath) && is_writable($probePath);
     }
 
     /**
@@ -103,6 +112,9 @@ class FileBackend extends AbstractSearchEngineBackend
     {
         // Get base indices from parent
         $indices = parent::listIndices();
+        if (App::isEphemeral()) {
+            return $indices;
+        }
 
         // Add file size for each index
         foreach ($indices as &$index) {

@@ -146,6 +146,57 @@ final class BackendConnectionTestActionTest extends TestCase
         self::assertSame(1, $adapter->availabilityCalls);
     }
 
+    public function testEphemeralFilesystemConnectionTestReportsUnavailableWithoutCreatingStorage(): void
+    {
+        $candidatePath = $this->createOwnedStorageDirectory('ephemeral-file-connection') . '/indices';
+        $backendId = $this->insertBackend('ephemeral-file', ['storagePath' => $candidatePath]);
+        $this->withRequest('POST', 'application/json', ['backendId' => $backendId]);
+        $hadEphemeralSetting = array_key_exists('CRAFT_EPHEMERAL', $_SERVER);
+        $originalEphemeralSetting = $_SERVER['CRAFT_EPHEMERAL'] ?? null;
+        $_SERVER['CRAFT_EPHEMERAL'] = true;
+
+        try {
+            $response = (new Pr126BackendsController('backends', SearchManager::$plugin))->actionTest();
+
+            self::assertSame([
+                'success' => false,
+                'error' => 'Backend is not available. Check your settings.',
+            ], $response->data);
+            self::assertDirectoryDoesNotExist($candidatePath);
+        } finally {
+            if ($hadEphemeralSetting) {
+                $_SERVER['CRAFT_EPHEMERAL'] = $originalEphemeralSetting;
+            } else {
+                unset($_SERVER['CRAFT_EPHEMERAL']);
+            }
+        }
+    }
+
+    public function testEphemeralFilesystemBackendInfoSkipsFileEnumeration(): void
+    {
+        $candidatePath = $this->createOwnedStorageDirectory('ephemeral-file-info') . '/indices';
+        $backendId = $this->insertBackend('ephemeral-file-info', ['storagePath' => $candidatePath]);
+        $this->withRequest('POST', 'application/json', ['backendId' => $backendId]);
+        $hadEphemeralSetting = array_key_exists('CRAFT_EPHEMERAL', $_SERVER);
+        $originalEphemeralSetting = $_SERVER['CRAFT_EPHEMERAL'] ?? null;
+        $_SERVER['CRAFT_EPHEMERAL'] = true;
+
+        try {
+            $response = (new Pr126BackendsController('backends', SearchManager::$plugin))->actionInfo();
+
+            self::assertTrue($response->data['success']);
+            self::assertFalse($response->data['available']);
+            self::assertSame([], $response->data['indices']);
+            self::assertDirectoryDoesNotExist($candidatePath);
+        } finally {
+            if ($hadEphemeralSetting) {
+                $_SERVER['CRAFT_EPHEMERAL'] = $originalEphemeralSetting;
+            } else {
+                unset($_SERVER['CRAFT_EPHEMERAL']);
+            }
+        }
+    }
+
     public function testStoredBackendWithoutAvailableAdapterResponseIsPreserved(): void
     {
         $backendId = $this->insertBackend('unavailable-adapter', [], 'file');

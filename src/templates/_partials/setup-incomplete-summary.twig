@@ -10,6 +10,11 @@
     {% set setupMessage = 'Finish setup before tracking search analytics.'|t('search-manager') %}
 {% endif %}
 
+{% if not setupStatus.backendReadinessValid %}
+    {% set backendReadinessMessage = 'Select a valid default backend or index backend before using this action.'|t('search-manager') %}
+    {% set setupMessage = setupMessage ? backendReadinessMessage ~ ' ' ~ setupMessage : backendReadinessMessage %}
+{% endif %}
+
 {% if currentSubnavItem != 'setup' %}
     {% include 'lindemannrock-base/_components/setup-incomplete' with {
         complete: setupStatus.complete,

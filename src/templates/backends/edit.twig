@@ -3,6 +3,7 @@
 {% do view.registerAssetBundle('lindemannrock\\base\\web\\assets\\components\\ComponentsAsset') %}
 
 {% set readOnlyView = readOnly ?? false %}
+{% set backendUnavailable = backendUnavailable ?? false %}
 {% set canEdit = not readOnlyView and (backend.canEdit() ?? true) %}
 {% set title = isNew ? 'New Backend'|t('search-manager') : backend.name %}
 {% set selectedSubnavItem = 'backends' %}
@@ -450,7 +451,7 @@ setTimeout(updateActionButton, 10);
                     disabled: true
                 }) }}
 					<input type="hidden" name="isDefault" value="1">
-				{% elseif canEdit or (backend.isFromConfig() and currentUser.can('searchManager:editBackends')) %}
+				{% elseif (canEdit or (backend.isFromConfig() and currentUser.can('searchManager:editBackends'))) and not backendUnavailable %}
 					{# Can toggle default: form submission for database, AJAX for config #}
 					{{ forms.lightswitchField({
                     label: 'Default'|t('search-manager'),

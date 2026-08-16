@@ -8,6 +8,7 @@
 
 namespace lindemannrock\searchmanager\services;
 
+use craft\helpers\App;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\backends\AbstractSearchEngineBackend;
 use lindemannrock\searchmanager\backends\AlgoliaBackend;
@@ -25,6 +26,7 @@ use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\IndexCountBackendInterface;
+use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
@@ -112,14 +114,26 @@ class BackendService extends Component
 
         // If no default handle configured, fall back to file backend
         if (!$defaultHandle) {
+            if (App::isEphemeral()) {
+                $this->logWarning('No compatible default backend configured on an ephemeral filesystem');
+                return null;
+            }
+
             $this->logWarning('No defaultBackendHandle configured, falling back to file backend');
             return new FileBackend();
         }
 
         // Look up the configured backend
-        $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultHandle);
+        $configuredBackend = ConfiguredBackend::findByHandle($defaultHandle);
 
         if ($configuredBackend && $configuredBackend->enabled) {
+            if ($this->isEphemeralFileBackend($configuredBackend)) {
+                $this->logWarning('Configured default backend is unavailable on an ephemeral filesystem', [
+                    'handle' => $defaultHandle,
+                ]);
+                return null;
+            }
+
             $backend = $this->createBackendFromConfig($configuredBackend);
             if ($backend) {
                 $this->logDebug('Using configured default backend', [
@@ -198,9 +212,17 @@ class BackendService extends Component
 
         if ($index && $index->hasBackendOverride()) {
             // Load the configured backend by handle
-            $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($index->backend);
+            $configuredBackend = ConfiguredBackend::findByHandle($index->backend);
 
             if ($configuredBackend && $configuredBackend->enabled) {
+                if ($this->isEphemeralFileBackend($configuredBackend)) {
+                    $this->logWarning('Configured index backend is unavailable on an ephemeral filesystem', [
+                        'index' => $indexName,
+                        'specifiedBackend' => $index->backend,
+                    ]);
+                    return null;
+                }
+
                 $backend = $this->createBackendFromConfig($configuredBackend);
                 if ($backend) {
                     $this->logDebug('Using configured backend for index', [
@@ -249,6 +271,11 @@ class BackendService extends Component
             ]);
             return null;
         }
+    }
+
+    private function isEphemeralFileBackend(ConfiguredBackend $backend): bool
+    {
+        return App::isEphemeral() && $backend->backendType === 'file';
     }
 
     /**

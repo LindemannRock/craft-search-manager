@@ -10,6 +10,8 @@ namespace lindemannrock\searchmanager\models;
 
 use Craft;
 use craft\base\Model;
+use craft\db\Query;
+use craft\helpers\App;
 use lindemannrock\base\traits\DateFormatSettingsTrait;
 use lindemannrock\base\traits\DateRangeSettingsTrait;
 use lindemannrock\base\traits\ExportFormatSettingsTrait;
@@ -586,6 +588,20 @@ class Settings extends Model
 
         if (!$backend->enabled) {
             $this->addError($attribute, Craft::t(static::pluginHandle(), 'Selected backend is disabled.'));
+            return;
+        }
+
+        if ($backend->backendType !== 'file' || !App::isEphemeral() || $this->isOverriddenByConfig($attribute)) {
+            return;
+        }
+
+        $persistedHandle = (new Query())
+            ->select(['defaultBackendHandle'])
+            ->from('{{%searchmanager_settings}}')
+            ->where(['id' => 1])
+            ->scalar();
+        if ($persistedHandle !== $handle) {
+            $this->addError($attribute, Craft::t(static::pluginHandle(), 'Backend is not available. Check your settings.'));
         }
     }
 

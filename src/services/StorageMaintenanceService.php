@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use craft\base\Component;
 use craft\db\Query;
+use craft\helpers\App;
 use craft\helpers\FileHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
@@ -228,6 +229,10 @@ class StorageMaintenanceService extends Component
      */
     public function getFileTargets(?array $backends = null, ?array $indices = null): array
     {
+        if (App::isEphemeral()) {
+            return [];
+        }
+
         $backends ??= ConfiguredBackend::findAll();
         $indices ??= SearchIndex::findAll();
         $backendsByHandle = [];
@@ -338,6 +343,10 @@ class StorageMaintenanceService extends Component
      */
     public function countFilesInDirectory(string $dir): int
     {
+        if (App::isEphemeral()) {
+            return 0;
+        }
+
         if (!is_dir($dir)) {
             return 0;
         }
@@ -549,6 +558,15 @@ class StorageMaintenanceService extends Component
      */
     private function getFileStats(array $targets): array
     {
+        if (App::isEphemeral()) {
+            return [
+                'available' => false,
+                'indexCount' => 0,
+                'fileCount' => 0,
+                'targets' => [],
+            ];
+        }
+
         try {
             $indexCount = 0;
             $fileCount = 0;
@@ -683,6 +701,18 @@ class StorageMaintenanceService extends Component
      */
     public function purgeOrphanedStorageHandle(string $type, string $fullIndexHandle): array
     {
+        if ($type === 'file' && App::isEphemeral()) {
+            return [
+                'status' => 'failure',
+                'success' => false,
+                'type' => $type,
+                'handle' => $fullIndexHandle,
+                'attemptedTargets' => 0,
+                'successfulTargets' => 0,
+                'errors' => ['storage-unavailable'],
+            ];
+        }
+
         $errors = [];
         $attempted = 0;
         $succeeded = 0;
@@ -894,6 +924,13 @@ class StorageMaintenanceService extends Component
      */
     protected function clearFileStorage(): array
     {
+        if (App::isEphemeral()) {
+            return $this->storageFailure(
+                'file',
+                Craft::t('search-manager', 'Backend is not available. Check your settings.'),
+            );
+        }
+
         $results = [];
         $deleted = 0;
         $stop = false;
@@ -934,6 +971,16 @@ class StorageMaintenanceService extends Component
      */
     protected function clearFileTarget(array $target): array
     {
+        if (App::isEphemeral()) {
+            return [
+                'status' => 'failure',
+                'target' => $target['key'] ?? 'file',
+                'deletedCount' => 0,
+                'indexHandles' => $target['indexHandles'] ?? [],
+                'error' => 'storage-unavailable',
+            ];
+        }
+
         $path = $target['basePath'];
         if (!is_dir($path)) {
             return [
@@ -1264,6 +1311,10 @@ class StorageMaintenanceService extends Component
      */
     private function getFileStorageHandles(): array
     {
+        if (App::isEphemeral()) {
+            return [];
+        }
+
         $handles = [];
         foreach ($this->getFileTargets() as $target) {
             if (!is_dir($target['basePath'])) {
