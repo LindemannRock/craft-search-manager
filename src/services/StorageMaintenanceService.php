@@ -927,7 +927,7 @@ class StorageMaintenanceService extends Component
         if (App::isEphemeral()) {
             return $this->storageFailure(
                 'file',
-                Craft::t('search-manager', 'Backend is not available. Check your settings.'),
+                Craft::t('search-manager', 'This backend is unavailable on this host. Select a durable supported backend.'),
             );
         }
 

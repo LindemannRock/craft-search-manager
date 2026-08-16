@@ -80,6 +80,9 @@ abstract class TestCase extends IntegrationTestCase
     private array $testStorageShadowTables = [];
     private bool $isolationFinished = false;
     private bool $baseStateInitialised = false;
+    private bool $ephemeralStateCaptured = false;
+    private bool $hadEphemeralSetting = false;
+    private mixed $originalEphemeralSetting = null;
     private ?OwnedProcessRegistry $processRegistry = null;
     /** @var list<string> */
     private array $ownedTempPaths = [];
@@ -92,6 +95,10 @@ abstract class TestCase extends IntegrationTestCase
 
     protected function setUp(): void
     {
+        $this->hadEphemeralSetting = array_key_exists('CRAFT_EPHEMERAL', $_SERVER);
+        $this->originalEphemeralSetting = $_SERVER['CRAFT_EPHEMERAL'] ?? null;
+        $this->ephemeralStateCaptured = true;
+        $_SERVER['CRAFT_EPHEMERAL'] = false;
         self::$activeTest = $this;
         $this->isolationFinished = false;
         $this->processRegistry = new OwnedProcessRegistry();
@@ -690,6 +697,19 @@ abstract class TestCase extends IntegrationTestCase
             }
             $this->testStorageTables = [];
             $this->testStorageShadowTables = [];
+        });
+        $this->runCleanupStep($errors, function(): void {
+            if (!$this->ephemeralStateCaptured) {
+                return;
+            }
+
+            if ($this->hadEphemeralSetting) {
+                $_SERVER['CRAFT_EPHEMERAL'] = $this->originalEphemeralSetting;
+            } else {
+                unset($_SERVER['CRAFT_EPHEMERAL']);
+            }
+            $this->ephemeralStateCaptured = false;
+            $this->originalEphemeralSetting = null;
         });
         self::$activeTest = null;
 

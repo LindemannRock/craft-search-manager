@@ -394,7 +394,7 @@ class SearchIndex extends Model
             ? trim((string)($persistedRow['backend'] ?: SearchManager::$plugin->getSettings()->defaultBackendHandle))
             : null;
         if ($persistedEffectiveHandle !== $effectiveHandle) {
-            $this->addError($attribute, Craft::t('search-manager', 'Backend is not available. Check your settings.'));
+            $this->addError($attribute, Craft::t('search-manager', 'This backend is unavailable on this host. Select a durable supported backend.'));
         }
     }
 

@@ -495,7 +495,7 @@ class BackendsController extends Controller
             if (!$backendAdapter instanceof RedisBackend) {
                 return $this->asJson([
                     'success' => false,
-                    'error' => Craft::t('search-manager', 'Backend is not available. Check your settings.'),
+                    'error' => Craft::t('search-manager', 'This backend is unavailable on this host. Select a durable supported backend.'),
                 ]);
             }
 
@@ -783,7 +783,7 @@ class BackendsController extends Controller
         if ($this->isUnavailable($backend)) {
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Backend is not available. Check your settings.'),
+                'error' => Craft::t('search-manager', 'This backend is unavailable on this host. Select a durable supported backend.'),
             ]);
         }
 

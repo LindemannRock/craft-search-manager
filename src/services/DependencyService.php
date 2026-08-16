@@ -532,9 +532,13 @@ class DependencyService extends Component
                     $configFindings,
                     $dependencyAvailability,
                 );
+                $backendIdentity = $this->resolveStrictBackendIdentity($index);
                 $errorTitle = $this->firstError($findings);
                 if ($errorTitle === null && !$dependencyAvailability['available']) {
                     $errorTitle = $this->statusData('error', null)['label'];
+                }
+                if ($errorTitle === null && $backendIdentity['reasonCode'] === 'backend-unavailable') {
+                    $errorTitle = $this->reasonMessage('backend-unavailable');
                 }
                 $displayName = $this->indexDisplayName($index);
                 $identityLabel = $this->indexIdentityLabel($displayName, $index->handle);
@@ -544,7 +548,6 @@ class DependencyService extends Component
                     'errorTitle' => $errorTitle,
                 ]);
                 $state = $status['value'];
-                $backendIdentity = $this->resolveStrictBackendIdentity($index);
                 $structuralReason = $this->structuralReasonCode(
                     $configFindings,
                     $dependencyAvailability,
@@ -1375,7 +1378,7 @@ class DependencyService extends Component
             'backend-configuration-invalid' => 'The selected backend configuration is invalid. Correct it before using this action.',
             'backend-type-unsupported' => 'The selected backend type is not supported.',
             'backend-not-constructible' => 'The selected backend cannot be initialized from its configuration.',
-            'backend-unavailable' => 'Backend is not available. Check your settings.',
+            'backend-unavailable' => 'This backend is unavailable on this host. Select a durable supported backend.',
             'backend-index-identity-invalid' => 'The index storage identity is invalid. Correct the index prefix or handle before using this action.',
             'backend-count-unsupported' => 'This backend does not support syncing the document count.',
             'index-disabled' => 'Disabled indices are excluded from automatic and Rebuild All operations.',

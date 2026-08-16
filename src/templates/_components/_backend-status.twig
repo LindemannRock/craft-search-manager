@@ -1,0 +1,29 @@
+{% set unavailable = enabled and unavailable %}
+{% set status = unavailable
+    ? {
+        label: 'Unavailable'|t('lindemannrock-base'),
+        value: 'error',
+    }
+    : (enabled
+        ? {
+            label: 'Enabled'|t('search-manager'),
+            value: 'enabled',
+        }
+        : {
+            label: 'Disabled'|t('search-manager'),
+            value: 'disabled',
+        }) %}
+
+{% if presentation|default('badge') == 'sidebar' %}
+    {% include 'lindemannrock-base/_components/status-dot' with {
+        value: status.value,
+        colorSet: 'status',
+    } only %}
+    <span>{{ status.label }}</span>
+{% else %}
+    {% include 'lindemannrock-base/_components/badge' with {
+        label: status.label,
+        value: status.value,
+        colorSet: 'status',
+    } only %}
+{% endif %}

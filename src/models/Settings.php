@@ -601,7 +601,7 @@ class Settings extends Model
             ->where(['id' => 1])
             ->scalar();
         if ($persistedHandle !== $handle) {
-            $this->addError($attribute, Craft::t(static::pluginHandle(), 'Backend is not available. Check your settings.'));
+            $this->addError($attribute, Craft::t(static::pluginHandle(), 'This backend is unavailable on this host. Select a durable supported backend.'));
         }
     }
 

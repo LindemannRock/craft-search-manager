@@ -29,9 +29,14 @@ use lindemannrock\searchmanager\tests\TestCase;
 final class SetupServiceTest extends TestCase
 {
     private SetupService $setup;
+    private bool $hadEphemeralSetting;
+    private mixed $originalEphemeralSetting;
 
     protected function setUp(): void
     {
+        $this->hadEphemeralSetting = array_key_exists('CRAFT_EPHEMERAL', $_SERVER);
+        $this->originalEphemeralSetting = $_SERVER['CRAFT_EPHEMERAL'] ?? null;
+        $_SERVER['CRAFT_EPHEMERAL'] = false;
         parent::setUp();
         $this->swapPluginComponent(
             'search-manager',
@@ -41,6 +46,19 @@ final class SetupServiceTest extends TestCase
             ),
         );
         $this->setup = SearchManager::$plugin->setup;
+    }
+
+    protected function tearDown(): void
+    {
+        try {
+            parent::tearDown();
+        } finally {
+            if ($this->hadEphemeralSetting) {
+                $_SERVER['CRAFT_EPHEMERAL'] = $this->originalEphemeralSetting;
+            } else {
+                unset($_SERVER['CRAFT_EPHEMERAL']);
+            }
+        }
     }
 
     public function testIpSaltConfiguredWhenSaltPresent(): void

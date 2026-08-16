@@ -54,33 +54,60 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{bool, bool, string|null}>
+     * @return iterable<string, array{bool, bool, bool, string|null}>
      */
     public static function setupCauseProvider(): iterable
     {
+        yield 'backend readiness only' => [
+            true,
+            true,
+            false,
+            'Resolve unavailable backend assignments.',
+        ];
         yield 'config errors only' => [
             true,
             false,
+            true,
             'Resolve configuration index issues before rebuilding affected indices.',
         ];
         yield 'missing IP salt only' => [
             false,
             true,
+            true,
             'Finish setup before tracking search analytics.',
         ];
-        yield 'both blockers' => [
+        yield 'backend and config blockers' => [
+            true,
             false,
             false,
+            'Resolve unavailable backend assignments and configuration index issues before rebuilding affected indices.',
+        ];
+        yield 'backend and IP salt blockers' => [
+            false,
+            true,
+            false,
+            'Resolve unavailable backend assignments, and finish setup before tracking search analytics.',
+        ];
+        yield 'config and IP salt blockers' => [
+            false,
+            false,
+            true,
             'Resolve configuration index issues before rebuilding affected indices, and finish setup before tracking search analytics.',
         ];
-        yield 'warning-only findings' => [true, true, null];
-        yield 'fully complete' => [true, true, null];
+        yield 'all blockers' => [
+            false,
+            false,
+            false,
+            'Resolve unavailable backend assignments and configuration index issues before rebuilding affected indices, and finish setup before tracking search analytics.',
+        ];
+        yield 'fully complete' => [true, true, true, null];
     }
 
     #[DataProvider('setupCauseProvider')]
     public function testSharedSetupSummaryUsesOneExactCauseAwareMessage(
         bool $ipSaltConfigured,
         bool $configIndicesValid,
+        bool $backendReadinessValid,
         ?string $expectedMessage,
     ): void {
         $html = Craft::$app->getView()->renderTemplate(
@@ -88,20 +115,24 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
             [
                 'selectedSubnavItem' => 'indices',
                 'setupStatus' => [
-                    'complete' => $ipSaltConfigured && $configIndicesValid,
+                    'complete' => $ipSaltConfigured && $configIndicesValid && $backendReadinessValid,
                     'setupUrl' => 'search-manager/setup',
                     'ipSaltConfigured' => $ipSaltConfigured,
                     'configIndicesValid' => $configIndicesValid,
-                    'backendReadinessValid' => true,
+                    'backendReadinessValid' => $backendReadinessValid,
                 ],
             ],
             View::TEMPLATE_MODE_CP,
         );
 
         $messages = [
+            'Resolve unavailable backend assignments.',
             'Resolve configuration index issues before rebuilding affected indices.',
             'Finish setup before tracking search analytics.',
+            'Resolve unavailable backend assignments and configuration index issues before rebuilding affected indices.',
+            'Resolve unavailable backend assignments, and finish setup before tracking search analytics.',
             'Resolve configuration index issues before rebuilding affected indices, and finish setup before tracking search analytics.',
+            'Resolve unavailable backend assignments and configuration index issues before rebuilding affected indices, and finish setup before tracking search analytics.',
         ];
 
         self::assertSame($expectedMessage !== null, str_contains($html, 'lr-info-box--setup-incomplete'));
@@ -111,6 +142,10 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
         if ($expectedMessage !== null) {
             self::assertSame(1, substr_count($html, $expectedMessage));
         }
+        self::assertStringNotContainsString(
+            'Select a valid default backend or index backend before using this action.',
+            $html,
+        );
     }
 
     public function testSharedSetupSummaryIsSuppressedOnSetupSubnavigation(): void
@@ -140,6 +175,7 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
         self::assertStringNotContainsString('setupMessages', $source);
         self::assertStringNotContainsString('|merge(', $source);
         self::assertStringNotContainsString('|join(', $source);
+        self::assertStringNotContainsString('backendReadinessMessage', $source);
         self::assertStringNotContainsString(
             '{pluginName} found configuration index issues that can affect indexing.',
             $source,
@@ -150,9 +186,13 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
     public function testSetupStateMessagesExistInEveryLocaleInTheSameOrder(): void
     {
         $keys = [
-            'Finish setup before tracking search analytics.',
+            'Resolve unavailable backend assignments.',
             'Resolve configuration index issues before rebuilding affected indices.',
+            'Finish setup before tracking search analytics.',
+            'Resolve unavailable backend assignments and configuration index issues before rebuilding affected indices.',
+            'Resolve unavailable backend assignments, and finish setup before tracking search analytics.',
             'Resolve configuration index issues before rebuilding affected indices, and finish setup before tracking search analytics.',
+            'Resolve unavailable backend assignments and configuration index issues before rebuilding affected indices, and finish setup before tracking search analytics.',
         ];
 
         foreach (glob(dirname(__DIR__, 2) . '/src/translations/*/search-manager.php') ?: [] as $file) {
@@ -170,8 +210,16 @@ final class ConfigIndexRecoveryPresentationTest extends TestCase
                 is_int($positions[0])
                 && is_int($positions[1])
                 && is_int($positions[2])
+                && is_int($positions[3])
+                && is_int($positions[4])
+                && is_int($positions[5])
+                && is_int($positions[6])
                 && $positions[0] < $positions[1]
-                && $positions[1] < $positions[2],
+                && $positions[1] < $positions[2]
+                && $positions[2] < $positions[3]
+                && $positions[3] < $positions[4]
+                && $positions[4] < $positions[5]
+                && $positions[5] < $positions[6],
                 $file,
             );
         }

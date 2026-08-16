@@ -220,6 +220,10 @@ final class EphemeralFileBackendCompatibilityTest extends TestCase
         );
         self::assertFalse($capability['allowed']);
         self::assertSame('backend-unavailable', $capability['reasonCode']);
+        self::assertSame(
+            'This backend is unavailable on this host. Select a durable supported backend.',
+            $capability['reason'],
+        );
         self::assertNull(SearchManager::$plugin->dependencies->getStrictBackendTarget(
             $index->handle,
             DependencyService::ACTION_TARGETED_REBUILD,
@@ -263,7 +267,10 @@ final class EphemeralFileBackendCompatibilityTest extends TestCase
         self::assertSame(['backendReadiness'], $defaultStatus['missing']);
         self::assertCount(1, $defaultStatus['backendReadinessFindings']);
         self::assertNull($defaultStatus['backendReadinessFindings'][0]['handle']);
-        self::assertStringContainsString('config file', $defaultStatus['backendReadinessFindings'][0]['message']);
+        self::assertStringContainsString(
+            'Update this backend assignment in config/search-manager.php.',
+            $defaultStatus['backendReadinessFindings'][0]['message'],
+        );
 
         $service->indices = [
             $this->index('config-file-index', $fileBackend->handle, true, 'config'),
@@ -278,7 +285,7 @@ final class EphemeralFileBackendCompatibilityTest extends TestCase
             array_column($indexStatus['backendReadinessFindings'], 'handle'),
         );
         self::assertStringContainsString(
-            'config/search-manager.php',
+            'Update this backend assignment in config/search-manager.php.',
             $indexStatus['backendReadinessFindings'][0]['message'],
         );
         self::assertDirectoryDoesNotExist($candidatePath);
@@ -297,11 +304,11 @@ final class EphemeralFileBackendCompatibilityTest extends TestCase
         $status = $service->getStatus($this->readySettings($fileBackend->handle));
 
         self::assertSame(
-            [null, 'inherited-file-index', 'explicit-file-index'],
+            [null, 'explicit-file-index'],
             array_column($status['backendReadinessFindings'], 'handle'),
         );
-        self::assertCount(3, $status['backendReadinessFindings']);
-        self::assertCount(3, array_unique(array_map(
+        self::assertCount(2, $status['backendReadinessFindings']);
+        self::assertCount(2, array_unique(array_map(
             static fn(array $finding): string => ($finding['handle'] ?? 'default') . ':' . $finding['key'],
             $status['backendReadinessFindings'],
         )));
@@ -316,9 +323,71 @@ final class EphemeralFileBackendCompatibilityTest extends TestCase
         );
         self::assertStringContainsString('lr-info-box--setup-incomplete', $html);
         self::assertStringContainsString(
+            'Resolve unavailable backend assignments.',
+            $html,
+        );
+        self::assertStringNotContainsString(
             'Select a valid default backend or index backend before using this action.',
             $html,
         );
+    }
+
+    public function testUnavailableBackendAndAffectedIndexUseTheirDistinctSharedStatuses(): void
+    {
+        $enabledBadge = $this->renderBackendStatus(true, true, 'badge');
+        $enabledSidebar = $this->renderBackendStatus(true, true, 'sidebar');
+        $disabledBadge = $this->renderBackendStatus(false, true, 'badge');
+
+        self::assertStringContainsString('Unavailable', $enabledBadge);
+        self::assertStringContainsString('red', $enabledBadge);
+        self::assertStringContainsString('Unavailable', $enabledSidebar);
+        self::assertStringContainsString('class="status red', $enabledSidebar);
+        self::assertStringContainsString('Disabled', $disabledBadge);
+        self::assertStringNotContainsString('Unavailable', $disabledBadge);
+
+        $backendList = $this->pluginFile('src/templates/backends/index.twig');
+        $backendDetail = $this->pluginFile('src/templates/backends/edit.twig');
+        self::assertStringContainsString("'search-manager/_components/_backend-status'", $backendList);
+        self::assertStringContainsString("'search-manager/_components/_backend-status'", $backendDetail);
+        self::assertStringContainsString('backend-unavailable', $backendDetail);
+        self::assertStringContainsString('#connection-result.backend-unavailable > .status', $backendDetail);
+        self::assertStringContainsString('align-items: flex-start', $backendDetail);
+        self::assertStringContainsString('margin-top: 3px', $backendDetail);
+
+        $fileBackend = $this->persistBackend('ephemeral-status-file', 'file');
+        $index = $this->persistIndex('ephemeral-status-index', $fileBackend->handle);
+        $this->enableEphemeralFilesystem();
+        SearchManager::$plugin->dependencies->clearIndexCatalogue();
+        $reference = SearchManager::$plugin->dependencies->getIndexCatalogue([$index->handle])[$index->handle];
+
+        self::assertSame('error', $reference['state']);
+        self::assertSame('Error', $reference['status']['label']);
+        self::assertSame('error', $reference['status']['value']);
+        self::assertSame('status', $reference['status']['colorSet']);
+        self::assertSame(
+            'This backend is unavailable on this host. Select a durable supported backend.',
+            $reference['status']['title'],
+        );
+
+        foreach (['index.twig', 'edit.twig', 'view.twig'] as $template) {
+            self::assertStringContainsString(
+                "'search-manager/_components/_effective-status'",
+                $this->pluginFile('src/templates/indices/' . $template),
+            );
+        }
+
+        foreach (['badge', 'sidebar'] as $presentation) {
+            $indexStatus = Craft::$app->getView()->renderTemplate(
+                'search-manager/_components/_effective-status',
+                [
+                    'status' => $reference['status'],
+                    'presentation' => $presentation,
+                ],
+                View::TEMPLATE_MODE_CP,
+            );
+            self::assertStringContainsString('Error', $indexStatus);
+            self::assertStringContainsString('red', $indexStatus);
+        }
     }
 
     public function testDurableFileStorageAndNonFileBackendsRemainAvailable(): void
@@ -349,6 +418,27 @@ final class EphemeralFileBackendCompatibilityTest extends TestCase
     private function enableEphemeralFilesystem(): void
     {
         $_SERVER['CRAFT_EPHEMERAL'] = true;
+    }
+
+    private function renderBackendStatus(bool $enabled, bool $unavailable, string $presentation): string
+    {
+        return Craft::$app->getView()->renderTemplate(
+            'search-manager/_components/_backend-status',
+            [
+                'enabled' => $enabled,
+                'unavailable' => $unavailable,
+                'presentation' => $presentation,
+            ],
+            View::TEMPLATE_MODE_CP,
+        );
+    }
+
+    private function pluginFile(string $path): string
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);
+        self::assertIsString($source);
+
+        return $source;
     }
 
     private function persistBackend(string $handle, string $type): ConfiguredBackend

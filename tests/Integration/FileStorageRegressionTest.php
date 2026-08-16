@@ -877,6 +877,8 @@ use lindemannrock\searchmanager\search\storage\FileStorage;
 
 require $argv[1];
 
+$_SERVER['CRAFT_EPHEMERAL'] = false;
+
 $operation = $argv[2];
 $basePath = $argv[3];
 $storage = new FileStorage('file-storage-regression', $basePath);

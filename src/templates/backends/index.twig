@@ -356,10 +356,9 @@
 
     {# Status badge #}
     <td>
-        {% include 'lindemannrock-base/_components/badge' with {
-            label: isUnavailable ? 'Unavailable'|t('lindemannrock-base') : (item.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager')),
-            value: isUnavailable ? 'error' : (item.enabled ? 'enabled' : 'disabled'),
-            colorSet: 'status',
+        {% include 'search-manager/_components/_backend-status' with {
+            enabled: item.enabled,
+            unavailable: isUnavailable,
         } only %}
     </td>
 

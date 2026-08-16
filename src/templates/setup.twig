@@ -92,7 +92,7 @@
         {% set backendReadinessTasks = backendReadinessTasks|merge([{
             done: false,
             heading: loop.first ? 'Backends'|t('search-manager') : null,
-            description: loop.first ? 'Select a valid default backend or index backend before using this action.'|t('search-manager') : null,
+            description: loop.first ? 'Resolve unavailable backend assignments.'|t('search-manager') : null,
             incomplete: {
                 heading: group.handle is null
                     ? 'Default Backend'|t('search-manager')

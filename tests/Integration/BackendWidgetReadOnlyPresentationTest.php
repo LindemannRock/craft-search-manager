@@ -284,6 +284,53 @@ final class BackendWidgetReadOnlyPresentationTest extends TestCase
         );
     }
 
+    public function testEphemeralFileBackendListEditAndViewShareUnavailableStatus(): void
+    {
+        $this->actWithPermissions([
+            'searchManager:manageBackends',
+            'searchManager:editBackends',
+        ]);
+        $hadEphemeralSetting = array_key_exists('CRAFT_EPHEMERAL', $_SERVER);
+        $originalEphemeralSetting = $_SERVER['CRAFT_EPHEMERAL'] ?? null;
+        $_SERVER['CRAFT_EPHEMERAL'] = true;
+
+        try {
+            $controller = new BackendPresentationBackendsController('backends', SearchManager::$plugin);
+            $listHtml = $this->renderCaptured($controller->actionIndex());
+            $configRow = $this->tableRowForLabel($listHtml, 'Config Backend');
+            $disabledRow = $this->tableRowForLabel($listHtml, 'Disabled Database Backend');
+
+            self::assertStringContainsString('Unavailable', $configRow);
+            self::assertStringContainsString('status-label red', $configRow);
+            self::assertStringContainsString('Disabled', $disabledRow);
+            self::assertStringNotContainsString('Unavailable', $disabledRow);
+
+            foreach ([
+                $controller->actionEdit($this->databaseBackendId),
+                $controller->actionView(self::CONFIG_BACKEND),
+            ] as $response) {
+                $detailHtml = $this->renderCaptured($response);
+                self::assertMatchesRegularExpression(
+                    '/<dt class="heading">Status<\/dt>\s*<dd class="value">.*?class="status red.*?Unavailable/s',
+                    $detailHtml,
+                );
+            }
+
+            $disabledHtml = $this->renderCaptured($controller->actionView(self::DISABLED_BACKEND));
+            self::assertMatchesRegularExpression(
+                '/<dt class="heading">Status<\/dt>\s*<dd class="value">.*?Disabled/s',
+                $disabledHtml,
+            );
+            self::assertStringNotContainsString('class="status red', $disabledHtml);
+        } finally {
+            if ($hadEphemeralSetting) {
+                $_SERVER['CRAFT_EPHEMERAL'] = $originalEphemeralSetting;
+            } else {
+                unset($_SERVER['CRAFT_EPHEMERAL']);
+            }
+        }
+    }
+
     public function testCanonicalChoiceIdentityFeedsAllThreeSelectorSurfaces(): void
     {
         $this->actWithPermissions(['searchManager:manageSettings']);
@@ -419,6 +466,17 @@ final class BackendWidgetReadOnlyPresentationTest extends TestCase
             . preg_quote($name, '/') . '<\\/span>/',
             $html,
         );
+    }
+
+    private function tableRowForLabel(string $html, string $label): string
+    {
+        $pattern = '/<tr\b[^>]*>(?:(?!<\/tr>).)*?<span>'
+            . preg_quote($label, '/')
+            . '<\/span>(?:(?!<\/tr>).)*?<\/tr>/s';
+        self::assertMatchesRegularExpression($pattern, $html);
+        preg_match($pattern, $html, $matches);
+
+        return $matches[0];
     }
 
     private function assertBackendReadOnlyHtml(string $html): void

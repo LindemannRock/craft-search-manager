@@ -141,7 +141,7 @@ final class BackendConnectionTestActionTest extends TestCase
 
         self::assertSame([
             'success' => false,
-            'error' => 'Backend is not available. Check your settings.',
+            'error' => 'This backend is unavailable on this host. Select a durable supported backend.',
         ], $response->data);
         self::assertSame(1, $adapter->availabilityCalls);
     }
@@ -160,7 +160,7 @@ final class BackendConnectionTestActionTest extends TestCase
 
             self::assertSame([
                 'success' => false,
-                'error' => 'Backend is not available. Check your settings.',
+                'error' => 'This backend is unavailable on this host. Select a durable supported backend.',
             ], $response->data);
             self::assertDirectoryDoesNotExist($candidatePath);
         } finally {

@@ -488,11 +488,11 @@ setTimeout(updateActionButton, 10);
 					<div class="data">
 						<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 						<dd class="value">
-							{% include 'lindemannrock-base/_components/status-dot' with {
-								value: backend.enabled ? 'enabled' : 'disabled',
-								colorSet: 'status',
+							{% include 'search-manager/_components/_backend-status' with {
+								enabled: backend.enabled,
+								unavailable: backendUnavailable,
+								presentation: 'sidebar',
 							} only %}
-							<span>{{ backend.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 						</dd>
 					</div>
 					<div class="data">
@@ -568,7 +568,7 @@ setTimeout(updateActionButton, 10);
 					{% endif %}
 					<div class="data">
 						<dt class="heading">{{ 'Connection'|t('search-manager') }}</dt>
-						<dd id="connection-result" class="value">
+						<dd id="connection-result" class="value{% if backendUnavailable %} backend-unavailable{% endif %}">
 							<span class="spinner"></span>
 						</dd>
 					</div>
@@ -598,6 +598,17 @@ setTimeout(updateActionButton, 10);
 			</fieldset>
 		{% endif %}
 	{% endblock %}
+
+	{% css %}
+	#connection-result.backend-unavailable {
+		align-items: flex-start;
+	}
+
+	#connection-result.backend-unavailable > .status {
+		flex-shrink: 0;
+		margin-top: 3px;
+	}
+	{% endcss %}
 
 	{% js %}
 	// Set platform-specific keyboard shortcut

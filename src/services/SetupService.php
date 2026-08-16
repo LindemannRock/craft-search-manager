@@ -102,10 +102,15 @@ class SetupService extends Component
         $defaultHandle = trim((string)$settings->defaultBackendHandle);
         $defaultBackend = $defaultHandle !== '' ? $this->findBackend($defaultHandle) : null;
         if ($this->isEnabledFileBackend($defaultBackend)) {
-            $message = Craft::t('search-manager', 'Backend is not available. Check your settings.') . ' '
-                . Craft::t('search-manager', 'Select a valid default backend or index backend before using this action.');
+            $message = Craft::t(
+                'search-manager',
+                'This backend is unavailable on this host. Select a durable supported backend.',
+            );
             if ($settings->isOverriddenByConfig('defaultBackendHandle')) {
-                $message .= ' ' . Craft::t('search-manager', 'Default backend is set via config file and cannot be changed here.');
+                $message .= ' ' . Craft::t(
+                    'search-manager',
+                    'Update this backend assignment in config/search-manager.php.',
+                );
             }
             $result->addFinding(
                 null,
@@ -117,22 +122,25 @@ class SetupService extends Component
         }
 
         foreach ($this->findIndices() as $index) {
-            if (!$index->enabled) {
+            if (!$index->enabled || trim((string)$index->backend) === '') {
                 continue;
             }
 
-            $effectiveBackendHandle = trim((string)(
-                $index->backend ?: $settings->defaultBackendHandle
-            ));
-            $backend = $effectiveBackendHandle !== '' ? $this->findBackend($effectiveBackendHandle) : null;
+            $effectiveBackendHandle = trim((string)$index->backend);
+            $backend = $this->findBackend($effectiveBackendHandle);
             if (!$this->isEnabledFileBackend($backend)) {
                 continue;
             }
 
-            $message = Craft::t('search-manager', 'Backend is not available. Check your settings.') . ' '
-                . Craft::t('search-manager', 'Select a valid default backend or index backend before using this action.');
+            $message = Craft::t(
+                'search-manager',
+                'This backend is unavailable on this host. Select a durable supported backend.',
+            );
             if ($index->isFromConfig()) {
-                $message .= ' ' . Craft::t('search-manager', 'Review this index in config/search-manager.php before rebuilding it.');
+                $message .= ' ' . Craft::t(
+                    'search-manager',
+                    'Update this backend assignment in config/search-manager.php.',
+                );
             }
             $result->addFinding(
                 $index->handle,

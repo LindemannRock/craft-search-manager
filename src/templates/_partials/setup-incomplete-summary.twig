@@ -2,17 +2,24 @@
 {% set setupStatus = setupStatus ?? craft.app.plugins.getPlugin('search-manager').setup.getStatus() %}
 {% set setupMessage = null %}
 
-{% if not setupStatus.configIndicesValid and not setupStatus.ipSaltConfigured %}
-    {% set setupMessage = 'Resolve configuration index issues before rebuilding affected indices, and finish setup before tracking search analytics.'|t('search-manager') %}
-{% elseif not setupStatus.configIndicesValid %}
-    {% set setupMessage = 'Resolve configuration index issues before rebuilding affected indices.'|t('search-manager') %}
-{% elseif not setupStatus.ipSaltConfigured %}
-    {% set setupMessage = 'Finish setup before tracking search analytics.'|t('search-manager') %}
-{% endif %}
+{% set backendIncomplete = not setupStatus.backendReadinessValid %}
+{% set configIncomplete = not setupStatus.configIndicesValid %}
+{% set ipSaltIncomplete = not setupStatus.ipSaltConfigured %}
 
-{% if not setupStatus.backendReadinessValid %}
-    {% set backendReadinessMessage = 'Select a valid default backend or index backend before using this action.'|t('search-manager') %}
-    {% set setupMessage = setupMessage ? backendReadinessMessage ~ ' ' ~ setupMessage : backendReadinessMessage %}
+{% if backendIncomplete and configIncomplete and ipSaltIncomplete %}
+    {% set setupMessage = 'Resolve unavailable backend assignments and configuration index issues before rebuilding affected indices, and finish setup before tracking search analytics.'|t('search-manager') %}
+{% elseif backendIncomplete and configIncomplete %}
+    {% set setupMessage = 'Resolve unavailable backend assignments and configuration index issues before rebuilding affected indices.'|t('search-manager') %}
+{% elseif backendIncomplete and ipSaltIncomplete %}
+    {% set setupMessage = 'Resolve unavailable backend assignments, and finish setup before tracking search analytics.'|t('search-manager') %}
+{% elseif configIncomplete and ipSaltIncomplete %}
+    {% set setupMessage = 'Resolve configuration index issues before rebuilding affected indices, and finish setup before tracking search analytics.'|t('search-manager') %}
+{% elseif backendIncomplete %}
+    {% set setupMessage = 'Resolve unavailable backend assignments.'|t('search-manager') %}
+{% elseif configIncomplete %}
+    {% set setupMessage = 'Resolve configuration index issues before rebuilding affected indices.'|t('search-manager') %}
+{% elseif ipSaltIncomplete %}
+    {% set setupMessage = 'Finish setup before tracking search analytics.'|t('search-manager') %}
 {% endif %}
 
 {% if currentSubnavItem != 'setup' %}

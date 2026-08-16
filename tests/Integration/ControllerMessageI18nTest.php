@@ -80,7 +80,7 @@ final class ControllerMessageI18nTest extends TestCase
         $this->assertControllerMethodContains(
             'BackendsController.php',
             'actionTest',
-            "Craft::t('search-manager', 'Backend is not available. Check your settings.')",
+            "Craft::t('search-manager', 'This backend is unavailable on this host. Select a durable supported backend.')",
         );
         $this->assertControllerMethodContains(
             'BackendsController.php',
@@ -105,7 +105,7 @@ final class ControllerMessageI18nTest extends TestCase
         $this->assertControllerMethodNotContains(
             'BackendsController.php',
             'actionTest',
-            "'error' => 'Backend is not available. Check your settings.'",
+            "'error' => 'This backend is unavailable on this host. Select a durable supported backend.'",
         );
     }
 

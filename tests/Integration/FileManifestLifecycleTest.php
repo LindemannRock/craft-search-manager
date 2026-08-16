@@ -755,6 +755,8 @@ require_once $argv[1];
 require_once $argv[2];
 require $argv[3];
 
+$_SERVER['CRAFT_EPHEMERAL'] = false;
+
 $operation = $argv[4];
 $basePath = $argv[5];
 $storage = new FileStorage('pr1-debt-7-file-manifest', $basePath);

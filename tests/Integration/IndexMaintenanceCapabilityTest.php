@@ -465,6 +465,7 @@ final class IndexMaintenanceCapabilityTest extends TestCase
             'The selected backend configuration is invalid. Correct it before using this action.',
             'The selected backend type is not supported.',
             'The selected backend cannot be initialized from its configuration.',
+            'This backend is unavailable on this host. Select a durable supported backend.',
             'The index storage identity is invalid. Correct the index prefix or handle before using this action.',
             'This backend does not support syncing the document count.',
             'Disabled indices are excluded from automatic and Rebuild All operations.',
