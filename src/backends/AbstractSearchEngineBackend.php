@@ -17,6 +17,7 @@ use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\QueryParser;
+use lindemannrock\searchmanager\search\ResultHighlightTermSelector;
 use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\storage\DocumentKeyStorageInterface;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
@@ -1168,8 +1169,8 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
         $phrases = $parsedQuery !== null ? $parsedQuery->phrases : [];
         $isPhraseOnly = !empty($phrases) && empty($parsedQuery->terms) && empty($parsedQuery->wildcards);
 
-        // Flatten the engine's per-token resolution into the matched-term set
-        // (exact + expanded terms that actually drove ranking).
+        // Retain the complete resolver provenance privately so final snippet
+        // projection can apply the same exact-first policy to its displayed area.
         $actualTermSet = [];
         foreach ($resolvedTermsByToken as $entries) {
             foreach ($entries as $entry) {
@@ -1201,16 +1202,19 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements IndexC
             $titleTerms = $elementTermsCache[$cacheKey]['titleTerms'] ?? [];
             $docTermKeys = $elementTermsCache[$cacheKey]['docTermKeys'] ?? [];
 
-            // Check if any matched terms appear in title or content
-            $titleMatches = array_values(array_intersect($titleTerms, $actualTerms));
+            $titleMatches = ResultHighlightTermSelector::forIndexedTerms($resolvedTermsByToken, $titleTerms);
             if (!empty($titleMatches)) {
                 $matchedIn[] = 'title';
             }
 
             $contentOnlyTerms = array_diff($docTermKeys, $titleTerms);
-            $contentMatches = array_values(array_intersect($contentOnlyTerms, $actualTerms));
+            $contentMatches = ResultHighlightTermSelector::forIndexedTerms($resolvedTermsByToken, array_values($contentOnlyTerms));
             if (!empty($contentMatches)) {
                 $matchedIn[] = 'content';
+            }
+
+            if ($resolvedTermsByToken !== []) {
+                $hit['_resultHighlightTerms'] = $resolvedTermsByToken;
             }
 
             if (!empty($matchedIn)) {

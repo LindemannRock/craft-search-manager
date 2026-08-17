@@ -58,6 +58,10 @@ class CanonicalHitPipeline
 
             $hit['snippet'] = $snippetData['snippet'];
             $hit['headings'] = $snippetData['headings'];
+            if ($snippetData['snippetMatchedTerms'] !== []) {
+                $hit['matchedTerms'] = is_array($hit['matchedTerms'] ?? null) ? $hit['matchedTerms'] : [];
+                $hit['matchedTerms']['content'] = $snippetData['snippetMatchedTerms'];
+            }
 
             if (($options['resultsRequireUrl'] ?? false) && !self::hasIndexedUrl($hit)) {
                 continue;

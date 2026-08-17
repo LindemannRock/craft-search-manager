@@ -410,6 +410,21 @@ try {
     const bareSnippetTerms = getHitHighlightTerms(emptyMatchedTermsHit, 'snippet', 'search');
     test('Bare query terms remain eligible for title and content', bareTitleTerms.join(',') === 'search' && bareSnippetTerms.join(',') === 'search');
 
+    const exactFirstHit = { matchedTerms: { title: [], content: ['test'] }, matchedPhrases: [] };
+    test(
+        'Hit-aware result painting consumes exact-first backend metadata',
+        highlightMatches('TEST TEXT', 'test', {
+            terms: getHitHighlightTerms(exactFirstHit, 'snippet', 'test'),
+        }) === '<mark class="sm-highlight">TEST</mark> TEXT',
+    );
+    const typoHit = { matchedTerms: { title: ['jacket'], content: [] }, matchedPhrases: [] };
+    test(
+        'Hit-aware result painting preserves backend-confirmed typo correction',
+        highlightMatches('JACKET', 'jaket', {
+            terms: getHitHighlightTerms(typoHit, 'title', 'jaket'),
+        }) === '<mark class="sm-highlight">JACKET</mark>',
+    );
+
     test(
         'Prefix extensions paint only the raw query prefix at word starts',
         highlightMatches('Testing Tools', 'test tool', { terms: ['testing', 'tools'] })

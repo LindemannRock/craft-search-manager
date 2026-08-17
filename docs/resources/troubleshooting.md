@@ -62,6 +62,7 @@ See [Permissions](../developers/permissions.md#dashboard-access) for the complet
 - Built-in backends use AND for unquoted adjacent terms by default, and hyphens are token boundaries.
 - With stop-word filtering enabled, common words such as `in` and `from` are removed from ordinary matching and highlighting. Disable filtering globally under **Settings → Language** or per index if those words must participate.
 - Quoted text is a contiguous phrase, so `"Choose from 7 search backends"` may highlight the complete phrase.
+- On built-in backends, literal words take priority per query token and displayed area. A result containing both `TEST` and the fuzzy alternative `TEXT` highlights only `TEST` for the query `test`; if that area contains only `TEXT`, the backend-confirmed fuzzy match may still be highlighted. Other query tokens are decided independently, so a genuine correction such as `jaket` → `JACKET` is retained in a mixed query.
 - OR paints only the operands matched by that result. NOT operands are excluded and never painted.
 - Explicit `title:` and `content:` scopes remain restrictive.
 - Split-section H2/H3 rows paint every matched term that occurs in that displayed heading; parent titles and snippets keep their own field scope.

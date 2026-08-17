@@ -133,6 +133,46 @@ final class LocalBackendMatchedFieldsBatchTest extends TestCase
         self::assertSame([$siteIds[0], $siteIds[0]], array_column($result['hits'], 'siteId'));
         self::assertSame(['title'], $result['hits'][0]['matchedIn']);
     }
+
+    public function testMatchedFieldsPreferExactTermsPerDisplayedField(): void
+    {
+        $storage = new RecordingStorage(
+            termDocs: [],
+            titleByElement: [
+                1 => ['test', 'text'],
+                2 => ['text'],
+            ],
+            docLengths: ['1:1' => 3, '1:2' => 2],
+            totalDocs: 2,
+            avgDocLength: 2.5,
+            documentTermsById: [
+                '1:1' => ['test' => 1, 'text' => 1, 'jacket' => 1],
+                '1:2' => ['text' => 1, 'test' => 1],
+            ],
+            documentLengthsById: ['1:1' => 3, '1:2' => 2],
+        );
+        $backend = new LocalBackendMatchedFieldsTestBackend($storage);
+        $resolved = [
+            'test' => [
+                ['term' => 'test', 'matchType' => 'exact', 'similarity' => 1.0],
+                ['term' => 'text', 'matchType' => 'fuzzy', 'similarity' => 0.2],
+            ],
+            'jaket' => [
+                ['term' => 'jacket', 'matchType' => 'fuzzy', 'similarity' => 0.375],
+            ],
+        ];
+
+        $decorated = $backend->decorate([
+            ['elementId' => 1, 'siteId' => 1],
+            ['elementId' => 2, 'siteId' => 1],
+        ], 'test jaket', 'test-index', 1, 2, $resolved);
+
+        self::assertSame(['test'], $decorated[0]['matchedTerms']['title']);
+        self::assertSame(['jacket'], $decorated[0]['matchedTerms']['content']);
+        self::assertSame(['text'], $decorated[1]['matchedTerms']['title']);
+        self::assertSame(['test'], $decorated[1]['matchedTerms']['content']);
+        self::assertSame($resolved, $decorated[0]['_resultHighlightTerms']);
+    }
 }
 
 final class LocalBackendMatchedFieldsTestBackend extends AbstractSearchEngineBackend

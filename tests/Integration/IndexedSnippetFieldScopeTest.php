@@ -35,6 +35,31 @@ final class IndexedSnippetFieldScopeTest extends TestCase
         self::assertSame(['search'], $this->snippetTerms($service, 'search'));
     }
 
+    public function testSnippetProjectionRepeatsExactFirstSelectionForDisplayedText(): void
+    {
+        $service = SearchManager::$plugin->indexedSnippets;
+        $resolved = [
+            'test' => [
+                ['term' => 'test', 'matchType' => 'exact', 'similarity' => 1.0],
+                ['term' => 'text', 'matchType' => 'fuzzy', 'similarity' => 0.2],
+            ],
+        ];
+
+        $exact = $service->prepareHitSnippets([
+            '_fields' => ['description' => 'TEST TEXT appears in this displayed area.'],
+            'matchedTerms' => ['content' => ['test']],
+            '_resultHighlightTerms' => $resolved,
+        ], 'test');
+        $fuzzy = $service->prepareHitSnippets([
+            '_fields' => ['description' => 'Only TEXT appears in this displayed area.'],
+            'matchedTerms' => ['content' => ['test']],
+            '_resultHighlightTerms' => $resolved,
+        ], 'test');
+
+        self::assertSame(['test'], $exact['snippetMatchedTerms']);
+        self::assertSame(['text'], $fuzzy['snippetMatchedTerms']);
+    }
+
     /**
      * @return list<string>
      */

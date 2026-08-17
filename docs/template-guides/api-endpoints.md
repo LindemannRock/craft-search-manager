@@ -308,7 +308,7 @@ For split SourceDoc and AutoTransformer-family indices, each returned hit is a f
 | `snippet` | `string\|null` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body, or a leading fallback preview when the result has eligible snippet text but no query-term context. |
 | `headings` | `array` | Public heading results as `{title, id, level, url, snippet}` objects for whole-page records. Split section hits return an empty array. |
 | `matchedIn` | `array<string>` | Provider match-location metadata for indexed fields that matched the query. This can be present even when `matchedTerms` is empty. |
-| `matchedTerms` | `object` | Matched query terms grouped into stable `title` and `content` arrays. |
+| `matchedTerms` | `object` | Matched query terms grouped into stable `title` and `content` arrays. Built-in backends prefer a literal query token in each displayed area and expose a fuzzy correction for that token only when the literal is absent there. |
 | `matchedPhrases` | `array<string>` | Exact phrases matched by phrase queries. |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |
 | `position` | `int` | Position in results (for promoted items) |

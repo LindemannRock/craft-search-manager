@@ -14,6 +14,7 @@ use lindemannrock\searchmanager\helpers\SearchHeadingValueHelper;
 use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\QueryParser;
+use lindemannrock\searchmanager\search\ResultHighlightTermSelector;
 use lindemannrock\searchmanager\search\StopWords;
 use lindemannrock\searchmanager\search\Tokenizer;
 use lindemannrock\searchmanager\SearchManager;
@@ -34,7 +35,7 @@ class IndexedSnippetService extends Component
     /**
      * @param array<string, mixed> $hit
      * @param array<string, mixed> $options
-     * @return array{snippet: string|null, headings: list<array{title: string, id: string, level: int, url: string|null, snippet: string|null}>}
+     * @return array{snippet: string|null, snippetMatchedTerms: list<string>, headings: list<array{title: string, id: string, level: int, url: string|null, snippet: string|null}>}
      */
     public function prepareHitSnippets(
         array $hit,
@@ -72,6 +73,7 @@ class IndexedSnippetService extends Component
 
         return [
             'snippet' => $fieldSnippet['snippet'],
+            'snippetMatchedTerms' => $fieldSnippet['matchedTerms'],
             'headings' => $this->buildHeadingSnippets(
                 $hit,
                 $query,
@@ -91,7 +93,7 @@ class IndexedSnippetService extends Component
     /**
      * @param array<string, mixed> $hit
      * @param array<string, mixed>|null $matchedTerms
-     * @return array{snippet: string|null}
+     * @return array{snippet: string|null, matchedTerms: list<string>}
      */
     private function buildFieldSnippet(
         array $hit,
@@ -105,6 +107,9 @@ class IndexedSnippetService extends Component
         ?array &$debugMeta = null,
     ): array {
         $terms = $this->resolveFieldSnippetTerms($hit, $matchedTerms, $query, $indexHandle);
+        $resolvedTermsByToken = is_array($hit['_resultHighlightTerms'] ?? null)
+            ? $hit['_resultHighlightTerms']
+            : [];
         $fieldValues = SearchFieldValueHelper::snippetFieldsFromHit($hit);
         $best = null;
 
@@ -119,7 +124,7 @@ class IndexedSnippetService extends Component
             }
 
             $plainText = $this->htmlToPlainText($text, $showCodeSnippets, $parseMarkdownSnippets);
-            $matchedFieldTerms = $this->matchedTermsForText($plainText, $terms);
+            $matchedFieldTerms = $this->matchedTermsForText($plainText, $terms, $resolvedTermsByToken);
             if ($matchedFieldTerms === []) {
                 continue;
             }
@@ -146,7 +151,7 @@ class IndexedSnippetService extends Component
 
         $bodyText = $this->bodySnippetText($hit, $showCodeSnippets, $parseMarkdownSnippets);
         if ($bodyText !== '') {
-            $matchedBodyTerms = $this->matchedTermsForText($bodyText, $terms);
+            $matchedBodyTerms = $this->matchedTermsForText($bodyText, $terms, $resolvedTermsByToken);
             if ($matchedBodyTerms !== []) {
                 $plainSnippet = $this->findSnippet($bodyText, $matchedBodyTerms, $snippetLength, $snippetMode);
                 if ($plainSnippet !== null) {
@@ -220,6 +225,7 @@ class IndexedSnippetService extends Component
 
         return [
             'snippet' => is_array($best) ? (string)$best['snippet'] : null,
+            'matchedTerms' => is_array($best) ? $best['matchedTerms'] : [],
         ];
     }
 
@@ -413,11 +419,18 @@ class IndexedSnippetService extends Component
      * @param list<string> $terms
      * @return list<string>
      */
-    private function matchedTermsForText(string $text, array $terms): array
+    private function matchedTermsForText(string $text, array $terms, array $resolvedTermsByToken = []): array
     {
-        $matched = [];
+        $matched = $resolvedTermsByToken !== []
+            ? ResultHighlightTermSelector::forText($resolvedTermsByToken, $text)
+            : [];
+        $candidateSet = ResultHighlightTermSelector::candidateSet($resolvedTermsByToken);
         foreach ($terms as $term) {
-            if ($term === '' || mb_stripos($text, $term) === false) {
+            if (
+                $term === ''
+                || isset($candidateSet[\lindemannrock\searchmanager\search\TermNormalizer::normalize($term)])
+                || mb_stripos($text, $term) === false
+            ) {
                 continue;
             }
 
@@ -535,6 +548,7 @@ class IndexedSnippetService extends Component
             array_values($headings),
             $this->bodySnippetText($hit, $showCodeSnippets, $parseMarkdownSnippets),
             $headingSnippetTerms,
+            is_array($hit['_resultHighlightTerms'] ?? null) ? $hit['_resultHighlightTerms'] : [],
             $snippetMode,
             $snippetLength,
         );
@@ -561,12 +575,14 @@ class IndexedSnippetService extends Component
     /**
      * @param array<int, mixed> $headings
      * @param list<string> $terms
+     * @param array<string, array<int, array{term: string, matchType: string, similarity: float}>> $resolvedTermsByToken
      * @return list<array<string, mixed>>
      */
     private function headingsWithDynamicSnippets(
         array $headings,
         string $bodyText,
         array $terms,
+        array $resolvedTermsByToken,
         string $snippetMode,
         int $snippetLength,
     ): array {
@@ -580,7 +596,9 @@ class IndexedSnippetService extends Component
 
             $prepared = $heading;
             $headingText = $sections[$i] ?? '';
-            $matchedTerms = $headingText !== '' ? $this->matchedTermsForText($headingText, $terms) : [];
+            $matchedTerms = $headingText !== ''
+                ? $this->matchedTermsForText($headingText, $terms, $resolvedTermsByToken)
+                : [];
             $snippet = $matchedTerms !== []
                 ? $this->findSnippet($headingText, $matchedTerms, $snippetLength, $snippetMode)
                 : null;

@@ -358,6 +358,8 @@ When `highlight()` has no explicit `terms`, it uses this parser with its default
 
 Resolve the terms that one result actually matched. Use `area` values `'title'`, `'heading'`, or `'snippet'`; pass `displayedText` for a split heading so terms are projected onto that exact H2/H3 label. The helper reads `hit.language`, `hit.matchedTerms`, and `hit.matchedPhrases`, excludes NOT operands, preserves restrictive field scopes, and returns an empty array when nothing is eligible.
 
+For built-in backends, `matchedTerms` is already narrowed independently for the displayed title and snippet area. When a literal query token occurs there, it wins over that token's fuzzy alternatives; when it does not occur, a backend-confirmed correction remains eligible. This is display metadata only and does not alter which hits were retrieved or how they were ranked. Hosted providers retain their safe provider-native metadata because Search Manager does not invent equivalent term provenance.
+
 ```javascript
 const terms = SearchManagerHighlighter.getHitTerms(
     hit,

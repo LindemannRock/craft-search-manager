@@ -188,7 +188,7 @@ Common hit fields:
 | `slug` | Public indexed slug when the element or transformer provides one. Entries, Categories, Products, and SourceDoc hits resolve a non-empty slug; Asset hits resolve `null` because Craft Assets do not have element slugs. |
 | `score` | Optional backend-specific relevance signal. Built-in backends use Search Manager BM25; Meilisearch and Typesense expose provider ranking values when available; Algolia may omit a comparable score; promoted results can be `null`. |
 | `matchedIn` | Provider match-location metadata for indexed fields that matched the query. This can be populated even when `matchedTerms` is empty. |
-| `matchedTerms` | Matched query terms grouped into stable `title` and `content` lists. Empty lists resolve as `[]`. |
+| `matchedTerms` | Matched query terms grouped into stable `title` and `content` lists. Built-in backends prefer a literal query token independently in each displayed area, while retaining a backend-confirmed fuzzy term when the literal is absent. Empty lists resolve as `[]`. |
 | `matchedPhrases` | Exact phrases matched by phrase queries. Empty lists resolve as `[]`. |
 | `snippet` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body, or a leading fallback preview when the hit has eligible snippet text but no query-term context. |
 | `headings` | Non-null list of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. Split section hits return an empty list. |
