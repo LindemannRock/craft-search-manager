@@ -619,7 +619,7 @@ return [
     'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.' => 'BM25 (Best Matching 25) er en bransjestandard rangerings-algoritme brukt av Elasticsearch, Solr og andre søkemotorer. Disse parameterne styrer hvordan søkeresultater scores og rangeres.',
     'Learn about BM25' => 'Lær om BM25',
     'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.' => 'Boost-faktorer multipliserer relevansscoren for bestemte matchtyper. Høyere verdier rangerer disse treffene høyere i resultatene.',
-    'Fuzzy matching compares overlapping character chunks (n-grams) to tolerate typing errors. For example, "jaket" can find "jacket".' => 'Uklar matching sammenligner overlappende tegnbiter (n-grammer) for å tolerere skrivefeil. For eksempel kan «jaket» finne «jacket».',
+    'Fuzzy matching compares overlapping character chunks (n-grams) to tolerate typing errors. For example, "jaket" can find "jacket".' => 'Omtrentlig matching sammenligner overlappende tegnbiter (n-grammer) for å tolerere skrivefeil. For eksempel kan «jaket» finne «jacket».',
     'It always expands each word with its closest indexed variants (ranked below exact matches), with full typo-recovery when a word matches nothing.' => 'Hvert ord utvides alltid med de nærmeste indekserte variantene (rangert under nøyaktige treff), med full skrivefeilkorrigering når et ord ikke matcher noe.',
 
     // Settings: Autocomplete

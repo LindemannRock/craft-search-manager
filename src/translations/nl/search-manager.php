@@ -619,7 +619,7 @@ return [
     'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.' => 'BM25 (Best Matching 25) is een industriestandaard rangschikkingsalgoritme dat wordt gebruikt door Elasticsearch, Solr en andere zoekmachines. Deze parameters bepalen hoe zoekresultaten worden gescoord en gerangschikt.',
     'Learn about BM25' => 'Meer over BM25',
     'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.' => 'Boostfactoren vermenigvuldigen de relevantiescore voor specifieke overeenkomsttypes. Hogere waarden plaatsen die overeenkomsten hoger in de resultaten.',
-    'Fuzzy matching compares overlapping character chunks (n-grams) to tolerate typing errors. For example, "jaket" can find "jacket".' => 'Vaag zoeken vergelijkt overlappende tekenblokken (n-grammen) om typfouten te verdragen. Zo kan „jaket” bijvoorbeeld „jacket” vinden.',
+    'Fuzzy matching compares overlapping character chunks (n-grams) to tolerate typing errors. For example, "jaket" can find "jacket".' => 'Fuzzy matching vergelijkt overlappende tekenblokken (n-grammen) om typfouten te verdragen. Zo kan „jaket” bijvoorbeeld „jacket” vinden.',
     'It always expands each word with its closest indexed variants (ranked below exact matches), with full typo-recovery when a word matches nothing.' => 'Elk woord wordt altijd uitgebreid met de meest gelijkende geïndexeerde varianten (lager gerangschikt dan exacte overeenkomsten), met volledige typfoutcorrectie wanneer een woord niets oplevert.',
 
     // Settings: Autocomplete
