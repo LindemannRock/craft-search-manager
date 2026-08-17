@@ -41,6 +41,12 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
     public bool $reschedule = false;
 
     /**
+     * @var string|null Stable recurring schedule owner
+     * @since 5.55.0
+     */
+    public ?string $recurringOwner = null;
+
+    /**
      * @var string|null Next run time display string
      */
     public ?string $nextRunTime = null;
@@ -249,36 +255,11 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
      */
     private function scheduleNextSync(\DateTime $lastSyncTime): void
     {
-        $settings = SearchManager::$plugin->getSettings();
+        $result = SearchManager::$plugin->recurringQueueScheduler->scheduleStatusSyncSuccessor($lastSyncTime);
 
-        // Only reschedule if sync is enabled
-        if ($settings->statusSyncInterval <= 0) {
-            return;
-        }
-
-        $nextRun = $this->calculateNextRun();
-        $delay = $this->calculateNextRunDelay($nextRun);
-
-        if ($delay > 0) {
-            $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
-                $nextRun,
-                $settings,
-                null,
-                false,
-                pluginHandle: 'search-manager',
-            );
-
-            $job = new self([
-                'reschedule' => true,
-                'nextRunTime' => $nextRunTime,
-                'lastSyncTime' => $lastSyncTime->format('c'),
-            ]);
-
-            Craft::$app->getQueue()->delay($delay)->push($job);
-
+        if ($result->hasPending()) {
             $this->logDebug('Scheduled next status sync', [
-                'delay' => $delay,
-                'nextRun' => $nextRunTime,
+                'jobId' => $result->jobId,
             ]);
         }
     }
@@ -291,14 +272,5 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
         $settings = SearchManager::$plugin->getSettings();
         $from ??= DateFormatHelper::now();
         return (clone $from)->modify("+{$settings->statusSyncInterval} minutes");
-    }
-
-    /**
-     * Calculate the delay in seconds for the next sync.
-     */
-    private function calculateNextRunDelay(?\DateTime $nextRun = null): int
-    {
-        $nextRun ??= $this->calculateNextRun();
-        return max(0, $nextRun->getTimestamp() - DateFormatHelper::now()->getTimestamp());
     }
 }

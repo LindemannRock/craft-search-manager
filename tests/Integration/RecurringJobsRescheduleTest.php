@@ -47,6 +47,7 @@ final class RecurringJobsRescheduleTest extends TestCase
             'reschedule' => true,
         ]));
         $this->assertSame(1, $this->countQueueRows('CleanupAnalyticsJob'));
+        $this->markLatestQueueRowReserved('CleanupAnalyticsJob');
 
         $method = new ReflectionMethod(CleanupAnalyticsJob::class, 'scheduleNextCleanup');
         $method->invoke(new CleanupAnalyticsJob([
@@ -62,6 +63,7 @@ final class RecurringJobsRescheduleTest extends TestCase
             'reschedule' => true,
         ]));
         $this->assertSame(1, $this->countQueueRows('SyncStatusJob'));
+        $this->markLatestQueueRowReserved('SyncStatusJob');
 
         $method = new ReflectionMethod(SyncStatusJob::class, 'scheduleNextSync');
         $method->invoke(new SyncStatusJob([
@@ -109,6 +111,7 @@ final class RecurringJobsRescheduleTest extends TestCase
 
         $this->invokePrivate(SearchManager::$plugin, 'scheduleAnalyticsCleanup');
         $this->assertSame(1, $this->countQueueRows('CleanupAnalyticsJob'));
+        $this->markLatestQueueRowReserved('CleanupAnalyticsJob');
 
         $method = new ReflectionMethod(CleanupAnalyticsJob::class, 'scheduleNextCleanup');
         $method->invoke(new CleanupAnalyticsJob([
@@ -313,6 +316,21 @@ final class RecurringJobsRescheduleTest extends TestCase
             static fn(array $row): int => (int)$row['timePushed'] + (int)$row['delay'],
             $rows,
         ));
+    }
+
+    private function markLatestQueueRowReserved(string $jobClass): void
+    {
+        $row = $this->latestQueueRow($jobClass);
+        self::assertNotNull($row);
+
+        Craft::$app->getDb()->createCommand()
+            ->update($this->queueTable(), ['timeUpdated' => time()], ['id' => $row['id']])
+            ->execute();
+
+        $queue = Craft::$app->getQueue();
+        self::assertInstanceOf(\craft\queue\Queue::class, $queue);
+        $property = new \ReflectionProperty(\craft\queue\Queue::class, '_executingJobId');
+        $property->setValue($queue, (string)$row['id']);
     }
 
     private function expectedDailyRunTime(): string

@@ -46,10 +46,7 @@ use GraphQL\Language\AST\SelectionSetNode;
 use GraphQL\Language\Parser;
 use lindemannrock\base\helpers\ColorHelper;
 use lindemannrock\base\helpers\CpNavHelper;
-use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\PluginHelper;
-use lindemannrock\base\helpers\RecurringQueueHelper;
-use lindemannrock\base\helpers\ScheduleHelper;
 use lindemannrock\base\traits\EditionTrait;
 use lindemannrock\logginglibrary\LoggingLibrary;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -64,8 +61,6 @@ use lindemannrock\searchmanager\gql\types\SearchHeadingType as GqlSearchHeadingT
 use lindemannrock\searchmanager\gql\types\SearchHitType as GqlSearchHitType;
 use lindemannrock\searchmanager\gql\types\SearchMetaType as GqlSearchMetaType;
 use lindemannrock\searchmanager\gql\types\SearchResponseType as GqlSearchResponseType;
-use lindemannrock\searchmanager\jobs\CleanupAnalyticsJob;
-use lindemannrock\searchmanager\jobs\SyncStatusJob;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\services\AnalyticsService;
 use lindemannrock\searchmanager\services\ApiKeyService;
@@ -82,6 +77,7 @@ use lindemannrock\searchmanager\services\NativeSearchCoverageService;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\services\RedisNativeConnectionFactory;
+use lindemannrock\searchmanager\services\SearchRecurringQueueScheduler;
 use lindemannrock\searchmanager\services\SetupService;
 use lindemannrock\searchmanager\services\StorageMaintenanceService;
 use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
@@ -121,6 +117,7 @@ use yii\base\Event;
  * @property-read SetupService $setup
  * @property-read StorageMaintenanceService $storageMaintenance
  * @property-read RedisNativeConnectionFactory $redisConnections
+ * @property-read SearchRecurringQueueScheduler $recurringQueueScheduler
  * @property-read PendingSyncRepository $pendingSyncs
  * @property-read PendingSyncProcessor $pendingSyncProcessor
  * @property-read WidgetConfigService $widgetConfigs
@@ -366,6 +363,7 @@ class SearchManager extends Plugin
             'promotions' => PromotionService::class,
             'queryRules' => QueryRuleService::class,
             'redisConnections' => RedisNativeConnectionFactory::class,
+            'recurringQueueScheduler' => SearchRecurringQueueScheduler::class,
             'setup' => SetupService::class,
             'storageMaintenance' => StorageMaintenanceService::class,
             'transformers' => TransformerService::class,
@@ -373,6 +371,17 @@ class SearchManager extends Plugin
             'widgetCacheTelemetry' => WidgetCacheTelemetryService::class,
             'widgetStyles' => \lindemannrock\searchmanager\services\WidgetStyleService::class,
         ]);
+    }
+
+    /**
+     * Get the recurring queue scheduler.
+     *
+     * @since 5.55.0
+     */
+    public function getRecurringQueueScheduler(): SearchRecurringQueueScheduler
+    {
+        /** @var SearchRecurringQueueScheduler */
+        return $this->get('recurringQueueScheduler');
     }
 
     /**
@@ -999,30 +1008,7 @@ class SearchManager extends Plugin
      */
     private function scheduleStatusSync(): void
     {
-        $settings = $this->getSettings();
-
-        if ($settings->statusSyncInterval <= 0) {
-            return;
-        }
-
-        $initialDelay = 5 * 60;
-        $initialRun = (clone DateFormatHelper::now())->modify("+{$initialDelay} seconds");
-
-        RecurringQueueHelper::ensurePending(
-            pluginToken: 'searchmanager',
-            jobClass: SyncStatusJob::class,
-            delay: $initialDelay,
-            jobFactory: fn() => new SyncStatusJob([
-                'reschedule' => true,
-                'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
-                    $initialRun,
-                    $settings,
-                    null,
-                    false,
-                    pluginHandle: 'search-manager',
-                ),
-            ]),
-        );
+        $this->recurringQueueScheduler->ensureStatusSync();
     }
 
     /**
@@ -1030,7 +1016,7 @@ class SearchManager extends Plugin
      */
     public function isStatusSyncRunning(): bool
     {
-        return RecurringQueueHelper::hasPending('searchmanager', SyncStatusJob::class);
+        return $this->recurringQueueScheduler->hasStatusSync();
     }
 
     /**
@@ -1040,35 +1026,7 @@ class SearchManager extends Plugin
      */
     private function scheduleAnalyticsCleanup(): void
     {
-        $settings = $this->getSettings();
-
-        if ($settings->analyticsRetention <= 0) {
-            return;
-        }
-
-        $nextRun = ScheduleHelper::calculateNext('daily');
-        if ($nextRun === null) {
-            return;
-        }
-
-        $delay = max(0, $nextRun->getTimestamp() - DateFormatHelper::now()->getTimestamp());
-        $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
-            $nextRun,
-            $settings,
-            null,
-            false,
-            pluginHandle: 'search-manager',
-        );
-
-        RecurringQueueHelper::ensurePending(
-            pluginToken: 'searchmanager',
-            jobClass: CleanupAnalyticsJob::class,
-            delay: $delay,
-            jobFactory: fn() => new CleanupAnalyticsJob([
-                'reschedule' => true,
-                'nextRunTime' => $nextRunTime,
-            ]),
-        );
+        $this->recurringQueueScheduler->ensureAnalyticsCleanup();
     }
 
     /**
@@ -1078,7 +1036,7 @@ class SearchManager extends Plugin
      */
     public function isAnalyticsCleanupRunning(): bool
     {
-        return RecurringQueueHelper::hasPending('searchmanager', CleanupAnalyticsJob::class);
+        return $this->recurringQueueScheduler->hasAnalyticsCleanup();
     }
 
     /**

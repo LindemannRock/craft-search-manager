@@ -1226,6 +1226,8 @@ class SettingsController extends Controller
         $attributesToValidate = $this->_validationAttributesForSection($section);
 
         $settings = Settings::loadFromDatabase();
+        $previousAnalyticsRetention = $settings->analyticsRetention;
+        $previousStatusSyncInterval = $settings->statusSyncInterval;
         $postedSettings = Craft::$app->getRequest()->getBodyParam('settings', []);
 
         // Convert ngramSizes array to comma-separated string
@@ -1254,6 +1256,20 @@ class SettingsController extends Controller
         if (!$settings->saveToDatabase($attributesToValidate)) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings'));
             return $this->_renderSettingsTemplate($section, $settings);
+        }
+
+        if (
+            in_array('analyticsRetention', $attributesToValidate, true)
+            && $settings->analyticsRetention !== $previousAnalyticsRetention
+        ) {
+            SearchManager::$plugin->recurringQueueScheduler->replaceAnalyticsCleanup($settings->analyticsRetention);
+        }
+
+        if (
+            in_array('statusSyncInterval', $attributesToValidate, true)
+            && $settings->statusSyncInterval !== $previousStatusSyncInterval
+        ) {
+            SearchManager::$plugin->recurringQueueScheduler->replaceStatusSync($settings->statusSyncInterval);
         }
 
         SearchManager::$plugin->backend->clearAllSearchCache();

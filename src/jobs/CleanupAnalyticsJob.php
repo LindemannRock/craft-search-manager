@@ -36,6 +36,12 @@ class CleanupAnalyticsJob extends BaseJob implements RetryableJobInterface
     public bool $reschedule = false;
 
     /**
+     * @var string|null Stable recurring schedule owner
+     * @since 5.55.0
+     */
+    public ?string $recurringOwner = null;
+
+    /**
      * @var string|null Next run time display string for queued jobs
      */
     public ?string $nextRunTime = null;
@@ -125,39 +131,11 @@ class CleanupAnalyticsJob extends BaseJob implements RetryableJobInterface
      */
     private function scheduleNextCleanup(): void
     {
-        $settings = SearchManager::$plugin->getSettings();
+        $result = SearchManager::$plugin->recurringQueueScheduler->scheduleAnalyticsCleanupSuccessor();
 
-        // Retention remains active even when analytics collection is unavailable.
-        if ($settings->analyticsRetention <= 0) {
-            return;
-        }
-
-        $nextRun = $this->calculateNextRun();
-        if ($nextRun === null) {
-            return;
-        }
-
-        $delay = $this->calculateNextRunDelay($nextRun);
-
-        if ($delay > 0) {
-            $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
-                $nextRun,
-                $settings,
-                null,
-                false,
-                pluginHandle: 'search-manager',
-            );
-
-            $job = new self([
-                'reschedule' => true,
-                'nextRunTime' => $nextRunTime,
-            ]);
-
-            Craft::$app->getQueue()->delay($delay)->push($job);
-
+        if ($result->hasPending()) {
             $this->logDebug('Scheduled next analytics cleanup', [
-                'delay' => $delay,
-                'nextRun' => $nextRunTime,
+                'jobId' => $result->jobId,
             ]);
         }
     }
@@ -168,18 +146,5 @@ class CleanupAnalyticsJob extends BaseJob implements RetryableJobInterface
     private function calculateNextRun(): ?\DateTime
     {
         return ScheduleHelper::calculateNext('daily');
-    }
-
-    /**
-     * Calculate the delay in seconds for the next cleanup.
-     */
-    private function calculateNextRunDelay(?\DateTime $nextRun = null): int
-    {
-        $nextRun ??= $this->calculateNextRun();
-        if ($nextRun === null) {
-            return 0;
-        }
-
-        return max(0, $nextRun->getTimestamp() - DateFormatHelper::now()->getTimestamp());
     }
 }

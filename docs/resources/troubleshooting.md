@@ -226,9 +226,11 @@ Fix the field or provider error, then save/index the element again or rebuild th
 
 Search Manager schedules recurring queue jobs for analytics cleanup and entry status syncs. If the queue is empty after one of those jobs runs, the next occurrence was not scheduled correctly.
 
-Recurring jobs should always push the next occurrence from inside the running job. Duplicate guards belong in the bootstrap path only. Logs such as `Skipping reschedule - cleanup job already exists` or `Skipping reschedule - sync job already exists` after a job runs usually mean the running queue row matched itself and prevented the next run from being queued.
+Bootstrap and the running jobs use the same recurring-schedule ownership check. Search Manager keeps one pending chain for each family, while the currently reserved job can still create its successor. Older recurring rows created before portable scheduling are recognized during the transition and upgrade naturally after they run.
 
-During bootstrap, Search Manager collapses duplicate pending scheduler rows automatically and keeps one row for each recurring scheduler. Analytics cleanup is a fixed daily maintenance job. Status sync is an interval checker and may show a short initial delay before settling into its configured cadence.
+Analytics cleanup is a fixed daily maintenance job. Status sync starts with a five-minute bootstrap delay, then uses the configured interval from each execution-time reference. On a bounded Craft Cloud SQS queue, a long wait may pass through intermediate queue handoffs, but the cleanup or sync job itself is not dispatched before its displayed target time. Local database queues and non-SQS proxy queues keep the full delay.
+
+Saving a changed interval or retention setting replaces that family's pending schedule. Setting `analyticsRetention` or `statusSyncInterval` to `0` cancels its recurring chain; setting a positive value again creates one new chain.
 
 Craft stores queue job descriptions when rows are queued, so date/time format changes apply to newly queued rows. Existing delayed rows keep their old label until they run or are requeued. Queue labels stay compact: numeric months render numerically, while short and long month settings both render as short month names.
 
