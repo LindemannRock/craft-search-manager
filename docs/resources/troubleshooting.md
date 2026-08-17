@@ -104,9 +104,11 @@ See [Highlighting matches on the destination page](../feature-tour/highlighting.
 
 ## A similar-looking word is not matched
 
-**Symptom:** A term clears the n-gram similarity threshold but doesn't appear in search results or autocomplete. For example, `test` doesn't match `best`.
+**Symptom:** A similar-looking term does not appear in search results or autocomplete, or a correction stops working after n-gram sizes change.
 
-**Cause:** N-gram similarity builds a broad candidate pool; it isn't the final match decision. Built-in backends apply a query-length typo budget after candidate retrieval: 0 typos for words up to 3 characters, 1 typo for 4–7 characters, and 2 typos for 8 or more characters. Adjacent transpositions count as one, while a first-character difference counts as two. This deliberately rejects short look-alikes that share several bigrams but aren't credible typing mistakes.
+**Cause:** N-grams are overlapping character chunks used to estimate word similarity. Every selected size contributes to one combined score: 2-grams are more tolerant of short words and common errors, 3-grams provide a balanced default, and 4-grams increase precision but can reduce typo tolerance. More selected sizes are not automatically better. With the recommended `2,3`, `arae` can resolve to `area`; adding 4-grams can lower the combined score enough to reject it.
+
+Similarity only builds the candidate pool; it is not the final match decision. Built-in backends then apply a query-length typo budget: 0 edits for words up to 3 characters, 1 edit for 4–7 characters, and 2 edits for 8 or more characters. Adjacent transpositions count as one, while a first-character difference receives an additional penalty and costs two in total. This is why `jaket` can resolve to `jacket`, but `tst` cannot resolve to `test`. A query such as `tezt` may legitimately resolve to both `test` and `text`; both are plausible candidates, so relevance and ranking determine their order rather than fuzzy matching inferring intent.
 
 Prefix extensions bypass the typo budget because they are completions rather than corrections. `test` can still match and highlight `testing`; the reverse direction isn't a prefix extension.
 
@@ -116,9 +118,13 @@ Prefix extensions bypass the typo budget because they are completions rather tha
 - Check the first character separately; changing it consumes two typo units.
 - Confirm `enableFuzzy` is on and the similarity threshold isn't excluding the candidate before the typo-budget stage.
 - Don't lower `similarityThreshold` to force a candidate outside the budget. The budget is a fixed precision rule, not a setting.
-- No reindex is required; this filter runs when resolving each query.
+- `maxFuzzyCandidates` controls how many already-eligible candidates are examined. Raising it can help in a crowded vocabulary, but cannot override the threshold or typo budget.
+- Rebuild affected indices after changing `ngramSizes`, because those chunks are stored during indexing. A successful rebuild already invalidates the affected search and autocomplete caches; no separate cache clear is required.
+- Threshold, candidate-limit, and typo-budget changes are query-time controls and do not independently require a rebuild.
 
 External Algolia, Meilisearch, and Typesense backends use their own native typo-tolerance policies instead of this built-in-backend rule.
+
+If a result is found but a different word is painted, remember that exact-first highlighting runs after retrieval. It narrows confirmed highlight terms per displayed area without changing fuzzy candidates, scores, ranking, thresholds, or typo budgets. See [Why isn't every query word highlighted?](#why-isnt-every-query-word-highlighted).
 
 ## Backend cannot be deleted
 

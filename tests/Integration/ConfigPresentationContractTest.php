@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -79,6 +80,42 @@ final class ConfigPresentationContractTest extends TestCase
         self::assertStringContainsString('Base fuzzy threshold (default 0.25)', $termResolver);
         self::assertStringContainsString("\$config['similarityThreshold'] ?? 0.25", $termResolver);
         self::assertStringNotContainsString("\$config['similarityThreshold'] ?? 0.50", $termResolver);
+    }
+
+    public function testFuzzyControlGuidanceMatchesRuntimeDefaultsAndPrecisionPolicy(): void
+    {
+        $template = $this->readPluginFile('src/templates/settings/search.twig');
+        $settings = new \lindemannrock\searchmanager\models\Settings();
+
+        self::assertTrue($settings->enableFuzzy);
+        self::assertSame('2,3', $settings->ngramSizes);
+        self::assertSame(0.25, $settings->similarityThreshold);
+        self::assertSame(100, $settings->maxFuzzyCandidates);
+
+        self::assertStringContainsString('Every selected size contributes to one combined score.', $template);
+        self::assertStringContainsString('Recommended: 2 + 3.', $template);
+        self::assertStringContainsString('"arae" → "area"', $template);
+        self::assertStringContainsString('cannot override the similarity threshold or typo budget', $template);
+        self::assertStringContainsString('Rebuild affected indices after changing this setting.', $template);
+        self::assertStringContainsString("{% include 'lindemannrock-base/_components/info-box' with {", $template);
+        self::assertStringContainsString("message: 'Recommended: 2 + 3.", $template);
+        self::assertStringNotContainsString("tip: 'Recommended: 2 + 3.", $template);
+        self::assertStringNotContainsString('"tst" can find "test"', $template);
+        self::assertStringNotContainsString('More selections = better accuracy', $template);
+    }
+
+    public function testSearchSettingsTemplateCompilesAndTranslatedGuidanceIsComplete(): void
+    {
+        $twig = Craft::$app->getView()->getTwig();
+        self::assertNotNull($twig->load('search-manager/settings/search'));
+
+        $html = Craft::$app->getView()->renderString(
+            "{{ 'Recommended: 2 + 3. 2-grams tolerate short terms and common typing errors; 3-grams balance recall and precision. Adding 4-grams increases precision but can reject short transpositions such as \"arae\" → \"area\". Rebuild affected indices after changing this setting.'|t('search-manager') }}",
+        );
+
+        self::assertStringContainsString('Recommended: 2 + 3.', $html);
+        self::assertStringContainsString('"arae" → "area"', $html);
+        self::assertStringNotContainsString('"tst" can find "test"', $html);
     }
 
     private function readPluginFile(string $path): string

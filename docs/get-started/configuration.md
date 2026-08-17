@@ -125,9 +125,12 @@ These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The 
 | `exactMatchBoostFactor` | `float` | `3.0` | Multiplier when normalized query terms appear as an ordered contiguous sequence |
 | `phraseBoostFactor` | `float` | `4.0` | Multiplier for exact phrase matches (`"like this"`) |
 | `enableFuzzy` | `bool` | `true` | Engine-wide fuzzy matching switch — applies to both search results and autocomplete suggestions |
-| `ngramSizes` | `string` | `'2,3'` | N-gram sizes for fuzzy matching (comma-separated) |
+| `ngramSizes` | `string` | `'2,3'` | Overlapping character-chunk sizes used for fuzzy similarity (comma-separated). `2,3` is the recommended general-purpose combination |
 | `similarityThreshold` | `float` | `0.25` | Minimum similarity score for fuzzy matches (0.0–1.0) |
-| `maxFuzzyCandidates` | `int` | `100` | Maximum fuzzy candidates to evaluate per query |
+| `maxFuzzyCandidates` | `int` | `100` | Maximum already-eligible fuzzy candidates to examine per query; this cannot override the threshold or typo budget |
+
+> [!WARNING]
+> Rebuild affected indices after changing `ngramSizes`; n-grams are stored during indexing. A successful rebuild invalidates that index's search and autocomplete caches, so you do not need to clear them separately. Changing `similarityThreshold` or `maxFuzzyCandidates` does not require a rebuild.
 
 ### Native search replacement
 **CP:** Settings → Search

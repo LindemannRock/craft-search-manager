@@ -149,7 +149,7 @@
 
         <div class="field">
             <p class="light">
-                {{ 'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".'|t('search-manager') }}
+                {{ 'Fuzzy matching compares overlapping character chunks (n-grams) to tolerate typing errors. For example, "jaket" can find "jacket".'|t('search-manager') }}
                 {{ 'It always expands each word with its closest indexed variants (ranked below exact matches), with full typo-recovery when a word matches nothing.'|t('search-manager') }}
             </p>
         </div>
@@ -191,7 +191,7 @@
 
 		{{ forms.textField({
             label: 'Fuzzy Candidate Limit'|t('search-manager'),
-            instructions: 'Maximum candidates to check for typo corrections. Higher = more accurate but slower.'|t('search-manager'),
+            instructions: 'Maximum number of already-eligible typo candidates to examine. A higher limit can improve recall in a crowded vocabulary, but cannot override the similarity threshold or typo budget.'|t('search-manager'),
             id: 'maxFuzzyCandidates',
             name: 'settings[maxFuzzyCandidates]',
             value: settings.maxFuzzyCandidates ?? 100,
@@ -199,7 +199,7 @@
             min: '10',
             max: '1000',
             required: true,
-            tip: 'Default: 100. Increase for better typo tolerance, decrease for faster search performance.'|t('search-manager'),
+            tip: 'Default: 100. Higher values examine more candidates but can be slower.'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('maxFuzzyCandidates'),
             warning: settings.isOverriddenByConfig('maxFuzzyCandidates') ?
                 "This is being overridden by the <code>maxFuzzyCandidates</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
@@ -208,7 +208,7 @@
 
 		{{ forms.checkboxGroupField({
             label: 'Fuzzy Match Precision'|t('search-manager'),
-            instructions: 'N-gram sizes for typo-tolerant search. More selections = better accuracy but slower. <a href="https://en.wikipedia.org/wiki/N-gram" target="_blank" rel="noopener">Learn more</a>'|t('search-manager')|raw,
+            instructions: 'N-grams are overlapping character chunks used to estimate word similarity. Every selected size contributes to one combined score. <a href="https://en.wikipedia.org/wiki/N-gram" target="_blank" rel="noopener">Learn more</a>'|t('search-manager')|raw,
             id: 'ngramSizes',
             name: 'settings[ngramSizes]',
             options: [
@@ -220,11 +220,15 @@
             ],
             values: settings.ngramSizes ? settings.ngramSizes|split(',') : [],
             errors: settings.getErrors('ngramSizes'),
-            tip: 'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate.'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('ngramSizes'),
             warning: settings.isOverriddenByConfig('ngramSizes') ?
                 "This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
+
+		{% include 'lindemannrock-base/_components/info-box' with {
+			type: 'info',
+			message: 'Recommended: 2 + 3. 2-grams tolerate short terms and common typing errors; 3-grams balance recall and precision. Adding 4-grams increases precision but can reject short transpositions such as "arae" → "area". Rebuild affected indices after changing this setting.'|t('search-manager'),
+		} %}
 
         </div>
 

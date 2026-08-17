@@ -128,10 +128,20 @@ When multiple boost factors apply, they stack. From highest to lowest impact:
 
 ## Fuzzy matching
 
-Search Manager automatically finds similar terms using n-gram similarity. This works transparently — no special syntax needed — and runs as a **two-tier expander**:
+Search Manager automatically finds similar terms using n-gram similarity. An n-gram is an overlapping chunk of characters: with 2-grams, `area` is compared as padded two-character chunks; 3-grams and 4-grams compare progressively longer chunks. Every selected size contributes to one combined similarity score, so selecting more sizes is not automatically better.
+
+The sizes trade recall for precision:
+
+- **2-grams** are more tolerant of short terms and common typing errors.
+- **3-grams** provide a balanced general-purpose comparison.
+- **4-grams** increase precision, but can reduce typo tolerance for short words and transpositions.
+
+Use `2,3` for general-purpose search. For example, `arae` can resolve to `area` with `2,3`, but adding 4-grams can lower their combined similarity enough to reject that candidate. `jaket` remains a supported correction for `jacket`. The three-character query `tst` does not resolve to `test` because the current three-character policy allows zero edits.
+
+Fuzzy resolution needs no special query syntax and runs as a **two-tier expander**:
 
 1. **Expansion (always):** every query word is expanded with its closest indexed variants — searching for "tool" also matches documents that only contain "tools". Expanded variants are scored below exact matches, so exact matches always rank first.
-2. **Typo recovery (on miss):** a word with no exact match at all gets a much broader fuzzy candidate pass — for example, "javascirpt" can find "javascript".
+2. **Typo recovery (on miss):** a word with no exact match at all gets a much broader fuzzy candidate pass — for example, `jaket` can find `jacket`.
 
 The same expansion powers autocomplete suggestions, so a suggested completion is always something search can find.
 
@@ -143,9 +153,11 @@ N-gram similarity finds the candidate pool. A typo-budget filter then removes lo
 | 4–7 characters | 1 |
 | 8 characters or more | 2 |
 
-An adjacent transposition counts as one typo. A difference in the first character counts as two because the first keystroke is less likely to be accidental. Prefix extensions are completion matches rather than typos, so they are always accepted: `tool` can match `tools`, and `test` can match `testing`. The rule is directional — the shorter query must be the prefix.
+An adjacent transposition counts as one typo. A difference in the first character receives one additional penalty, making its total cost two. Prefix extensions are completion matches rather than typos, so they are always accepted: `tool` can match `tools`, and `test` can match `testing`. The rule is directional — the shorter query must be the prefix.
 
-This precision step prevents unrelated look-alikes such as `test` and `best` from matching or appearing in autocomplete while preserving genuine mid-word typos and longer two-typo queries. It applies to the built-in MySQL, PostgreSQL, Redis, and File backends; external backends use their own native typo-tolerance rules.
+This precision step prevents unrelated look-alikes such as `test` and `best` from matching or appearing in autocomplete while preserving genuine mid-word typos and longer two-typo queries. A query such as `tezt` can legitimately produce both `test` and `text`: both pass the same fuzzy checks, and similarity alone cannot infer the visitor's intent, so normal relevance and ranking determine their order.
+
+These rules apply to the built-in MySQL, PostgreSQL, Redis, and File backends. Algolia, Meilisearch, and Typesense receive the query through their own search engines and apply their own typo policies.
 
 Configuration options:
 
@@ -156,7 +168,11 @@ Configuration options:
 'maxFuzzyCandidates' => 100,     // Max candidates for typo recovery
 ```
 
-A lower `similarityThreshold` lets more terms enter the candidate pool, but it doesn't bypass the fixed typo budget. The default of `0.25` provides broad candidate recall while the precision filter removes candidates outside the query-length tier. This is query-time behavior, so changing plugin versions doesn't require a reindex for this rule.
+A lower `similarityThreshold` lets more terms enter the candidate pool, but it doesn't bypass the fixed typo budget. `maxFuzzyCandidates` controls how many candidates that are already eligible are examined; increasing it can improve recall in a crowded vocabulary, but cannot override either the threshold or typo budget. The default threshold of `0.25` provides broad candidate recall while the precision filter removes candidates outside the query-length tier.
+
+N-grams are stored when content is indexed. After changing `ngramSizes`, rebuild every affected index so its stored chunks match the query-time setting. A successful rebuild already invalidates that index's search and autocomplete caches, so no separate cache clear is required. The typo-budget filter itself is query-time behavior and does not independently require a rebuild.
+
+The exact-first highlighting rule is separate from retrieval. After a built-in backend has selected a result, highlighting prefers a literal query word in each displayed area and otherwise keeps a confirmed fuzzy correction. It does not change candidate generation, fuzzy scores, result ranking, thresholds, or typo budgets. See [Highlighting](highlighting.md#which-query-words-are-highlighted).
 
 ## Relaxed matching
 

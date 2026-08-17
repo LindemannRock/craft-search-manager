@@ -168,7 +168,7 @@ This query:
 
 ## Fuzzy matching
 
-Fuzzy matching is automatic — no special syntax needed. If a user searches for "tst", Search Manager finds documents containing "test". Configure sensitivity in [Fuzzy matching](../feature-tour/search-features.md#fuzzy-matching).
+Fuzzy matching is automatic — no special syntax needed. A query such as `jaket` can find documents containing `jacket`; the three-character query `tst` does not expand to `test` under the current zero-edit policy for terms up to three characters. Configure sensitivity and n-gram sizes in [Fuzzy matching](../feature-tour/search-features.md#fuzzy-matching).
 
 ## Next steps
 
