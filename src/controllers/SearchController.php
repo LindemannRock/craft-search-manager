@@ -67,6 +67,7 @@ class SearchController extends Controller
         'analyticsSource' => null,
         'widgetType' => null,
         'siteId' => null,
+        'cacheTelemetry' => null,
         'cached' => null,
         'took' => null,
     ];
@@ -280,16 +281,6 @@ class SearchController extends Controller
             $trigger = 'unknown';
         }
 
-        // Widget cache telemetry: the widget knows from the final search response
-        // whether the result was cache-hit (meta.cached) and the backend's reported
-        // execution time (meta.took). Forwarding those into the intent ping makes
-        // dashboard cache stats reflect widget usage. Absent or malformed values
-        // fall back to null so legacy / non-widget callers keep working unchanged.
-        $executionTime = self::parseWidgetCacheTelemetry(
-            $parameters['cached'],
-            $parameters['took'],
-        );
-
         if (trim($query) === '') {
             return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Query is required.')]);
         }
@@ -313,8 +304,34 @@ class SearchController extends Controller
             return $this->asJson(['success' => true, 'tracked' => false]);
         }
 
-        // Resolve handles to track — 'all' if none specified
-        $handlesToTrack = !empty($indexHandles) ? $indexHandles : ['all'];
+        $selectedIndexHandles = $indexHandles;
+        if ($selectedIndexHandles === []) {
+            $selectedIndexHandles = array_values(array_map(
+                static fn(SearchIndex $index): string => $index->handle,
+                array_filter(
+                    SearchIndex::findAll(),
+                    static fn(SearchIndex $index): bool => $index->enabled,
+                ),
+            ));
+        }
+
+        // Raw cached/took values remain accepted for compatibility but are not
+        // authoritative. Only a bound, signed, unexpired, one-time envelope can
+        // classify an intent row as a cache hit or miss.
+        $verifiedExecutionTimes = SearchManager::$plugin->widgetCacheTelemetry->consume(
+            is_string($parameters['cacheTelemetry']) ? $parameters['cacheTelemetry'] : null,
+            $query,
+            $siteId,
+            $selectedIndexHandles,
+            $resultsCount,
+        );
+
+        // Preserve legacy all-index row identity when telemetry is absent or
+        // invalid. A verified all-index widget response carries its exact index
+        // set and therefore records one independently classified row per index.
+        $handlesToTrack = $verifiedExecutionTimes !== null
+            ? array_keys($verifiedExecutionTimes)
+            : (!empty($indexHandles) ? $indexHandles : ['all']);
 
         // Get first index's backend for logging (or default)
         $backend = 'unknown';
@@ -342,12 +359,13 @@ class SearchController extends Controller
             // Track per index with shared session ID for accurate per-index aggregation
             $sessionId = count($handlesToTrack) > 1 ? \craft\helpers\StringHelper::UUID() : null;
             foreach ($handlesToTrack as $handle) {
+                $executionTime = $verifiedExecutionTimes[$handle] ?? null;
                 SearchManager::$plugin->analytics->trackSearch(
                     $handle,
                     $query,
                     $resultsCount,
-                    // executionTime: 0 if widget reported cache hit, took ms if widget
-                    // reported miss, null if the widget didn't report cache state.
+                    // Only verified telemetry classifies a hit (0) or miss (>0).
+                    // Unverified, legacy, and unknown outcomes remain null.
                     $executionTime,
                     $backend,
                     $siteId,
@@ -357,20 +375,18 @@ class SearchController extends Controller
             }
 
             $this->logDebug('Explicit search tracking', [
-                'query' => $query,
                 'indices' => implode(',', $handlesToTrack),
                 'trigger' => $trigger,
                 'source' => $source,
                 'sourceDefault' => $sourceDefault,
                 'resultsCount' => $resultsCount,
-                'executionTime' => $executionTime,
+                'cacheTelemetryVerified' => $verifiedExecutionTimes !== null,
             ]);
 
             return $this->asJson(['success' => true, 'tracked' => true]);
         } catch (\Throwable $e) {
             $this->logError('Failed to track search', [
-                'query' => $query,
-                'error' => $e->getMessage(),
+                'errorClass' => $e::class,
             ]);
 
             return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Tracking failed')]);
@@ -378,9 +394,7 @@ class SearchController extends Controller
     }
 
     /**
-     * Resolve the analytics `executionTime` value from widget-supplied cache
-     * telemetry. The widget passes `cached` (boolean-like) and optionally
-     * `took` (ms) from its final search response.
+     * Normalize legacy widget-supplied cache fields.
      *
      * Contract:
      *  - cached missing or non-boolean-like        → null (legacy / unknown)
@@ -388,7 +402,8 @@ class SearchController extends Controller
      *  - cached falsy AND took numeric in [0, max] → took (cache miss)
      *  - cached falsy AND took missing/invalid     → null (unknown)
      *
-     * Public + static so it can be unit-tested without controller harness.
+     * This compatibility helper no longer participates in analytics
+     * classification. `actionTrackSearch()` requires a verified envelope.
      *
      * @since 5.46.0
      */

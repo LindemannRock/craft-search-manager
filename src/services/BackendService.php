@@ -1071,12 +1071,20 @@ class BackendService extends Component
                 }
             }
 
-            return [
+            $redirectResult = [
                 'hits' => [],
                 'total' => 0,
                 'indices' => array_fill_keys($indexNames, 0),
                 'redirect' => $redirectUrl,
             ];
+            if ((bool)($options['_captureWidgetCacheTelemetry'] ?? false)) {
+                $redirectResult['_widgetCacheOutcomes'] = array_fill_keys($indexNames, [
+                    'cached' => null,
+                    'duration' => null,
+                ]);
+            }
+
+            return $redirectResult;
         }
 
         $startTime = microtime(true);
@@ -1085,6 +1093,7 @@ class BackendService extends Component
         $allHits = [];
         $totalCount = 0;
         $indicesSearched = [];
+        $widgetCacheOutcomes = [];
         $meta = [
             'synonymsExpanded' => false,
             'expandedQueries' => [],
@@ -1103,6 +1112,10 @@ class BackendService extends Component
             $indexOptions['sessionId'] = $sessionId;
 
             $indexResults = $this->search($indexName, $query, $indexOptions);
+
+            if ((bool)($options['_captureWidgetCacheTelemetry'] ?? false)) {
+                $widgetCacheOutcomes[$indexName] = $this->widgetCacheOutcome($indexResults);
+            }
 
             // Track cache status (if any index is not cached, mark as not cached)
             if (!empty($indexResults['meta']) && !$indexResults['meta']['cached']) {
@@ -1171,7 +1184,7 @@ class BackendService extends Component
 
         $executionTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
 
-        return [
+        $result = [
             'hits' => $allHits,
             'total' => $totalCount,
             'indices' => $indicesSearched,
@@ -1189,6 +1202,11 @@ class BackendService extends Component
                 'resolvedTerms' => $meta['resolvedTerms'],
             ],
         ];
+        if ((bool)($options['_captureWidgetCacheTelemetry'] ?? false)) {
+            $result['_widgetCacheOutcomes'] = $widgetCacheOutcomes;
+        }
+
+        return $result;
     }
 
     /**
@@ -1264,6 +1282,24 @@ class BackendService extends Component
     }
 
     /**
+     * @param array<string, mixed> $results
+     * @return array{cached: bool|null, duration: float|null}
+     */
+    private function widgetCacheOutcome(array $results): array
+    {
+        $meta = is_array($results['meta'] ?? null) ? $results['meta'] : [];
+        $cached = is_bool($meta['cached'] ?? null) ? $meta['cached'] : null;
+        $duration = $cached === false && is_numeric($meta['took'] ?? null)
+            ? (float)$meta['took']
+            : null;
+
+        return [
+            'cached' => $cached,
+            'duration' => $duration,
+        ];
+    }
+
+    /**
      * Get cache driver type for debug info
      *
      * @return string Cache driver name (file, redis, memcached, etc.)
@@ -1288,7 +1324,7 @@ class BackendService extends Component
 
         // Remove analytics-only options that don't affect results
         $cacheOptions = $options;
-        foreach (['source', 'sourceDefault', 'platform', 'appVersion', 'skipAnalytics', 'sessionId', 'apiKeyId', 'apiKeyPrefix', 'apiKeyType'] as $key) {
+        foreach (['source', 'sourceDefault', 'platform', 'appVersion', 'skipAnalytics', 'sessionId', 'apiKeyId', 'apiKeyPrefix', 'apiKeyType', '_captureWidgetCacheTelemetry'] as $key) {
             unset($cacheOptions[$key]);
         }
         if (array_key_exists('siteId', $cacheOptions)) {

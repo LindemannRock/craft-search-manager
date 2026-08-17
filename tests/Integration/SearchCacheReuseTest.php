@@ -374,7 +374,7 @@ final class SearchCacheReuseTest extends TestCase
 
             $backend = new CacheFailureBackend($this->emptyFailureStorage(), 'file');
             $service = $this->installCacheFailureBackend($backend);
-            $options = ['siteId' => 1, 'skipAnalytics' => true];
+            $options = ['siteId' => 1, 'skipAnalytics' => true, '_captureWidgetCacheTelemetry' => true];
             $query = 'prefixscope';
 
             self::assertFalse($service->search('search', $query, $options)['meta']['cached']);
@@ -647,16 +647,19 @@ final class SearchCacheReuseTest extends TestCase
                 $settings->getFullIndexName($successfulHandle) => $successfulStorage,
             ]);
             $service = $this->installCacheFailureBackend($backend);
-            $options = ['siteId' => 1, 'skipAnalytics' => true];
+            $options = ['siteId' => 1, 'skipAnalytics' => true, '_captureWidgetCacheTelemetry' => true];
 
             $first = $service->searchMultiple([$failedHandle, $successfulHandle], 'pr160multi', $options);
             self::assertSame([303], array_column($first['hits'], 'elementId'));
             self::assertSame([$successfulHandle], array_column($first['hits'], '_index'));
+            self::assertFalse($first['_widgetCacheOutcomes'][$successfulHandle]['cached']);
             self::assertNoPrivateFailureState($first);
             self::assertSame(1, $cache->searchCacheWriteCount());
 
             $second = $service->searchMultiple([$failedHandle, $successfulHandle], 'pr160multi', $options);
             self::assertSame([303], array_column($second['hits'], 'elementId'));
+            self::assertFalse($second['_widgetCacheOutcomes'][$failedHandle]['cached']);
+            self::assertTrue($second['_widgetCacheOutcomes'][$successfulHandle]['cached']);
             self::assertSame(2, $backend->searchCallsByIndex[$failedHandle] ?? 0);
             self::assertSame(1, $backend->searchCallsByIndex[$successfulHandle] ?? 0);
             self::assertSame(2, $failedStorage->totalCallsForSite(1));

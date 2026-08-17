@@ -128,9 +128,9 @@ A zero-result *action* is one where **every** row in that action returned no hit
 
 ### Widget searches and cache stats
 
-The frontend search widget skips per-keystroke analytics to avoid spam — instead, it writes a single row on user intent (Enter, click, or idle). That intent row carries cache telemetry forward from the final search response (`cached` and `took` from `meta`), so widget activity contributes to the cache hit rate just like server-side callers do.
+The frontend search widget skips per-keystroke analytics to avoid spam — instead, it writes a single row on user intent (Enter, click, or idle). The search response supplies a short-lived opaque cache-telemetry envelope, and the widget forwards it unchanged with that intent. Search Manager verifies that it belongs to the same query, site, exact index set, and displayed result count, then consumes it once. Each index in a multi-index search keeps its own hit or miss outcome.
 
-Legacy widget builds or callers that don't supply telemetry write rows with `executionTime = NULL`, and those are silently excluded from cache stats (they represent user intent, not a backend execution measurement). After upgrading to 5.46.0 and rebuilding the widget bundle, you'll see widget cache hits appear in the Performance tab.
+Only verified telemetry classifies a widget row: genuine hits use `executionTime = 0`, while misses use a positive bounded server measurement. Legacy, missing, invalid, expired, replayed, mismatched, or otherwise unverifiable telemetry writes `executionTime = NULL`; those rows still appear in Recent Searches but are intentionally excluded from Performance calculations. Cache Performance therefore describes verified rows and trusted direct server-side searches, not every historical intent row.
 
 ## Per-index analytics
 

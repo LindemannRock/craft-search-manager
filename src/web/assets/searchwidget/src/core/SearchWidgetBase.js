@@ -96,10 +96,9 @@ class SearchWidgetBase extends HTMLElement {
         // Last query that was tracked for analytics (prevent double tracking)
         this.lastTrackedQuery = null;
 
-        // Cache state of the most recent search response — forwarded with the
-        // intent ping so the server can record an accurate executionTime for
-        // dashboard cache stats. {cached: bool, took: number} | null
-        this.lastSearchCacheState = null;
+        // Opaque cache telemetry from the current response. It is forwarded
+        // unchanged with one intent ping and never interpreted in the browser.
+        this.lastSearchCacheTelemetry = null;
 
         // Unique IDs for ARIA accessibility
         this.listboxId = generateId('sm-listbox');
@@ -454,7 +453,7 @@ class SearchWidgetBase extends HTMLElement {
         }
 
         try {
-            const { results, meta } = await performSearch({
+            const { results, meta, cacheTelemetry } = await performSearch({
                 query,
                 endpoint: this.config.searchEndpoint,
                 indexHandles: this.config.indexHandles,
@@ -483,17 +482,11 @@ class SearchWidgetBase extends HTMLElement {
                 selectedIndex: results.length > 0 ? 0 : -1,
             });
 
-            // Capture cache state for the eventual intent ping. Forwarding this
-            // to /search/track-search lets the server record an accurate
-            // executionTime so dashboard cache stats reflect widget usage.
-            if (meta && typeof meta.cached === 'boolean') {
-                this.lastSearchCacheState = {
-                    cached: meta.cached,
-                    took: typeof meta.took === 'number' ? meta.took : null,
-                };
-            } else {
-                this.lastSearchCacheState = null;
-            }
+            // Capture only the current response's opaque telemetry. A stale
+            // response returns above and cannot replace this value.
+            this.lastSearchCacheTelemetry = typeof cacheTelemetry === 'string'
+                ? cacheTelemetry
+                : null;
 
             // Announce results for screen readers
             if (this.liveRegion) {
@@ -1050,8 +1043,7 @@ class SearchWidgetBase extends HTMLElement {
             widgetType: this.widgetType,
             analyticsSource: this.config.analyticsSource,
             siteId: this.config.siteId,
-            cached: this.lastSearchCacheState?.cached,
-            took: this.lastSearchCacheState?.took,
+            cacheTelemetry: this.lastSearchCacheTelemetry,
             apiKey: this.config.apiKey,
         });
     }
@@ -1063,7 +1055,7 @@ class SearchWidgetBase extends HTMLElement {
      */
     resetAnalyticsTracking() {
         this.lastTrackedQuery = null;
-        this.lastSearchCacheState = null;
+        this.lastSearchCacheTelemetry = null;
         if (this.analyticsIdleTimer) {
             clearTimeout(this.analyticsIdleTimer);
             this.analyticsIdleTimer = null;

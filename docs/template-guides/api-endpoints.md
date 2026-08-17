@@ -150,12 +150,13 @@ GET /actions/search-manager/api/search
     "total": 150,
     "page": 0,
     "resultsLimit": 20,
-    "totalPages": 8
+    "totalPages": 8,
+    "cacheTelemetry": "v1.…"
 }
 ```
 
 > [!NOTE]
-> The REST response does not return internal metadata such as synonyms expanded, rules matched, or private indexed content.
+> Normal public search responses do not return internal metadata such as synonyms expanded, rules matched, provider details, or private indexed content. `cacheTelemetry` is an opaque, short-lived envelope for the bundled widget's intent ping; forward it unchanged and do not treat its internal encoding as a customization API.
 
 Retrievable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills the internal source map automatically from Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled, including rich-text and body-source fields that also feed snippets, headings, and Split Sections. The index's `retrievableFields` setting then decides which of those values are returned publicly. Exclusions use the same `-attr` convention as Algolia's `attributesToRetrieve`, so `*,-wysiwyg` returns all fields except `wysiwyg`.
 
@@ -494,8 +495,8 @@ Records a search query when the user shows intent (clicking a result, pressing E
 | `widgetType` | `modal` | Widget boundary used for the default source: `modal`, `page`, or `inline`. The bundled widget sends this automatically. |
 | `analyticsSource` | Widget type | Optional custom source identifier (letters, numbers, dash, underscore; max 50 characters). Missing, empty, or whitespace-only values use `widget-modal`, `widget-page`, or `widget-inline`. |
 | `siteId` | (none) | Site ID |
-| `cached` @since(5.46.0) | (none) | Boolean-like (`1`/`0`, `true`/`false`, `on`/`off`, `yes`/`no`). Carry forward from the final search response's `meta.cached`. When truthy, the analytics row records `executionTime = 0` (cache hit). |
-| `took` @since(5.46.0) | (none) | Backend execution time in ms from `meta.took`. Used only when `cached` is falsy. Clamped to `[0, 60000]`; negative or non-numeric values are ignored. Recorded as the row's `executionTime` for cache-miss accounting. |
+| `cacheTelemetry` | (none) | Opaque envelope from the current search response. The bundled widget forwards it unchanged. A valid one-time envelope lets Search Manager classify each selected index independently as a hit or miss. |
+| `cached`, `took` | (none) | Legacy compatibility fields. They remain accepted as scalar input but are not authoritative and cannot classify Performance rows without a valid `cacheTelemetry` envelope. |
 
 ```json
 {"success": true, "tracked": true}
@@ -503,7 +504,7 @@ Records a search query when the user shows intent (clicking a result, pressing E
 
 Returns `"tracked": false` when analytics is disabled or no valid indices match.
 
-Omitting `cached` / `took` is supported and writes `executionTime = NULL` (legacy behaviour — the row counts as a search action but is excluded from cache hit rate calculations).
+Missing, invalid, expired, replayed, mismatched, or legacy-only telemetry writes `executionTime = NULL`. The intent row still counts as a search action and appears in Recent Searches, but it is excluded from Performance calculations.
 
 ### Track click
 

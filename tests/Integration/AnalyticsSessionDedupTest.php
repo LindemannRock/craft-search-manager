@@ -307,15 +307,14 @@ final class AnalyticsSessionDedupTest extends TestCase
         $this->assertEqualsWithDelta(33.3, $stats['botPercentage'], 0.1);
     }
 
-    public function testCacheStatsExcludeIntentTrackingPings(): void
+    public function testCacheStatsExcludeUnclassifiedIntentRows(): void
     {
         // One real backend execution that hit the cache.
         $this->seedRow(null, executionTime: 0.0);
         // One real backend execution that missed the cache.
         $this->seedRow(null, executionTime: 5.5);
-        // Widget intent ping — Enter/click/idle tracker writes NULL executionTime
-        // because no backend call happened at that moment. Must NOT be counted
-        // as a cache miss; the user already saw the result.
+        // Legacy, missing, invalid, or otherwise unverifiable widget telemetry
+        // writes NULL executionTime. It must not be counted as a cache miss.
         $this->seedRow(null, executionTime: null);
 
         $stats = SearchManager::$plugin->analytics->getCacheStats(self::TEST_SITE_ID, 'last30days');

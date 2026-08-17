@@ -98,7 +98,7 @@ The widget tracks searches and clicks to provide meaningful analytics without ke
   - Pressing Enter
   - Stopping typing for the idle timeout (default: 1.5s)
 - **Source identification** — use `analyticsSource` to distinguish widget placements (e.g., `'header-search'`, `'mobile-nav'`)
-- **Cache telemetry** @since(5.46.0) — the intent ping carries the final search response's `meta.cached` and `meta.took` forward so the recorded row has an accurate `executionTime` (`0` for cache hits, `took` ms for misses). This makes widget activity contribute to the dashboard's Cache Hit Rate, Cache Hits / Misses, and other performance metrics — without resurrecting per-keystroke spam.
+- **Verified cache telemetry** — the final search response includes a short-lived opaque envelope that the widget forwards unchanged with its one intent ping. Search Manager verifies the query, site, exact index set, displayed result count, expiry, and one-time use before a hit or miss contributes to Performance. The widget never interprets or reconstructs this value, and debug metadata stays behind the existing authorization boundary.
 
 Standard does not collect built-in widget analytics. Tracking endpoints accept and discard stale requests after a downgrade, so an existing Pro-configured widget keeps searching without browser-console errors. Public [JavaScript events](javascript-api.md) still fire in Standard for integrations with your own analytics platform.
 

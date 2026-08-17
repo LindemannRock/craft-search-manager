@@ -9,6 +9,7 @@ import { t } from './Translations.js';
  * @property {Array} results - Search results array
  * @property {number} total - Total results count
  * @property {Object|null} meta - Debug metadata (timing, cache, etc.)
+ * @property {string|null} cacheTelemetry - Opaque server-issued cache telemetry envelope
  * @property {string|null} error - Server error message (query too long, etc.)
  */
 
@@ -29,7 +30,7 @@ import { t } from './Translations.js';
  * @param {string} options.apiKey - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  * @param {AbortSignal} options.signal - AbortController signal
  * @param {Object} options.translations - Widget UI translations
- * @returns {Promise<SearchResponse>} - Search response with results and meta
+ * @returns {Promise<SearchResponse>} - Search response with results, debug meta, and safe telemetry
  */
 export async function performSearch({ query, endpoint, indexHandles = [], siteId = '', resultsLimit = 10, resultsRequireUrl = false, snippetIncludeCodeBlocks = false, snippetMode = '', snippetMaxLength = 0, snippetCleanMarkdown = false, debugEnabled = false, apiKey = '', signal, translations = {} }) {
     const params = new URLSearchParams({
@@ -104,6 +105,7 @@ export async function performSearch({ query, endpoint, indexHandles = [], siteId
         results: data.results || data.hits || [],
         total: data.total || 0,
         meta: data.meta || null,
+        cacheTelemetry: typeof data.cacheTelemetry === 'string' ? data.cacheTelemetry : null,
         error: data.error || null,
     };
 }
@@ -197,10 +199,9 @@ export function trackClick({ endpoint, elementId, query, index, apiKey = '' }) {
  * - Presses Enter
  * - Stops typing for idle timeout
  *
- * Optionally forwards cache telemetry from the final search response so the
- * server can record an accurate executionTime (0 for cache hit, took ms for
- * miss). When omitted, the server records executionTime = NULL and the row
- * is excluded from cache stats — preserving legacy behaviour.
+ * Optionally forwards the opaque telemetry envelope from the final search
+ * response. The server verifies and consumes it once before classifying the
+ * analytics row; absent or invalid telemetry remains unclassified.
  *
  * @param {Object} options - Tracking options
  * @param {string} options.endpoint - The track-search endpoint URL
@@ -211,11 +212,10 @@ export function trackClick({ endpoint, elementId, query, index, apiKey = '' }) {
  * @param {string} options.widgetType - Widget boundary ('modal', 'page', or 'inline')
  * @param {string} options.analyticsSource - Source identifier (e.g., 'header-search')
  * @param {string} options.siteId - Optional site ID
- * @param {boolean} [options.cached] - Whether the final search response was served from cache
- * @param {number} [options.took] - Backend execution time in ms (from response meta.took)
+ * @param {string} [options.cacheTelemetry] - Opaque server-issued cache telemetry envelope
  * @param {string} [options.apiKey] - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  */
-export function trackSearch({ endpoint, query, indexHandles = [], resultsCount = 0, trigger = 'unknown', widgetType = 'modal', analyticsSource = '', siteId = '', cached, took, apiKey = '' }) {
+export function trackSearch({ endpoint, query, indexHandles = [], resultsCount = 0, trigger = 'unknown', widgetType = 'modal', analyticsSource = '', siteId = '', cacheTelemetry = '', apiKey = '' }) {
     if (!query || !endpoint) return;
 
     try {
@@ -231,12 +231,8 @@ export function trackSearch({ endpoint, query, indexHandles = [], resultsCount =
         if (siteId) {
             formData.append('siteId', siteId);
         }
-        // Cache telemetry — server clamps and validates; only send when we have it.
-        if (typeof cached === 'boolean') {
-            formData.append('cached', cached ? '1' : '0');
-        }
-        if (typeof took === 'number' && Number.isFinite(took) && took >= 0) {
-            formData.append('took', took.toString());
+        if (typeof cacheTelemetry === 'string' && cacheTelemetry) {
+            formData.append('cacheTelemetry', cacheTelemetry);
         }
 
         const headers = { 'Accept': 'application/json' };

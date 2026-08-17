@@ -459,6 +459,7 @@ class ApiController extends Controller
             $options,
             SearchManager::$plugin->apiKeys->attributionOptions($this->authenticatedKey),
         );
+        $options['_captureWidgetCacheTelemetry'] = true;
         $options['retrievableFieldsByIndex'] = SearchIndex::retrievableFieldsByIndex($indexHandles, $requestedRetrievableFields);
 
         // Run search (single, multi, or all enabled indices)
@@ -488,8 +489,11 @@ class ApiController extends Controller
             $results = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
         }
 
+        $cacheOutcomes = $this->widgetCacheOutcomes($results, $searchedIndexHandles);
+        unset($results['_widgetCacheOutcomes']);
+
         // Present every result through the canonical indexed-hit response path.
-        // Keep backend meta only for the existing widget/debug toolbar contract.
+        // Keep backend meta only for the existing authorized debug-toolbar contract.
         $results = SearchDebugAccessHelper::filterDebugMeta(
             $results,
             (bool)$parameters['debugEnabled'],
@@ -511,7 +515,49 @@ class ApiController extends Controller
         $results['resultsLimit'] = $limit;
         $results['totalPages'] = (int) ceil($total / $limit);
 
+        $cacheTelemetry = SearchManager::$plugin->widgetCacheTelemetry->issue(
+            $query,
+            $siteId,
+            $searchedIndexHandles,
+            count(is_array($results['hits'] ?? null) ? $results['hits'] : []),
+            $cacheOutcomes,
+        );
+        if ($cacheTelemetry !== null) {
+            $results['cacheTelemetry'] = $cacheTelemetry;
+        }
+
         return $this->asJson($results);
+    }
+
+    /**
+     * @param array<string, mixed> $results
+     * @param list<string> $indexHandles
+     * @return array<string, array{cached: bool|null, duration: float|null}>
+     */
+    private function widgetCacheOutcomes(array $results, array $indexHandles): array
+    {
+        $outcomes = [];
+        $multiOutcomes = is_array($results['_widgetCacheOutcomes'] ?? null)
+            ? $results['_widgetCacheOutcomes']
+            : [];
+        $singleMeta = count($indexHandles) === 1 && is_array($results['meta'] ?? null)
+            ? $results['meta']
+            : [];
+
+        foreach ($indexHandles as $indexHandle) {
+            $raw = is_array($multiOutcomes[$indexHandle] ?? null)
+                ? $multiOutcomes[$indexHandle]
+                : $singleMeta;
+            $cached = is_bool($raw['cached'] ?? null) ? $raw['cached'] : null;
+            $outcomes[$indexHandle] = [
+                'cached' => $cached,
+                'duration' => $cached === false && is_numeric($raw['duration'] ?? $raw['took'] ?? null)
+                    ? (float)($raw['duration'] ?? $raw['took'])
+                    : null,
+            ];
+        }
+
+        return $outcomes;
     }
 
     /**

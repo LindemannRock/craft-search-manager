@@ -396,6 +396,14 @@ ddev craft search-manager/security/generate-salt
 
 4. **Check queue**: Geo-location runs as a queue job. If your queue isn't processing, geo data won't be recorded.
 
+## Widget searches appear in Recent Searches but not Performance
+
+**Symptom:** A widget intent appears in Recent Searches, but cache hit rate and response-time reports do not include it.
+
+**Cause:** Performance uses only trusted direct server measurements or the bundled widget's verified, one-time cache telemetry. Legacy widget builds and intent requests with missing, invalid, expired, replayed, mismatched, or unavailable telemetry deliberately store a null execution time. The search action remains useful in Recent Searches, but it cannot safely be classified as a cache hit or miss.
+
+**Fix / checks:** Rebuild and deploy the current widget bundle, confirm the page is not stripping the top-level `cacheTelemetry` value from search responses, and confirm Craft has a suitable cross-request application cache for replay protection. Do not copy `meta.cached` or `meta.took` into tracking requests; those legacy fields are not authoritative.
+
 ## Analytics report shows a loading error
 
 **Symptom:** One analytics panel shows an error and a **Retry** button while other panels still display data.

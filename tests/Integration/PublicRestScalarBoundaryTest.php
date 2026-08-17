@@ -364,7 +364,7 @@ final class PublicRestScalarBoundaryTest extends TestCase
                 'resultsRequireUrl',
             ],
             'autocomplete' => ['q', 'indexHandles', 'resultsLimit', 'only', 'type', 'siteId', 'language', 'lang'],
-            'track-search' => ['q', 'indexHandles', 'resultsCount', 'trigger', 'analyticsSource', 'widgetType', 'siteId', 'cached', 'took'],
+            'track-search' => ['q', 'indexHandles', 'resultsCount', 'trigger', 'analyticsSource', 'widgetType', 'siteId', 'cacheTelemetry', 'cached', 'took'],
             'track-click' => ['elementId', 'query', 'index', 'position'],
         ];
     }

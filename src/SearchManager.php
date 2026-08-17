@@ -87,6 +87,7 @@ use lindemannrock\searchmanager\services\StorageMaintenanceService;
 use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\services\TransformerService;
+use lindemannrock\searchmanager\services\WidgetCacheTelemetryService;
 use lindemannrock\searchmanager\services\WidgetConfigService;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
 use lindemannrock\searchmanager\widgets\AnalyticsSummaryWidget;
@@ -123,6 +124,7 @@ use yii\base\Event;
  * @property-read PendingSyncRepository $pendingSyncs
  * @property-read PendingSyncProcessor $pendingSyncProcessor
  * @property-read WidgetConfigService $widgetConfigs
+ * @property-read WidgetCacheTelemetryService $widgetCacheTelemetry
  * @property-read \lindemannrock\searchmanager\services\WidgetStyleService $widgetStyles
  * @property-read Settings $settings
  * @method Settings getSettings()
@@ -368,6 +370,7 @@ class SearchManager extends Plugin
             'storageMaintenance' => StorageMaintenanceService::class,
             'transformers' => TransformerService::class,
             'widgetConfigs' => WidgetConfigService::class,
+            'widgetCacheTelemetry' => WidgetCacheTelemetryService::class,
             'widgetStyles' => \lindemannrock\searchmanager\services\WidgetStyleService::class,
         ]);
     }
