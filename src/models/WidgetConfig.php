@@ -709,7 +709,7 @@ class WidgetConfig extends Model
         $this->validateIntField($s, 'behavior', 'searchMinChars', Craft::t('search-manager', 'Search Minimum Characters'), 1, 10);
         $this->validateIntField($s, 'behavior', 'resultsLimit', Craft::t('search-manager', 'Results Limit'), 1, 100);
         $this->validateIntField($s, 'behavior', 'hierarchyMaxHeadings', Craft::t('search-manager', 'Hierarchy Max Headings'), 1, 50);
-        if (BooleanHelper::normalize($s['behavior']['recentlyViewedEnabled'] ?? true, true)) {
+        if ($this->normalizeBooleanSettingValue($s['behavior']['recentlyViewedEnabled'] ?? true, true)) {
             $this->validateIntField($s, 'behavior', 'recentlyViewedLimit', Craft::t('search-manager', 'Recently Viewed Limit'), 1, 50);
         }
         $this->validateIntField($s, 'behavior', 'snippetMaxLength', Craft::t('search-manager', 'Snippet Max Length'), SnippetOptionsHelper::MIN_LENGTH, SnippetOptionsHelper::MAX_LENGTH);
@@ -841,7 +841,19 @@ class WidgetConfig extends Model
 
     private function getBooleanSetting(string $key, bool $default): bool
     {
-        return BooleanHelper::normalize($this->getSetting($key, $default), $default);
+        return $this->normalizeBooleanSettingValue($this->getSetting($key, $default), $default);
+    }
+
+    /**
+     * Historical widget rows used Craft's empty lightswitch sentinel for off.
+     */
+    private function normalizeBooleanSettingValue(mixed $value, bool $default): bool
+    {
+        if ($value === '') {
+            return false;
+        }
+
+        return BooleanHelper::normalize($value, $default);
     }
 
     /**

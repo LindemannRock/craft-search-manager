@@ -262,6 +262,16 @@ Numeric settings such as cache duration, autocomplete cache duration, batch size
 
 If a settings save fails, keep the submitted form open and check the inline field errors. Search Manager validates posted values before saving and does not partially save invalid settings.
 
+## Widget switches turn back on after saving
+
+**Symptom:** You turn off a switch under **Search Manager → Widgets** or **Widgets → Styles**, receive a saved message, and find the switch on again after reloading the editor.
+
+**Cause:** Older affected versions interpreted Craft's empty off value as a valueless HTML attribute. The widget form therefore saved or reloaded some off switches as on.
+
+**Fix:** Update Search Manager to a version containing the widget lightswitch persistence correction, then save the widget or style again. New saves store widget settings as booleans, top-level enabled fields as database booleans, and style switches as `0`/`1` values.
+
+No migration or bulk rewrite is required. Existing widget settings that contain the historical empty off value are read as off immediately and remain untouched until you choose to save that widget. Missing settings still use their documented defaults, and config-defined widgets and styles continue to follow `config/search-manager.php`.
+
 ## Widget save reports an error for a hidden Pro setting
 
 After downgrading to Standard, Pro-only promotion, analytics, and style-preset controls are hidden. Their stored values are retained for a future re-upgrade, but they do not participate in Standard editor validation and cannot block saving a visible widget setting.

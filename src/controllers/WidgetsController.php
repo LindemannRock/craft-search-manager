@@ -325,7 +325,7 @@ class WidgetsController extends Controller
             $widgetConfig->handle = SlugHandleHelper::makeUnique('{{%searchmanager_widget_configs}}', 'handle', $widgetConfig->handle);
         }
         $widgetConfig->type = (string) $request->getBodyParam('type', 'modal');
-        $widgetConfig->enabled = BooleanHelper::normalize($request->getBodyParam('enabled'), false);
+        $widgetConfig->enabled = $this->normalizeSubmittedLightswitch($request->getBodyParam('enabled'));
 
         // Get settings from form
         $widgetSettings = $request->getBodyParam('settings', []);
@@ -337,8 +337,14 @@ class WidgetsController extends Controller
                 ->normalizeSubmittedIndexHandleList($widgetSettings['search']['indexHandles']);
         }
 
-        // Merge with defaults to ensure all keys exist
         $defaults = WidgetConfig::defaultSettings();
+        if (!is_array($widgetSettings)) {
+            $widgetSettings = [];
+        } else {
+            $widgetSettings = $this->normalizeSubmittedBooleanSettings($widgetSettings, $defaults);
+        }
+
+        // Merge with defaults to ensure all keys exist
         $mergedSettings = array_replace_recursive($defaults, $widgetSettings);
 
         // Strip unknown keys — only allow keys defined in defaults
@@ -409,15 +415,15 @@ class WidgetsController extends Controller
 
         // Validate
         if (!$widgetConfig->validate()) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config'));
             Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config'));
             return null;
         }
 
         // Save widget config. Renaming the active default is one explicit,
         // atomic owner transition; ordinary direct service saves never rewrite
         // default settings.
-        $isDefault = BooleanHelper::normalize($request->getBodyParam('isDefault'), false);
+        $isDefault = $this->normalizeSubmittedLightswitch($request->getBodyParam('isDefault'));
         $renamesActiveDefault = $storedHandle !== null
             && $storedHandle !== $widgetConfig->handle
             && $isDefault
@@ -1011,7 +1017,7 @@ class WidgetsController extends Controller
         if (!$styleId && $widgetStyle->handle !== '') {
             $widgetStyle->handle = SlugHandleHelper::makeUnique('{{%searchmanager_widget_styles}}', 'handle', $widgetStyle->handle);
         }
-        $widgetStyle->enabled = BooleanHelper::normalize($request->getBodyParam('enabled'), false);
+        $widgetStyle->enabled = $this->normalizeSubmittedLightswitch($request->getBodyParam('enabled'));
         $widgetStyle->type = (string) $request->getBodyParam('type', 'modal');
         $styles = $request->getBodyParam('styles', []);
 
@@ -1560,6 +1566,46 @@ class WidgetsController extends Controller
     }
 
     /**
+     * Normalize only boolean settings declared by the typed default contract.
+     *
+     * @param array<string, mixed> $submitted
+     * @param array<string, mixed> $defaults
+     * @return array<string, mixed>
+     */
+    private function normalizeSubmittedBooleanSettings(array $submitted, array $defaults): array
+    {
+        foreach ($defaults as $key => $defaultValue) {
+            if (!array_key_exists($key, $submitted)) {
+                continue;
+            }
+
+            if (is_bool($defaultValue)) {
+                $submitted[$key] = $this->normalizeSubmittedLightswitch($submitted[$key], $defaultValue);
+                continue;
+            }
+
+            if (is_array($defaultValue) && is_array($submitted[$key])) {
+                $submitted[$key] = $this->normalizeSubmittedBooleanSettings($submitted[$key], $defaultValue);
+            }
+        }
+
+        return $submitted;
+    }
+
+    /**
+     * Normalize a Craft lightswitch value without treating its off sentinel as
+     * a valueless HTML attribute.
+     */
+    private function normalizeSubmittedLightswitch(mixed $value, bool $default = false): bool
+    {
+        if ($value === '') {
+            return false;
+        }
+
+        return BooleanHelper::normalize($value, $default);
+    }
+
+    /**
      * Validate style values against strict type-based allowlists.
      *
      * Instead of blocklisting dangerous patterns (bypassable via Unicode escapes,
@@ -1575,21 +1621,25 @@ class WidgetsController extends Controller
         $validated = [];
 
         foreach ($styles as $key => $value) {
-            $value = trim((string) $value);
+            $submittedValue = $value;
+            $value = trim((string) $submittedValue);
             $type = $this->_getStyleValueType($key);
 
             $valid = match ($type) {
                 'color' => $this->_isValidCssColor($value),
                 'number' => preg_match('/^\d+(\.\d+)?$/', $value) === 1,
                 'shadow' => $this->_isValidCssShadow($value),
-                'boolean' => BooleanHelper::isBooleanLike($value),
+                'boolean' => BooleanHelper::isBooleanLike($submittedValue),
                 'tag' => in_array(strtolower($value), Highlighter::ALLOWED_TAGS, true),
                 'class' => Highlighter::isValidClassTokenList($value),
                 default => false,
             };
 
             $validated[$key] = match (true) {
-                $valid && $type === 'boolean' => BooleanHelper::toStyleValue($value, BooleanHelper::normalize($defaults[$key] ?? false)),
+                $valid && $type === 'boolean' => $this->normalizeSubmittedLightswitch(
+                    $submittedValue,
+                    BooleanHelper::normalize($defaults[$key] ?? false),
+                ) ? '1' : '0',
                 $valid && $type === 'tag' => strtolower($value),
                 $valid => $value,
                 default => (string)($defaults[$key] ?? ''),
@@ -1606,7 +1656,7 @@ class WidgetsController extends Controller
     {
         // Exact matches first
         return match ($key) {
-            'highlightResultsEnabled' => 'boolean',
+            'backdropBlur', 'highlightResultsEnabled' => 'boolean',
             'highlightTag' => 'tag',
             'highlightClass' => 'class',
             'modalShadow', 'modalShadowDark' => 'shadow',

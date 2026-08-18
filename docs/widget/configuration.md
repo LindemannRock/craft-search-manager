@@ -37,6 +37,8 @@ The config's own tabs cover behavior:
 
 Config-defined widgets (below) show a "Config" badge here and can't be edited in this UI; database-defined widgets show a "Database" badge and are fully editable.
 
+Widget and Widget Style switches saved in the CP use real off/on values. If an older affected database widget stored an empty value for an off switch, Search Manager now reads that value as off immediately without changing the row in the background. Open and save the widget once when convenient to replace the historical value with the canonical boolean form. Config-defined widgets and styles keep following the values in `config/search-manager.php`.
+
 Need the same widget defined in code instead — for version control or multi-environment setups? Everything above has a config-file equivalent, covered next.
 
 ## Config file
