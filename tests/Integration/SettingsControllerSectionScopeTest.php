@@ -78,6 +78,28 @@ final class SettingsControllerSectionScopeTest extends TestCase
         self::assertNotContains('replaceNativeSearch', $method->invoke($controller, 'indexing'));
     }
 
+    public function testIndexingSettingsPreserveTheBatchSyncAndIndexNamingLayout(): void
+    {
+        $indexing = file_get_contents(dirname(__DIR__, 2) . '/src/templates/settings/indexing.twig');
+        self::assertIsString($indexing);
+
+        self::assertStringContainsString(
+            "instructions: 'Number of elements processed at a time during a full index rebuild.'|t('search-manager')",
+            $indexing,
+        );
+        self::assertStringContainsString(
+            "instructions: 'Maximum number of pending element changes processed in each sync chunk.'|t('search-manager')",
+            $indexing,
+        );
+        self::assertStringContainsString("<h3>{{ 'Batch Sync'|t('search-manager') }}</h3>", $indexing);
+        self::assertMatchesRegularExpression(
+            "/<hr>\\s*<h3>{{ 'Index Naming'\\|t\\('search-manager'\\) }}<\\/h3>\\s*{{ forms\\.textField\\(\\{\\s*label: 'Index Prefix'\\|t\\('search-manager'\\),/",
+            $indexing,
+        );
+        self::assertStringContainsString("name: 'settings[lastIndexedDebounceSeconds]'", $indexing);
+        self::assertDoesNotMatchRegularExpression('/{%\\s*if\\s+(?:not\\s+)?settings\\.autoIndex/', $indexing);
+    }
+
     public function testAutocompleteSectionPostPersistsAllAutocompleteSettings(): void
     {
         $user = $this->createTestUser('__sm_autocomplete_settings_user_', ['admin' => true]);

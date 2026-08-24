@@ -58,7 +58,7 @@
 
 		{{ forms.textField({
             label: 'Batch Size'|t('search-manager'),
-            instructions: 'Number of elements to index in each batch'|t('search-manager'),
+            instructions: 'Number of elements processed at a time during a full index rebuild.'|t('search-manager'),
             id: 'batchSize',
             name: 'settings[batchSize]',
             value: settings.batchSize,
@@ -94,7 +94,7 @@
 
 		{{ forms.textField({
             label: 'Sync Batch Size'|t('search-manager'),
-            instructions: 'Maximum number of pending sync rows processed by each batch sync job.'|t('search-manager'),
+            instructions: 'Maximum number of pending element changes processed in each sync chunk.'|t('search-manager'),
             id: 'syncBatchSize',
             name: 'settings[syncBatchSize]',
             value: settings.syncBatchSize,
@@ -155,6 +155,10 @@
                 "This is being overridden by the <code>batchMaxAttempts</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
             errors: settings.getErrors('batchMaxAttempts')
         }) }}
+
+		<hr>
+
+		<h3>{{ 'Index Naming'|t('search-manager') }}</h3>
 
 		{{ forms.textField({
             label: 'Index Prefix'|t('search-manager'),
