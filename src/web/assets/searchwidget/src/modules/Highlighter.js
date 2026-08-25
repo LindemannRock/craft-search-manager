@@ -10,6 +10,7 @@
  */
 
 import { isUnsafeNavigationUrl } from './UrlUtils.js';
+import { foldUnicodeDecimalDigits } from './UnicodeDecimalDigits.js';
 
 /**
  * @typedef {Object} HighlightOptions
@@ -544,22 +545,21 @@ function applyHighlightRanges(text, terms, tag, classAttr, queryTerms) {
 }
 
 function normalizeForHighlight(value) {
-    return String(value || '')
-        .normalize('NFKC')
+    return foldUnicodeDecimalDigits(String(value || '').normalize('NFKC'))
         .replace(/\u0640/gu, '')
         .toLowerCase()
         .normalize('NFKD')
-        .replace(/\p{M}/gu, mark => (mark === '\u3099' || mark === '\u309A' ? mark : ''))
+        .replace(/\p{Mn}/gu, mark => (mark === '\u3099' || mark === '\u309A' ? mark : ''))
         .normalize('NFC');
 }
 
 function normalizedWordTokens(value) {
-    return normalizeForHighlight(value).match(/[\p{L}\p{N}\p{M}_]+/gu) || [];
+    return normalizeForHighlight(value).match(/[\p{L}\p{N}\p{M}]+/gu) || [];
 }
 
 function textWords(text) {
     const words = [];
-    const pattern = /[\p{L}\p{N}\p{M}_]+/gu;
+    const pattern = /[\p{L}\p{N}\p{M}]+/gu;
     let match;
     while ((match = pattern.exec(text)) !== null) {
         words.push({

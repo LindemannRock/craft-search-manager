@@ -73,6 +73,20 @@ Destination-page highlighting is deliberately looser than this — it has no hit
 
 See [Which query words are highlighted?](../feature-tour/highlighting.md#which-query-words-are-highlighted) for the canonical behavior and [Client-side highlighting](../template-guides/highlighting-snippets.md#client-side-highlighting) for the public JavaScript signatures.
 
+## A matched result term is missing or over-highlighted
+
+**Symptom:** Search returns the right result and its matched-term metadata is correct, but a title, snippet, or split heading does not mark the expected text. Older affected builds can miss Arabic or Persian digits, one-character terms such as `5`, `x`, or `東`, and underscore-separated words such as `foo_bar`. A browser result can also mark a distinct word that differs only by a spacing or enclosing mark.
+
+**Quick checks:**
+
+1. Reproduce the query under **Search Manager → Settings → Test** and inspect the matched terms. If the expected normalized term is absent there, this is a retrieval or query issue rather than result painting.
+2. Compare the bundled widget with `craft.searchManager.highlight()` or the standalone `SearchManagerHighlighter.highlight()` helper. A difference between those result surfaces points to an outdated browser bundle.
+3. Confirm you are looking at a search result, not destination-page highlighting. Destination pages intentionally use the simpler substring contract described under [On the destination page](../feature-tour/highlighting.md#on-the-destination-page).
+
+**Fix:** Update Search Manager to a version containing the Unicode and result-boundary highlighting correction. If your deployment copies or caches plugin assets, rebuild/deploy the current widget assets and clear that asset cache. No index rebuild or database migration is required.
+
+Affected versions used different PHP and browser normalization rules, suppressed most one-character PHP result terms, and treated `_` as part of a displayed word even though the search tokenizer treats punctuation as a boundary. The correction changes result painting only; it does not alter indexed terms, queries, ranking, autocomplete, or hosted-provider matching.
+
 ## Nothing is highlighted on the page after clicking a result
 
 **Symptom:** The search widget's results are highlighted correctly, but the page a visitor lands on shows no highlights at all — with or without `?smq=…` in the address bar.

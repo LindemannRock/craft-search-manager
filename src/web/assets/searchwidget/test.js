@@ -52,6 +52,14 @@ for (const file of REQUIRED_FILES) {
 // Test 4: Files contain expected content
 const mainFile = path.join(DIST_DIR, 'SearchModalWidget.js');
 const standaloneFile = path.join(__dirname, '..', 'highlighter', 'dist', 'SearchManagerHighlighter.js');
+const resultHighlightingFixtureFile = path.join(
+    __dirname,
+    '../../../../tests/Fixtures/Highlighting/result-highlighting-parity.json',
+);
+const unicodeDecimalDigitFixtureFile = path.join(
+    __dirname,
+    '../../../../tests/Fixtures/Highlighting/unicode-decimal-digits-17.0.0.json',
+);
 if (fs.existsSync(mainFile)) {
     const content = fs.readFileSync(mainFile, 'utf8');
     test('Contains customElements.define', content.includes('customElements.define'));
@@ -447,6 +455,49 @@ try {
         'Prefix painting is case and accent insensitive',
         highlightMatches('Caféteria', 'cafe') === '<mark class="sm-highlight">Café</mark>teria'
         && highlightMatches('Cafe\u0301teria', 'cafe') === '<mark class="sm-highlight">Cafe\u0301</mark>teria',
+    );
+    const resultHighlightingFixtures = JSON.parse(fs.readFileSync(resultHighlightingFixtureFile, 'utf8'));
+    test(
+        'Result highlighting preserves shared Unicode and punctuation slices',
+        resultHighlightingFixtures.every(fixture => {
+            const rendered = highlightMatches(fixture.text, fixture.queryTerms.join(' '), {
+                terms: fixture.terms,
+            });
+            const slices = Array.from(
+                rendered.matchAll(/<mark class="sm-highlight">(.*?)<\/mark>/gu),
+                match => match[1],
+            );
+
+            return JSON.stringify(slices) === JSON.stringify(fixture.expectedSlices);
+        }),
+    );
+    const unicodeDecimalDigitFixture = JSON.parse(fs.readFileSync(unicodeDecimalDigitFixtureFile, 'utf8'));
+    test(
+        'Unicode 17 decimal digit table covers every generated block and code point',
+        unicodeDecimalDigitFixture.unicodeVersion === '17.0.0'
+        && unicodeDecimalDigitFixture.sha256 === '2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c'
+        && unicodeDecimalDigitFixture.zeroCodePoints.length === unicodeDecimalDigitFixture.blockCount
+        && unicodeDecimalDigitFixture.blockCount * 10 === unicodeDecimalDigitFixture.digitCount
+        && unicodeDecimalDigitFixture.zeroCodePoints.every(zeroHex => {
+            const zeroCodePoint = Number.parseInt(zeroHex, 16);
+
+            return Array.from({ length: 10 }, (_, digitValue) => digitValue).every(digitValue => {
+                const displayedDigit = String.fromCodePoint(zeroCodePoint + digitValue);
+                const rendered = highlightMatches(`item${displayedDigit}`, `item${digitValue}`, {
+                    terms: [`item${digitValue}`],
+                });
+
+                return rendered === `<mark class="sm-highlight">item${displayedDigit}</mark>`;
+            });
+        }),
+    );
+    test(
+        'Result markup escapes text and filters unsafe tag and class options',
+        highlightMatches('5 & x <東>', '5 x 東', {
+            terms: ['5', 'x', '東'],
+            tag: 'em',
+            className: 'safe bad"',
+        }) === '<em class="sm-highlight safe">5</em> &amp; <em class="sm-highlight safe">x</em> &lt;<em class="sm-highlight safe">東</em>&gt;',
     );
     const prefixScopedHit = { matchedTerms: { title: ['testing'], content: ['tools'] } };
     test(
@@ -949,6 +1000,53 @@ try {
         nonSplitControlHtml.includes('<mark class="sm-highlight">Search</mark> reference')
         && nonSplitControlHtml.includes('<mark class="sm-highlight">Phrase</mark> details stay in the snippet.')
         && !nonSplitControlHtml.includes('<mark class="sm-highlight">reference</mark>'),
+    );
+
+    const unicodeTitleSnippetHtml = renderResults([{
+        elementId: 910,
+        backendId: '910_1',
+        title: 'item٥ foo_bar',
+        url: '/unicode-result',
+        entrySection: 'Pages',
+        snippet: 'कम काम item۵',
+        matchedTerms: { title: ['item5', 'foo', 'bar'], content: ['कम', 'item5'] },
+        matchedPhrases: [],
+    }], 'item5 foo bar कम', {
+        resultsLayout: 'default',
+        listboxId: 'unicode-title-snippet',
+    });
+    test(
+        'Result titles and snippets share digit mark and punctuation boundary behavior',
+        unicodeTitleSnippetHtml.includes('<mark class="sm-highlight">item٥</mark> <mark class="sm-highlight">foo</mark>_<mark class="sm-highlight">bar</mark>')
+        && unicodeTitleSnippetHtml.includes('<mark class="sm-highlight">कम</mark> काम <mark class="sm-highlight">item۵</mark>'),
+    );
+
+    const unicodeHeadingHtml = renderResults([{
+        elementId: 911,
+        siteId: 1,
+        backendId: '911_1_unicode-heading',
+        title: 'Unicode guide',
+        url: '/unicode-guide',
+        source: 'Docs',
+        type: 'source-doc',
+        sectionType: 'heading',
+        sectionId: 'unicode-heading',
+        sectionTitle: 'item𐒠 東',
+        sectionLevel: 2,
+        sectionUrl: '/unicode-guide#unicode-heading',
+        sectionIndex: 1,
+        snippet: 'Astral digit and CJK heading.',
+        score: 20,
+        index: 'docs',
+        matchedTerms: { title: [], content: ['item0', '東'] },
+        matchedPhrases: [],
+    }], 'item0 東', {
+        resultsLayout: 'default',
+        listboxId: 'unicode-heading',
+    });
+    test(
+        'Split headings preserve astral digit and one-code-point slices',
+        unicodeHeadingHtml.includes('<mark class="sm-highlight">item𐒠</mark> <mark class="sm-highlight">東</mark>'),
     );
 
     const mixedHtml = renderResults([splitHits[0], {

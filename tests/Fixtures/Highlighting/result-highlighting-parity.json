@@ -1,0 +1,163 @@
+[
+  {
+    "name": "Arabic-Indic decimal digit",
+    "text": "item٥",
+    "terms": ["item5"],
+    "queryTerms": ["item5"],
+    "expectedSlices": ["item٥"]
+  },
+  {
+    "name": "Extended Arabic-Indic decimal digit",
+    "text": "item۵",
+    "terms": ["item5"],
+    "queryTerms": ["item5"],
+    "expectedSlices": ["item۵"]
+  },
+  {
+    "name": "Astral Osmanya decimal digit",
+    "text": "item𐒠",
+    "terms": ["item0"],
+    "queryTerms": ["item0"],
+    "expectedSlices": ["item𐒠"]
+  },
+  {
+    "name": "Fullwidth NFKC digit control",
+    "text": "item５",
+    "terms": ["item5"],
+    "queryTerms": ["item5"],
+    "expectedSlices": ["item５"]
+  },
+  {
+    "name": "Mathematical NFKC digit control",
+    "text": "item𝟝",
+    "terms": ["item5"],
+    "queryTerms": ["item5"],
+    "expectedSlices": ["item𝟝"]
+  },
+  {
+    "name": "Decomposed Latin accent",
+    "text": "Café noir",
+    "terms": ["cafe"],
+    "queryTerms": ["cafe"],
+    "expectedSlices": ["Café"]
+  },
+  {
+    "name": "Japanese decomposed dakuten",
+    "text": "とば",
+    "terms": ["とば"],
+    "queryTerms": ["とば"],
+    "expectedSlices": ["とば"]
+  },
+  {
+    "name": "Japanese decomposed handakuten",
+    "text": "とぱ",
+    "terms": ["とぱ"],
+    "queryTerms": ["とぱ"],
+    "expectedSlices": ["とぱ"]
+  },
+  {
+    "name": "Devanagari spacing-mark distinction",
+    "text": "कम काम",
+    "terms": ["कम"],
+    "queryTerms": ["कम"],
+    "expectedSlices": ["कम"]
+  },
+  {
+    "name": "Enclosing-mark prefix distinction",
+    "text": "AB⃝ AB",
+    "terms": ["ab"],
+    "queryTerms": ["ab"],
+    "expectedSlices": ["AB", "AB"]
+  },
+  {
+    "name": "Literal zero",
+    "text": "0",
+    "terms": ["0"],
+    "queryTerms": ["0"],
+    "expectedSlices": ["0"]
+  },
+  {
+    "name": "Unicode-folded zero",
+    "text": "٠",
+    "terms": ["0"],
+    "queryTerms": ["0"],
+    "expectedSlices": ["٠"]
+  },
+  {
+    "name": "One-character ASCII digit",
+    "text": "5",
+    "terms": ["5"],
+    "queryTerms": ["5"],
+    "expectedSlices": ["5"]
+  },
+  {
+    "name": "One-character Latin term",
+    "text": "x",
+    "terms": ["x"],
+    "queryTerms": ["x"],
+    "expectedSlices": ["x"]
+  },
+  {
+    "name": "One-character CJK term",
+    "text": "東",
+    "terms": ["東"],
+    "queryTerms": ["東"],
+    "expectedSlices": ["東"]
+  },
+  {
+    "name": "Astral one-code-point term",
+    "text": "𐐀",
+    "terms": ["𐐀"],
+    "queryTerms": ["𐐀"],
+    "expectedSlices": ["𐐀"]
+  },
+  {
+    "name": "One-character prefix",
+    "text": "Test",
+    "terms": ["test"],
+    "queryTerms": ["t"],
+    "expectedSlices": ["T"]
+  },
+  {
+    "name": "Astral one-code-point prefix",
+    "text": "𐐀abc",
+    "terms": ["𐐀abc"],
+    "queryTerms": ["𐐀"],
+    "expectedSlices": ["𐐀"]
+  },
+  {
+    "name": "Underscore boundary",
+    "text": "foo_bar",
+    "terms": ["foo", "bar"],
+    "queryTerms": ["foo", "bar"],
+    "expectedSlices": ["foo", "bar"]
+  },
+  {
+    "name": "Leading trailing and repeated underscores",
+    "text": "__foo___bar__",
+    "terms": ["foo", "bar"],
+    "queryTerms": ["foo", "bar"],
+    "expectedSlices": ["foo", "bar"]
+  },
+  {
+    "name": "Hyphen boundary control",
+    "text": "foo-bar",
+    "terms": ["foo", "bar"],
+    "queryTerms": ["foo", "bar"],
+    "expectedSlices": ["foo", "bar"]
+  },
+  {
+    "name": "Ordinary punctuation boundary control",
+    "text": "foo.bar,bar",
+    "terms": ["foo", "bar"],
+    "queryTerms": ["foo", "bar"],
+    "expectedSlices": ["foo", "bar", "bar"]
+  },
+  {
+    "name": "Overlapping matched term and prefix",
+    "text": "Testing",
+    "terms": ["testing", "test"],
+    "queryTerms": ["test"],
+    "expectedSlices": ["Test"]
+  }
+]

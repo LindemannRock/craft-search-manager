@@ -168,10 +168,6 @@ class Highlighter
         // Find positions of all term matches
         $matches = [];
         foreach ($terms as $term) {
-            if ($term !== '0' && mb_strlen($term) < 2) {
-                continue;
-            }
-
             $termLower = mb_strtolower($term);
             $offset = 0;
 
@@ -362,7 +358,7 @@ class Highlighter
      */
     private function textWords(string $text): array
     {
-        preg_match_all('/[\p{L}\p{N}\p{M}_]+/u', $text, $matches, PREG_OFFSET_CAPTURE);
+        preg_match_all('/[\p{L}\p{N}\p{M}]+/u', $text, $matches, PREG_OFFSET_CAPTURE);
         $words = [];
         foreach ($matches[0] as $match) {
             $word = (string)$match[0];
@@ -390,11 +386,8 @@ class Highlighter
             if (!is_string($term)) {
                 continue;
             }
-            preg_match_all('/[\p{L}\p{N}\p{M}_]+/u', TermNormalizer::normalize($term), $matches);
-            $tokens = array_values(array_filter(
-                $matches[0],
-                static fn(string $token): bool => $token === '0' || mb_strlen($token) >= 2,
-            ));
+            preg_match_all('/[\p{L}\p{N}\p{M}]+/u', TermNormalizer::normalize($term), $matches);
+            $tokens = array_values($matches[0]);
             if ($tokens === []) {
                 continue;
             }

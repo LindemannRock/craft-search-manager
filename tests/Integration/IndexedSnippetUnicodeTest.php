@@ -21,13 +21,34 @@ use lindemannrock\searchmanager\tests\TestCase;
  */
 final class IndexedSnippetUnicodeTest extends TestCase
 {
-    public function testSnippetMinimumUsesCharacterLength(): void
+    public function testSnippetSelectsOneCharacterMatchUsingCharacterLength(): void
     {
-        $text = str_repeat('a', 250) . '東';
+        $text = str_repeat('before ', 40) . '東';
+        $snippets = (new Highlighter([
+            'snippetMaxLength' => 40,
+            'maxSnippets' => 1,
+        ]))->generateSnippets($text, ['東']);
 
-        self::assertSame(
-            [str_repeat('a', 40) . '...'],
-            (new Highlighter(['snippetMaxLength' => 40]))->generateSnippets($text, ['東']),
-        );
+        self::assertCount(1, $snippets);
+        self::assertStringStartsWith('...', $snippets[0]);
+        self::assertStringContainsString('<mark>東</mark>', $snippets[0]);
+    }
+
+    public function testSnippetSelectsOneCharacterDigitAndLatinMatches(): void
+    {
+        $highlighter = new Highlighter([
+            'snippetMaxLength' => 20,
+            'maxSnippets' => 1,
+        ]);
+
+        foreach (['5', 'x', '٠'] as $term) {
+            $snippets = $highlighter->generateSnippets(
+                str_repeat('before ', 10) . $term . ' target',
+                [$term],
+            );
+
+            self::assertCount(1, $snippets);
+            self::assertStringContainsString('<mark>' . $term . '</mark>', $snippets[0]);
+        }
     }
 }
