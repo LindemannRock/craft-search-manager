@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Composer\InstalledVersions;
 use lindemannrock\base\cache\CacheBackendStatus;
 use lindemannrock\base\cache\ScopedCache;
 use lindemannrock\base\cache\ScopedCacheResult;
@@ -24,9 +25,11 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(CacheStorageService::class)]
 final class DisposableCacheSafetyTest extends TestCase
 {
-    public function testApprovedBaseCacheContractLoadsFromTheWorkspacePackage(): void
+    public function testApprovedBaseCacheContractLoadsFromTheDeclaredDependency(): void
     {
-        $baseRoot = realpath(dirname(__DIR__, 3) . '/base');
+        $installPath = InstalledVersions::getInstallPath('lindemannrock/craft-plugin-base');
+        self::assertIsString($installPath);
+        $baseRoot = realpath($installPath);
         self::assertIsString($baseRoot);
 
         foreach ([PluginHelper::class, CacheBackendStatus::class, ScopedCache::class, ScopedCacheResult::class] as $class) {

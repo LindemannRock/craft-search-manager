@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Composer\InstalledVersions;
 use Craft;
 use craft\db\Query;
 use craft\errors\MissingComponentException;
@@ -92,8 +93,13 @@ final class SearchRecurringQueueSchedulerTest extends TestCase
         parent::tearDown();
     }
 
-    public function testApprovedBaseClassesLoadFromTheLocalCheckout(): void
+    public function testApprovedBaseClassesLoadFromTheDeclaredDependency(): void
     {
+        $installPath = InstalledVersions::getInstallPath('lindemannrock/craft-plugin-base');
+        self::assertIsString($installPath);
+        $baseSourcePath = realpath($installPath . '/src');
+        self::assertIsString($baseSourcePath);
+
         foreach ([
             RecurringQueueHelper::class,
             PortableQueueScheduler::class,
@@ -101,7 +107,7 @@ final class SearchRecurringQueueSchedulerTest extends TestCase
         ] as $class) {
             $filename = (new ReflectionClass($class))->getFileName();
             self::assertIsString($filename);
-            self::assertStringContainsString('/plugins/base/src/', str_replace('\\', '/', $filename));
+            self::assertStringStartsWith($baseSourcePath . DIRECTORY_SEPARATOR, (string)realpath($filename));
         }
     }
 

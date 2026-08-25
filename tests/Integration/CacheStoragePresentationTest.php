@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Composer\InstalledVersions;
 use Craft;
 use craft\cachecascade\CascadeCache;
 use lindemannrock\base\cache\CacheBackendStatus;
@@ -67,9 +68,11 @@ final class CacheStoragePresentationTest extends TestCase
         parent::tearDown();
     }
 
-    public function testApprovedBaseCacheApisLoadFromTheLocalCandidate(): void
+    public function testApprovedBaseCacheApisLoadFromTheDeclaredDependency(): void
     {
-        $expectedBasePath = realpath(dirname(__DIR__, 3) . '/base/src');
+        $baseRoot = InstalledVersions::getInstallPath('lindemannrock/craft-plugin-base');
+        self::assertIsString($baseRoot);
+        $expectedBasePath = realpath($baseRoot . '/src');
         self::assertIsString($expectedBasePath);
 
         foreach ([
@@ -297,7 +300,9 @@ final class CacheStoragePresentationTest extends TestCase
             false,
         );
 
-        $baseEnglish = require dirname(__DIR__, 3) . '/base/src/translations/en/lindemannrock-base.php';
+        $baseRoot = InstalledVersions::getInstallPath('lindemannrock/craft-plugin-base');
+        self::assertIsString($baseRoot);
+        $baseEnglish = require $baseRoot . '/src/translations/en/lindemannrock-base.php';
         self::assertIsArray($baseEnglish);
         foreach ($presentations as $presentation) {
             self::assertArrayHasKey($presentation->headingKey, $baseEnglish);
