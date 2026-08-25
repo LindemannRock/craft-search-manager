@@ -1,5 +1,31 @@
 # Changelog
 
+## [5.55.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.54.2...v5.55.0) - 2026-08-25
+
+
+### Added
+
+* **widgets:** expose destination highlighting API ([6ff6c67](https://github.com/LindemannRock/craft-search-manager/commit/6ff6c6742568119592cfdc8946745157d1cbf812))
+
+
+### Fixed
+
+* **analytics:** verify widget cache telemetry ([82ccd71](https://github.com/LindemannRock/craft-search-manager/commit/82ccd7153ea1e1ed2ed7b7bc51112f33335f7ea7))
+* **backends:** disable file storage on ephemeral hosts ([a005c3a](https://github.com/LindemannRock/craft-search-manager/commit/a005c3aeaf3c4d2f4cf35fe00f46e9c7980018cc))
+* **cache:** enforce scoped cache boundaries ([223742f](https://github.com/LindemannRock/craft-search-manager/commit/223742ff6fc89db6e7f19a03af1980467f7aa705))
+* **cache:** report effective cache storage ([251b1e5](https://github.com/LindemannRock/craft-search-manager/commit/251b1e53c64871dad19a1bc4a2f6fd69cc0cdeb0))
+* **cache:** support portable application caching ([2466c20](https://github.com/LindemannRock/craft-search-manager/commit/2466c20972d79fd39d1abba2046797f63fdf8670))
+* **cp:** clarify fuzzy matching controls ([2fb784f](https://github.com/LindemannRock/craft-search-manager/commit/2fb784f5ef008f9cc3380f43b13dbf04fc7510c8))
+* **cp:** clarify unavailable backends ([67938fa](https://github.com/LindemannRock/craft-search-manager/commit/67938faf0b636b186b69150c998602885da66307))
+* **deps:** require Craft Cloud compatibility floors ([1ba250e](https://github.com/LindemannRock/craft-search-manager/commit/1ba250e07ec9bc5f2d21832111124ec53eccf12a))
+* **i18n:** align fuzzy matching terminology ([dbad99e](https://github.com/LindemannRock/craft-search-manager/commit/dbad99eaa95a52ba14f43136cbcbaf4f1f241fe4))
+* **queue:** support portable recurring schedules ([fdf2740](https://github.com/LindemannRock/craft-search-manager/commit/fdf2740b23ce5e99f5b3901a1f1156eb4b4d56f1))
+* **search:** prefer exact result highlights ([2573370](https://github.com/LindemannRock/craft-search-manager/commit/257337010a7eefb270ced22ea1f1421c831da869))
+* **settings:** clarify indexing setting relationships ([e911570](https://github.com/LindemannRock/craft-search-manager/commit/e911570f3c339aef27d19f4a1357b3e752c72633))
+* **widgets:** avoid duplicate frontend script ([ce9cf80](https://github.com/LindemannRock/craft-search-manager/commit/ce9cf80ea836b862b7df6037dbf77132e74e0f63))
+* **widgets:** persist lightswitch values correctly ([270dc0c](https://github.com/LindemannRock/craft-search-manager/commit/270dc0c0b56aca6025bba1a1047065e3ff765302))
+* **widgets:** support Craft Cloud asset delivery ([01c2014](https://github.com/LindemannRock/craft-search-manager/commit/01c20140b3e7f193e968bd142bb49fa73985a756))
+
 ## [5.54.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.54.1...v5.54.2) - 2026-08-07
 
 
