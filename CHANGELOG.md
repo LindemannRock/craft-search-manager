@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.55.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.55.0...v5.55.1) (2026-08-26)
+
+
+### Fixed
+
+* **deps:** require Base 5.38.1 ([d3e7d49](https://github.com/LindemannRock/craft-search-manager/commit/d3e7d4955e52b7fcc8fe920299fa2baed35334c3))
+* **search:** align Unicode result highlighting ([af97e09](https://github.com/LindemannRock/craft-search-manager/commit/af97e097bb14ce33dcdd5904f41db8ba2b8161ab))
+* **search:** preserve Unicode mark tokens ([7f1be2a](https://github.com/LindemannRock/craft-search-manager/commit/7f1be2af1eeab6785debe8648c2145fa52dd321a))
+
 ## [5.55.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.54.2...v5.55.0) - 2026-08-25
 
 
