@@ -56,6 +56,34 @@
     "expectedSlices": ["とぱ"]
   },
   {
+    "name": "Devanagari spacing-mark word",
+    "text": "कम काम",
+    "terms": ["काम"],
+    "queryTerms": ["काम"],
+    "expectedSlices": ["काम"]
+  },
+  {
+    "name": "Multiple Devanagari spacing marks",
+    "text": "कामना",
+    "terms": ["कामना"],
+    "queryTerms": ["कामना"],
+    "expectedSlices": ["कामना"]
+  },
+  {
+    "name": "Enclosing-mark exact word",
+    "text": "AB⃝ AB",
+    "terms": ["ab⃝"],
+    "queryTerms": ["ab⃝"],
+    "expectedSlices": ["AB⃝"]
+  },
+  {
+    "name": "Spacing-mark word prefix",
+    "text": "कामना",
+    "terms": ["कामना"],
+    "queryTerms": ["का"],
+    "expectedSlices": ["का"]
+  },
+  {
     "name": "Devanagari spacing-mark distinction",
     "text": "कम काम",
     "terms": ["कम"],

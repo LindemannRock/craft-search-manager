@@ -75,7 +75,7 @@ See [Which query words are highlighted?](../feature-tour/highlighting.md#which-q
 
 ## A matched result term is missing or over-highlighted
 
-**Symptom:** Search returns the right result and its matched-term metadata is correct, but a title, snippet, or split heading does not mark the expected text. Older affected builds can miss Arabic or Persian digits, one-character terms such as `5`, `x`, or `東`, and underscore-separated words such as `foo_bar`. A browser result can also mark a distinct word that differs only by a spacing or enclosing mark.
+**Symptom:** Search returns the right result, but a title, snippet, or split heading does not mark the expected text. Older affected builds can miss Arabic or Persian digits, one-character terms such as `5`, `x`, or `東`, and underscore-separated words such as `foo_bar`. They can also split words containing meaningful Unicode spacing or enclosing marks during built-in indexing. For example, `काम` can still contribute to a match while its confirmed fragments cannot be projected back onto the displayed word.
 
 **Quick checks:**
 
@@ -83,9 +83,21 @@ See [Which query words are highlighted?](../feature-tour/highlighting.md#which-q
 2. Compare the bundled widget with `craft.searchManager.highlight()` or the standalone `SearchManagerHighlighter.highlight()` helper. A difference between those result surfaces points to an outdated browser bundle.
 3. Confirm you are looking at a search result, not destination-page highlighting. Destination pages intentionally use the simpler substring contract described under [On the destination page](../feature-tour/highlighting.md#on-the-destination-page).
 
-**Fix:** Update Search Manager to a version containing the Unicode and result-boundary highlighting correction. If your deployment copies or caches plugin assets, rebuild/deploy the current widget assets and clear that asset cache. No index rebuild or database migration is required.
+**Fix:** Update to Search Manager 5.55.1 or later. If your deployment copies or caches plugin assets, deploy the current widget assets and clear that asset cache.
 
-Affected versions used different PHP and browser normalization rules, suppressed most one-character PHP result terms, and treated `_` as part of a displayed word even though the search tokenizer treats punctuation as a boundary. The correction changes result painting only; it does not alter indexed terms, queries, ranking, autocomplete, or hosted-provider matching.
+The digit, one-character, accent, underscore, and browser-boundary corrections change result painting only. They do not require an index rebuild or database migration.
+
+The spacing/enclosing-mark correction does change the token shape stored by the built-in MySQL, PostgreSQL, Redis, and File backends. After deploying it, rebuild every configured index that uses one of those four backends. In the Control Panel, go to **Search Manager → Indices** and choose **Rebuild Index** from each affected index's row actions. You can instead repeat this console command with each affected handle:
+
+```bash
+php craft search-manager/index/rebuild --handle=entries-en
+```
+
+Use `ddev craft` instead of `php craft` in DDEV. Running `php craft search-manager/index/rebuild` without a handle asks for confirmation and queues all eligible indices, which may be useful when every configured index is built in. Let the queued rebuild jobs finish before treating searches or autocomplete as current.
+
+No schema or database migration is involved. Algolia, Meilisearch, and Typesense continue to receive the original query and use provider-native tokenization, so their indices are outside this correction and do not need a rebuild for it.
+
+To roll back, restore the previous Search Manager code and rebuild the same built-in indices again. The old code expects the previous stored token shape, so rolling back code without rebuilding leaves index and query behavior out of sync.
 
 ## Nothing is highlighted on the page after clicking a result
 

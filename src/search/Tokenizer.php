@@ -14,7 +14,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  * Tokenizer
  *
  * Converts text into searchable tokens for indexing and searching.
- * Handles Unicode text, lowercasing, and punctuation removal.
+ * Handles Unicode text, lowercasing, and punctuation boundaries.
  *
  * @since 5.0.0
  */
@@ -35,10 +35,9 @@ class Tokenizer
      *
      * Process:
      * 1. Convert to lowercase
-     * 2. Remove all punctuation (replace with spaces)
-     * 3. Keep only Unicode letters and numbers
-     * 4. Split on whitespace
-     * 5. Filter empty tokens
+     * 2. Start tokens with a Unicode letter or number
+     * 3. Keep letters, numbers, spacing marks, and enclosing marks within tokens
+     * 4. Treat punctuation, symbols, and orphaned marks as boundaries
      *
      * @param string $text Text to tokenize
      * @return array Array of tokens
@@ -52,22 +51,18 @@ class Tokenizer
         // Normalize text consistently across backends and collations.
         $text = $this->normalizeText($text);
 
-        // Replace all non-letter, non-number Unicode characters with spaces
-        // \p{L} matches any Unicode letter
-        // \p{N} matches any Unicode number
-        $text = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $text);
-
-        // Split on whitespace and filter empty strings
-        $tokens = array_filter(explode(' ', $text), function($token) {
-            return $token !== '';
-        });
+        // A token must begin with a letter or number. Unicode spacing marks
+        // (Mc) and enclosing marks (Me) may continue it, but can never create
+        // a standalone token when leading, orphaned, or punctuation-separated.
+        $matched = preg_match_all('/[\p{L}\p{N}][\p{L}\p{N}\p{Mc}\p{Me}]*/u', $text, $matches);
+        $tokens = $matched === false ? [] : $matches[0];
 
         $this->logDebug('Tokenized text', [
             'input_length' => mb_strlen($text),
             'token_count' => count($tokens),
         ]);
 
-        return array_values($tokens);
+        return $tokens;
     }
 
     /**

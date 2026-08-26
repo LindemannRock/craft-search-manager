@@ -1005,20 +1005,20 @@ try {
     const unicodeTitleSnippetHtml = renderResults([{
         elementId: 910,
         backendId: '910_1',
-        title: 'item٥ foo_bar',
+        title: 'item٥ foo_bar काम',
         url: '/unicode-result',
         entrySection: 'Pages',
         snippet: 'कम काम item۵',
-        matchedTerms: { title: ['item5', 'foo', 'bar'], content: ['कम', 'item5'] },
+        matchedTerms: { title: ['item5', 'foo', 'bar', 'काम'], content: ['काम', 'item5'] },
         matchedPhrases: [],
-    }], 'item5 foo bar कम', {
+    }], 'item5 foo bar काम', {
         resultsLayout: 'default',
         listboxId: 'unicode-title-snippet',
     });
     test(
         'Result titles and snippets share digit mark and punctuation boundary behavior',
-        unicodeTitleSnippetHtml.includes('<mark class="sm-highlight">item٥</mark> <mark class="sm-highlight">foo</mark>_<mark class="sm-highlight">bar</mark>')
-        && unicodeTitleSnippetHtml.includes('<mark class="sm-highlight">कम</mark> काम <mark class="sm-highlight">item۵</mark>'),
+        unicodeTitleSnippetHtml.includes('<mark class="sm-highlight">item٥</mark> <mark class="sm-highlight">foo</mark>_<mark class="sm-highlight">bar</mark> <mark class="sm-highlight">काम</mark>')
+        && unicodeTitleSnippetHtml.includes('कम <mark class="sm-highlight">काम</mark> <mark class="sm-highlight">item۵</mark>'),
     );
 
     const unicodeHeadingHtml = renderResults([{
@@ -1031,22 +1031,52 @@ try {
         type: 'source-doc',
         sectionType: 'heading',
         sectionId: 'unicode-heading',
-        sectionTitle: 'item𐒠 東',
+        sectionTitle: 'कामना item𐒠 東',
         sectionLevel: 2,
         sectionUrl: '/unicode-guide#unicode-heading',
         sectionIndex: 1,
         snippet: 'Astral digit and CJK heading.',
         score: 20,
         index: 'docs',
-        matchedTerms: { title: [], content: ['item0', '東'] },
+        matchedTerms: { title: [], content: ['कामना', 'item0', '東'] },
         matchedPhrases: [],
-    }], 'item0 東', {
+    }], 'कामना item0 東', {
         resultsLayout: 'default',
         listboxId: 'unicode-heading',
     });
     test(
-        'Split headings preserve astral digit and one-code-point slices',
-        unicodeHeadingHtml.includes('<mark class="sm-highlight">item𐒠</mark> <mark class="sm-highlight">東</mark>'),
+        'Split headings preserve spacing marks astral digits and one-code-point slices',
+        unicodeHeadingHtml.includes('<mark class="sm-highlight">कामना</mark> <mark class="sm-highlight">item𐒠</mark> <mark class="sm-highlight">東</mark>'),
+    );
+
+    const unicodeHierarchyHtml = renderResults([
+        {
+            ...headingProjectionHit,
+            backendId: '808_1_unicode-h2',
+            sectionTitle: 'काम overview',
+            sectionId: 'unicode-h2',
+            sectionLevel: 2,
+            sectionIndex: 1,
+            matchedTerms: { title: [], content: ['काम'] },
+        },
+        {
+            ...headingProjectionHit,
+            backendId: '808_1_unicode-h3',
+            sectionTitle: 'कामना details',
+            sectionId: 'unicode-h3',
+            sectionLevel: 3,
+            sectionIndex: 2,
+            matchedTerms: { title: [], content: ['कामना'] },
+        },
+    ], 'काम OR कामना', {
+        resultsLayout: 'hierarchical',
+        listboxId: 'unicode-hierarchy',
+        hierarchyMaxHeadings: 3,
+    });
+    test(
+        'Hierarchical H2 and H3 headings preserve coherent spacing-mark slices',
+        unicodeHierarchyHtml.includes('<mark class="sm-highlight">काम</mark> overview')
+        && unicodeHierarchyHtml.includes('<mark class="sm-highlight">कामना</mark> details'),
     );
 
     const mixedHtml = renderResults([splitHits[0], {

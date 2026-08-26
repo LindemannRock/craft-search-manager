@@ -44,9 +44,7 @@ final class ResultHighlightTermSelector
      */
     public static function forText(array $resolvedTermsByToken, string $text): array
     {
-        $normalized = TermNormalizer::normalize($text);
-        $normalized = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $normalized) ?? '';
-        $termSet = array_fill_keys(array_values(array_filter(explode(' ', $normalized))), true);
+        $termSet = array_fill_keys((new Tokenizer())->tokenize($text), true);
 
         return self::select(
             $resolvedTermsByToken,
