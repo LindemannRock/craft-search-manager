@@ -37,8 +37,8 @@
     "require": {
         "php": "^8.2",
         "craftcms/cms": "^5.10",
-        "lindemannrock/craft-logging-library": "^5.18.1",
-        "lindemannrock/craft-plugin-base": "^5.38.1",
+        "lindemannrock/craft-logging-library": "^5.18.2",
+        "lindemannrock/craft-plugin-base": "^5.38.2",
         "algolia/algoliasearch-client-php": "^4.0",
         "meilisearch/meilisearch-php": "^1.0",
         "typesense/typesense-php": "^4.0"
@@ -48,6 +48,7 @@
         "craftcms/commerce": "^5.0",
         "craftcms/ecs": "dev-main",
         "craftcms/phpstan": "dev-main",
+        "phpstan/phpstan": "^1.12.33",
         "phpunit/phpunit": "^11.0",
         "yiisoft/yii2-redis": "^2.0",
         "lindemannrock/craft-docs-manager": "^5.0",
