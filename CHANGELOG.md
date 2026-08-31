@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.55.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.55.1...v5.55.2) - 2026-08-31
+
+
+### Fixed
+
+* **deps:** bump release dependency floors ([e061666](https://github.com/LindemannRock/craft-search-manager/commit/e06166607aa2c8f1d382df4850687a849d94e92d))
+
 ## [5.55.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.55.0...v5.55.1) - 2026-08-26
 
 
