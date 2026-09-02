@@ -17,8 +17,10 @@
 {% set queryParams = craft.app.request.queryParams %}
 {% set indexRecords = craft.searchManager.getAvailableIndices() %}
 {% set indexHandles = indexRecords|map(index => index.handle) %}
+{% set siteRecords = craft.app.sites.getAllSites() %}
+{% set siteIds = siteRecords|map(site => site.id ~ '') %}
 {% set siteNamesById = {} %}
-{% for site in craft.app.sites.getAllSites() %}
+{% for site in siteRecords %}
     {% set siteNamesById = siteNamesById|merge({ (site.id): site.name }) %}
 {% endfor %}
 {% set initialIndex = 'all-sites' in indexHandles ? 'all-sites' : (indexHandles[0] ?? '') %}
@@ -28,6 +30,14 @@
 {% set query = requestQuery is not null and requestQuery != '' ? requestQuery : (signalState.q ?? '') %}
 {% set activeIndex = requestIndex is not null and requestIndex != '' ? requestIndex : (signalState.index ?? initialIndex) %}
 {% set activeIndex = activeIndex == '__all' or activeIndex in indexHandles ? activeIndex : initialIndex %}
+{% set requestedSiteId = queryParams.siteId ?? craft.app.request.getParam('siteId') ?? (signalState.siteId ?? currentSite.id) %}
+{% set selectedSiteId = (requestedSiteId ~ '') in siteIds ? requestedSiteId : currentSite.id %}
+{% set selectedSite = currentSite %}
+{% for site in siteRecords %}
+    {% if (site.id ~ '') == (selectedSiteId ~ '') %}
+        {% set selectedSite = site %}
+    {% endif %}
+{% endfor %}
 {% set requestLimit = queryParams.limit ?? craft.app.request.getParam('limit') ?? (signalState.limit ?? 10) %}
 {% set limit = requestLimit matches '/^\\d+$/' ? requestLimit : 10 %}
 {% set limit = limit < 1 ? 1 : (limit > 50 ? 50 : limit) %}
@@ -44,17 +54,17 @@
 {% set isShortLinkIndex = activeElementType ends with '\\ShortLink' %}
 {% set isSourceDocIndex = activeElementType ends with '\\SourceDoc' %}
 {% set isEntryIndex = activeElementType == '' or activeElementType ends with '\\Entry' %}
-{% set nativeQueryLabel = 'craft.entries.site("*").search(query)' %}
+{% set nativeQueryLabel = 'craft.entries.site(selectedSite.handle).search(query)' %}
 {% if isProductIndex %}
-    {% set nativeQueryLabel = 'craft.products.site("*").search(query)' %}
+    {% set nativeQueryLabel = 'craft.products.site(selectedSite.handle).search(query)' %}
 {% elseif isVariantIndex %}
-    {% set nativeQueryLabel = 'craft.variants.site("*").search(query)' %}
+    {% set nativeQueryLabel = 'craft.variants.site(selectedSite.handle).search(query)' %}
 {% elseif isSmartLinkIndex %}
-    {% set nativeQueryLabel = 'craft.smartLinkManager.smartLinks().site("*").search(query)' %}
+    {% set nativeQueryLabel = 'craft.smartLinkManager.smartLinks().site(selectedSite.handle).search(query)' %}
 {% elseif isShortLinkIndex %}
-    {% set nativeQueryLabel = 'craft.shortLinkManager.shortLinks().site("*").search(query)' %}
+    {% set nativeQueryLabel = 'craft.shortLinkManager.shortLinks().site(selectedSite.handle).search(query)' %}
 {% elseif isSourceDocIndex %}
-    {% set nativeQueryLabel = 'craft.docsManager.sourceDocs().site("*").search(query)' %}
+    {% set nativeQueryLabel = 'craft.docsManager.sourceDocs().site(selectedSite.handle).search(query)' %}
 {% endif %}
 {% set commerceEnabled = lrPluginEnabled('commerce') %}
 {% set canSearch = query|length >= 2 and indexHandles|length %}
@@ -62,7 +72,7 @@
 {% set searchManagerElapsedMs = null %}
 {% set nativeResults = [] %}
 {% set nativeElapsedMs = null %}
-{% set nativeScope = 'entries, all sites' %}
+{% set nativeScope = 'entries, selected site (' ~ selectedSite.name ~ ')' %}
 {% set nativeUnavailable = null %}
 {% set suggestionResponse = null %}
 {% set suggestions = [] %}
@@ -82,14 +92,24 @@
     {% if activeIndex != '__all' %}
         {% set suggestionResponse = craft.searchManager.suggest(query, activeIndex, {
             limit: 8,
+            siteId: selectedSite.id,
             includeMeta: true,
         }) %}
         {% set suggestions = suggestionResponse.suggestions ?? suggestionResponse %}
         {% set suggestionMeta = suggestionResponse.meta ?? null %}
     {% endif %}
 
+    {#
+    // Diagnostic-only: request protected backend/cache/timing metadata for the
+    // Backend, Cache, and Took metrics below. Search Manager returns this metadata
+    // only in Craft devMode or when the current user has the searchManager:viewDebug
+    // permission. Omit this option from normal public search templates unless they
+    // intentionally provide an authorized diagnostics view.
+    #}
     {% set searchOptions = {
         limit: limit,
+        siteId: selectedSite.id,
+        debugEnabled: true,
         snippetMaxLength: 150,
         snippetMode: 'balanced',
         snippetCleanMarkdown: true,
@@ -110,44 +130,44 @@
     #}
     {% set nativeStarted = date('now')|date('U.u') %}
     {% if isProductIndex %}
-        {% set nativeScope = 'products, all sites' %}
+        {% set nativeScope = 'products, selected site (' ~ selectedSite.name ~ ')' %}
         {% if commerceEnabled and craft.products is defined %}
-            {% set nativeResults = craft.products.site('*').search(query).orderBy('score desc').limit(limit).all() %}
+            {% set nativeResults = craft.products.site(selectedSite.handle).search(query).orderBy('score desc').limit(limit).all() %}
         {% else %}
             {% set nativeUnavailable = 'Craft Commerce is not enabled, so the product native-search comparison is skipped.' %}
         {% endif %}
     {% elseif isVariantIndex %}
-        {% set nativeScope = 'variants, all sites' %}
+        {% set nativeScope = 'variants, selected site (' ~ selectedSite.name ~ ')' %}
         {% if commerceEnabled and craft.variants is defined %}
-            {% set nativeResults = craft.variants.site('*').search(query).orderBy('score desc').limit(limit).all() %}
+            {% set nativeResults = craft.variants.site(selectedSite.handle).search(query).orderBy('score desc').limit(limit).all() %}
         {% else %}
             {% set nativeUnavailable = 'Craft Commerce is not enabled, so the variant native-search comparison is skipped.' %}
         {% endif %}
     {% elseif isSmartLinkIndex %}
-        {% set nativeScope = 'smart links, all sites' %}
+        {% set nativeScope = 'smart links, selected site (' ~ selectedSite.name ~ ')' %}
         {% if craft.smartLinkManager is defined %}
-            {% set nativeResults = craft.smartLinkManager.smartLinks().site('*').search(query).orderBy('score desc').limit(limit).all() %}
+            {% set nativeResults = craft.smartLinkManager.smartLinks().site(selectedSite.handle).search(query).orderBy('score desc').limit(limit).all() %}
         {% else %}
             {% set nativeUnavailable = 'SmartLink Manager is not enabled, so the smart-link native-search comparison is skipped.' %}
         {% endif %}
     {% elseif isShortLinkIndex %}
-        {% set nativeScope = 'short links, all sites' %}
+        {% set nativeScope = 'short links, selected site (' ~ selectedSite.name ~ ')' %}
         {% if craft.shortLinkManager is defined %}
-            {% set nativeResults = craft.shortLinkManager.shortLinks().site('*').search(query).orderBy('score desc').limit(limit).all() %}
+            {% set nativeResults = craft.shortLinkManager.shortLinks().site(selectedSite.handle).search(query).orderBy('score desc').limit(limit).all() %}
         {% else %}
             {% set nativeUnavailable = 'ShortLink Manager is not enabled, so the short-link native-search comparison is skipped.' %}
         {% endif %}
     {% elseif isSourceDocIndex %}
-        {% set nativeScope = 'source docs, all sites' %}
+        {% set nativeScope = 'source docs, selected site (' ~ selectedSite.name ~ ')' %}
         {% if craft.docsManager is defined %}
-            {% set nativeResults = craft.docsManager.sourceDocs().site('*').search(query).orderBy('score desc').limit(limit).all() %}
+            {% set nativeResults = craft.docsManager.sourceDocs().site(selectedSite.handle).search(query).orderBy('score desc').limit(limit).all() %}
         {% else %}
             {% set nativeUnavailable = 'Docs Manager is not enabled, so the docs native-search comparison is skipped.' %}
         {% endif %}
     {% elseif activeIndex == '__all' %}
         {% set nativeUnavailable = 'Select a single index to compare against a matching Craft element query.' %}
     {% elseif isEntryIndex %}
-        {% set nativeResults = craft.entries.site('*').search(query).orderBy('score desc').limit(limit).all() %}
+        {% set nativeResults = craft.entries.site(selectedSite.handle).search(query).orderBy('score desc').limit(limit).all() %}
     {% else %}
         {#
         // Honesty guard: an element type with no wired native query must not
@@ -165,7 +185,7 @@
             <div class="suggestions" aria-label="Autocomplete suggestions">
                 <strong>Suggestions</strong>
                 {% for suggestion in suggestions %}
-                    <a class="suggestion-chip" href="?q={{ suggestion|url_encode }}&smIndex={{ activeIndex|url_encode }}&limit={{ limit }}">{{ suggestion }}</a>
+                    <a class="suggestion-chip" href="?q={{ suggestion|url_encode }}&smIndex={{ activeIndex|url_encode }}&siteId={{ selectedSite.id }}&limit={{ limit }}">{{ suggestion }}</a>
                 {% endfor %}
                 {% if suggestionMeta %}
                     <span>Autocomplete cache {{ suggestionMeta.cached ?? false ? 'hit' : 'miss' }}</span>
@@ -203,7 +223,7 @@
                             </div>
                             <div>
                                 <dt>Scope</dt>
-                                <dd>{{ activeIndex == '__all' ? 'all indices' : activeIndex }}</dd>
+                                <dd>{{ activeIndex == '__all' ? 'all indices' : activeIndex }} · {{ selectedSite.name }}</dd>
                             </div>
                             <div>
                                 <dt>Backend</dt>
@@ -621,7 +641,7 @@
 
         .controls {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(180px, 260px) minmax(96px, 120px) auto;
+            grid-template-columns: minmax(0, 1fr) minmax(180px, 260px) minmax(140px, 200px) minmax(96px, 120px) auto;
             gap: 12px;
             margin-bottom: 18px;
         }
@@ -827,6 +847,16 @@
             padding: 1px 3px;
         }
 
+        @media (min-width: 761px) and (max-width: 980px) {
+            .controls {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .controls > :first-child {
+                grid-column: 1 / -1;
+            }
+        }
+
         @media (max-width: 760px) {
             main {
                 margin: 24px auto;
@@ -858,6 +888,7 @@
                 sm: {
                         q: query,
                         index: activeIndex,
+                        siteId: selectedSite.id,
                         limit: limit,
                     }
                 }|json_encode }}"
@@ -942,6 +973,19 @@
                     {% endif %}
                     {% for handle in indexHandles %}
                         <option value="{{ handle }}" {{ activeIndex == handle ? 'selected' }}>{{ handle }}</option>
+                    {% endfor %}
+                </select>
+
+                <select
+                    name="siteId"
+                    aria-label="Search site"
+                    {% if datastarEnabled %}
+                        data-bind:sm.siteId
+                        data-on:change="$sm.siteId = evt.target.value; {{ fetchAction }}"
+                    {% endif %}
+                >
+                    {% for site in siteRecords %}
+                        <option value="{{ site.id }}" {{ selectedSite.id == site.id ? 'selected' }}>{{ site.name }} ({{ site.handle }})</option>
                     {% endfor %}
                 </select>
 

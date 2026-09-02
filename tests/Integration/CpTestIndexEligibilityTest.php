@@ -133,6 +133,10 @@ final class CpTestIndexEligibilityTest extends TestCase
         foreach (['search-manager-search-playground.twig', 'search-manager-native-comparison.twig'] as $path) {
             $template = file_get_contents($templatesRoot . '/' . $path);
             self::assertIsString($template);
+            self::assertStringContainsString('siteId: selectedSite.id', $template, $path);
+            self::assertStringContainsString('name="siteId"', $template, $path);
+            self::assertStringContainsString('debugEnabled: true', $template, $path);
+            self::assertStringContainsString('searchManager:viewDebug', $template, $path);
             self::assertStringContainsString(
                 "'all-sites' in indexHandles ? 'all-sites' : (indexHandles[0] ?? '')",
                 $template,
@@ -160,6 +164,9 @@ final class CpTestIndexEligibilityTest extends TestCase
         );
         self::assertStringNotContainsString("widgetScope == '__all' ? indexHandles", $widget);
         self::assertSame(3, substr_count($widget, 'indexHandles: customIndexHandles,'));
+        self::assertSame(3, substr_count($widget, 'siteId: selectedSite.id,'));
+        self::assertSame(2, substr_count($widget, 'siteId: currentSite.id,'));
+        self::assertStringContainsString("name='siteId'", $widget);
     }
 
     public function testProjectDevelopmentTemplatesRenderWithoutAQueryOrBackendWork(): void

@@ -22,8 +22,10 @@
 {% set queryParams = craft.app.request.queryParams %}
 {% set indexRecords = craft.searchManager.getAvailableIndices() %}
 {% set indexHandles = indexRecords|map(index => index.handle) %}
+{% set siteRecords = craft.app.sites.getAllSites() %}
+{% set siteIds = siteRecords|map(site => site.id ~ '') %}
 {% set siteNamesById = {} %}
-{% for site in craft.app.sites.getAllSites() %}
+{% for site in siteRecords %}
     {% set siteNamesById = siteNamesById|merge({ (site.id): site.name }) %}
 {% endfor %}
 {% set initialIndex = 'all-sites' in indexHandles ? 'all-sites' : (indexHandles[0] ?? '') %}
@@ -33,6 +35,14 @@
 {% set requestQuery = requestQueryParam is not null and requestQueryParam != '' ? requestQueryParam : (signalState.q ?? '') %}
 {% set activeIndex = requestIndex is not null and requestIndex != '' ? requestIndex : (signalState.index ?? initialIndex) %}
 {% set activeIndex = activeIndex == '__all' or activeIndex in indexHandles ? activeIndex : initialIndex %}
+{% set requestedSiteId = queryParams.siteId ?? craft.app.request.getParam('siteId') ?? (signalState.siteId ?? currentSite.id) %}
+{% set selectedSiteId = (requestedSiteId ~ '') in siteIds ? requestedSiteId : currentSite.id %}
+{% set selectedSite = currentSite %}
+{% for site in siteRecords %}
+    {% if (site.id ~ '') == (selectedSiteId ~ '') %}
+        {% set selectedSite = site %}
+    {% endif %}
+{% endfor %}
 {% set requestLimit = queryParams.limit ?? craft.app.request.getParam('limit') ?? (signalState.limit ?? 10) %}
 {% set limit = requestLimit matches '/^\\d+$/' ? requestLimit : 10 %}
 {% set limit = limit < 1 ? 1 : (limit > 50 ? 50 : limit) %}
@@ -73,8 +83,18 @@
 {% endif %}
 
 {% if canSearch %}
+    {#
+    // Diagnostic-only: request protected backend/cache/timing metadata so the
+    // Cache metric below can show whether this search was cached. Search Manager
+    // returns this metadata only in Craft devMode or when the current user has
+    // the searchManager:viewDebug permission. Omit this option from normal public
+    // search templates unless they intentionally provide an authorized
+    // diagnostics view.
+    #}
     {% set searchOptions = {
         limit: limit,
+        siteId: selectedSite.id,
+        debugEnabled: true,
         snippetMaxLength: snippetMaxLength,
         snippetMode: snippetMode,
         snippetCleanMarkdown: snippetCleanMarkdown,
@@ -121,6 +141,7 @@
         aria-label="Autocomplete suggestions"
         data-autocomplete-enabled="{{ autocompleteEnabled ? '1' : '0' }}"
         data-autocomplete-url="{{ autocompleteEndpoint }}"
+        data-site-id="{{ selectedSite.id }}"
         data-autocomplete-min-length="{{ autocompleteMinLength }}"
         data-autocomplete-limit="8"
         hidden
@@ -161,7 +182,7 @@
                 </div>
                 <div class="metric">
                     <span>Scope</span>
-                    <strong>{{ activeIndex == '__all' ? 'all indices' : activeIndex }}</strong>
+                    <strong>{{ activeIndex == '__all' ? 'all indices' : activeIndex }} · {{ selectedSite.name }}</strong>
                 </div>
                 <div class="metric">
                     <span>Cache</span>
@@ -520,7 +541,7 @@
 
         .controls {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(180px, 260px) minmax(96px, 120px) auto;
+            grid-template-columns: minmax(0, 1fr) minmax(180px, 260px) minmax(140px, 200px) minmax(96px, 120px) auto;
             gap: 12px;
             margin-bottom: 18px;
         }
@@ -842,6 +863,16 @@
             padding: 1px 3px;
         }
 
+        @media (min-width: 761px) and (max-width: 980px) {
+            .controls {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .controls > :first-child {
+                grid-column: 1 / -1;
+            }
+        }
+
         @media (max-width: 760px) {
             main {
                 margin: 24px auto;
@@ -870,6 +901,7 @@
                 sm: {
                     q: requestQuery,
                     index: activeIndex,
+                    siteId: selectedSite.id,
                     limit: limit,
                     snippetMode: snippetMode,
                     snippetMaxLength: snippetMaxLength,
@@ -926,7 +958,7 @@
             <div class="samples" aria-label="Sample queries">
                 <strong>Operators</strong>
                 {% for sample in sampleQueries %}
-                    <a class="sample" href="?q={{ sample.query|url_encode }}&smIndex={{ activeIndex|url_encode }}&limit={{ limit }}&snippetMode={{ snippetMode }}&snippetMaxLength={{ snippetMaxLength }}&snippetCleanMarkdown={{ snippetCleanMarkdown ? '1' : '0' }}&snippetIncludeCodeBlocks={{ snippetIncludeCodeBlocks ? '1' : '0' }}">
+                    <a class="sample" href="?q={{ sample.query|url_encode }}&smIndex={{ activeIndex|url_encode }}&siteId={{ selectedSite.id }}&limit={{ limit }}&snippetMode={{ snippetMode }}&snippetMaxLength={{ snippetMaxLength }}&snippetCleanMarkdown={{ snippetCleanMarkdown ? '1' : '0' }}&snippetIncludeCodeBlocks={{ snippetIncludeCodeBlocks ? '1' : '0' }}">
                         <span class="sample-label">{{ sample.label }}</span>
                         <code>{{ sample.query }}</code>
                     </a>
@@ -967,6 +999,19 @@
                         {% endif %}
                         {% for handle in indexHandles %}
                             <option value="{{ handle }}" {{ activeIndex == handle ? 'selected' }}>{{ handle }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select
+                        name="siteId"
+                        aria-label="Search site"
+                        {% if datastarEnabled %}
+                            data-bind:sm.siteId
+                            data-on:change="$sm.siteId = evt.target.value; {{ fetchAction }}"
+                        {% endif %}
+                    >
+                        {% for site in siteRecords %}
+                            <option value="{{ site.id }}" {{ selectedSite.id == site.id ? 'selected' }}>{{ site.name }} ({{ site.handle }})</option>
                         {% endfor %}
                     </select>
 
@@ -1206,6 +1251,7 @@
                 url.searchParams.set('indexHandles', indexHandle);
                 url.searchParams.set('resultsLimit', dropdown.dataset.autocompleteLimit || '8');
                 url.searchParams.set('only', 'suggestions');
+                url.searchParams.set('siteId', dropdown.dataset.siteId);
 
                 fetch(url.toString(), {
                     headers: {

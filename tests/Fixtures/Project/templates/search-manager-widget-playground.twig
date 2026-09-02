@@ -13,6 +13,8 @@
 {% set settings = craft.searchManager.getSettings() %}
 {% set indexRecords = craft.searchManager.getAvailableIndices() %}
 {% set indexHandles = indexRecords|map(index => index.handle) %}
+{% set siteRecords = craft.app.sites.getAllSites() %}
+{% set siteIds = siteRecords|map(site => site.id ~ '') %}
 {% set widgetConfigs = plugin.widgetConfigs.getAll(true) %}
 {% set defaultWidget = plugin.widgetConfigs.getDefault() %}
 {% set queryParams = craft.app.request.queryParams %}
@@ -20,7 +22,16 @@
 {% set requestedScope = queryParams.widgetScope ?? craft.app.request.getParam('widgetScope') ?? initialScope %}
 {% set widgetScope = requestedScope == '__all' or requestedScope in indexHandles ? requestedScope : initialScope %}
 {% set customIndexHandles = widgetScope == '__all' ? [] : (widgetScope ? [widgetScope] : []) %}
-{% set scopeLabel = widgetScope == '__all' ? 'all indices' : (widgetScope ?: 'no indices') %}
+{% set requestedSiteId = queryParams.siteId ?? craft.app.request.getParam('siteId') ?? currentSite.id %}
+{% set selectedSiteId = (requestedSiteId ~ '') in siteIds ? requestedSiteId : currentSite.id %}
+{% set selectedSite = currentSite %}
+{% for site in siteRecords %}
+	{% if (site.id ~ '') == (selectedSiteId ~ '') %}
+		{% set selectedSite = site %}
+	{% endif %}
+{% endfor %}
+{% set indexScopeLabel = widgetScope == '__all' ? 'all indices' : (widgetScope ?: 'no indices') %}
+{% set scopeLabel = indexScopeLabel ~ ' · ' ~ selectedSite.name %}
 
 <!doctype html>
 <html lang='{{ craft.app.language }}'>
@@ -560,6 +571,14 @@
 							{% endfor %}
 						</select>
 					</label>
+					<label class='field'>
+						<span>Search site</span>
+						<select name='siteId' onchange='this.form.submit()'>
+							{% for site in siteRecords %}
+								<option value='{{ site.id }}' {{ selectedSite.id == site.id ? 'selected' }}>{{ site.name }} ({{ site.handle }})</option>
+							{% endfor %}
+						</select>
+					</label>
 				</form>
 
 				<div class='widget-grid'>
@@ -577,6 +596,7 @@
 							{%
 								include 'search-manager/_widget/search-modal' with {
 								    indexHandles: customIndexHandles,
+								    siteId: selectedSite.id,
 								}
 							%}
 						</div>
@@ -601,6 +621,7 @@
 						{%
 							include 'search-manager/_widget/search-modal' with {
 							    indexHandles: customIndexHandles,
+							    siteId: selectedSite.id,
 							    placeholder: 'Search content, products, docs...',
 							    theme: 'light',
 							    triggerHotkey: 'j',
@@ -763,6 +784,7 @@
 						{%
 							include 'search-manager/_widget/search-modal' with {
 							    indexHandles: customIndexHandles,
+							    siteId: selectedSite.id,
 							    placeholder: 'Search with debug metadata...',
 							    theme: 'light',
 							    triggerHotkey: 'd',
@@ -916,11 +938,14 @@
 					<code>triggerSelector</code>
 					.
 				</p>
-				<pre><code>{% verbatim %}{% include 'search-manager/_widget/search-modal' %}
+				<pre><code>{% verbatim %}{% include 'search-manager/_widget/search-modal' with {
+    siteId: currentSite.id,
+} %}
 
 <button id="site-search-trigger" type="button">Search site</button>
 
 {% include 'search-manager/_widget/search-modal' with {
+    siteId: currentSite.id,
     triggerEnabled: false,
     triggerSelector: '#site-search-trigger',
     indexHandles: ['entries'],

@@ -64,6 +64,8 @@ final class ExampleTemplateResourceContractTest extends TestCase
                 $sources[$filename],
                 $filename,
             );
+            self::assertStringContainsString('siteRecords = craft.app.sites.getAllSites()', $sources[$filename], $filename);
+            self::assertStringContainsString('selectedSite = currentSite', $sources[$filename], $filename);
             self::assertStringContainsString('noindex,nofollow', $sources[$filename], $filename);
         }
 
@@ -92,9 +94,48 @@ final class ExampleTemplateResourceContractTest extends TestCase
             $sources['search-manager-widget-playground.twig'],
         );
         self::assertStringContainsString(
-            ".site('*').search(query)",
+            '.site(selectedSite.handle).search(query)',
             $sources['search-manager-native-comparison.twig'],
         );
+        self::assertStringNotContainsString(
+            '.site(currentSite.handle).search(query)',
+            $sources['search-manager-native-comparison.twig'],
+        );
+        self::assertStringContainsString(
+            'data-site-id="{{ selectedSite.id }}"',
+            $sources['search-manager-search-playground.twig'],
+        );
+        self::assertStringContainsString(
+            "url.searchParams.set('siteId', dropdown.dataset.siteId)",
+            $sources['search-manager-search-playground.twig'],
+        );
+        self::assertSame(
+            2,
+            substr_count($sources['search-manager-widget-playground.twig'], 'siteId: currentSite.id,'),
+        );
+        self::assertSame(
+            3,
+            substr_count($sources['search-manager-widget-playground.twig'], 'siteId: selectedSite.id,'),
+        );
+        self::assertStringContainsString('name="siteId"', $sources['search-manager-search-playground.twig']);
+        self::assertStringContainsString('name="siteId"', $sources['search-manager-native-comparison.twig']);
+        self::assertStringContainsString("name='siteId'", $sources['search-manager-widget-playground.twig']);
+        foreach (['search-manager-search-playground.twig', 'search-manager-native-comparison.twig'] as $filename) {
+            self::assertStringContainsString('debugEnabled: true', $sources[$filename], $filename);
+            self::assertStringContainsString('Diagnostic-only: request protected backend/cache/timing metadata', $sources[$filename], $filename);
+            self::assertStringContainsString('searchManager:viewDebug', $sources[$filename], $filename);
+            self::assertStringContainsString('Omit this option from normal public', $sources[$filename], $filename);
+            self::assertStringContainsString(
+                'grid-template-columns: minmax(0, 1fr) minmax(180px, 260px) minmax(140px, 200px) minmax(96px, 120px) auto;',
+                $sources[$filename],
+                $filename,
+            );
+            self::assertStringContainsString(
+                '@media (min-width: 761px) and (max-width: 980px)',
+                $sources[$filename],
+                $filename,
+            );
+        }
 
         $combined = implode("\n", $sources);
         foreach (self::LEGACY_TEMPLATE_FILES as $filename) {
