@@ -489,6 +489,14 @@ Retention is intentionally different: the daily cleanup job and **Settings → A
 3. **Check storage permissions**: For file-based caching, ensure `@storage/runtime/search-manager/cache/` is writable.
 4. **If Redis cache storage is enabled, check the logs**: When `cacheStorageMethod` is `redis` but Craft's `cache` component is not Redis-backed, Search Manager logs a cache-component warning and skips Redis-specific cache operations until the component is fixed.
 
+## An example diagnostic page shows stale results or cache status
+
+**Symptom:** A copied search, native-comparison, or widget playground keeps showing an old query, site/index selection, configuration, or `Cache: miss`. The response may also show an upstream `X-Cache: HIT` or increasing `Age` header.
+
+**Cause:** A full-page/static cache is serving earlier HTML. The displayed Search Manager cache value describes the render that created that HTML; it does not mean Search Manager ran for the current browser request. Datastar or the widget's dynamic action requests can refresh part of a page without making the cached surrounding HTML current.
+
+**Fix:** Exclude the mapped diagnostic route from every active page-cache layer. Do not rely on `noindex,nofollow` or per-query cache variants. See [Example templates → Exclude the routes from full-page caches](example-templates.md#exclude-the-routes-from-full-page-caches) for Servd, Blitz, multisite, and verification guidance.
+
 ## Widget not appearing
 
 1. **Is the widget included?** Check your template has `{% include 'search-manager/_widget/search-modal' %}`.

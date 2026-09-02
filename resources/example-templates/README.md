@@ -35,6 +35,14 @@ The files then resolve through Craft's normal template routes:
 
 If your project changes Craft's template routing or uses a route prefix, use the equivalent project URL.
 
+## Exclude the routes from page caches
+
+Exclude the routes your project maps to these templates from every full-page or static cache, including Servd, Blitz, CDNs, and reverse proxies. Caching query strings as unique pages is not sufficient: each query/configuration result is still frozen, and Search Manager's current cache hit/miss behavior cannot be tested reliably.
+
+The search and native-comparison pages do their work while Craft renders the request. The widget fetches search results from Search Manager's public Craft action endpoint after load, but cached playground HTML can still freeze its selected site/index, saved configuration, and rendered attributes. Datastar can update results dynamically; it does not make the initial render or normal GET fallback safe to cache.
+
+`noindex,nofollow` prevents neither caching nor unauthorized access. See [Full-page cache deployment guidance](../../docs/resources/example-templates.md#exclude-the-routes-from-full-page-caches) for the cache-layer distinction, Servd and Blitz options, multisite routing notes, and a diagnostic checklist.
+
 ## Search playground
 
 `search-manager-search-playground.twig` exercises Search Manager's Twig search surface. It can search one available index or let Search Manager search all available indices, and it exposes autocomplete, snippets, highlighting, promotions, query rules, cache metadata, live comparison, and debug output.
@@ -71,6 +79,6 @@ ddev composer require putyourlightson/craft-datastar && ddev craft plugin/instal
 
 ## Keep diagnostic routes private
 
-All three templates include `noindex,nofollow`, but that only asks search engines not to index the pages. It is not access control.
+All three templates include `noindex,nofollow`, but that only asks search engines not to index the pages. It is neither access control nor a cache directive.
 
 Remove the copied templates after testing, or protect their routes with project-level authentication or access rules. Do not expose diagnostic output, index handles, debug metadata, or test analytics on a public production site.
