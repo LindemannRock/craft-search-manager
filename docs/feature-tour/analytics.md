@@ -126,11 +126,17 @@ The stored `resultsCount` value is the backend-native `total` for that index res
 
 A zero-result *action* is one where **every** row in that action returned no hits, no redirect, and no promotion. A multi-index search that succeeded on at least one of its indices is not a content gap.
 
-### Widget searches and cache stats
+For multi-index and all-index searches, Search Manager waits until every selected index has finished and the results have been globally merged and limited before it writes analytics. Each selected index is written once with its actual backend, exact matching rules, cache and synonym outcome, and only the promotions that remain in the final presented results. An index-specific redirect can match only when that index was selected, and its redirect match is attributed only to that index; a global redirect is attributed across the selected indices.
 
-The frontend search widget skips per-keystroke analytics to avoid spam — instead, it writes a single row on user intent (Enter, click, or idle). The search response supplies a short-lived opaque cache-telemetry envelope, and the widget forwards it unchanged with that intent. Search Manager verifies that it belongs to the same query, site, exact index set, and displayed result count, then consumes it once. Each index in a multi-index search keeps its own hit or miss outcome.
+### Widget searches and verified outcomes
 
-Only verified telemetry classifies a widget row: genuine hits use `executionTime = 0`, while misses use a positive bounded server measurement. Legacy, missing, invalid, expired, replayed, mismatched, or otherwise unverifiable telemetry writes `executionTime = NULL`; those rows still appear in Recent Searches but are intentionally excluded from Performance calculations. Cache Performance therefore describes verified rows and trusted direct server-side searches, not every historical intent row.
+The frontend search widget skips per-keystroke analytics to avoid spam — instead, it writes a single row on user intent (Enter, click, or idle). Current widget builds explicitly negotiate telemetry v2 on the search request, so the response supplies one short-lived opaque `searchTelemetry` envelope and no v1 token. The widget forwards that envelope unchanged with the intent. Search Manager verifies that it belongs to the same query, site, exact ordered index set, displayed result count, and analytics source, then consumes it once. Each index in a multi-index search keeps its own backend, cache, synonym-expansion, matching-rule, redirect-rule-match, and presented-promotion outcome.
+
+The envelope itself contains no backend outcomes, rule or promotion IDs, cache outcomes, or redirect claims. Those values remain in a short-lived server-side record keyed by the envelope's random nonce. Analytics therefore reflects the executed synonym expansion, exact matching-rule snapshots, backend-proposed redirect-rule matches, and promotions represented by the final public hits, including cached searches, without trusting browser-supplied claims or recomputing a potentially different result later. A multi-index or all-index intent preserves per-index attribution.
+
+Only verified telemetry classifies a widget row: genuine cache hits use `executionTime = 0`, while misses use a positive bounded server measurement. Missing, invalid, expired, replayed, mismatched, or otherwise unverifiable v2 telemetry writes `executionTime = NULL` and cannot assert synonyms, rules, redirects, or promotion impressions; those rows still appear in Recent Searches but are intentionally excluded from Performance calculations. Cache Performance therefore describes verified rows and trusted direct server-side searches, not every historical intent row.
+
+Telemetry v1 remains a supported cache-only protocol. A v1 request receives only `cacheTelemetry`; when valid, it can classify cache performance but cannot assert synonyms, matching rules, redirects, or promotions. A v2 request receives only `searchTelemetry`. An invalid non-empty v2 token never falls back to a simultaneously supplied v1 token.
 
 ## Per-index analytics
 

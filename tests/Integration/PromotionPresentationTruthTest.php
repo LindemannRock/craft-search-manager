@@ -16,6 +16,9 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use craft\web\Request;
+use craft\web\Response;
+use lindemannrock\searchmanager\controllers\ApiController;
+use lindemannrock\searchmanager\controllers\SearchController;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -242,6 +245,181 @@ final class PromotionPresentationTruthTest extends TestCase
         self::assertSame([$promotionId], array_column($result['meta']['promotionsMatched'], 'id'));
     }
 
+    public function testWidgetIntentAnalyticsStoresPresentedPromotionForFreshAndCachedSearches(): void
+    {
+        [$index, $element] = $this->workingIndexAndElement();
+        $query = self::PREFIX . 'widget_' . StringHelper::randomString(12);
+        $promotionId = $this->seedPromotion($index, $element, $query, 'exact', 1, (int)$element->siteId);
+        $counter = (object)['searches' => 0];
+        $this->installPipelineBackend(
+            $index,
+            ['hits' => [], 'total' => 0],
+            [(int)$element->id => $this->indexedDocument($element, 'entry')],
+            $counter,
+        );
+
+        $fresh = $this->widgetSearch($query, $index->handle, (int)$element->siteId);
+        self::assertSame(true, $fresh['hits'][0]['promoted'] ?? null);
+        self::assertIsString($fresh['searchTelemetry'] ?? null);
+        self::assertArrayNotHasKey('meta', $fresh);
+        $this->trackWidgetSearch(
+            $query,
+            $index->handle,
+            (int)$element->siteId,
+            count($fresh['hits']),
+            $fresh['searchTelemetry'],
+        );
+
+        $cached = $this->widgetSearch($query, $index->handle, (int)$element->siteId, 'campaign-search');
+        self::assertSame(true, $cached['hits'][0]['promoted'] ?? null);
+        self::assertSame(1, $counter->searches, 'The second public search must reuse the raw-result cache.');
+        $this->trackWidgetSearch(
+            $query,
+            $index->handle,
+            (int)$element->siteId,
+            count($cached['hits']),
+            $cached['searchTelemetry'],
+            'campaign-search',
+        );
+
+        $analytics = $this->analyticsRows($query);
+        self::assertCount(2, $analytics);
+        self::assertSame([1, 1], array_map('intval', array_column($analytics, 'resultsCount')));
+        self::assertSame([1, 1], array_map('intval', array_column($analytics, 'promotionsShown')));
+        self::assertSame(['widget-modal', 'campaign-search'], array_column($analytics, 'source'));
+        self::assertGreaterThan(0.0, (float)$analytics[0]['executionTime']);
+        self::assertSame(0.0, (float)$analytics[1]['executionTime']);
+
+        $promotionRows = $this->promotionAnalyticsRows($query);
+        self::assertCount(2, $promotionRows);
+        foreach ($promotionRows as $row) {
+            self::assertSame($promotionId, (int)$row['promotionId']);
+            self::assertSame((int)$element->id, (int)$row['elementId']);
+            self::assertSame(1, (int)$row['position']);
+            self::assertSame((int)$element->siteId, (int)$row['siteId']);
+            self::assertSame($index->handle, $row['indexHandle']);
+            self::assertSame($query, $row['query']);
+        }
+
+        $recent = SearchManager::$plugin->analytics->getRecentSearches((int)$element->siteId, 20, null, 'last30days');
+        $recentRows = array_values(array_filter(
+            $recent,
+            static fn(array $row): bool => $row['query'] === $query,
+        ));
+        self::assertCount(2, $recentRows);
+        self::assertSame([1, 1], array_map('intval', array_column($recentRows, 'promotionsShown')));
+    }
+
+    public function testWidgetIntentAnalyticsStoresZeroWhenMatchingPromotionWasNotPresented(): void
+    {
+        [$index, $element] = $this->workingIndexAndElement();
+        $query = self::PREFIX . 'widget_gap_' . StringHelper::randomString(12);
+        $this->seedPromotion($index, $element, $query, 'exact', 1, null);
+        $counter = (object)['searches' => 0];
+        $this->installPipelineBackend($index, ['hits' => [], 'total' => 0], [], $counter);
+
+        $response = $this->widgetSearch($query, $index->handle, (int)$element->siteId);
+        self::assertSame([], $response['hits']);
+        $this->trackWidgetSearch(
+            $query,
+            $index->handle,
+            (int)$element->siteId,
+            0,
+            $response['searchTelemetry'],
+        );
+
+        self::assertSame(0, (int)$this->analyticsRows($query)[0]['promotionsShown']);
+        self::assertSame([], $this->promotionAnalyticsRows($query));
+    }
+
+    public function testAllIndexWidgetIntentExcludesPromotionOmittedByFinalGlobalLimit(): void
+    {
+        [$index, $element] = $this->workingIndexAndElement();
+        $query = self::PREFIX . 'widget_all_' . StringHelper::randomString(12);
+        $promotionId = $this->seedPromotion($index, $element, $query, 'exact', 1, null);
+        $omittedElementId = (int)$element->id + 100000000;
+        $counter = (object)['searches' => 0];
+        $secondHandle = 'smWidgetAll' . StringHelper::randomString(8);
+        $secondIndex = new SearchIndex([
+            'name' => 'Widget all second index',
+            'handle' => $secondHandle,
+            'elementType' => get_class($element),
+            'siteId' => (int)$element->siteId,
+            'enabled' => true,
+            'enableAnalytics' => true,
+            'source' => 'database',
+        ]);
+        self::assertTrue($secondIndex->save(), json_encode($secondIndex->getErrors(), JSON_THROW_ON_ERROR));
+        $omittedPromotionId = $this->seedPromotionForElementId(
+            $secondIndex,
+            $element,
+            $omittedElementId,
+            $query,
+            1,
+        );
+        $this->installPipelineBackend(
+            $index,
+            ['hits' => [], 'total' => 0],
+            [
+                (int)$element->id => $this->indexedDocument($element, 'entry'),
+                $omittedElementId => [
+                    'id' => $omittedElementId,
+                    'elementId' => $omittedElementId,
+                    'siteId' => (int)$element->siteId,
+                    'title' => 'Omitted promoted target',
+                    'url' => '/omitted-promoted-target',
+                    'type' => 'entry',
+                ],
+            ],
+            $counter,
+        );
+        $index->enableAnalytics = true;
+
+        $this->withOnlySearchIndices([$index, $secondIndex], function() use (
+            $index,
+            $secondHandle,
+            $element,
+            $query,
+            $promotionId,
+            $omittedPromotionId,
+        ): void {
+            $this->installHttpRequest('GET', [
+                'q' => $query,
+                'siteId' => (string)$element->siteId,
+                'skipAnalytics' => '1',
+                'widgetType' => 'modal',
+                'telemetryVersion' => '2',
+                'resultsLimit' => '1',
+            ]);
+            $search = (new ApiController('api', SearchManager::$plugin))->actionSearch()->data;
+            self::assertCount(1, $search['hits']);
+            self::assertSame($index->handle, $search['hits'][0]['index']);
+
+            $this->installHttpRequest('POST', [
+                'q' => $query,
+                'indexHandles' => '',
+                'siteId' => (string)$element->siteId,
+                'resultsCount' => '1',
+                'trigger' => 'enter',
+                'widgetType' => 'modal',
+                'searchTelemetry' => $search['searchTelemetry'],
+            ]);
+            $tracked = (new SearchController('search', SearchManager::$plugin))->actionTrackSearch();
+            self::assertSame(['success' => true, 'tracked' => true], $tracked->data);
+
+            $rows = $this->analyticsRows($query);
+            self::assertCount(2, $rows);
+            self::assertSame([$index->handle, $secondHandle], array_column($rows, 'indexHandle'));
+            self::assertSame([1, 0], array_map('intval', array_column($rows, 'promotionsShown')));
+
+            $promotionRows = $this->promotionAnalyticsRows($query);
+            self::assertCount(1, $promotionRows);
+            self::assertSame($promotionId, (int)$promotionRows[0]['promotionId']);
+            self::assertSame($index->handle, $promotionRows[0]['indexHandle']);
+            self::assertNotContains($omittedPromotionId, array_map('intval', array_column($promotionRows, 'promotionId')));
+        });
+    }
+
     #[DataProvider('nonPresentedPromotionProvider')]
     public function testMissingAndTypeFilteredTargetsRemainContentGaps(string $documentType, bool $provideDocument, ?string $typeFilter): void
     {
@@ -385,6 +563,31 @@ final class PromotionPresentationTruthTest extends TestCase
         return (int)Craft::$app->getDb()->getLastInsertID();
     }
 
+    private function seedPromotionForElementId(
+        SearchIndex $index,
+        ElementInterface $element,
+        int $elementId,
+        string $query,
+        int $position,
+    ): int {
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_promotions}}', [
+            'indexHandle' => $index->handle,
+            'title' => self::PREFIX . StringHelper::randomString(12),
+            'query' => $query,
+            'matchType' => 'exact',
+            'elementId' => $elementId,
+            'elementType' => get_class($element),
+            'position' => $position,
+            'siteId' => null,
+            'enabled' => 1,
+            'dateCreated' => Db::prepareDateForDb(new \DateTime()),
+            'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+
+        return (int)Craft::$app->getDb()->getLastInsertID();
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -409,6 +612,70 @@ final class PromotionPresentationTruthTest extends TestCase
         $promotion->position = $position;
 
         return $promotion;
+    }
+
+    /** @return array<string, mixed> */
+    private function widgetSearch(string $query, string $indexHandle, int $siteId, ?string $source = null): array
+    {
+        $parameters = [
+            'q' => $query,
+            'indexHandles' => $indexHandle,
+            'siteId' => (string)$siteId,
+            'skipAnalytics' => '1',
+            'widgetType' => 'modal',
+            'telemetryVersion' => '2',
+        ];
+        if ($source !== null) {
+            $parameters['analyticsSource'] = $source;
+        }
+        $this->installHttpRequest('GET', $parameters);
+
+        return (new ApiController('api', SearchManager::$plugin))->actionSearch()->data;
+    }
+
+    private function trackWidgetSearch(
+        string $query,
+        string $indexHandle,
+        int $siteId,
+        int $resultsCount,
+        string $searchTelemetry,
+        ?string $source = null,
+    ): void {
+        $parameters = [
+            'q' => $query,
+            'indexHandles' => $indexHandle,
+            'siteId' => (string)$siteId,
+            'resultsCount' => (string)$resultsCount,
+            'trigger' => 'idle',
+            'widgetType' => 'modal',
+            'searchTelemetry' => $searchTelemetry,
+        ];
+        if ($source !== null) {
+            $parameters['analyticsSource'] = $source;
+        }
+        $this->installHttpRequest('POST', $parameters);
+
+        $response = (new SearchController('search', SearchManager::$plugin))->actionTrackSearch();
+        self::assertSame(['success' => true, 'tracked' => true], $response->data);
+    }
+
+    /** @param array<string, mixed> $parameters */
+    private function installHttpRequest(string $method, array $parameters): void
+    {
+        $_SERVER['REQUEST_METHOD'] = $method;
+        $request = new Request([
+            'enableCookieValidation' => false,
+            'enableCsrfValidation' => false,
+        ]);
+        $request->setHostInfo('https://widget.example.test');
+        if ($method === 'POST') {
+            $request->setBodyParams($parameters);
+            $request->getHeaders()->set('Accept', 'application/json');
+        } else {
+            $request->setQueryParams($parameters);
+        }
+        Craft::$app->set('request', $request);
+        Craft::$app->set('response', new Response());
     }
 
     private function analyticsRows(string $query): array

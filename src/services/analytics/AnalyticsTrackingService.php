@@ -57,7 +57,7 @@ class AnalyticsTrackingService
      *   - rulesMatched: Number of query rules that matched
      *   - promotionsShown: Number of promotions shown
      *   - wasRedirected: Whether a redirect rule matched
-     *   - matchedRules: Array of matched QueryRule objects (for detailed tracking)
+     *   - matchedRules: Matched QueryRule objects or authoritative telemetry snapshots
      *   - matchedPromotions: Array of matched Promotion objects (for detailed tracking)
      * @param string|null $sessionId Optional session ID to group multi-index rows
      */
@@ -347,7 +347,7 @@ class AnalyticsTrackingService
     /**
      * Track detailed analytics for matched query rules
      *
-     * @param array $matchedRules Array of QueryRule objects
+     * @param array $matchedRules QueryRule objects or authoritative telemetry snapshots
      * @param string $query The search query
      * @param string $indexHandle The index handle
      * @param int|null $siteId The site ID
@@ -358,12 +358,19 @@ class AnalyticsTrackingService
         $now = Db::prepareDateForDb(new \DateTime());
 
         foreach ($matchedRules as $rule) {
+            $ruleId = $this->ruleValue($rule, 'id');
+            $ruleName = $this->ruleValue($rule, 'name');
+            $actionType = $this->ruleValue($rule, 'actionType');
+            if (!is_int($ruleId) || !is_string($ruleName) || !is_string($actionType)) {
+                continue;
+            }
+
             try {
                 Craft::$app->getDb()->createCommand()
                     ->insert('{{%searchmanager_rule_analytics}}', [
-                        'queryRuleId' => $rule->id,
-                        'ruleName' => $rule->name,
-                        'actionType' => $rule->actionType,
+                        'queryRuleId' => $ruleId,
+                        'ruleName' => $ruleName,
+                        'actionType' => $actionType,
                         'query' => $query,
                         'indexHandle' => $indexHandle,
                         'siteId' => $siteId,
@@ -374,7 +381,7 @@ class AnalyticsTrackingService
                     ->execute();
             } catch (\Throwable $e) {
                 $this->logError('Failed to track rule analytics', [
-                    'ruleId' => $rule->id,
+                    'ruleId' => $ruleId,
                     'error' => $e->getMessage(),
                 ]);
             }
@@ -384,7 +391,7 @@ class AnalyticsTrackingService
     /**
      * Track detailed analytics for matched promotions
      *
-     * @param array $matchedPromotions Array of Promotion objects with position info
+     * @param array $matchedPromotions Promotion objects or authoritative telemetry snapshots
      * @param string $query The search query
      * @param string $indexHandle The index handle
      * @param int|null $siteId The site ID
@@ -394,7 +401,10 @@ class AnalyticsTrackingService
         $now = Db::prepareDateForDb(new \DateTime());
 
         // Batch-fetch element titles to avoid N+1 queries
-        $elementIds = array_unique(array_filter(array_map(fn($p) => $p->elementId, $matchedPromotions)));
+        $elementIds = array_unique(array_filter(array_map(
+            fn(mixed $promotion): ?int => $this->promotionValue($promotion, 'elementId'),
+            $matchedPromotions,
+        )));
         $elementTitles = [];
         if (!empty($elementIds)) {
             $rows = (new Query())
@@ -410,16 +420,23 @@ class AnalyticsTrackingService
         }
 
         foreach ($matchedPromotions as $promo) {
+            $promotionId = $this->promotionValue($promo, 'id');
+            $elementId = $this->promotionValue($promo, 'elementId');
+            $position = $this->promotionValue($promo, 'position');
+            if ($promotionId === null || $elementId === null || $position === null) {
+                continue;
+            }
+
             try {
-                $elementTitle = $elementTitles[$promo->elementId] ?? null;
+                $elementTitle = $elementTitles[$elementId] ?? null;
 
                 Craft::$app->getDb()->createCommand()
                     ->insert('{{%searchmanager_promotion_analytics}}', [
-                        'promotionId' => $promo->id,
-                        'elementId' => $promo->elementId,
+                        'promotionId' => $promotionId,
+                        'elementId' => $elementId,
                         'elementTitle' => $elementTitle,
                         'query' => $query,
-                        'position' => $promo->position,
+                        'position' => $position,
                         'indexHandle' => $indexHandle,
                         'siteId' => $siteId,
                         'dateCreated' => $now,
@@ -428,11 +445,27 @@ class AnalyticsTrackingService
                     ->execute();
             } catch (\Throwable $e) {
                 $this->logError('Failed to track promotion analytics', [
-                    'promotionId' => $promo->id,
+                    'promotionId' => $promotionId,
                     'error' => $e->getMessage(),
                 ]);
             }
         }
+    }
+
+    private function promotionValue(mixed $promotion, string $field): ?int
+    {
+        $value = is_array($promotion)
+            ? ($promotion[$field] ?? null)
+            : (is_object($promotion) ? ($promotion->{$field} ?? null) : null);
+
+        return is_int($value) ? $value : (is_numeric($value) ? (int)$value : null);
+    }
+
+    private function ruleValue(mixed $rule, string $field): mixed
+    {
+        return is_array($rule)
+            ? ($rule[$field] ?? null)
+            : (is_object($rule) ? ($rule->{$field} ?? null) : null);
     }
 
     /**

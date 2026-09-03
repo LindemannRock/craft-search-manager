@@ -85,6 +85,7 @@ use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\services\TransformerService;
 use lindemannrock\searchmanager\services\WidgetCacheTelemetryService;
 use lindemannrock\searchmanager\services\WidgetConfigService;
+use lindemannrock\searchmanager\services\WidgetSearchOutcomeTelemetryService;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
 use lindemannrock\searchmanager\widgets\AnalyticsSummaryWidget;
 use lindemannrock\searchmanager\widgets\ContentGapsWidget;
@@ -122,6 +123,7 @@ use yii\base\Event;
  * @property-read PendingSyncProcessor $pendingSyncProcessor
  * @property-read WidgetConfigService $widgetConfigs
  * @property-read WidgetCacheTelemetryService $widgetCacheTelemetry
+ * @property-read WidgetSearchOutcomeTelemetryService $widgetSearchOutcomeTelemetry
  * @property-read \lindemannrock\searchmanager\services\WidgetStyleService $widgetStyles
  * @property-read Settings $settings
  * @method Settings getSettings()
@@ -345,6 +347,7 @@ class SearchManager extends Plugin
      */
     private function registerServices(): void
     {
+        $widgetSearchOutcomeTelemetry = new WidgetSearchOutcomeTelemetryService();
         $this->setComponents([
             'analytics' => AnalyticsService::class,
             'apiKeys' => ApiKeyService::class,
@@ -368,7 +371,10 @@ class SearchManager extends Plugin
             'storageMaintenance' => StorageMaintenanceService::class,
             'transformers' => TransformerService::class,
             'widgetConfigs' => WidgetConfigService::class,
-            'widgetCacheTelemetry' => WidgetCacheTelemetryService::class,
+            // Keep the previous component name as a delegating compatibility
+            // API while one generalized service owns both telemetry versions.
+            'widgetCacheTelemetry' => new WidgetCacheTelemetryService($widgetSearchOutcomeTelemetry),
+            'widgetSearchOutcomeTelemetry' => $widgetSearchOutcomeTelemetry,
             'widgetStyles' => \lindemannrock\searchmanager\services\WidgetStyleService::class,
         ]);
     }

@@ -27,6 +27,7 @@ use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\IndexCountBackendInterface;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
+use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
@@ -536,6 +537,7 @@ class BackendService extends Component
         $siteId = SearchSiteScopeHelper::scopedSiteId($options['siteId']);
         $settings = SearchManager::$plugin->getSettings();
         $includeQueryRuleDebug = (bool)($options['includeQueryRuleDebug'] ?? false);
+        $captureSearchOutcome = (bool)($options['_captureSearchOutcome'] ?? false);
 
         // Check if analytics should be skipped (used by cache warming, internal operations)
         $skipAnalytics = $options['skipAnalytics'] ?? false;
@@ -583,11 +585,25 @@ class BackendService extends Component
                 );
             }
 
-            return [
+            $redirectResult = [
                 'hits' => [],
                 'total' => 0,
                 'redirect' => $redirectUrl,
             ];
+            if ($captureSearchOutcome) {
+                $redirectResult['_searchOutcome'] = $this->searchOutcome(
+                    null,
+                    null,
+                    $backend->getName(),
+                    0,
+                    false,
+                    $matchedRules,
+                    true,
+                    [],
+                );
+            }
+
+            return $redirectResult;
         }
 
         // =====================================================================
@@ -691,6 +707,16 @@ class BackendService extends Component
                         ];
                     }, $presentedPromotions),
                 ];
+                $searchOutcome = $this->searchOutcome(
+                    true,
+                    null,
+                    $backend->getName(),
+                    (int)($cached['total'] ?? 0),
+                    $useSynonyms,
+                    $matchedRules,
+                    false,
+                    $presentedPromotions,
+                );
 
                 // Cache stores RAW backend results, so the local-engine debug
                 // rides along and stays accurate for the cached hit set.
@@ -709,6 +735,10 @@ class BackendService extends Component
                     $this->trigger(self::EVENT_AFTER_SEARCH, $afterEvent);
 
                     $cached = $afterEvent->results;
+                }
+
+                if ($captureSearchOutcome) {
+                    $cached['_searchOutcome'] = $searchOutcome;
                 }
 
                 return $cached;
@@ -824,6 +854,16 @@ class BackendService extends Component
                 ];
             }, $presentedPromotions),
         ];
+        $searchOutcome = $this->searchOutcome(
+            false,
+            $executionTime,
+            $backend->getName(),
+            (int)($results['total'] ?? 0),
+            $useSynonyms,
+            $matchedRules,
+            false,
+            $presentedPromotions,
+        );
 
         $this->_mergeSearchDebugIntoMeta($results);
 
@@ -842,6 +882,10 @@ class BackendService extends Component
             $this->trigger(self::EVENT_AFTER_SEARCH, $afterEvent);
 
             $results = $afterEvent->results;
+        }
+
+        if ($captureSearchOutcome) {
+            $results['_searchOutcome'] = $searchOutcome;
         }
 
         return $results;
@@ -1023,19 +1067,32 @@ class BackendService extends Component
         $options['siteId'] = SearchSiteScopeHelper::normalize($options['siteId'] ?? null);
         $siteId = SearchSiteScopeHelper::scopedSiteId($options['siteId']);
         $skipAnalytics = (bool)($options['skipAnalytics'] ?? false);
+        $captureSearchOutcome = (bool)($options['_captureSearchOutcome'] ?? false);
 
-        // Check for redirects first across all indexes (including global rules)
-        // Global rules (indexHandle = null) apply to all indexes
-        $redirectUrl = SearchManager::$plugin->queryRules->getRedirectUrl($query, null, $siteId);
-        if (!$redirectUrl) {
-            // Check each specific index for redirect rules
-            foreach ($indexNames as $indexName) {
-                $redirectUrl = SearchManager::$plugin->queryRules->getRedirectUrl($query, $indexName, $siteId);
-                if ($redirectUrl) {
-                    break;
-                }
-            }
+        $matchedRulesByIndex = [];
+        foreach ($indexNames as $indexName) {
+            $matchedRulesByIndex[$indexName] = SearchManager::$plugin->queryRules->getMatchingRules(
+                $query,
+                $indexName,
+                $siteId,
+            );
         }
+
+        // Preserve the established global priority order while excluding rules
+        // owned by indices that this aggregate did not select.
+        $eligibleRules = array_values(array_filter(
+            SearchManager::$plugin->queryRules->getMatchingRules($query, null, $siteId),
+            static fn(QueryRule $rule): bool => $rule->indexHandle === null
+                || in_array($rule->indexHandle, $indexNames, true),
+        ));
+        $matchedRedirectRule = null;
+        $redirectUrl = SearchManager::$plugin->queryRules->getRedirectUrl(
+            $query,
+            null,
+            $siteId,
+            $eligibleRules,
+            $matchedRedirectRule,
+        );
 
         // Generate session ID for multi-index analytics tracking
         $sessionId = \craft\helpers\StringHelper::UUID();
@@ -1047,28 +1104,24 @@ class BackendService extends Component
                 'indices' => $indexNames,
             ]);
 
-            // Track analytics per index with shared session ID
+            $searchOutcomes = [];
+            foreach ($indexNames as $indexName) {
+                $indexBackend = $this->getBackendForIndex($indexName);
+                $searchOutcomes[$indexName] = $this->searchOutcome(
+                    null,
+                    null,
+                    $indexBackend?->getName() ?? 'unknown',
+                    0,
+                    false,
+                    $matchedRulesByIndex[$indexName],
+                    $matchedRedirectRule !== null
+                        && ($matchedRedirectRule->indexHandle === null || $matchedRedirectRule->indexHandle === $indexName),
+                    [],
+                );
+            }
+
             if (!$skipAnalytics) {
-                $analyticsOptions = $this->analyticsOptionsFromSearchOptions($options);
-                foreach ($indexNames as $indexName) {
-                    SearchManager::$plugin->analytics->trackSearch(
-                        $indexName,
-                        $query,
-                        0,
-                        0,
-                        $backend->getName(),
-                        $siteId,
-                        array_merge($analyticsOptions, [
-                            'synonymsExpanded' => false,
-                            'rulesMatched' => 1,
-                            'promotionsShown' => 0,
-                            'wasRedirected' => true,
-                            'matchedRules' => [],
-                            'matchedPromotions' => [],
-                        ]),
-                        $sessionId,
-                    );
-                }
+                $this->trackAggregateSearchOutcomes($searchOutcomes, $query, $siteId, $options, $sessionId);
             }
 
             $redirectResult = [
@@ -1077,11 +1130,8 @@ class BackendService extends Component
                 'indices' => array_fill_keys($indexNames, 0),
                 'redirect' => $redirectUrl,
             ];
-            if ((bool)($options['_captureWidgetCacheTelemetry'] ?? false)) {
-                $redirectResult['_widgetCacheOutcomes'] = array_fill_keys($indexNames, [
-                    'cached' => null,
-                    'duration' => null,
-                ]);
+            if ($captureSearchOutcome) {
+                $redirectResult['_searchOutcomes'] = $searchOutcomes;
             }
 
             return $redirectResult;
@@ -1093,7 +1143,7 @@ class BackendService extends Component
         $allHits = [];
         $totalCount = 0;
         $indicesSearched = [];
-        $widgetCacheOutcomes = [];
+        $searchOutcomes = [];
         $meta = [
             'synonymsExpanded' => false,
             'expandedQueries' => [],
@@ -1110,11 +1160,13 @@ class BackendService extends Component
         foreach ($indexNames as $indexName) {
             $indexOptions = $this->aggregateChildPaginationOptions($options, 0);
             $indexOptions['sessionId'] = $sessionId;
+            $indexOptions['skipAnalytics'] = true;
+            $indexOptions['_captureSearchOutcome'] = true;
 
             $indexResults = $this->search($indexName, $query, $indexOptions);
 
-            if ((bool)($options['_captureWidgetCacheTelemetry'] ?? false)) {
-                $widgetCacheOutcomes[$indexName] = $this->widgetCacheOutcome($indexResults);
+            if (is_array($indexResults['_searchOutcome'] ?? null)) {
+                $searchOutcomes[$indexName] = $indexResults['_searchOutcome'];
             }
 
             // Track cache status (if any index is not cached, mark as not cached)
@@ -1182,6 +1234,11 @@ class BackendService extends Component
             $allHits = array_slice($allHits, $offset);
         }
 
+        $searchOutcomes = $this->retainAggregatePresentedPromotions($searchOutcomes, $allHits);
+        if (!$skipAnalytics) {
+            $this->trackAggregateSearchOutcomes($searchOutcomes, $query, $siteId, $options, $sessionId);
+        }
+
         $executionTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
 
         $result = [
@@ -1202,8 +1259,8 @@ class BackendService extends Component
                 'resolvedTerms' => $meta['resolvedTerms'],
             ],
         ];
-        if ((bool)($options['_captureWidgetCacheTelemetry'] ?? false)) {
-            $result['_widgetCacheOutcomes'] = $widgetCacheOutcomes;
+        if ($captureSearchOutcome) {
+            $result['_searchOutcomes'] = $searchOutcomes;
         }
 
         return $result;
@@ -1282,21 +1339,141 @@ class BackendService extends Component
     }
 
     /**
-     * @param array<string, mixed> $results
-     * @return array{cached: bool|null, duration: float|null}
+     * @param array<int, QueryRule|array<string, mixed>> $matchedRules
+     * @param array<int, object|array<string, mixed>> $matchedPromotions
+     * @return array{cached: bool|null, duration: float|null, backend: string, resultsCount: int, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}
      */
-    private function widgetCacheOutcome(array $results): array
-    {
-        $meta = is_array($results['meta'] ?? null) ? $results['meta'] : [];
-        $cached = is_bool($meta['cached'] ?? null) ? $meta['cached'] : null;
-        $duration = $cached === false && is_numeric($meta['took'] ?? null)
-            ? (float)$meta['took']
-            : null;
+    private function searchOutcome(
+        ?bool $cached,
+        ?float $duration,
+        string $backend,
+        int $resultsCount,
+        bool $synonymsExpanded,
+        array $matchedRules,
+        bool $wasRedirected,
+        array $matchedPromotions,
+    ): array {
+        $ruleSnapshots = [];
+        foreach ($matchedRules as $rule) {
+            $id = is_array($rule) ? ($rule['id'] ?? null) : ($rule->id ?? null);
+            $name = is_array($rule) ? ($rule['name'] ?? null) : ($rule->name ?? null);
+            $actionType = is_array($rule) ? ($rule['actionType'] ?? null) : ($rule->actionType ?? null);
+            if (!is_int($id) || !is_string($name) || !is_string($actionType)) {
+                continue;
+            }
+            $ruleSnapshots[$id] ??= [
+                'id' => $id,
+                'name' => $name,
+                'actionType' => $actionType,
+            ];
+        }
+
+        $promotionSnapshots = [];
+        foreach ($matchedPromotions as $promotion) {
+            $id = is_array($promotion) ? ($promotion['id'] ?? null) : ($promotion->id ?? null);
+            $elementId = is_array($promotion) ? ($promotion['elementId'] ?? null) : ($promotion->elementId ?? null);
+            $position = is_array($promotion) ? ($promotion['position'] ?? null) : ($promotion->position ?? null);
+            if (!is_int($id) || !is_int($elementId) || !is_int($position)) {
+                continue;
+            }
+            $promotionSnapshots[$id] ??= [
+                'id' => $id,
+                'elementId' => $elementId,
+                'position' => $position,
+            ];
+        }
 
         return [
             'cached' => $cached,
-            'duration' => $duration,
+            'duration' => $cached === false ? $duration : null,
+            'backend' => $backend,
+            'resultsCount' => max(0, $resultsCount),
+            'synonymsExpanded' => $synonymsExpanded,
+            'matchedRules' => array_values($ruleSnapshots),
+            'wasRedirected' => $wasRedirected,
+            'promotions' => array_values($promotionSnapshots),
         ];
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $outcomes
+     * @param list<array<string, mixed>> $hits
+     * @return array<string, array<string, mixed>>
+     */
+    private function retainAggregatePresentedPromotions(array $outcomes, array $hits): array
+    {
+        $presented = [];
+        foreach ($hits as $hit) {
+            if (($hit['promoted'] ?? false) !== true || !is_string($hit['_index'] ?? null)) {
+                continue;
+            }
+            $elementId = SearchHitIdentityHelper::elementId($hit);
+            $position = is_int($hit['position'] ?? null) ? $hit['position'] : null;
+            if ($elementId !== null && $position !== null) {
+                $presented[$hit['_index']][$elementId . ':' . $position] = true;
+            }
+        }
+
+        foreach ($outcomes as $indexHandle => &$outcome) {
+            $seen = [];
+            $outcome['promotions'] = array_values(array_filter(
+                is_array($outcome['promotions'] ?? null) ? $outcome['promotions'] : [],
+                static function(array $promotion) use ($indexHandle, $presented, &$seen): bool {
+                    $identity = ($promotion['elementId'] ?? '') . ':' . ($promotion['position'] ?? '');
+                    $id = $promotion['id'] ?? null;
+                    if (!is_int($id) || !isset($presented[$indexHandle][$identity]) || isset($seen[$id])) {
+                        return false;
+                    }
+                    $seen[$id] = true;
+                    return true;
+                },
+            ));
+        }
+        unset($outcome);
+
+        return $outcomes;
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $outcomes
+     * @param array<string, mixed> $options
+     */
+    private function trackAggregateSearchOutcomes(
+        array $outcomes,
+        string $query,
+        ?int $siteId,
+        array $options,
+        string $sessionId,
+    ): void {
+        $analyticsOptions = $this->analyticsOptionsFromSearchOptions($options);
+        foreach ($outcomes as $indexHandle => $outcome) {
+            $cached = is_bool($outcome['cached'] ?? null) ? $outcome['cached'] : null;
+            $executionTime = $cached === true
+                ? 0.0
+                : ($cached === false && is_numeric($outcome['duration'] ?? null)
+                    ? (float)$outcome['duration']
+                    : (($outcome['wasRedirected'] ?? false) === true ? 0.0 : null));
+            $matchedRules = is_array($outcome['matchedRules'] ?? null) ? $outcome['matchedRules'] : [];
+            $matchedPromotions = is_array($outcome['promotions'] ?? null) ? $outcome['promotions'] : [];
+
+            SearchManager::$plugin->analytics->trackSearch(
+                $indexHandle,
+                $query,
+                (int)($outcome['resultsCount'] ?? 0),
+                $executionTime,
+                is_string($outcome['backend'] ?? null) ? $outcome['backend'] : 'unknown',
+                $siteId,
+                array_merge($analyticsOptions, [
+                    'synonymsExpanded' => ($outcome['synonymsExpanded'] ?? false) === true,
+                    'rulesMatched' => count($matchedRules),
+                    'promotionsShown' => count($matchedPromotions),
+                    'wasRedirected' => ($outcome['wasRedirected'] ?? false) === true,
+                    'matchedRules' => $matchedRules,
+                    'matchedPromotions' => $matchedPromotions,
+                ]),
+                $sessionId,
+            );
+        }
     }
 
     /**
@@ -1324,7 +1501,7 @@ class BackendService extends Component
 
         // Remove analytics-only options that don't affect results
         $cacheOptions = $options;
-        foreach (['source', 'sourceDefault', 'platform', 'appVersion', 'skipAnalytics', 'sessionId', 'apiKeyId', 'apiKeyPrefix', 'apiKeyType', '_captureWidgetCacheTelemetry'] as $key) {
+        foreach (['source', 'sourceDefault', 'platform', 'appVersion', 'skipAnalytics', 'sessionId', 'apiKeyId', 'apiKeyPrefix', 'apiKeyType', '_captureSearchOutcome'] as $key) {
             unset($cacheOptions[$key]);
         }
         if (array_key_exists('siteId', $cacheOptions)) {

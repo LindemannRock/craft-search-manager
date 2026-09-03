@@ -96,9 +96,10 @@ class SearchWidgetBase extends HTMLElement {
         // Last query that was tracked for analytics (prevent double tracking)
         this.lastTrackedQuery = null;
 
-        // Opaque cache telemetry from the current response. It is forwarded
+        // Opaque outcome telemetry from the current response. It is forwarded
         // unchanged with one intent ping and never interpreted in the browser.
-        this.lastSearchCacheTelemetry = null;
+        this.lastSearchTelemetry = null;
+        this.lastV1CacheTelemetry = null;
 
         // Unique IDs for ARIA accessibility
         this.listboxId = generateId('sm-listbox');
@@ -453,7 +454,7 @@ class SearchWidgetBase extends HTMLElement {
         }
 
         try {
-            const { results, meta, cacheTelemetry } = await performSearch({
+            const { results, meta, searchTelemetry, cacheTelemetry } = await performSearch({
                 query,
                 endpoint: this.config.searchEndpoint,
                 indexHandles: this.config.indexHandles,
@@ -465,6 +466,8 @@ class SearchWidgetBase extends HTMLElement {
                 snippetMaxLength: this.config.snippetMaxLength,
                 snippetCleanMarkdown: this.config.snippetCleanMarkdown,
                 debugEnabled: this.config.debugEnabled,
+                widgetType: this.widgetType,
+                analyticsSource: this.config.analyticsSource,
                 apiKey: this.config.apiKey,
                 translations: this.config.translations,
             });
@@ -484,7 +487,10 @@ class SearchWidgetBase extends HTMLElement {
 
             // Capture only the current response's opaque telemetry. A stale
             // response returns above and cannot replace this value.
-            this.lastSearchCacheTelemetry = typeof cacheTelemetry === 'string'
+            this.lastSearchTelemetry = typeof searchTelemetry === 'string'
+                ? searchTelemetry
+                : null;
+            this.lastV1CacheTelemetry = typeof cacheTelemetry === 'string'
                 ? cacheTelemetry
                 : null;
 
@@ -1043,7 +1049,8 @@ class SearchWidgetBase extends HTMLElement {
             widgetType: this.widgetType,
             analyticsSource: this.config.analyticsSource,
             siteId: this.config.siteId,
-            cacheTelemetry: this.lastSearchCacheTelemetry,
+            searchTelemetry: this.lastSearchTelemetry,
+            cacheTelemetry: this.lastV1CacheTelemetry,
             apiKey: this.config.apiKey,
         });
     }
@@ -1055,7 +1062,8 @@ class SearchWidgetBase extends HTMLElement {
      */
     resetAnalyticsTracking() {
         this.lastTrackedQuery = null;
-        this.lastSearchCacheTelemetry = null;
+        this.lastSearchTelemetry = null;
+        this.lastV1CacheTelemetry = null;
         if (this.analyticsIdleTimer) {
             clearTimeout(this.analyticsIdleTimer);
             this.analyticsIdleTimer = null;

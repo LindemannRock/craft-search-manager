@@ -80,9 +80,11 @@ GET /actions/search-manager/api/search
 | `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`) |
 | `retrievableFields` | index setting | Optional comma-separated custom field handles to return under each hit's `fields` object. This can narrow the index's `retrievableFields` setting but cannot widen it. Use `*,-wysiwyg` to return all fields except `wysiwyg`, or an empty value to return no custom fields. |
 | `analyticsSource` | `rest` | Optional custom analytics source (e.g., `ios-app`). A missing, empty, or whitespace-only value keeps the `rest` default. |
+| `widgetType` | `modal` | Source boundary for a two-request widget/custom-UI flow: `modal`, `page`, or `inline`. Send the same value to `track-search`; it is relevant when `skipAnalytics=1`. |
+| `telemetryVersion` | `1` | Set to `2` with `skipAnalytics=1` to request one `searchTelemetry` token containing a nonce reference to complete server-held search outcomes. V1 requests receive `cacheTelemetry` instead. |
 | `platform` | (none) | Platform info for analytics (e.g., `iOS 17.2`) |
 | `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |
-| `skipAnalytics` | `0` | Skip analytics tracking for this search |
+| `skipAnalytics` | `0` | Skip automatic analytics for this search. With `telemetryVersion=2`, Search Manager attempts to return `searchTelemetry` for a later intent-based `track-search` request; v1 requests receive `cacheTelemetry`. |
 
 #### Snippet parameters
 
@@ -151,12 +153,12 @@ GET /actions/search-manager/api/search
     "page": 0,
     "resultsLimit": 20,
     "totalPages": 8,
-    "cacheTelemetry": "v1.…"
+    "searchTelemetry": "v2.…"
 }
 ```
 
 > [!NOTE]
-> Normal public search responses do not return internal metadata such as synonyms expanded, rules matched, provider details, or private indexed content. `cacheTelemetry` is an opaque, short-lived envelope for the bundled widget's intent ping; forward it unchanged and do not treat its internal encoding as a customization API.
+> Normal public search responses do not return internal metadata such as synonyms expanded, rules matched, provider details, or private indexed content. With `skipAnalytics=1` and `telemetryVersion=2`, `searchTelemetry` is an opaque, short-lived reference to the server-verified per-index backend, cache, executed synonym expansion, exact matching-rule snapshots, redirect-rule-match, and final presented-promotion outcomes. Forward it unchanged to `track-search`; do not inspect it or send separate outcome claims. The response contains only the negotiated v2 token. A v1 request instead receives only the supported cache-only `cacheTelemetry` envelope.
 
 Retrievable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills the internal source map automatically from Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled, including rich-text and body-source fields that also feed snippets, headings, and Split Sections. The index's `retrievableFields` setting then decides which of those values are returned publicly. Exclusions use the same `-attr` convention as Algolia's `attributesToRetrieve`, so `*,-wysiwyg` returns all fields except `wysiwyg`.
 
@@ -495,8 +497,9 @@ Records a search query when the user shows intent (clicking a result, pressing E
 | `widgetType` | `modal` | Widget boundary used for the default source: `modal`, `page`, or `inline`. The bundled widget sends this automatically. |
 | `analyticsSource` | Widget type | Optional custom source identifier (letters, numbers, dash, underscore; max 50 characters). Missing, empty, or whitespace-only values use `widget-modal`, `widget-page`, or `widget-inline`. |
 | `siteId` | (none) | Site ID |
-| `cacheTelemetry` | (none) | Opaque envelope from the current search response. The bundled widget forwards it unchanged. A valid one-time envelope lets Search Manager classify each selected index independently as a hit or miss. |
-| `cached`, `took` | (none) | Legacy compatibility fields. They remain accepted as scalar input but are not authoritative and cannot classify Performance rows without a valid `cacheTelemetry` envelope. |
+| `searchTelemetry` | (none) | V2 opaque envelope from the matching `skipAnalytics=1` search response. The bundled widget forwards it unchanged. A valid one-time envelope restores each selected index's server-verified backend, cache, executed synonym expansion, exact matching rules, redirect-rule-match, and final presented promotions. |
+| `cacheTelemetry` | (none) | V1 cache-only envelope. A valid value can classify each selected index as a hit or miss, but cannot assert synonyms, rules, redirects, or promotions. Do not send it when `searchTelemetry` is available. |
+| `cached`, `took` | (none) | Non-authoritative scalar compatibility fields. They remain accepted as scalar input but cannot classify Performance rows without valid telemetry. |
 
 ```json
 {"success": true, "tracked": true}
@@ -504,7 +507,9 @@ Records a search query when the user shows intent (clicking a result, pressing E
 
 Returns `"tracked": false` when analytics is disabled or no valid indices match.
 
-Missing, invalid, expired, replayed, mismatched, or legacy-only telemetry writes `executionTime = NULL`. The intent row still counts as a search action and appears in Recent Searches, but it is excluded from Performance calculations.
+Missing, invalid, expired, replayed, or mismatched v2 telemetry writes `executionTime = NULL` and records no synonym, rule, redirect, or promotion outcome. The intent row still counts as a search action and appears in Recent Searches, but it is excluded from Performance calculations. A non-empty invalid `searchTelemetry` value never downgrades to `cacheTelemetry`. Valid v1 telemetry can still classify execution time when no v2 token is supplied, but cannot supply any other search outcome.
+
+Custom two-request clients must send the same normalized query, site, ordered index selection, displayed result count, widget type, and custom analytics source on both requests. Forward only the opaque server-issued token. Raw synonym, rule, redirect, cache, promotion, `cached`, or `took` claims are not accepted as outcome authority.
 
 ### Track click
 

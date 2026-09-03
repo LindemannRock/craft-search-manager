@@ -14,6 +14,7 @@ use lindemannrock\searchmanager\helpers\AutocompleteResponseHelper;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\PublicRequestScalarHelper;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\ApiKey;
@@ -36,6 +37,7 @@ class ApiController extends Controller
      * Maximum query length to prevent resource exhaustion
      */
     private const MAX_QUERY_LENGTH = 256;
+    private const SEARCH_OUTCOME_TELEMETRY_VERSION = '2';
 
     /** @var array<string, scalar|null> */
     private const AUTOCOMPLETE_PARAMETERS = [
@@ -62,6 +64,8 @@ class ApiController extends Controller
         'retrievableFields' => null,
         'skipAnalytics' => false,
         'analyticsSource' => null,
+        'widgetType' => null,
+        'telemetryVersion' => null,
         'platform' => null,
         'appVersion' => null,
         'debugEnabled' => false,
@@ -369,6 +373,7 @@ class ApiController extends Controller
         // Analytics options (for mobile apps and custom integrations).
         // Source normalization is resolved once at the final analytics writer.
         $source = $parameters['analyticsSource'];
+        $widgetType = $parameters['widgetType'];
         $platform = TrackingMetadataHelper::platform($parameters['platform']);
         $appVersion = TrackingMetadataHelper::appVersion($parameters['appVersion']);
 
@@ -459,7 +464,7 @@ class ApiController extends Controller
             $options,
             SearchManager::$plugin->apiKeys->attributionOptions($this->authenticatedKey),
         );
-        $options['_captureWidgetCacheTelemetry'] = true;
+        $options['_captureSearchOutcome'] = true;
         $options['retrievableFieldsByIndex'] = SearchIndex::retrievableFieldsByIndex($indexHandles, $requestedRetrievableFields);
 
         // Run search (single, multi, or all enabled indices)
@@ -489,8 +494,8 @@ class ApiController extends Controller
             $results = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
         }
 
-        $cacheOutcomes = $this->widgetCacheOutcomes($results, $searchedIndexHandles);
-        unset($results['_widgetCacheOutcomes']);
+        $searchOutcomes = $this->widgetSearchOutcomes($results, $searchedIndexHandles);
+        unset($results['_searchOutcome'], $results['_searchOutcomes']);
 
         // Present every result through the canonical indexed-hit response path.
         // Keep backend meta only for the existing authorized debug-toolbar contract.
@@ -510,20 +515,52 @@ class ApiController extends Controller
             ]);
         }
 
+        $searchOutcomes = $this->retainPresentedPromotions(
+            $searchOutcomes,
+            is_array($results['hits'] ?? null) ? $results['hits'] : [],
+            $searchedIndexHandles,
+        );
+
         $total = (int) ($results['total'] ?? 0);
         $results['page'] = $page;
         $results['resultsLimit'] = $limit;
         $results['totalPages'] = (int) ceil($total / $limit);
 
-        $cacheTelemetry = SearchManager::$plugin->widgetCacheTelemetry->issue(
-            $query,
-            $siteId,
-            $searchedIndexHandles,
-            count(is_array($results['hits'] ?? null) ? $results['hits'] : []),
-            $cacheOutcomes,
+        $resultCount = count(is_array($results['hits'] ?? null) ? $results['hits'] : []);
+        $telemetrySource = TrackingMetadataHelper::resolveSource(
+            $source,
+            $skipAnalytics
+                ? TrackingMetadataHelper::widgetSourceDefault($widgetType)
+                : TrackingMetadataHelper::SOURCE_REST,
         );
-        if ($cacheTelemetry !== null) {
-            $results['cacheTelemetry'] = $cacheTelemetry;
+        $requestsSearchOutcomeTelemetry = (string)($parameters['telemetryVersion'] ?? '') === self::SEARCH_OUTCOME_TELEMETRY_VERSION;
+        if ($skipAnalytics && $requestsSearchOutcomeTelemetry) {
+            $searchTelemetry = SearchManager::$plugin->widgetSearchOutcomeTelemetry->issueSearchOutcome(
+                $query,
+                $siteId,
+                $searchedIndexHandles,
+                $resultCount,
+                $telemetrySource,
+                $searchOutcomes,
+            );
+            if ($searchTelemetry !== null) {
+                $results['searchTelemetry'] = $searchTelemetry;
+            }
+        }
+
+        if (!$requestsSearchOutcomeTelemetry) {
+            // Requests without explicit v2 capability negotiation retain the
+            // deployed widget's cache-only telemetry contract.
+            $cacheTelemetry = SearchManager::$plugin->widgetCacheTelemetry->issue(
+                $query,
+                $siteId,
+                $searchedIndexHandles,
+                $resultCount,
+                $searchOutcomes,
+            );
+            if ($cacheTelemetry !== null) {
+                $results['cacheTelemetry'] = $cacheTelemetry;
+            }
         }
 
         return $this->asJson($results);
@@ -532,32 +569,116 @@ class ApiController extends Controller
     /**
      * @param array<string, mixed> $results
      * @param list<string> $indexHandles
-     * @return array<string, array{cached: bool|null, duration: float|null}>
+     * @return array<string, array{cached: bool|null, duration: float|null, backend: string, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>
      */
-    private function widgetCacheOutcomes(array $results, array $indexHandles): array
+    private function widgetSearchOutcomes(array $results, array $indexHandles): array
     {
         $outcomes = [];
-        $multiOutcomes = is_array($results['_widgetCacheOutcomes'] ?? null)
-            ? $results['_widgetCacheOutcomes']
+        $multiOutcomes = is_array($results['_searchOutcomes'] ?? null)
+            ? $results['_searchOutcomes']
             : [];
-        $singleMeta = count($indexHandles) === 1 && is_array($results['meta'] ?? null)
-            ? $results['meta']
-            : [];
+        $singleOutcome = [];
+        if (count($indexHandles) === 1) {
+            $singleOutcome = is_array($results['_searchOutcome'] ?? null)
+                ? $results['_searchOutcome']
+                : (is_array($results['meta'] ?? null) ? $results['meta'] : []);
+        }
 
         foreach ($indexHandles as $indexHandle) {
             $raw = is_array($multiOutcomes[$indexHandle] ?? null)
                 ? $multiOutcomes[$indexHandle]
-                : $singleMeta;
+                : $singleOutcome;
             $cached = is_bool($raw['cached'] ?? null) ? $raw['cached'] : null;
             $outcomes[$indexHandle] = [
                 'cached' => $cached,
                 'duration' => $cached === false && is_numeric($raw['duration'] ?? $raw['took'] ?? null)
                     ? (float)($raw['duration'] ?? $raw['took'])
                     : null,
+                'backend' => is_string($raw['backend'] ?? null) ? $raw['backend'] : 'unknown',
+                'synonymsExpanded' => ($raw['synonymsExpanded'] ?? false) === true,
+                'matchedRules' => $this->ruleSnapshots($raw['matchedRules'] ?? $raw['rulesMatched'] ?? []),
+                'wasRedirected' => ($raw['wasRedirected'] ?? false) === true,
+                'promotions' => is_array($raw['promotions'] ?? $raw['promotionsMatched'] ?? null)
+                    ? array_values($raw['promotions'] ?? $raw['promotionsMatched'])
+                    : [],
             ];
         }
 
         return $outcomes;
+    }
+
+    /**
+     * Keep only server-matched promotions represented by the final public hits.
+     *
+     * @param array<string, array{cached: bool|null, duration: float|null, backend: string, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}> $outcomes
+     * @param list<array<string, mixed>> $hits
+     * @param list<string> $indexHandles
+     * @return array<string, array{cached: bool|null, duration: float|null, backend: string, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>
+     */
+    private function retainPresentedPromotions(array $outcomes, array $hits, array $indexHandles): array
+    {
+        $presented = [];
+        foreach ($hits as $hit) {
+            if (($hit['promoted'] ?? false) !== true) {
+                continue;
+            }
+
+            $indexHandle = is_string($hit['index'] ?? null)
+                ? $hit['index']
+                : ($indexHandles[0] ?? '');
+            $elementId = SearchHitIdentityHelper::elementId($hit);
+            $position = is_int($hit['position'] ?? null) ? $hit['position'] : null;
+            if ($indexHandle === '' || $elementId === null || $position === null) {
+                continue;
+            }
+
+            $presented[$indexHandle][$elementId . ':' . $position] = true;
+        }
+
+        foreach ($outcomes as $indexHandle => &$outcome) {
+            $seen = [];
+            $outcome['promotions'] = array_values(array_filter(
+                $outcome['promotions'],
+                static function(array $promotion) use ($indexHandle, $presented, &$seen): bool {
+                    $identity = $promotion['elementId'] . ':' . $promotion['position'];
+                    if (!isset($presented[$indexHandle][$identity]) || isset($seen[$promotion['id']])) {
+                        return false;
+                    }
+                    $seen[$promotion['id']] = true;
+                    return true;
+                },
+            ));
+        }
+        unset($outcome);
+
+        return $outcomes;
+    }
+
+    /** @return list<array{id: int, name: string, actionType: string}> */
+    private function ruleSnapshots(mixed $rules): array
+    {
+        if (!is_array($rules)) {
+            return [];
+        }
+
+        $snapshots = [];
+        foreach ($rules as $rule) {
+            if (
+                !is_array($rule)
+                || !is_int($rule['id'] ?? null)
+                || !is_string($rule['name'] ?? null)
+                || !is_string($rule['actionType'] ?? null)
+            ) {
+                continue;
+            }
+            $snapshots[$rule['id']] ??= [
+                'id' => $rule['id'],
+                'name' => $rule['name'],
+                'actionType' => $rule['actionType'],
+            ];
+        }
+
+        return array_values($snapshots);
     }
 
     /**

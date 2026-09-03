@@ -67,6 +67,7 @@ class SearchController extends Controller
         'analyticsSource' => null,
         'widgetType' => null,
         'siteId' => null,
+        'searchTelemetry' => null,
         'cacheTelemetry' => null,
         'cached' => null,
         'took' => null,
@@ -244,6 +245,7 @@ class SearchController extends Controller
      * - trigger: What triggered tracking ('click', 'enter', 'idle')
      * - analyticsSource: Source identifier (e.g., 'header-search', 'mobile-nav')
      * - siteId: Site ID (optional)
+     * - searchTelemetry: Opaque server-issued search-outcome envelope
      *
      * @return Response
      */
@@ -263,6 +265,7 @@ class SearchController extends Controller
         $trigger = (string)$parameters['trigger'];
         $source = $parameters['analyticsSource'];
         $sourceDefault = TrackingMetadataHelper::widgetSourceDefault($parameters['widgetType']);
+        $resolvedSource = TrackingMetadataHelper::resolveSource($source, $sourceDefault);
         $siteId = self::normalizeTrackingSiteId($parameters['siteId']);
 
         // Validate and sanitize inputs to prevent analytics pollution
@@ -315,33 +318,40 @@ class SearchController extends Controller
             ));
         }
 
-        // Raw cached/took values remain accepted for compatibility but are not
-        // authoritative. Only a bound, signed, unexpired, one-time envelope can
-        // classify an intent row as a cache hit or miss.
-        $verifiedExecutionTimes = SearchManager::$plugin->widgetCacheTelemetry->consume(
-            is_string($parameters['cacheTelemetry']) ? $parameters['cacheTelemetry'] : null,
+        // V2 restores complete server-issued per-index search outcomes. V1 can
+        // still classify cache state through its cache-only envelope, but it
+        // cannot assert synonyms, rules, redirects, or promotions.
+        $searchTelemetry = is_string($parameters['searchTelemetry'])
+            ? $parameters['searchTelemetry']
+            : null;
+        $verifiedOutcomes = SearchManager::$plugin->widgetSearchOutcomeTelemetry->consumeSearchOutcome(
+            $searchTelemetry,
             $query,
             $siteId,
             $selectedIndexHandles,
             $resultsCount,
+            $resolvedSource,
         );
+        $verifiedExecutionTimes = null;
+        if ($searchTelemetry === null || $searchTelemetry === '') {
+            $verifiedExecutionTimes = SearchManager::$plugin->widgetSearchOutcomeTelemetry->consumeV1CacheTelemetry(
+                is_string($parameters['cacheTelemetry']) ? $parameters['cacheTelemetry'] : null,
+                $query,
+                $siteId,
+                $selectedIndexHandles,
+                $resultsCount,
+            );
+        }
 
-        // Preserve legacy all-index row identity when telemetry is absent or
+        // Preserve v1 all-index row identity when telemetry is absent or
         // invalid. A verified all-index widget response carries its exact index
         // set and therefore records one independently classified row per index.
-        $handlesToTrack = $verifiedExecutionTimes !== null
-            ? array_keys($verifiedExecutionTimes)
-            : (!empty($indexHandles) ? $indexHandles : ['all']);
-
-        // Get first index's backend for logging (or default)
-        $backend = 'unknown';
-        if (!empty($indexHandles)) {
-            $backendInstance = SearchManager::$plugin->backend->getBackendForIndex($indexHandles[0]);
-            if ($backendInstance) {
-                $backend = $backendInstance->getName();
-            }
+        if ($verifiedOutcomes !== null) {
+            $handlesToTrack = array_keys($verifiedOutcomes);
+        } elseif ($verifiedExecutionTimes !== null) {
+            $handlesToTrack = array_keys($verifiedExecutionTimes);
         } else {
-            $backend = SearchManager::$plugin->getSettings()->defaultBackendHandle ?? 'unknown';
+            $handlesToTrack = !empty($indexHandles) ? $indexHandles : ['all'];
         }
 
         // Attribute the analytics row to the authenticated key (slice 5).
@@ -359,17 +369,35 @@ class SearchController extends Controller
             // Track per index with shared session ID for accurate per-index aggregation
             $sessionId = count($handlesToTrack) > 1 ? \craft\helpers\StringHelper::UUID() : null;
             foreach ($handlesToTrack as $handle) {
-                $executionTime = $verifiedExecutionTimes[$handle] ?? null;
+                $outcome = $verifiedOutcomes[$handle] ?? null;
+                $executionTime = is_array($outcome)
+                    ? $outcome['executionTime']
+                    : ($verifiedExecutionTimes[$handle] ?? null);
+                $presentedPromotions = is_array($outcome) ? $outcome['promotions'] : [];
+                $backendInstance = $handle !== 'all'
+                    ? SearchManager::$plugin->backend->getBackendForIndex($handle)
+                    : null;
+                $backend = is_array($outcome) && $outcome['backend'] !== 'unknown'
+                    ? $outcome['backend']
+                    : ($backendInstance?->getName() ?? SearchManager::$plugin->getSettings()->defaultBackendHandle ?? 'unknown');
+                $matchedRules = is_array($outcome) ? $outcome['matchedRules'] : [];
                 SearchManager::$plugin->analytics->trackSearch(
                     $handle,
                     $query,
                     $resultsCount,
-                    // Only verified telemetry classifies a hit (0) or miss (>0).
-                    // Unverified, legacy, and unknown outcomes remain null.
+                    // Verified v2 and v1 telemetry classify a hit (0)
+                    // or miss (>0). Unverified and unknown outcomes remain null.
                     $executionTime,
                     $backend,
                     $siteId,
-                    $analyticsOptions,
+                    array_merge($analyticsOptions, [
+                        'synonymsExpanded' => is_array($outcome) && $outcome['synonymsExpanded'],
+                        'rulesMatched' => count($matchedRules),
+                        'matchedRules' => $matchedRules,
+                        'wasRedirected' => is_array($outcome) && $outcome['wasRedirected'],
+                        'promotionsShown' => count($presentedPromotions),
+                        'matchedPromotions' => $presentedPromotions,
+                    ]),
                     $sessionId,
                 );
             }
@@ -380,6 +408,7 @@ class SearchController extends Controller
                 'source' => $source,
                 'sourceDefault' => $sourceDefault,
                 'resultsCount' => $resultsCount,
+                'searchTelemetryVerified' => $verifiedOutcomes !== null,
                 'cacheTelemetryVerified' => $verifiedExecutionTimes !== null,
             ]);
 
@@ -394,10 +423,10 @@ class SearchController extends Controller
     }
 
     /**
-     * Normalize legacy widget-supplied cache fields.
+     * Normalize v1 widget-supplied cache fields.
      *
      * Contract:
-     *  - cached missing or non-boolean-like        → null (legacy / unknown)
+     *  - cached missing or non-boolean-like        → null (v1 / unknown)
      *  - cached truthy                             → 0.0  (cache hit)
      *  - cached falsy AND took numeric in [0, max] → took (cache miss)
      *  - cached falsy AND took missing/invalid     → null (unknown)

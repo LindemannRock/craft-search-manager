@@ -9,7 +9,8 @@ import { t } from './Translations.js';
  * @property {Array} results - Search results array
  * @property {number} total - Total results count
  * @property {Object|null} meta - Debug metadata (timing, cache, etc.)
- * @property {string|null} cacheTelemetry - Opaque server-issued cache telemetry envelope
+ * @property {string|null} searchTelemetry - Opaque server-issued search-outcome envelope
+ * @property {string|null} cacheTelemetry - Opaque v1 cache-only telemetry envelope
  * @property {string|null} error - Server error message (query too long, etc.)
  */
 
@@ -27,12 +28,14 @@ import { t } from './Translations.js';
  * @param {number} options.snippetMaxLength - Max snippet length
  * @param {boolean} options.snippetCleanMarkdown - Clean Markdown markers before displaying snippets
  * @param {boolean} options.debugEnabled - Request debug metadata (overrides devMode default)
+ * @param {string} options.widgetType - Widget boundary ('modal', 'page', or 'inline')
+ * @param {string} options.analyticsSource - Analytics source identifier
  * @param {string} options.apiKey - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  * @param {AbortSignal} options.signal - AbortController signal
  * @param {Object} options.translations - Widget UI translations
  * @returns {Promise<SearchResponse>} - Search response with results, debug meta, and safe telemetry
  */
-export async function performSearch({ query, endpoint, indexHandles = [], siteId = '', resultsLimit = 10, resultsRequireUrl = false, snippetIncludeCodeBlocks = false, snippetMode = '', snippetMaxLength = 0, snippetCleanMarkdown = false, debugEnabled = false, apiKey = '', signal, translations = {} }) {
+export async function performSearch({ query, endpoint, indexHandles = [], siteId = '', resultsLimit = 10, resultsRequireUrl = false, snippetIncludeCodeBlocks = false, snippetMode = '', snippetMaxLength = 0, snippetCleanMarkdown = false, debugEnabled = false, widgetType = 'modal', analyticsSource = '', apiKey = '', signal, translations = {} }) {
     const params = new URLSearchParams({
         q: query,
         resultsLimit: resultsLimit.toString(),
@@ -75,6 +78,11 @@ export async function performSearch({ query, endpoint, indexHandles = [], siteId
     // Skip automatic analytics tracking for widget searches (prevents keystroke spam)
     // Widget uses explicit /track-search endpoint for intent-based tracking
     params.append('skipAnalytics', '1');
+    params.append('widgetType', widgetType);
+    params.append('telemetryVersion', '2');
+    if (analyticsSource) {
+        params.append('analyticsSource', analyticsSource);
+    }
 
     // Check if endpoint already has query params (Craft's actionUrl includes ?p=...)
     const separator = endpoint.includes('?') ? '&' : '?';
@@ -105,6 +113,7 @@ export async function performSearch({ query, endpoint, indexHandles = [], siteId
         results: data.results || data.hits || [],
         total: data.total || 0,
         meta: data.meta || null,
+        searchTelemetry: typeof data.searchTelemetry === 'string' ? data.searchTelemetry : null,
         cacheTelemetry: typeof data.cacheTelemetry === 'string' ? data.cacheTelemetry : null,
         error: data.error || null,
     };
@@ -199,9 +208,9 @@ export function trackClick({ endpoint, elementId, query, index, apiKey = '' }) {
  * - Presses Enter
  * - Stops typing for idle timeout
  *
- * Optionally forwards the opaque telemetry envelope from the final search
+ * Optionally forwards the opaque search-outcome envelope from the final search
  * response. The server verifies and consumes it once before classifying the
- * analytics row; absent or invalid telemetry remains unclassified.
+ * analytics row; the v1 cache-only field remains a supported fallback.
  *
  * @param {Object} options - Tracking options
  * @param {string} options.endpoint - The track-search endpoint URL
@@ -212,10 +221,11 @@ export function trackClick({ endpoint, elementId, query, index, apiKey = '' }) {
  * @param {string} options.widgetType - Widget boundary ('modal', 'page', or 'inline')
  * @param {string} options.analyticsSource - Source identifier (e.g., 'header-search')
  * @param {string} options.siteId - Optional site ID
- * @param {string} [options.cacheTelemetry] - Opaque server-issued cache telemetry envelope
+ * @param {string} [options.searchTelemetry] - Opaque server-issued search-outcome envelope
+ * @param {string} [options.cacheTelemetry] - Opaque server-issued v1 cache-only telemetry envelope
  * @param {string} [options.apiKey] - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  */
-export function trackSearch({ endpoint, query, indexHandles = [], resultsCount = 0, trigger = 'unknown', widgetType = 'modal', analyticsSource = '', siteId = '', cacheTelemetry = '', apiKey = '' }) {
+export function trackSearch({ endpoint, query, indexHandles = [], resultsCount = 0, trigger = 'unknown', widgetType = 'modal', analyticsSource = '', siteId = '', searchTelemetry = '', cacheTelemetry = '', apiKey = '' }) {
     if (!query || !endpoint) return;
 
     try {
@@ -231,7 +241,9 @@ export function trackSearch({ endpoint, query, indexHandles = [], resultsCount =
         if (siteId) {
             formData.append('siteId', siteId);
         }
-        if (typeof cacheTelemetry === 'string' && cacheTelemetry) {
+        if (typeof searchTelemetry === 'string' && searchTelemetry) {
+            formData.append('searchTelemetry', searchTelemetry);
+        } else if (typeof cacheTelemetry === 'string' && cacheTelemetry) {
             formData.append('cacheTelemetry', cacheTelemetry);
         }
 

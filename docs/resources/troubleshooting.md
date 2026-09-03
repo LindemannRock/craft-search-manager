@@ -440,13 +440,21 @@ ddev craft search-manager/security/generate-salt
 
 4. **Check queue**: Geo-location runs as a queue job. If your queue isn't processing, geo data won't be recorded.
 
+## Widget outcomes are missing from Analytics
+
+**Symptom:** The bundled widget changes results through synonyms or query rules, or visibly shows a promoted result, but the matching Recent Searches row displays a dash under **Synonyms**, **Rules**, or **Promotions**, or the detail report has no matching record.
+
+**Cause:** Current widget builds request telemetry v2 and forward the one-time opaque `searchTelemetry` value from the final `skipAnalytics=1` search response to the later intent request. Search Manager keeps the exact per-index backend, cache, executed synonym expansion, matching-rule snapshots, redirect-rule-match, and final presented-promotion outcomes server-side until that token is consumed. V1 clients receive only the supported cache-only `cacheTelemetry` field, which cannot assert the other outcomes. Missing, invalid, expired, replayed, query/site/index/count/source-mismatched, or unavailable v2 telemetry fails closed and records none of those outcomes; an invalid v2 token does not downgrade to v1.
+
+**Fix / checks:** Deploy the current generated widget bundle and clear any plugin-asset/CDN cache that could retain an earlier build. In the browser Network panel, confirm the search request sends `telemetryVersion=2`, its response includes top-level `searchTelemetry` but no `cacheTelemetry`, and the later `track-search` request forwards that same opaque value. Confirm both requests send the intended `siteId`, index selection, widget type, and custom analytics source. Craft also needs a suitable cross-request application cache for the short-lived server record and one-time replay protection. Do not send browser-built synonym, rule, redirect, cache, or promotion claims.
+
 ## Widget searches appear in Recent Searches but not Performance
 
 **Symptom:** A widget intent appears in Recent Searches, but cache hit rate and response-time reports do not include it.
 
-**Cause:** Performance uses only trusted direct server measurements or the bundled widget's verified, one-time cache telemetry. Legacy widget builds and intent requests with missing, invalid, expired, replayed, mismatched, or unavailable telemetry deliberately store a null execution time. The search action remains useful in Recent Searches, but it cannot safely be classified as a cache hit or miss.
+**Cause:** Performance uses only trusted direct server measurements or verified, one-time widget telemetry. Intent requests with missing, invalid, expired, replayed, mismatched, or unavailable v2 telemetry deliberately store a null execution time. The search action remains useful in Recent Searches, but it cannot safely be classified as a cache hit or miss. Valid v1 telemetry can still classify cache state, but cannot assert synonyms, rules, redirects, or promotions.
 
-**Fix / checks:** Rebuild and deploy the current widget bundle, confirm the page is not stripping the top-level `cacheTelemetry` value from search responses, and confirm Craft has a suitable cross-request application cache for replay protection. Do not copy `meta.cached` or `meta.took` into tracking requests; those legacy fields are not authoritative.
+**Fix / checks:** Rebuild and deploy the current widget bundle, confirm the page is not stripping the top-level `searchTelemetry` value from search responses, and confirm Craft has a suitable cross-request application cache for the outcome record and replay protection. Do not copy `meta.cached` or `meta.took` into tracking requests; those scalar fields are not authoritative.
 
 ## Analytics report shows a loading error
 

@@ -149,12 +149,14 @@ class QueryRuleService extends Component
      * Returns redirect URL or null
      *
      * @param QueryRule[]|null $matchedRules
+     * @param QueryRule|null $matchedRedirectRule Receives the rule that produced the returned URL
      */
     public function getRedirectUrl(
         string $query,
         ?string $indexHandle = null,
         ?int $siteId = null,
         ?array $matchedRules = null,
+        ?QueryRule &$matchedRedirectRule = null,
     ): ?string {
         $rules = $matchedRules ?? $this->getMatchingRules($query, $indexHandle, $siteId);
 
@@ -172,6 +174,9 @@ class QueryRuleService extends Component
                     'siteId' => $siteId,
                     'url' => $redirectUrl,
                 ]);
+                if ($redirectUrl !== null) {
+                    $matchedRedirectRule = $rule;
+                }
                 return $redirectUrl;
             }
         }

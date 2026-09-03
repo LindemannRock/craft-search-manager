@@ -22,6 +22,7 @@ use lindemannrock\searchmanager\controllers\SettingsController;
 use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\BackendService;
@@ -463,8 +464,34 @@ final class AnalyticsSourceAttributionTest extends TestCase
         self::assertCount(2, $multiRows);
         self::assertSame(['redirectcustom', 'redirectcustom'], array_column($multiRows, 'source'));
         self::assertSame([1, 1], array_map('intval', array_column($multiRows, 'wasRedirected')));
+        self::assertSame([1, 1], array_map('intval', array_column($multiRows, 'rulesMatched')));
         self::assertNotEmpty($multiRows[0]['sessionId']);
         self::assertSame($multiRows[0]['sessionId'], $multiRows[1]['sessionId']);
+        $ruleRows = (new Query())
+            ->select(['queryRuleId', 'ruleName', 'actionType', 'indexHandle', 'resultsCount'])
+            ->from('{{%searchmanager_rule_analytics}}')
+            ->where(['query' => $multiQuery])
+            ->orderBy(['indexHandle' => SORT_ASC])
+            ->all();
+        $expectedHandles = $handles;
+        sort($expectedHandles);
+        self::assertSame(
+            array_map(static fn(string $handle): array => [
+                'queryRuleId' => 900001,
+                'ruleName' => 'Analytics attribution redirect',
+                'actionType' => QueryRule::ACTION_REDIRECT,
+                'indexHandle' => $handle,
+                'resultsCount' => 0,
+            ], $expectedHandles),
+            array_map(static fn(array $row): array => [
+                'queryRuleId' => (int)$row['queryRuleId'],
+                'ruleName' => $row['ruleName'],
+                'actionType' => $row['actionType'],
+                'indexHandle' => $row['indexHandle'],
+                'resultsCount' => (int)$row['resultsCount'],
+            ], $ruleRows),
+        );
+        self::assertCount(2, $ruleRows);
         self::assertSame(0, $backend->searchCalls);
     }
 
@@ -932,7 +959,14 @@ final class AnalyticsAttributionRedirectQueryRuleService extends QueryRuleServic
 {
     public function getMatchingRules(string $query, ?string $indexHandle = null, ?int $siteId = null): array
     {
-        return [];
+        return [new QueryRule([
+            'id' => 900001,
+            'name' => 'Analytics attribution redirect',
+            'indexHandle' => null,
+            'actionType' => QueryRule::ACTION_REDIRECT,
+            'actionValue' => ['url' => 'https://example.test/search-redirect'],
+            'priority' => 10,
+        ])];
     }
 
     public function getRedirectUrl(
@@ -940,8 +974,9 @@ final class AnalyticsAttributionRedirectQueryRuleService extends QueryRuleServic
         ?string $indexHandle = null,
         ?int $siteId = null,
         ?array $matchedRules = null,
+        ?QueryRule &$matchedRedirectRule = null,
     ): ?string {
-        return 'https://example.test/search-redirect';
+        return parent::getRedirectUrl($query, $indexHandle, $siteId, $matchedRules, $matchedRedirectRule);
     }
 }
 

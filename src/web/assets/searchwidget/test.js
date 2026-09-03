@@ -100,7 +100,7 @@ if (fs.existsSync(widgetBaseFile)) {
     test('Widget delegates destination-page highlighting to the shared module', source.includes('return highlightFromUrl({'));
     test('Widget retains no destination-page DOM walker', !source.includes('createTreeWalker'));
     test('Widget forwards its runtime type to analytics tracking', source.includes('widgetType: this.widgetType'));
-    test('Widget stores only the opaque current-response telemetry envelope', source.includes('lastSearchCacheTelemetry') && !source.includes('lastSearchCacheState'));
+    test('Widget stores only opaque current-response telemetry envelopes', source.includes('lastSearchTelemetry') && !source.includes('lastSearchPromotion'));
 }
 
 const pageHighlighterFile = path.join(SRC_DIR, 'modules', 'PageHighlighter.js');
@@ -335,6 +335,8 @@ try {
             query: 'daterangehelper',
             endpoint: '/actions/search-manager/api/search',
             snippetCleanMarkdown: true,
+            widgetType: 'inline',
+            analyticsSource: 'header-search',
         });
         performSearch({
             query: 'daterangehelper',
@@ -351,19 +353,24 @@ try {
             query: 'widget custom',
             widgetType: 'inline',
             analyticsSource: 'header-search',
-            cacheTelemetry: 'opaque-widget-envelope',
+            searchTelemetry: 'opaque-widget-outcome',
+            cacheTelemetry: 'v1-widget-envelope',
         });
     } finally {
         global.fetch = originalFetch;
     }
 
     test('Widget forwards snippetCleanMarkdown when enabled', requestedUrls[0] && requestedUrls[0].includes('snippetCleanMarkdown=1'));
+    test('Widget binds the search request to its type and source', requestedUrls[0] && requestedUrls[0].includes('widgetType=inline') && requestedUrls[0].includes('analyticsSource=header-search'));
+    test('Widget explicitly negotiates one current search-outcome token', requestedUrls[0] && requestedUrls[0].includes('telemetryVersion=2'));
     test('Widget omits snippetCleanMarkdown when disabled', requestedUrls[1] && !requestedUrls[1].includes('snippetCleanMarkdown=1'));
     test('Widget sends its deterministic type boundary', trackingBodies[0]?.get('widgetType') === 'modal');
     test('Widget leaves an omitted custom source for the server default', !trackingBodies[0]?.has('analyticsSource'));
     test('Widget sends an explicit custom source unchanged', trackingBodies[1]?.get('widgetType') === 'inline' && trackingBodies[1]?.get('analyticsSource') === 'header-search');
-    test('Widget forwards opaque telemetry without raw cache claims', trackingBodies[1]?.get('cacheTelemetry') === 'opaque-widget-envelope'
-        && !trackingBodies[1]?.has('cached') && !trackingBodies[1]?.has('took'));
+    test('Widget prefers opaque outcome telemetry without raw browser claims', trackingBodies[1]?.get('searchTelemetry') === 'opaque-widget-outcome'
+        && !trackingBodies[1]?.has('cacheTelemetry') && !trackingBodies[1]?.has('cached')
+        && !trackingBodies[1]?.has('took') && !trackingBodies[1]?.has('promotionsShown')
+        && !trackingBodies[1]?.has('matchedPromotions'));
 } catch (error) {
     console.error(error);
     test('Widget request metadata tests execute', false);
@@ -1561,7 +1568,8 @@ async function runWidgetInstanceBehaviorTests() {
                             return {
                                 results: [{ id: title, elementId: title, title, url: `/${title}`, source: 'Docs', index: 'docs' }],
                                 meta: { cached: false, took: 3 },
-                                cacheTelemetry: `telemetry-${title}`,
+                                searchTelemetry: `outcome-${title}`,
+                                cacheTelemetry: `v1-${title}`,
                             };
                         },
                     });
@@ -1601,7 +1609,8 @@ async function runWidgetInstanceBehaviorTests() {
             return widget.state.get('query') === 'older'
                 && widget.state.get('results').length === 0
                 && widget.state.get('meta') === null
-                && widget.lastSearchCacheTelemetry === null
+                && widget.lastSearchTelemetry === null
+                && widget.lastV1CacheTelemetry === null
                 && widget.state.get('error') === null
                 && widget.shadowRoot.querySelectorAll('.sm-result-item').length === 0
                 && window.__smRequests.filter(request => !request.url.includes('/api/search')).length === 0;
@@ -1619,7 +1628,8 @@ async function runWidgetInstanceBehaviorTests() {
                 selectedIndex: widget.state.get('selectedIndex'),
                 linkCount: widget.shadowRoot.querySelectorAll('.sm-result-item').length,
                 analyticsTimer: widget.analyticsIdleTimer,
-                cacheState: widget.lastSearchCacheTelemetry,
+                outcomeTelemetry: widget.lastSearchTelemetry,
+                v1Telemetry: widget.lastV1CacheTelemetry,
                 trackingCount: window.__smRequests.filter(request => !request.url.includes('/api/search')).length,
             };
         });
@@ -1627,7 +1637,8 @@ async function runWidgetInstanceBehaviorTests() {
             queryState.query === '' && queryState.results === 0 && queryState.meta === null
             && queryState.error === null && queryState.loading === false && queryState.selectedIndex === -1
             && queryState.linkCount === 0 && queryState.analyticsTimer === null
-            && queryState.cacheState === null && queryState.trackingCount === 0);
+            && queryState.outcomeTelemetry === null && queryState.v1Telemetry === null
+            && queryState.trackingCount === 0);
         await resolveSearch(1, 'Late empty success');
         queryState = await page.evaluate(() => {
             const widget = document.getElementById('query-widget');
@@ -1659,7 +1670,8 @@ async function runWidgetInstanceBehaviorTests() {
             const requests = window.__smRequests.filter(request => request.url.includes('/api/search'));
             return widget.state.get('query') === 'newer-valid'
                 && widget.state.get('results')[0]?.title === 'Newer'
-                && widget.lastSearchCacheTelemetry === 'telemetry-Newer'
+                && widget.lastSearchTelemetry === 'outcome-Newer'
+                && widget.lastV1CacheTelemetry === 'v1-Newer'
                 && widget.shadowRoot.querySelector('.sm-result-item')?.textContent.includes('Newer')
                 && requests.every(request => request.signal === undefined);
         });
@@ -1699,14 +1711,18 @@ async function runWidgetInstanceBehaviorTests() {
             resultItem.click();
             await new Promise(resolve => setTimeout(resolve, 5));
             const trackingRequests = window.__smRequests.filter(request => !request.url.includes('/api/search'));
-            const clickTelemetry = trackingRequests.at(-1)?.body?.get('cacheTelemetry');
+            const clickTelemetry = trackingRequests.at(-1)?.body?.get('searchTelemetry');
+            const clickHasV1Telemetry = trackingRequests.at(-1)?.body?.has('cacheTelemetry');
             const clickHasRawClaims = trackingRequests.at(-1)?.body?.has('cached')
-                || trackingRequests.at(-1)?.body?.has('took');
+                || trackingRequests.at(-1)?.body?.has('took')
+                || trackingRequests.at(-1)?.body?.has('promotionsShown')
+                || trackingRequests.at(-1)?.body?.has('matchedPromotions');
 
             const triggerStart = trackingRequests.length;
             for (const trigger of ['idle', 'enter', 'click']) {
                 widget.resetAnalyticsTracking();
-                widget.lastSearchCacheTelemetry = `telemetry-${trigger}`;
+                widget.lastSearchTelemetry = `outcome-${trigger}`;
+                widget.lastV1CacheTelemetry = `v1-${trigger}`;
                 widget.trackSearchAnalytics(`query-${trigger}`, 1, trigger);
                 widget.trackSearchAnalytics(`query-${trigger}`, 1, trigger);
             }
@@ -1726,10 +1742,12 @@ async function runWidgetInstanceBehaviorTests() {
                 externalTriggerOpen: widget.state.get('isOpen'),
                 trackingHeaders: trackingRequests.map(request => request.headers['X-Search-Manager-Key']),
                 clickTelemetry,
+                clickHasV1Telemetry,
                 clickHasRawClaims,
                 triggerTelemetry: triggerRequests.map(request => ({
                     trigger: request.body.get('trigger'),
-                    telemetry: request.body.get('cacheTelemetry'),
+                    telemetry: request.body.get('searchTelemetry'),
+                    v1: request.body.get('cacheTelemetry'),
                 })),
                 noAbort: afterSnippet.every(request => request.signal === undefined),
             };
@@ -1751,12 +1769,13 @@ async function runWidgetInstanceBehaviorTests() {
             && liveConfig.trackingHeaders.every(header => header === 'new-key')
             && liveConfig.snippetHeader === 'new-key');
         test('Current response telemetry reaches click tracking without raw cache claims',
-            liveConfig.clickTelemetry === 'telemetry-Configured result' && !liveConfig.clickHasRawClaims);
+            liveConfig.clickTelemetry === 'outcome-Configured result'
+            && !liveConfig.clickHasV1Telemetry && !liveConfig.clickHasRawClaims);
         test('Idle, Enter, and click each forward current telemetry with same-query deduplication',
             JSON.stringify(liveConfig.triggerTelemetry) === JSON.stringify([
-                { trigger: 'idle', telemetry: 'telemetry-idle' },
-                { trigger: 'enter', telemetry: 'telemetry-enter' },
-                { trigger: 'click', telemetry: 'telemetry-click' },
+                { trigger: 'idle', telemetry: 'outcome-idle', v1: null },
+                { trigger: 'enter', telemetry: 'outcome-enter', v1: null },
+                { trigger: 'click', telemetry: 'outcome-click', v1: null },
             ]));
 
         // Reduced motion keeps the loading indicator functional and changes
