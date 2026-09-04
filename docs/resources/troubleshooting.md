@@ -448,6 +448,18 @@ ddev craft search-manager/security/generate-salt
 
 **Fix / checks:** Deploy the current generated widget bundle and clear any plugin-asset/CDN cache that could retain an earlier build. In the browser Network panel, confirm the search request sends `telemetryVersion=2`, its response includes top-level `searchTelemetry` but no `cacheTelemetry`, and the later `track-search` request forwards that same opaque value. Confirm both requests send the intended `siteId`, index selection, widget type, and custom analytics source. Craft also needs a suitable cross-request application cache for the short-lived server record and one-time replay protection. Do not send browser-built synonym, rule, redirect, cache, or promotion claims.
 
+## All-indices widget analytics shows Config/Error rows or repeated Hits
+
+**Symptom:** An **All indices** modal-widget search returns healthy results, but Recent Searches also contains rows for indices shown as Config/Error in the Control Panel. Those rows may repeat the displayed aggregate hit count and show the default backend, even though the broken indices produced no results.
+
+**Cause:** Older affected builds formed the unscoped REST and tracking selection from retained enabled index models instead of the effective available-index catalogue. Backend safeguards correctly prevented Config/Error or dependency-unavailable children from executing, but the two-request telemetry layer still created per-index identities for the broader pre-execution list. It then copied the browser-visible aggregate count to every row and resolved missing backend identity through the configured default. The stored rows were wrong; the search results themselves still came only from healthy executed indices.
+
+**Fix / checks:** Update to a Search Manager version containing the canonical All-indices and per-index native-total correction. No schema migration, reindex, fixture change, or historical analytics rewrite is required. After deployment, repeat the query and confirm that only currently available indices with actual server outcomes receive rows. Their **Hits** values can legitimately differ—including zero—because each row stores that index backend's native total, while the later `track-search.resultsCount` remains only a binding to the number of results the browser displayed. Restricted public API keys use the same effective ordered scope on both requests, so tracking cannot fall back to the installation's complete available-index set. Existing incorrect historical rows are not rewritten automatically.
+
+An unscoped v1 token created just before the update remains usable only until its original five-minute expiry. Search Manager verifies the previous server-derived scope, reapplies the API-key boundary, and filters persistence through current index availability. Those earlier tokens have no native-total server record, so their remaining eligible rows temporarily use the signed displayed-result count; this does not restore rows for unavailable indices.
+
+For custom two-request clients, keep forwarding the opaque `searchTelemetry` or supported v1 `cacheTelemetry` value unchanged with the same query, site, ordered requested scope, displayed count, widget type, and custom source. Do not construct per-index handles or counts in the browser.
+
 ## Widget searches appear in Recent Searches but not Performance
 
 **Symptom:** A widget intent appears in Recent Searches, but cache hit rate and response-time reports do not include it.

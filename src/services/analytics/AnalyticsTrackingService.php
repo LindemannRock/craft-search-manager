@@ -86,11 +86,12 @@ class AnalyticsTrackingService
         // Handle 'all', comma-joined indices, and single index handles
         // IMPORTANT: Resolve to only indices with enableAnalytics=true to avoid recording disabled indices
         if ($indexHandle === 'all') {
-            // For 'all': resolve enabled indices, filter to those with analytics enabled
-            $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            // For 'all': resolve the normal-consumer availability projection,
+            // then filter to indices with analytics enabled.
+            $allIndices = SearchManager::$plugin->dependencies->getAvailableIndices();
             $analyticsEnabledHandles = [];
             foreach ($allIndices as $idx) {
-                if ($idx->enabled && $idx->enableAnalytics) {
+                if ($idx->enableAnalytics) {
                     $analyticsEnabledHandles[] = $idx->handle;
                 }
             }
@@ -101,17 +102,18 @@ class AnalyticsTrackingService
             // Use resolved handles so record doesn't implicitly include disabled indices
             $indexHandle = implode(',', $analyticsEnabledHandles);
         } elseif (str_contains($indexHandle, ',')) {
-            // Comma-joined indices: filter to only those that are enabled AND have analytics enabled
+            // Comma-joined indices: filter to only canonically available
+            // indices that also have analytics enabled.
             $handles = array_map('trim', explode(',', $indexHandle));
             $indicesByHandle = [];
-            foreach (\lindemannrock\searchmanager\models\SearchIndex::findAll() as $idx) {
+            foreach (SearchManager::$plugin->dependencies->getAvailableIndices() as $idx) {
                 $indicesByHandle[$idx->handle] = $idx;
             }
 
             $analyticsEnabledHandles = [];
             foreach ($handles as $handle) {
                 $idx = $indicesByHandle[$handle] ?? null;
-                if ($idx && $idx->enabled && $idx->enableAnalytics) {
+                if ($idx && $idx->enableAnalytics) {
                     $analyticsEnabledHandles[] = $handle;
                 }
             }

@@ -16,10 +16,13 @@ use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use craft\web\Request;
+use craft\web\Response;
 use craft\web\View;
 use lindemannrock\searchmanager\backends\MySqlBackend;
+use lindemannrock\searchmanager\controllers\ApiController;
 use lindemannrock\searchmanager\controllers\ApiKeysController;
 use lindemannrock\searchmanager\controllers\IndicesController;
+use lindemannrock\searchmanager\controllers\SearchController;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\ConfigIndexValidationResult;
@@ -29,6 +32,7 @@ use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\AnalyticsService;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\ConfigIndexValidator;
 use lindemannrock\searchmanager\services\DependencyService;
@@ -363,6 +367,113 @@ final class IndexCatalogueLifecycleTest extends TestCase
             $variableSource,
         );
         self::assertStringNotContainsString('SearchIndex::findAll()', $variableSource);
+    }
+
+    public function testAllIndexRestIntentUsesCanonicalSelectionAndActualServerOutcomes(): void
+    {
+        $healthy = self::PREFIX . '-rest-healthy';
+        $error = self::PREFIX . '-rest-error';
+        $this->setSearchManagerConfig([
+            'indices' => [
+                $healthy => [
+                    'name' => 'REST Healthy',
+                    'elementType' => Entry::class,
+                    'enabled' => true,
+                ],
+                $error => [
+                    'name' => 'REST Error',
+                    'elementType' => Entry::class,
+                    'enabled' => true,
+                ],
+            ],
+        ]);
+        $validation = new ConfigIndexValidationResult(ConfigIndexValidationResult::STATUS_PRESENT);
+        $validation->addFinding(
+            $error,
+            ConfigIndexValidationResult::SEVERITY_ERROR,
+            'criteria',
+            'Synthetic supported configuration error.',
+        );
+        $this->swapPluginComponent(
+            'search-manager',
+            'configIndexValidator',
+            new FixedCatalogueConfigIndexValidator($validation),
+        );
+        $backend = $this->installStubBackend();
+        $backend->searchMultipleResponse = [
+            'hits' => [],
+            'total' => 0,
+            'indices' => [$healthy => 0],
+            '_searchOutcomes' => [
+                $healthy => [
+                    'cached' => true,
+                    'duration' => null,
+                    'backend' => 'mysql',
+                    'resultsCount' => 0,
+                    'synonymsExpanded' => false,
+                    'matchedRules' => [],
+                    'wasRedirected' => false,
+                    'promotions' => [],
+                ],
+            ],
+        ];
+        $analytics = new CatalogueRecordingAnalyticsService();
+        $this->swapPluginComponent('search-manager', 'analytics', $analytics);
+        $this->clearCatalogue();
+
+        $availableHandles = array_map(
+            static fn(SearchIndex $index): string => $index->handle,
+            SearchManager::$plugin->dependencies->getAvailableIndices(),
+        );
+        self::assertContains($healthy, $availableHandles);
+        self::assertNotContains($error, $availableHandles);
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $request = new Request([
+            'enableCookieValidation' => false,
+            'enableCsrfValidation' => false,
+        ]);
+        $request->setHostInfo('https://site.example.test');
+        $request->setQueryParams([
+            'q' => 'canonical all indices',
+            'indexHandles' => '',
+            'skipAnalytics' => '1',
+            'telemetryVersion' => '2',
+        ]);
+        Craft::$app->set('request', $request);
+        Craft::$app->set('response', new Response());
+
+        $response = (new ApiController('api', SearchManager::$plugin))->actionSearch();
+        $calls = $backend->callsFor('searchMultiple');
+        self::assertCount(1, $calls);
+        self::assertSame(implode(',', $availableHandles), $calls[0]['indexName']);
+        self::assertNotContains($error, $calls[0]['items'][0]['indices']);
+        self::assertIsString($response->data['searchTelemetry'] ?? null);
+
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $request = new Request([
+            'enableCookieValidation' => false,
+            'enableCsrfValidation' => false,
+        ]);
+        $request->setHostInfo('https://site.example.test');
+        $request->setBodyParams([
+            'q' => 'canonical all indices',
+            'indexHandles' => '',
+            'resultsCount' => '0',
+            'trigger' => 'enter',
+            'searchTelemetry' => $response->data['searchTelemetry'],
+        ]);
+        $request->getHeaders()->set('Accept', 'application/json');
+        Craft::$app->set('request', $request);
+        Craft::$app->set('response', new Response());
+
+        $tracked = (new SearchController('search', SearchManager::$plugin))->actionTrackSearch();
+        self::assertSame(['success' => true, 'tracked' => true], $tracked->data);
+        self::assertSame([[
+            'index' => $healthy,
+            'resultsCount' => 0,
+            'backend' => 'mysql',
+        ]], $analytics->calls);
     }
 
     public function testChoiceOptionsShareCanonicalLabelsAndRetainOnlySelectedUnavailableHandles(): void
@@ -960,5 +1071,29 @@ final class AvailableIndicesProbeBackend extends MySqlBackend
         $this->calls[] = __FUNCTION__;
 
         return parent::listIndices();
+    }
+}
+
+/** @since 5.56.0 */
+final class CatalogueRecordingAnalyticsService extends AnalyticsService
+{
+    /** @var list<array{index: string, resultsCount: int, backend: string}> */
+    public array $calls = [];
+
+    public function trackSearch(
+        string $indexHandle,
+        string $query,
+        int $resultsCount,
+        ?float $executionTime,
+        string $backend,
+        ?int $siteId = null,
+        array $analyticsOptions = [],
+        ?string $sessionId = null,
+    ): void {
+        $this->calls[] = [
+            'index' => $indexHandle,
+            'resultsCount' => $resultsCount,
+            'backend' => $backend,
+        ];
     }
 }

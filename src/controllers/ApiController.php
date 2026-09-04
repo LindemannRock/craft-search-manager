@@ -384,9 +384,12 @@ class ApiController extends Controller
             ]);
         }
 
-        // Parse and validate requested indices
-        [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
+        // Resolve the exact search/telemetry scope through the shared public
+        // search authority used again by the intent endpoint.
+        [$indexHandles, $indicesProvided, $exceededMax] = SearchManager::$plugin->apiKeys->resolveSearchIndexScope(
             (string)$parameters['indexHandles'],
+            $this->authenticatedKey,
+            $siteId,
         );
         if ($exceededMax) {
             return $this->asJson([
@@ -395,30 +398,6 @@ class ApiController extends Controller
                 'query' => $query,
                 'error' => Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES]),
             ]);
-        }
-
-        // Apply the API key's index permission boundary (2b): rejects an
-        // out-of-scope explicit index (403), or scopes an unscoped request to
-        // the key's own allowed indices.
-        if ($this->authenticatedKey !== null) {
-            [$indexHandles, $indicesProvided] = SearchManager::$plugin->apiKeys->scopeIndices(
-                $this->authenticatedKey,
-                $indexHandles,
-                $indicesProvided,
-            );
-
-            // Validate a requested siteId against the selected indices' scope (2c).
-            // Keyed requests only; siteId stays a filter, never a permission widener.
-            if ($siteId !== null) {
-                $selectedIndices = [];
-                foreach ($indexHandles as $handle) {
-                    $index = SearchIndex::findByHandle($handle);
-                    if ($index !== null) {
-                        $selectedIndices[] = $index;
-                    }
-                }
-                SearchManager::$plugin->apiKeys->assertSiteInScope($siteId, ...$selectedIndices);
-            }
         }
 
         // If indices were explicitly provided but none are valid/enabled, return empty
@@ -467,21 +446,10 @@ class ApiController extends Controller
         $options['_captureSearchOutcome'] = true;
         $options['retrievableFieldsByIndex'] = SearchIndex::retrievableFieldsByIndex($indexHandles, $requestedRetrievableFields);
 
-        // Run search (single, multi, or all enabled indices)
+        // Run search (single, multi, or all canonically available indices)
         $searchedIndexHandles = $indexHandles;
-        if (count($indexHandles) === 1) {
-            $results = SearchManager::$plugin->backend->search($indexHandles[0], $query, $options);
-        } elseif (count($indexHandles) > 1) {
-            $results = SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
-        } else {
-            // No indices specified - search all enabled indices
-            $allIndices = SearchIndex::findAll();
-            $allIndexHandles = array_map(
-                fn($idx) => $idx->handle,
-                array_filter($allIndices, fn($idx) => $idx->enabled)
-            );
-
-            if (empty($allIndexHandles)) {
+        if (!$indicesProvided) {
+            if (empty($indexHandles)) {
                 return $this->asJson([
                     'hits' => [],
                     'total' => 0,
@@ -489,9 +457,17 @@ class ApiController extends Controller
                 ]);
             }
 
-            $searchedIndexHandles = $allIndexHandles;
-            $options['retrievableFieldsByIndex'] = SearchIndex::retrievableFieldsByIndex($allIndexHandles, $requestedRetrievableFields);
-            $results = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
+            // Preserve the existing unscoped multi-search lifecycle even when
+            // the canonical catalogue currently contains only one index.
+            $results = SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
+        } elseif (count($indexHandles) === 1) {
+            $results = SearchManager::$plugin->backend->search($indexHandles[0], $query, $options);
+        } elseif (count($indexHandles) > 1) {
+            $results = SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
+        } else {
+            // An explicit or restricted-key scope that resolves to nothing is
+            // handled above; keep this defensive branch failure-closed.
+            return $this->asJson(['hits' => [], 'total' => 0]);
         }
 
         $searchOutcomes = $this->widgetSearchOutcomes($results, $searchedIndexHandles);
@@ -534,7 +510,7 @@ class ApiController extends Controller
                 : TrackingMetadataHelper::SOURCE_REST,
         );
         $requestsSearchOutcomeTelemetry = (string)($parameters['telemetryVersion'] ?? '') === self::SEARCH_OUTCOME_TELEMETRY_VERSION;
-        if ($skipAnalytics && $requestsSearchOutcomeTelemetry) {
+        if ($skipAnalytics && $requestsSearchOutcomeTelemetry && $searchOutcomes !== []) {
             $searchTelemetry = SearchManager::$plugin->widgetSearchOutcomeTelemetry->issueSearchOutcome(
                 $query,
                 $siteId,
@@ -548,7 +524,7 @@ class ApiController extends Controller
             }
         }
 
-        if (!$requestsSearchOutcomeTelemetry) {
+        if (!$requestsSearchOutcomeTelemetry && $searchOutcomes !== []) {
             // Requests without explicit v2 capability negotiation retain the
             // deployed widget's cache-only telemetry contract.
             $cacheTelemetry = SearchManager::$plugin->widgetCacheTelemetry->issue(
@@ -569,7 +545,7 @@ class ApiController extends Controller
     /**
      * @param array<string, mixed> $results
      * @param list<string> $indexHandles
-     * @return array<string, array{cached: bool|null, duration: float|null, backend: string, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>
+     * @return array<string, array{cached: bool|null, duration: float|null, backend: string, resultsCount: int, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>
      */
     private function widgetSearchOutcomes(array $results, array $indexHandles): array
     {
@@ -577,17 +553,26 @@ class ApiController extends Controller
         $multiOutcomes = is_array($results['_searchOutcomes'] ?? null)
             ? $results['_searchOutcomes']
             : [];
-        $singleOutcome = [];
+        $singleOutcome = null;
         if (count($indexHandles) === 1) {
             $singleOutcome = is_array($results['_searchOutcome'] ?? null)
                 ? $results['_searchOutcome']
-                : (is_array($results['meta'] ?? null) ? $results['meta'] : []);
+                : null;
         }
 
         foreach ($indexHandles as $indexHandle) {
             $raw = is_array($multiOutcomes[$indexHandle] ?? null)
                 ? $multiOutcomes[$indexHandle]
-                : $singleOutcome;
+                : ($singleOutcome ?? null);
+            if (!is_array($raw)) {
+                continue;
+            }
+
+            $rawResultsCount = $raw['resultsCount'] ?? null;
+            if (!is_int($rawResultsCount) || $rawResultsCount < 0) {
+                continue;
+            }
+
             $cached = is_bool($raw['cached'] ?? null) ? $raw['cached'] : null;
             $outcomes[$indexHandle] = [
                 'cached' => $cached,
@@ -595,6 +580,7 @@ class ApiController extends Controller
                     ? (float)($raw['duration'] ?? $raw['took'])
                     : null,
                 'backend' => is_string($raw['backend'] ?? null) ? $raw['backend'] : 'unknown',
+                'resultsCount' => $rawResultsCount,
                 'synonymsExpanded' => ($raw['synonymsExpanded'] ?? false) === true,
                 'matchedRules' => $this->ruleSnapshots($raw['matchedRules'] ?? $raw['rulesMatched'] ?? []),
                 'wasRedirected' => ($raw['wasRedirected'] ?? false) === true,
@@ -610,10 +596,10 @@ class ApiController extends Controller
     /**
      * Keep only server-matched promotions represented by the final public hits.
      *
-     * @param array<string, array{cached: bool|null, duration: float|null, backend: string, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}> $outcomes
+     * @param array<string, array{cached: bool|null, duration: float|null, backend: string, resultsCount: int, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}> $outcomes
      * @param list<array<string, mixed>> $hits
      * @param list<string> $indexHandles
-     * @return array<string, array{cached: bool|null, duration: float|null, backend: string, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>
+     * @return array<string, array{cached: bool|null, duration: float|null, backend: string, resultsCount: int, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>
      */
     private function retainPresentedPromotions(array $outcomes, array $hits, array $indexHandles): array
     {

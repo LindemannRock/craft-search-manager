@@ -27,11 +27,11 @@ Rejections (returned as the endpoint's JSON error, in English):
 
 **Public vs server keys.** Use a public key for browser-side and public REST callers such as the bundled widget, a custom JavaScript search page, or a headless frontend. Restrict public keys by referrer. Server keys are for trusted server-side integrations only; they are rejected by these public endpoints and should never be emitted into HTML or JavaScript.
 
-**Index scope.** A key authorizes a set of indices (its *allowed indices*). A request that names indices must stay within that set; a request that names none is scoped to the key's allowed indices (a `*` key searches all enabled indices).
+**Index scope.** A key authorizes a set of indices (its *allowed indices*). A request that names indices must stay within that set; a request that names none is scoped to the key's allowed indices. For the Search API, a `*` key follows the same effective catalogue as an anonymous **All indices** search: only enabled, currently available indices are searched.
 
 **Site scope.** `siteId` is only a filter — site visibility is controlled by each index, not by the key. With no `siteId`, results span all sites the selected indices cover. For a keyed request, a `siteId` outside the scope of a selected index is rejected with `403`; an unknown `siteId` is rejected with `400`. Anonymous requests keep their existing behaviour (the `siteId` is applied as a plain filter).
 
-The `track-search` / `track-click` analytics endpoints are gated the same way when **Require API Key** is on (authenticate + public-key referrer, plus the allowed-indices check when the ping includes `index`/`indexHandles`). They are **not** rate-limited. When the setting is off, they stay anonymous. The bundled widget sends its configured key on these pings automatically.
+The `track-search` / `track-click` analytics endpoints are gated the same way when **Require API Key** is on. Both authenticate the public key and its referrer. `track-click` checks its named result index; `track-search` resolves the same explicit or omitted index scope as the matching Search API request, including effective availability and the key's allowed indices. They are **not** rate-limited. When the setting is off, they stay anonymous. The bundled widget sends its configured key on these pings automatically.
 
 ## Parameter shape
 
@@ -72,7 +72,7 @@ GET /actions/search-manager/api/search
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `indexHandles` | (all indices) | One index handle or a comma-separated list of up to 5 explicit handles to search. Passing more than 5 handles returns an error. Omit to search all enabled indices. |
+| `indexHandles` | (all indices) | One index handle or a comma-separated list of up to 5 explicit handles to search. Passing more than 5 handles returns an error. Omit to search all enabled indices that the effective catalogue marks available; retained Config/Error, unavailable-dependency/backend, and disabled records are excluded. |
 | `resultsLimit` | `20` | Maximum results per page (min: 1, max: 200). Values below 1 reset to the default. |
 | `page` | `0` | Page number (0-based) |
 | `type` | (none) | Filter by stable document kind, for example `entry`, `product`, `variant`, `asset`, `category`, `user`, `source-doc`, `smart-link`, or `short-link` |
@@ -158,7 +158,7 @@ GET /actions/search-manager/api/search
 ```
 
 > [!NOTE]
-> Normal public search responses do not return internal metadata such as synonyms expanded, rules matched, provider details, or private indexed content. With `skipAnalytics=1` and `telemetryVersion=2`, `searchTelemetry` is an opaque, short-lived reference to the server-verified per-index backend, cache, executed synonym expansion, exact matching-rule snapshots, redirect-rule-match, and final presented-promotion outcomes. Forward it unchanged to `track-search`; do not inspect it or send separate outcome claims. The response contains only the negotiated v2 token. A v1 request instead receives only the supported cache-only `cacheTelemetry` envelope.
+> Normal public search responses do not return internal metadata such as synonyms expanded, rules matched, provider details, or private indexed content. With `skipAnalytics=1` and `telemetryVersion=2`, `searchTelemetry` is an opaque, short-lived reference to actual server outcomes, including each executed index's native total, backend, cache, executed synonym expansion, exact matching-rule snapshots, redirect-rule-match, and final presented promotions. Forward it unchanged to `track-search`; do not inspect it or send separate outcome claims. The response contains only the negotiated v2 token. A v1 request instead receives only the supported cache-only `cacheTelemetry` envelope; native totals remain server-side and are not added to its public wire format.
 
 Retrievable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills the internal source map automatically from Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled, including rich-text and body-source fields that also feed snippets, headings, and Split Sections. The index's `retrievableFields` setting then decides which of those values are returned publicly. Exclusions use the same `-attr` convention as Algolia's `attributesToRetrieve`, so `*,-wysiwyg` returns all fields except `wysiwyg`.
 
@@ -491,14 +491,14 @@ Records a search query when the user shows intent (clicking a result, pressing E
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query (truncated at 256 characters) |
-| `indexHandles` | (all) | Comma-separated index handles. Only enabled indices are accepted. Passing more than 5 explicit handles is rejected; omit the parameter to record all-indices searches. |
-| `resultsCount` | `0` | Number of results shown (capped at 1000) |
+| `indexHandles` | (all) | Comma-separated index handles. Only currently available indices are accepted. Passing more than 5 explicit handles is rejected; omit the parameter to record an all-indices search. |
+| `resultsCount` | `0` | Number of results shown (capped at 1000). With verified v1/v2 telemetry, this binds the intent to the displayed response; each analytics row uses its server-owned per-index native total instead. |
 | `trigger` | `unknown` | What triggered tracking: `click`, `enter`, `idle`, or `unknown` |
 | `widgetType` | `modal` | Widget boundary used for the default source: `modal`, `page`, or `inline`. The bundled widget sends this automatically. |
 | `analyticsSource` | Widget type | Optional custom source identifier (letters, numbers, dash, underscore; max 50 characters). Missing, empty, or whitespace-only values use `widget-modal`, `widget-page`, or `widget-inline`. |
 | `siteId` | (none) | Site ID |
-| `searchTelemetry` | (none) | V2 opaque envelope from the matching `skipAnalytics=1` search response. The bundled widget forwards it unchanged. A valid one-time envelope restores each selected index's server-verified backend, cache, executed synonym expansion, exact matching rules, redirect-rule-match, and final presented promotions. |
-| `cacheTelemetry` | (none) | V1 cache-only envelope. A valid value can classify each selected index as a hit or miss, but cannot assert synonyms, rules, redirects, or promotions. Do not send it when `searchTelemetry` is available. |
+| `searchTelemetry` | (none) | V2 opaque envelope from the matching `skipAnalytics=1` search response. The bundled widget forwards it unchanged. A valid one-time envelope restores only actual server outcome indices, including each index's native total, backend, cache, executed synonym expansion, exact matching rules, redirect-rule-match, and final presented promotions. |
+| `cacheTelemetry` | (none) | V1 cache-only envelope. Its public wire format remains cache-only; a valid token issued by the current Search API can classify each actual outcome index as a cache hit or miss while Search Manager restores that index's native total from the same server-owned lifecycle. It cannot assert backend, synonyms, rules, redirects, or promotions. Do not send it when `searchTelemetry` is available. |
 | `cached`, `took` | (none) | Non-authoritative scalar compatibility fields. They remain accepted as scalar input but cannot classify Performance rows without valid telemetry. |
 
 ```json
@@ -507,9 +507,11 @@ Records a search query when the user shows intent (clicking a result, pressing E
 
 Returns `"tracked": false` when analytics is disabled or no valid indices match.
 
-Missing, invalid, expired, replayed, or mismatched v2 telemetry writes `executionTime = NULL` and records no synonym, rule, redirect, or promotion outcome. The intent row still counts as a search action and appears in Recent Searches, but it is excluded from Performance calculations. A non-empty invalid `searchTelemetry` value never downgrades to `cacheTelemetry`. Valid v1 telemetry can still classify execution time when no v2 token is supplied, but cannot supply any other search outcome.
+Missing, invalid, expired, replayed, or mismatched v2 telemetry writes `executionTime = NULL` and records no synonym, rule, redirect, or promotion outcome. The intent row still counts as a search action and appears in Recent Searches, but it is excluded from Performance calculations. A non-empty invalid `searchTelemetry` value never downgrades to `cacheTelemetry`. Valid v1 telemetry can still classify execution time and restore server-owned native totals when no v2 token is supplied, but cannot supply the richer v2 outcomes.
 
-Custom two-request clients must send the same normalized query, site, ordered index selection, displayed result count, widget type, and custom analytics source on both requests. Forward only the opaque server-issued token. Raw synonym, rule, redirect, cache, promotion, `cached`, or `took` claims are not accepted as outcome authority.
+Custom two-request clients must send the same normalized query, site, ordered requested index selection, displayed result count, widget type, and custom analytics source on both requests. The requested selection is checked separately from the actual executed-outcome subset, so a backend-filtered index never gains a row merely because it was requested. Forward only the opaque server-issued token. Browser-supplied handles, per-index counts, synonym, rule, redirect, cache, promotion, `cached`, or `took` claims are not accepted as outcome authority.
+
+For the five minutes after updating from an affected build, Search Manager also recognizes an unscoped v1 token signed against that build's historical raw enabled-index scope. This transition is v1-only, retains the token's original expiry and one-time use, reapplies the authenticated key's scope, and filters writes through the current effective catalogue. Earlier tokens have no native-count server record, so only their remaining eligible rows use the signed displayed-count fallback.
 
 ### Track click
 

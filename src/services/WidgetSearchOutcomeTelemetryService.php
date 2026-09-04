@@ -73,7 +73,7 @@ class WidgetSearchOutcomeTelemetryService extends Component
             $expiresAt = $now + self::ENVELOPE_TTL;
             $nonce = $this->base64UrlEncode(random_bytes(16));
             $outcomes = $this->normalizeSearchOutcomes($indexHandles, $outcomesByIndex);
-            if ($outcomes === null) {
+            if ($outcomes === null || $outcomes === []) {
                 $this->logFailureOnce('outcome-normalization');
                 return null;
             }
@@ -109,7 +109,7 @@ class WidgetSearchOutcomeTelemetryService extends Component
 
     /**
      * @param list<string> $indexHandles
-     * @return array<string, array{executionTime: float|null, backend: string, synonymsExpanded: bool, rulesMatched: int, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>|null
+     * @return array<string, array{executionTime: float|null, backend: string, resultsCount: int, synonymsExpanded: bool, rulesMatched: int, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>|null
      */
     public function consumeSearchOutcome(
         ?string $envelope,
@@ -172,7 +172,7 @@ class WidgetSearchOutcomeTelemetryService extends Component
      * Issue the v1 cache-only envelope.
      *
      * @param list<string> $indexHandles
-     * @param array<string, array{cached: bool|null, duration: float|null}> $outcomesByIndex
+     * @param array<string, array{cached: bool|null, duration: float|null, resultsCount?: int}> $outcomesByIndex
      */
     public function issueV1CacheTelemetry(
         string $query,
@@ -183,7 +183,20 @@ class WidgetSearchOutcomeTelemetryService extends Component
     ): ?string {
         try {
             $now = $this->now();
+            $expiresAt = $now + self::ENVELOPE_TTL;
             $outcomes = $this->normalizeCacheOutcomes($indexHandles, $outcomesByIndex);
+            $serverOutcomes = $this->normalizeV1ServerOutcomes($indexHandles, $outcomesByIndex);
+            if ($serverOutcomes === null || $serverOutcomes === []) {
+                $this->logFailureOnce('v1-outcome-normalization');
+                return null;
+            }
+
+            $nonce = $this->base64UrlEncode(random_bytes(16));
+            $requiresServerRecord = count($serverOutcomes) !== count($indexHandles)
+                || array_filter(
+                    $serverOutcomes,
+                    static fn(array $outcome): bool => $outcome['resultsCount'] !== null,
+                ) !== [];
             $payload = Json::encode([
                 'version' => self::V1_VERSION,
                 'query' => $this->queryIdentity($query),
@@ -191,13 +204,30 @@ class WidgetSearchOutcomeTelemetryService extends Component
                 'indexHandles' => array_values($indexHandles),
                 'resultCount' => max(0, $resultCount),
                 'issuedAt' => $now,
-                'expiresAt' => $now + self::ENVELOPE_TTL,
-                'nonce' => $this->base64UrlEncode(random_bytes(16)),
+                'expiresAt' => $expiresAt,
+                'nonce' => $nonce,
                 'outcomes' => $outcomes,
             ]);
             $signed = Craft::$app->getSecurity()->hashData($payload);
+            $envelope = self::V1_PREFIX . $this->base64UrlEncode($signed);
 
-            return self::V1_PREFIX . $this->base64UrlEncode($signed);
+            if ($requiresServerRecord) {
+                $cache = $this->suitableCache('v1-record-cache');
+                if (
+                    $cache === null
+                    || !$cache->set($this->v1RecordKey($nonce), [
+                        'version' => self::V1_VERSION,
+                        'issuedAt' => $now,
+                        'expiresAt' => $expiresAt,
+                        'outcomes' => $serverOutcomes,
+                    ], self::ENVELOPE_TTL)
+                ) {
+                    $this->logFailureOnce('v1-record-write');
+                    return null;
+                }
+            }
+
+            return $envelope;
         } catch (\Throwable) {
             $this->logFailureOnce('v1-issue');
             return null;
@@ -217,32 +247,175 @@ class WidgetSearchOutcomeTelemetryService extends Component
         array $indexHandles,
         int $resultCount,
     ): ?array {
+        $outcomes = $this->consumeV1SearchTelemetry(
+            $envelope,
+            $query,
+            $siteId,
+            $indexHandles,
+            $resultCount,
+        );
+        if ($outcomes === null) {
+            return null;
+        }
+
+        return array_map(
+            static fn(array $outcome): ?float => $outcome['executionTime'],
+            $outcomes,
+        );
+    }
+
+    /**
+     * Consume v1 for the internal intent writer while preserving its public
+     * cache-only envelope and compatibility facade.
+     *
+     * @param list<string> $indexHandles
+     * @return array<string, array{executionTime: float|null, resultsCount: int|null}>|null
+     */
+    public function consumeV1SearchTelemetry(
+        ?string $envelope,
+        string $query,
+        ?int $siteId,
+        array $indexHandles,
+        int $resultCount,
+    ): ?array {
+        return $this->consumeV1SearchTelemetryForScopes(
+            $envelope,
+            $query,
+            $siteId,
+            $indexHandles,
+            null,
+            $indexHandles,
+            $resultCount,
+        );
+    }
+
+    /**
+     * Consume an unscoped v1 token against the current binding or, for the
+     * remaining token TTL, the exact historical server-derived binding.
+     *
+     * The historical candidate is checked before any replay claim is taken.
+     * Outcomes are always intersected with the current canonical/key-authorized
+     * scope, so compatibility can validate an old signature without restoring
+     * analytics attribution to an unavailable index.
+     *
+     * @param list<string> $currentIndexHandles
+     * @param list<string> $historicalIndexHandles
+     * @return array<string, array{executionTime: float|null, resultsCount: int|null}>|null
+     * @internal
+     */
+    public function consumeV1SearchTelemetryWithHistoricalScope(
+        ?string $envelope,
+        string $query,
+        ?int $siteId,
+        array $currentIndexHandles,
+        array $historicalIndexHandles,
+        int $resultCount,
+    ): ?array {
+        return $this->consumeV1SearchTelemetryForScopes(
+            $envelope,
+            $query,
+            $siteId,
+            $currentIndexHandles,
+            $historicalIndexHandles,
+            $currentIndexHandles,
+            $resultCount,
+        );
+    }
+
+    /**
+     * @param list<string> $currentIndexHandles
+     * @param list<string>|null $historicalIndexHandles
+     * @param list<string> $eligibleIndexHandles
+     * @return array<string, array{executionTime: float|null, resultsCount: int|null}>|null
+     */
+    private function consumeV1SearchTelemetryForScopes(
+        ?string $envelope,
+        string $query,
+        ?int $siteId,
+        array $currentIndexHandles,
+        ?array $historicalIndexHandles,
+        array $eligibleIndexHandles,
+        int $resultCount,
+    ): ?array {
         if (!is_string($envelope) || !str_starts_with($envelope, self::V1_PREFIX)) {
             return null;
         }
 
         try {
             $payload = $this->decodeEnvelope($envelope, self::V1_PREFIX);
-            if (
-                $payload === null
-                || !$this->hasValidV1Binding($payload, $query, $siteId, $indexHandles, $resultCount)
-                || !$this->hasValidLifetime($payload)
+            if ($payload === null || !$this->hasValidLifetime($payload)) {
+                return null;
+            }
+
+            $bindingHandles = null;
+            if ($this->hasValidV1Binding($payload, $query, $siteId, $currentIndexHandles, $resultCount)) {
+                $bindingHandles = $currentIndexHandles;
+            } elseif (
+                $historicalIndexHandles !== null
+                && $historicalIndexHandles !== $currentIndexHandles
+                && $this->hasValidV1Binding($payload, $query, $siteId, $historicalIndexHandles, $resultCount)
             ) {
+                $bindingHandles = $historicalIndexHandles;
+            }
+            if ($bindingHandles === null) {
                 return null;
             }
 
             $nonce = $payload['nonce'];
             $now = $this->now();
             $expiresAt = $payload['expiresAt'];
+            $cache = $this->suitableCache('v1-record-cache');
+            $executionTimes = $this->executionTimes($payload['outcomes'], $bindingHandles);
             if (
                 !is_string($nonce)
                 || preg_match(self::NONCE_PATTERN, $nonce) !== 1
-                || !$this->claimReplayMarker(null, $nonce, $expiresAt - $now, true)
+                || $executionTimes === null
+                || $cache === null
+                || !$this->claimReplayMarker($cache, $nonce, $expiresAt - $now, true)
             ) {
                 return null;
             }
 
-            return $this->executionTimes($payload['outcomes'], $indexHandles);
+            $recordKey = $this->v1RecordKey($nonce);
+            try {
+                $record = $cache->get($recordKey);
+            } finally {
+                $cache->delete($recordKey);
+            }
+
+            if ($record === false || $record === null) {
+                $outcomes = array_map(
+                    static fn(?float $executionTime): array => [
+                        'executionTime' => $executionTime,
+                        'resultsCount' => null,
+                    ],
+                    $executionTimes,
+                );
+            } elseif (
+                !is_array($record)
+                || ($record['version'] ?? null) !== self::V1_VERSION
+                || ($record['issuedAt'] ?? null) !== $payload['issuedAt']
+                || ($record['expiresAt'] ?? null) !== $expiresAt
+            ) {
+                return null;
+            } else {
+                $outcomes = $this->consumedV1ServerOutcomes(
+                    $record['outcomes'] ?? null,
+                    $bindingHandles,
+                    $executionTimes,
+                );
+                if ($outcomes === null) {
+                    return null;
+                }
+            }
+
+            $eligible = array_fill_keys($eligibleIndexHandles, true);
+
+            return array_filter(
+                $outcomes,
+                static fn(string $handle): bool => isset($eligible[$handle]),
+                ARRAY_FILTER_USE_KEY,
+            );
         } catch (\Throwable) {
             $this->logFailureOnce('v1-consume');
             return null;
@@ -257,16 +430,33 @@ class WidgetSearchOutcomeTelemetryService extends Component
     /**
      * @param list<string> $indexHandles
      * @param array<string, array<string, mixed>> $outcomesByIndex
-     * @return list<array{index: string, cached: bool|null, duration: float|null, backend: string, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>|null
+     * @return list<array{index: string, cached: bool|null, duration: float|null, backend: string, resultsCount: int, synonymsExpanded: bool, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>|null
      */
     private function normalizeSearchOutcomes(array $indexHandles, array $outcomesByIndex): ?array
     {
-        $cacheOutcomes = $this->normalizeCacheOutcomes($indexHandles, $outcomesByIndex);
-
         $outcomes = [];
-        foreach ($cacheOutcomes as $position => $cacheOutcome) {
-            $indexHandle = $indexHandles[$position];
-            $rawOutcome = $outcomesByIndex[$indexHandle] ?? [];
+        foreach ($indexHandles as $indexHandle) {
+            if (!array_key_exists($indexHandle, $outcomesByIndex)) {
+                continue;
+            }
+
+            $rawOutcome = $outcomesByIndex[$indexHandle];
+            if (!is_array($rawOutcome)) {
+                return null;
+            }
+
+            $cached = is_bool($rawOutcome['cached'] ?? null) ? $rawOutcome['cached'] : null;
+            $duration = $cached === false
+                ? $this->normalizeMissDuration($rawOutcome['duration'] ?? null)
+                : null;
+            if ($cached === false && $duration === null) {
+                $cached = null;
+            }
+            $resultsCount = $rawOutcome['resultsCount'] ?? null;
+            if (!is_int($resultsCount) || $resultsCount < 0) {
+                return null;
+            }
+
             $backend = is_string($rawOutcome['backend'] ?? null)
                 ? trim($rawOutcome['backend'])
                 : 'unknown';
@@ -304,13 +494,17 @@ class WidgetSearchOutcomeTelemetryService extends Component
                     'position' => $promotion['position'],
                 ];
             }
-            $outcomes[] = array_merge($cacheOutcome, [
+            $outcomes[] = [
+                'index' => $indexHandle,
+                'cached' => $cached,
+                'duration' => $duration,
                 'backend' => $backend,
+                'resultsCount' => $resultsCount,
                 'synonymsExpanded' => ($rawOutcome['synonymsExpanded'] ?? false) === true,
                 'matchedRules' => $matchedRules,
                 'wasRedirected' => ($rawOutcome['wasRedirected'] ?? false) === true,
                 'promotions' => array_values($promotions),
-            ]);
+            ];
         }
 
         return $outcomes;
@@ -318,7 +512,7 @@ class WidgetSearchOutcomeTelemetryService extends Component
 
     /**
      * @param list<string> $indexHandles
-     * @param array<string, array{cached: bool|null, duration: float|null}> $outcomesByIndex
+     * @param array<string, array{cached: bool|null, duration: float|null, resultsCount?: int}> $outcomesByIndex
      * @return list<array{index: string, cached: bool|null, duration: float|null}>
      */
     private function normalizeCacheOutcomes(array $indexHandles, array $outcomesByIndex): array
@@ -339,6 +533,37 @@ class WidgetSearchOutcomeTelemetryService extends Component
                 'index' => $indexHandle,
                 'cached' => $cached,
                 'duration' => $duration,
+            ];
+        }
+
+        return $outcomes;
+    }
+
+    /**
+     * @param list<string> $indexHandles
+     * @param array<string, array<string, mixed>> $outcomesByIndex
+     * @return list<array{index: string, resultsCount: int|null}>|null
+     */
+    private function normalizeV1ServerOutcomes(array $indexHandles, array $outcomesByIndex): ?array
+    {
+        $outcomes = [];
+        foreach ($indexHandles as $indexHandle) {
+            if (!array_key_exists($indexHandle, $outcomesByIndex)) {
+                continue;
+            }
+
+            $rawOutcome = $outcomesByIndex[$indexHandle];
+            if (!is_array($rawOutcome)) {
+                return null;
+            }
+
+            $resultsCount = $rawOutcome['resultsCount'] ?? null;
+            if ($resultsCount !== null && (!is_int($resultsCount) || $resultsCount < 0)) {
+                return null;
+            }
+            $outcomes[] = [
+                'index' => $indexHandle,
+                'resultsCount' => $resultsCount,
             ];
         }
 
@@ -420,23 +645,29 @@ class WidgetSearchOutcomeTelemetryService extends Component
     /**
      * @param mixed $rawOutcomes
      * @param list<string> $indexHandles
-     * @return array<string, array{executionTime: float|null, backend: string, synonymsExpanded: bool, rulesMatched: int, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>|null
+     * @return array<string, array{executionTime: float|null, backend: string, resultsCount: int, synonymsExpanded: bool, rulesMatched: int, matchedRules: list<array{id: int, name: string, actionType: string}>, wasRedirected: bool, promotions: list<array{id: int, elementId: int, position: int}>}>|null
      */
     private function consumedSearchOutcomes(mixed $rawOutcomes, array $indexHandles): ?array
     {
-        $executionTimes = $this->executionTimes($rawOutcomes, $indexHandles);
-        if ($executionTimes === null || !is_array($rawOutcomes)) {
+        $outcomeHandles = $this->orderedOutcomeHandles($rawOutcomes, $indexHandles);
+        if ($outcomeHandles === null || !is_array($rawOutcomes)) {
+            return null;
+        }
+        $executionTimes = $this->executionTimes($rawOutcomes, $outcomeHandles);
+        if ($executionTimes === null) {
             return null;
         }
 
         $outcomes = [];
-        foreach ($indexHandles as $position => $indexHandle) {
+        foreach ($outcomeHandles as $position => $indexHandle) {
             $raw = $rawOutcomes[$position] ?? null;
             if (
                 !is_array($raw)
                 || !is_string($raw['backend'] ?? null)
                 || $raw['backend'] === ''
                 || mb_strlen($raw['backend']) > self::MAX_BACKEND_LENGTH
+                || !is_int($raw['resultsCount'] ?? null)
+                || $raw['resultsCount'] < 0
                 || !is_bool($raw['synonymsExpanded'] ?? null)
                 || !is_array($raw['matchedRules'] ?? null)
                 || !is_bool($raw['wasRedirected'] ?? null)
@@ -473,11 +704,75 @@ class WidgetSearchOutcomeTelemetryService extends Component
             $outcomes[$indexHandle] = [
                 'executionTime' => $executionTimes[$indexHandle],
                 'backend' => $raw['backend'],
+                'resultsCount' => $raw['resultsCount'],
                 'synonymsExpanded' => $raw['synonymsExpanded'],
                 'rulesMatched' => count($matchedRules),
                 'matchedRules' => $matchedRules,
                 'wasRedirected' => $raw['wasRedirected'],
                 'promotions' => $promotions,
+            ];
+        }
+
+        return $outcomes;
+    }
+
+    /**
+     * @param mixed $rawOutcomes
+     * @param list<string> $requestedHandles
+     * @return list<string>|null
+     */
+    private function orderedOutcomeHandles(mixed $rawOutcomes, array $requestedHandles): ?array
+    {
+        if (!is_array($rawOutcomes) || !array_is_list($rawOutcomes) || count($rawOutcomes) > count($requestedHandles)) {
+            return null;
+        }
+
+        $requestedPositions = array_flip($requestedHandles);
+        $handles = [];
+        $lastPosition = -1;
+        foreach ($rawOutcomes as $rawOutcome) {
+            $indexHandle = is_array($rawOutcome) ? ($rawOutcome['index'] ?? null) : null;
+            if (!is_string($indexHandle) || !isset($requestedPositions[$indexHandle])) {
+                return null;
+            }
+
+            $position = $requestedPositions[$indexHandle];
+            if (!is_int($position) || $position <= $lastPosition) {
+                return null;
+            }
+            $lastPosition = $position;
+            $handles[] = $indexHandle;
+        }
+
+        return $handles;
+    }
+
+    /**
+     * @param mixed $rawOutcomes
+     * @param list<string> $indexHandles
+     * @param array<string, float|null> $executionTimes
+     * @return array<string, array{executionTime: float|null, resultsCount: int|null}>|null
+     */
+    private function consumedV1ServerOutcomes(
+        mixed $rawOutcomes,
+        array $indexHandles,
+        array $executionTimes,
+    ): ?array {
+        $outcomeHandles = $this->orderedOutcomeHandles($rawOutcomes, $indexHandles);
+        if ($outcomeHandles === null || !is_array($rawOutcomes)) {
+            return null;
+        }
+
+        $outcomes = [];
+        foreach ($outcomeHandles as $position => $indexHandle) {
+            $rawOutcome = $rawOutcomes[$position] ?? null;
+            $resultsCount = is_array($rawOutcome) ? ($rawOutcome['resultsCount'] ?? null) : null;
+            if ($resultsCount !== null && (!is_int($resultsCount) || $resultsCount < 0)) {
+                return null;
+            }
+            $outcomes[$indexHandle] = [
+                'executionTime' => $executionTimes[$indexHandle],
+                'resultsCount' => $resultsCount,
             ];
         }
 
@@ -615,6 +910,11 @@ class WidgetSearchOutcomeTelemetryService extends Component
     private function recordKey(string $nonce): string
     {
         return $this->cacheKey('widget-search-outcome', $nonce);
+    }
+
+    private function v1RecordKey(string $nonce): string
+    {
+        return $this->cacheKey('widget-cache-outcome', $nonce);
     }
 
     private function cacheKey(string $family, string $nonce): string

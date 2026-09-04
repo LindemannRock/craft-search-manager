@@ -284,7 +284,7 @@ final class PromotionPresentationTruthTest extends TestCase
 
         $analytics = $this->analyticsRows($query);
         self::assertCount(2, $analytics);
-        self::assertSame([1, 1], array_map('intval', array_column($analytics, 'resultsCount')));
+        self::assertSame([0, 0], array_map('intval', array_column($analytics, 'resultsCount')));
         self::assertSame([1, 1], array_map('intval', array_column($analytics, 'promotionsShown')));
         self::assertSame(['widget-modal', 'campaign-search'], array_column($analytics, 'source'));
         self::assertGreaterThan(0.0, (float)$analytics[0]['executionTime']);

@@ -12,6 +12,7 @@ use Craft;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
@@ -357,6 +358,125 @@ class ApiKeyService extends Component
         );
 
         return [$scoped, true];
+    }
+
+    /**
+     * Resolve the effective index scope shared by public search issuance and
+     * the matching analytics-intent request.
+     *
+     * Explicit handles retain {@see SearchIndex::resolveRequestedIndices()}
+     * semantics. An unscoped request uses the canonical normal-consumer
+     * availability projection; a restricted key narrows that projection in
+     * the key's existing allowlist order, while a wildcard key remains
+     * transparent. Keyed site validation is applied to the same resolved
+     * models so issuance and consumption cannot interpret scope differently.
+     *
+     * @return array{0: list<string>, 1: bool, 2: bool, 3: bool} Resolved handles, effective explicit-scope flag, over-cap flag, original unscoped-request flag.
+     * @throws ForbiddenHttpException 403 — a requested index or site is outside the key scope.
+     * @throws BadRequestHttpException 400 — the requested site does not exist.
+     * @since 5.56.0
+     */
+    public function resolveSearchIndexScope(
+        string $indicesParam,
+        ?ApiKey $key,
+        ?int $siteId,
+    ): array {
+        [$handles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices($indicesParam);
+        $wasUnscoped = !$indicesProvided;
+
+        if ($exceededMax) {
+            return [$handles, $indicesProvided, true, $wasUnscoped];
+        }
+
+        if ($indicesProvided) {
+            if ($key !== null) {
+                [$handles, $indicesProvided] = $this->scopeIndices($key, $handles, true);
+            }
+        } else {
+            $availableHandles = array_map(
+                static fn(SearchIndex $index): string => $index->handle,
+                SearchManager::$plugin->dependencies->getAvailableIndices(),
+            );
+
+            if ($key !== null && !$key->allowsAllIndices()) {
+                // Reuse the established key normalisation and ordering, then
+                // intersect it with the stricter normal-consumer projection.
+                [$keyHandles] = $this->scopeIndices($key, [], false);
+                $available = array_fill_keys($availableHandles, true);
+                $handles = array_values(array_filter(
+                    $keyHandles,
+                    static fn(string $handle): bool => isset($available[$handle]),
+                ));
+                $indicesProvided = true;
+            } else {
+                $handles = $availableHandles;
+            }
+        }
+
+        if ($key !== null && $siteId !== null) {
+            // A wildcard unscoped request remains a fan-out rather than a
+            // concrete selection, so its established site gate validates the
+            // site itself without requiring every available index to cover it.
+            $siteHandles = $wasUnscoped && !$indicesProvided ? [] : $handles;
+            $this->assertSiteInScope($siteId, ...$this->modelsForHandles($siteHandles));
+        }
+
+        return [$handles, $indicesProvided, false, $wasUnscoped];
+    }
+
+    /**
+     * Reconstruct the server-derived unscoped index list used by the preceding
+     * v1 implementation for its remaining rolling token lifetime.
+     *
+     * This is deliberately separate from current issuance: anonymous and
+     * wildcard requests historically used raw enabled models, while restricted
+     * keys used their established enabled-validated allowlist. Callers may use
+     * this only as an alternate signed v1 binding and must still filter any
+     * resulting persistence through {@see resolveSearchIndexScope()}.
+     *
+     * @return list<string>
+     * @throws ForbiddenHttpException 403 — the historical keyed scope does not cover the requested site.
+     * @throws BadRequestHttpException 400 — the requested site does not exist.
+     * @internal
+     * @since 5.56.0
+     */
+    public function resolveHistoricalUnscopedSearchIndexScope(?ApiKey $key, ?int $siteId): array
+    {
+        $restrictedKey = $key !== null && !$key->allowsAllIndices();
+        if ($restrictedKey) {
+            [$handles] = $this->scopeIndices($key, [], false);
+        } else {
+            $handles = array_values(array_map(
+                static fn(SearchIndex $index): string => $index->handle,
+                array_filter(
+                    SearchIndex::findAll(),
+                    static fn(SearchIndex $index): bool => $index->enabled,
+                ),
+            ));
+        }
+
+        if ($restrictedKey && $siteId !== null) {
+            $this->assertSiteInScope($siteId, ...$this->modelsForHandles($handles));
+        }
+
+        return $handles;
+    }
+
+    /**
+     * @param list<string> $handles
+     * @return list<SearchIndex>
+     */
+    private function modelsForHandles(array $handles): array
+    {
+        $models = [];
+        foreach ($handles as $handle) {
+            $index = SearchIndex::findByHandle($handle);
+            if ($index !== null) {
+                $models[] = $index;
+            }
+        }
+
+        return $models;
     }
 
     /**

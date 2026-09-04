@@ -32,7 +32,7 @@ class WidgetCacheTelemetryService extends Component
 
     /**
      * @param list<string> $indexHandles
-     * @param array<string, array{cached: bool|null, duration: float|null}> $outcomesByIndex
+     * @param array<string, array{cached: bool|null, duration: float|null, resultsCount?: int}> $outcomesByIndex
      */
     public function issue(
         string $query,

@@ -84,6 +84,9 @@ class SearchController extends Controller
     /** @var array<string, array<string, string|null>> */
     private array $normalizedParameters = [];
 
+    /** @var array{0: list<string>, 1: bool, 2: bool, 3: bool}|null */
+    private ?array $resolvedTrackSearchScope = null;
+
     /**
      * @inheritdoc
      */
@@ -142,21 +145,30 @@ class SearchController extends Controller
 
             $parameters = $this->parametersForAction($action->id);
 
-            // Enforce the key's allowed indices only when the ping names them.
-            // track-click sends a single result `index`; track-search sends
-            // `indexHandles`. Tracking is deliberately not rate-limited.
+            // Resolve track-search once through the same authority as issuance
+            // so its historical pre-action cap/authorization failure behavior
+            // remains intact. Track-click keeps its explicit result-index
+            // check. Tracking is not rate-limited.
             if ($key !== null) {
-                $trackingIndices = $action->id === 'track-click'
-                    ? (string)$parameters['index']
-                    : (string)$parameters['indexHandles'];
-                [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
-                    $trackingIndices,
-                );
+                $exceededMax = false;
+                if ($action->id === 'track-search') {
+                    $this->resolvedTrackSearchScope = SearchManager::$plugin->apiKeys->resolveSearchIndexScope(
+                        (string)$parameters['indexHandles'],
+                        $key,
+                        self::normalizeTrackingSiteId($parameters['siteId']),
+                    );
+                    $exceededMax = $this->resolvedTrackSearchScope[2];
+                } elseif ($action->id === 'track-click') {
+                    $trackingIndices = (string)$parameters['index'];
+                    [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices(
+                        $trackingIndices,
+                    );
+                    if (!$exceededMax && $indicesProvided) {
+                        SearchManager::$plugin->apiKeys->scopeIndices($key, $indexHandles, true);
+                    }
+                }
                 if ($exceededMax) {
                     throw new ForbiddenHttpException(Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES]));
-                }
-                if ($indicesProvided) {
-                    SearchManager::$plugin->apiKeys->scopeIndices($key, $indexHandles, true);
                 }
             }
         }
@@ -294,10 +306,14 @@ class SearchController extends Controller
             return $this->asJson(['success' => true, 'tracked' => false]);
         }
 
-        // Parse indices through the shared resolver so the anonymous path gets
-        // the same dedup + fail-closed cap as every other indexHandles consumer
-        // (the beforeAction cap only runs when requireApiKey is on).
-        [$indexHandles, $indicesProvided, $exceededMax] = SearchIndex::resolveRequestedIndices($indexHandlesParam);
+        // Rebuild the same canonical, key-scoped, ordered selection that the
+        // Search API used when it issued telemetry.
+        [$indexHandles, $indicesProvided, $exceededMax, $wasUnscoped] = $this->resolvedTrackSearchScope
+            ?? SearchManager::$plugin->apiKeys->resolveSearchIndexScope(
+                $indexHandlesParam,
+                $this->authenticatedKey,
+                $siteId,
+            );
         if ($exceededMax) {
             return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'The indexHandles argument accepts at most {max} indices.', ['max' => SearchIndex::MAX_REQUESTED_INDICES])]);
         }
@@ -308,18 +324,10 @@ class SearchController extends Controller
         }
 
         $selectedIndexHandles = $indexHandles;
-        if ($selectedIndexHandles === []) {
-            $selectedIndexHandles = array_values(array_map(
-                static fn(SearchIndex $index): string => $index->handle,
-                array_filter(
-                    SearchIndex::findAll(),
-                    static fn(SearchIndex $index): bool => $index->enabled,
-                ),
-            ));
-        }
 
-        // V2 restores complete server-issued per-index search outcomes. V1 can
-        // still classify cache state through its cache-only envelope, but it
+        // V2 restores complete server-issued per-index search outcomes. V1
+        // retains its cache-only wire contract while the shared server
+        // lifecycle can additionally restore native counts for the writer; it
         // cannot assert synonyms, rules, redirects, or promotions.
         $searchTelemetry = is_string($parameters['searchTelemetry'])
             ? $parameters['searchTelemetry']
@@ -332,26 +340,42 @@ class SearchController extends Controller
             $resultsCount,
             $resolvedSource,
         );
-        $verifiedExecutionTimes = null;
+        $verifiedV1Outcomes = null;
         if ($searchTelemetry === null || $searchTelemetry === '') {
-            $verifiedExecutionTimes = SearchManager::$plugin->widgetSearchOutcomeTelemetry->consumeV1CacheTelemetry(
-                is_string($parameters['cacheTelemetry']) ? $parameters['cacheTelemetry'] : null,
-                $query,
-                $siteId,
-                $selectedIndexHandles,
-                $resultsCount,
-            );
+            $cacheTelemetry = is_string($parameters['cacheTelemetry']) ? $parameters['cacheTelemetry'] : null;
+            if ($wasUnscoped) {
+                $historicalIndexHandles = SearchManager::$plugin->apiKeys->resolveHistoricalUnscopedSearchIndexScope(
+                    $this->authenticatedKey,
+                    $siteId,
+                );
+                $verifiedV1Outcomes = SearchManager::$plugin->widgetSearchOutcomeTelemetry->consumeV1SearchTelemetryWithHistoricalScope(
+                    $cacheTelemetry,
+                    $query,
+                    $siteId,
+                    $selectedIndexHandles,
+                    $historicalIndexHandles,
+                    $resultsCount,
+                );
+            } else {
+                $verifiedV1Outcomes = SearchManager::$plugin->widgetSearchOutcomeTelemetry->consumeV1SearchTelemetry(
+                    $cacheTelemetry,
+                    $query,
+                    $siteId,
+                    $selectedIndexHandles,
+                    $resultsCount,
+                );
+            }
         }
 
-        // Preserve v1 all-index row identity when telemetry is absent or
-        // invalid. A verified all-index widget response carries its exact index
-        // set and therefore records one independently classified row per index.
+        // Preserve the historical aggregate fallback when telemetry is absent
+        // or invalid. Verified telemetry persists only actual server outcome
+        // keys, while its separate requested-scope binding remains exact.
         if ($verifiedOutcomes !== null) {
             $handlesToTrack = array_keys($verifiedOutcomes);
-        } elseif ($verifiedExecutionTimes !== null) {
-            $handlesToTrack = array_keys($verifiedExecutionTimes);
+        } elseif ($verifiedV1Outcomes !== null) {
+            $handlesToTrack = array_keys($verifiedV1Outcomes);
         } else {
-            $handlesToTrack = !empty($indexHandles) ? $indexHandles : ['all'];
+            $handlesToTrack = $indicesProvided ? $selectedIndexHandles : ['all'];
         }
 
         // Attribute the analytics row to the authenticated key (slice 5).
@@ -372,7 +396,10 @@ class SearchController extends Controller
                 $outcome = $verifiedOutcomes[$handle] ?? null;
                 $executionTime = is_array($outcome)
                     ? $outcome['executionTime']
-                    : ($verifiedExecutionTimes[$handle] ?? null);
+                    : ($verifiedV1Outcomes[$handle]['executionTime'] ?? null);
+                $indexResultsCount = is_array($outcome)
+                    ? $outcome['resultsCount']
+                    : ($verifiedV1Outcomes[$handle]['resultsCount'] ?? $resultsCount);
                 $presentedPromotions = is_array($outcome) ? $outcome['promotions'] : [];
                 $backendInstance = $handle !== 'all'
                     ? SearchManager::$plugin->backend->getBackendForIndex($handle)
@@ -384,7 +411,7 @@ class SearchController extends Controller
                 SearchManager::$plugin->analytics->trackSearch(
                     $handle,
                     $query,
-                    $resultsCount,
+                    $indexResultsCount,
                     // Verified v2 and v1 telemetry classify a hit (0)
                     // or miss (>0). Unverified and unknown outcomes remain null.
                     $executionTime,
@@ -409,7 +436,7 @@ class SearchController extends Controller
                 'sourceDefault' => $sourceDefault,
                 'resultsCount' => $resultsCount,
                 'searchTelemetryVerified' => $verifiedOutcomes !== null,
-                'cacheTelemetryVerified' => $verifiedExecutionTimes !== null,
+                'cacheTelemetryVerified' => $verifiedV1Outcomes !== null,
             ]);
 
             return $this->asJson(['success' => true, 'tracked' => true]);
