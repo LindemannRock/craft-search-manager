@@ -178,7 +178,7 @@ final class DedicatedI18nSweepTest extends TestCase
         $newKeys = [
             'Assets', 'Categories', 'User', 'Users',
             'Manual override: {language}',
-            'Redirected to another page', 'Synonyms used', 'Not configured',
+            'Redirect rule matched', 'Not configured',
             '{count} row', '{count} rows', '{count} key', '{count} keys', '{count} file', '{count} files',
             'Automatically index elements when they\'re saved, deleted, or change status. When off, element changes reach search only after a manual rebuild. (Saving or editing an index config still rebuilds it automatically.)',
             'Auto-Index is off — new, edited, or deleted element content won\'t appear in search until you rebuild the affected indices, across all surfaces (templates, REST, GraphQL, widgets). Saving or editing an index config still rebuilds it automatically; only element content-sync is paused.',
@@ -213,6 +213,9 @@ final class DedicatedI18nSweepTest extends TestCase
                 self::assertArrayHasKey($key, $translations, "Missing '{$key}' in {$locale}");
                 self::assertNotSame('', (string) $translations[$key], "Empty '{$key}' in {$locale}");
             }
+            self::assertArrayNotHasKey('Redirected', $translations);
+            self::assertArrayNotHasKey('Redirected to another page', $translations);
+            self::assertArrayNotHasKey('Synonyms used', $translations);
             self::assertArrayNotHasKey(
                 'Redis detected: Craft uses Redis at {host}:{port} on DB {db}. If no settings are provided below, Search Manager will reuse this connection and store its data on DB {fallbackDb} — isolated from Craft\'s cache so it survives cache flushes. If DB {fallbackDb} is already used for sessions or queue, set database explicitly below.',
                 $translations,

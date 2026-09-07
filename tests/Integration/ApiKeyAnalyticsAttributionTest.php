@@ -329,7 +329,12 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
 
     public function testRecentSearchesExportUsesLogicalColumnOrder(): void
     {
-        $this->seedRow(apiKeyId: 7, apiKeyPrefix: 'sm_pub_order01', apiKeyType: ApiKey::TYPE_PUBLIC);
+        $this->seedRow(
+            apiKeyId: 7,
+            apiKeyPrefix: 'sm_pub_order01',
+            apiKeyType: ApiKey::TYPE_PUBLIC,
+            wasRedirected: true,
+        );
 
         $export = SearchManager::$plugin->analytics->exportAnalytics(self::TEST_SITE_ID, 'last30days');
 
@@ -339,10 +344,10 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
             'Query',
             'Site',
             'Hits',
+            'Rules',
             'Synonyms',
-            'Rules Matched',
+            'Redirect',
             'Promotions',
-            'Redirected',
             'Index',
             'Backend',
             'Intent',
@@ -362,10 +367,10 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
             'query',
             'site',
             'hits',
-            'synonyms',
             'rules',
-            'promotions',
+            'synonyms',
             'redirected',
+            'promotions',
             'index',
             'backend',
             'intent',
@@ -378,6 +383,12 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
             'referrer',
         ];
         $this->assertSame($expectedKeys, array_slice(array_keys($export['rows'][0]), 0, count($expectedKeys)));
+        $this->assertSame(1, $export['rows'][0]['redirected']);
+        $this->assertSame(
+            ['hits', 'synonyms', 'rules', 'promotions', 'redirected'],
+            array_slice(array_keys($export['jsonData']['data'][0]), 4, 5),
+        );
+        $this->assertTrue($export['jsonData']['data'][0]['redirected']);
     }
 
     public function testExportIncludesDetectedLanguageAndTrafficMetadata(): void
@@ -437,6 +448,7 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         ?string $apiKeyPrefix = null,
         ?string $apiKeyType = null,
         float|null $executionTime = 1.0,
+        bool $wasRedirected = false,
     ): void {
         Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
             'indexHandle' => 'test-index',
@@ -448,7 +460,7 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
             'siteId' => self::TEST_SITE_ID,
             'sessionId' => null,
             'isHit' => 1,
-            'wasRedirected' => 0,
+            'wasRedirected' => $wasRedirected ? 1 : 0,
             'promotionsShown' => 0,
             'synonymsExpanded' => 0,
             'rulesMatched' => 0,

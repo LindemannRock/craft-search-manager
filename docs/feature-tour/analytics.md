@@ -31,7 +31,7 @@ Summary statistics and trends:
 
 Detailed log of individual searches with columns for:
 - Date, query, site, hits
-- Synonyms expanded, rules matched, promotions shown
+- Rules, synonyms, redirect-rule matches, and promotions
 - Source, device, location
 - Filterable and exportable
 
@@ -97,9 +97,10 @@ Every search records:
 | Device, browser, OS | Parsed from user-agent (via Matomo DeviceDetector) |
 | Country, city | Geographic location (when geo-detection enabled) |
 | IP hash | Anonymized visitor identifier |
+| Rules | How many query-rule patterns matched, including synonym, boost, and redirect actions. A match does not mean that every rule visibly changed the results. |
 | Synonyms | Whether synonym expansion was used |
-| Rules matched | Which query rules fired |
-| Promotions matched | Which promotions were shown |
+| Redirect | Whether a redirect query rule matched on the server. This does not indicate that the browser or API client navigated. |
+| Promotions | How many promotions were actually presented |
 | Referrer | The page that triggered the search |
 | Platform, app version | For mobile app tracking |
 | API key | The key that made the request, when [API key enforcement](api-keys.md) is enabled (anonymous otherwise) |
@@ -203,7 +204,7 @@ The **API Key Usage** table on the Overview tab groups keyed searches by key, wi
 
 ## Export
 
-Analytics can be exported as CSV, JSON, or Excel from the Export button in the page toolbar — one export bundles every section (Recent Searches, Trending, Query Rules, Promotions, Performance, Traffic & Devices, Geographic, and Content Gaps). Exports include all columns with clean headers (Hits, Synonyms, Rules, Promotions, Redirected, and — when keyed traffic exists — API Key and API Key Type).
+Analytics can be exported as CSV, JSON, or Excel from the Export button in the page toolbar — one export bundles every section (Recent Searches, Trending, Query Rules, Promotions, Performance, Traffic & Devices, Geographic, and Content Gaps). CSV and Excel use translated headings that follow the Recent Searches order (Hits, Rules, Synonyms, Redirect, Promotions, and — when keyed traffic exists — API Key and API Key Type). JSON retains its stable machine-oriented field names and value types.
 
 > [!NOTE]
 > In Standard, the Analytics workspace is unavailable and new analytics tracking is disabled. Export and permanent purge of retained analytics data remain available under **Search Manager > Utilities > Analytics Data Management**.

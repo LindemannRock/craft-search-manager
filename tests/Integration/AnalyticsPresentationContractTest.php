@@ -40,6 +40,37 @@ final class AnalyticsPresentationContractTest extends TestCase
         self::assertStringContainsString("'Hits'|t('search-manager')", $analytics);
     }
 
+    public function testRecentSearchOutcomePresentationPreservesMachineContract(): void
+    {
+        $searches = $this->readPluginFile('src/templates/analytics/_partials/searches.twig');
+        $export = $this->readPluginFile('src/services/analytics/AnalyticsExportService.php');
+        $tracking = $this->readPluginFile('src/services/analytics/AnalyticsTrackingService.php');
+        $install = $this->readPluginFile('src/migrations/Install.php');
+
+        $rulesPosition = strpos($searches, "'Rules'|t('search-manager')");
+        $synonymsPosition = strpos($searches, "'Synonyms'|t('search-manager')");
+        $redirectPosition = strpos($searches, "'Redirect'|t('search-manager')");
+        $promotionsPosition = strpos($searches, "'Promotions'|t('search-manager')");
+        self::assertIsInt($rulesPosition);
+        self::assertIsInt($synonymsPosition);
+        self::assertIsInt($redirectPosition);
+        self::assertIsInt($promotionsPosition);
+        self::assertLessThan($synonymsPosition, $rulesPosition);
+        self::assertLessThan($redirectPosition, $synonymsPosition);
+        self::assertLessThan($promotionsPosition, $redirectPosition);
+        foreach (['Rules Matched', 'Synonym expanded', 'Redirected', 'Redirect rule matched', 'Promotions shown', 'Search outcomes'] as $forbiddenHeading) {
+            self::assertStringNotContainsString("'{$forbiddenHeading}'|t('search-manager')", $searches);
+        }
+        foreach (['Rules', 'Synonyms', 'Redirect', 'Promotions'] as $heading) {
+            self::assertStringContainsString("Craft::t('search-manager', '{$heading}')", $export);
+        }
+        self::assertStringNotContainsString("Craft::t('search-manager', 'Rules Matched')", $export);
+        self::assertStringNotContainsString("Craft::t('search-manager', 'Redirect rule matched')", $export);
+        self::assertStringContainsString("'redirected' => (\$row['wasRedirected'] ?? false) ? 1 : 0", $export);
+        self::assertStringContainsString('wasRedirected: Whether a redirect rule matched', $tracking);
+        self::assertStringContainsString("'wasRedirected' => \$this->boolean()->notNull()->defaultValue(false)->comment('Did a redirect rule match')", $install);
+    }
+
     private function readPluginFile(string $relativePath): string
     {
         $contents = file_get_contents(dirname(__DIR__, 2) . '/' . $relativePath);

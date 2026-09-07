@@ -159,24 +159,31 @@ final class AnalyticsAssetI18nTest extends TestCase
         // Dedicated sweep: searches-table tooltips + intent column bypassed translation.
         $twig = $this->readPluginFile('src/templates/analytics/index.twig');
         foreach ([
-            'redirected: "Redirected"|t(\'search-manager\')',
-            'synonymsUsed: "Synonyms used"|t(\'search-manager\')',
-            'redirectedToPage: "Redirected to another page"|t(\'search-manager\')',
+            'redirectRuleMatched: "Redirect rule matched"|t(\'search-manager\')',
+            'yes: "Yes"|t(\'search-manager\')',
         ] as $needle) {
             self::assertStringContainsString($needle, $twig);
         }
 
         $source = $this->readPluginFile('src/web/assets/analytics/src/analytics.js');
-        self::assertStringContainsString('title="\' + strings.redirected + \'"', $source);
-        self::assertStringContainsString('title="\' + strings.synonymsUsed + \'"', $source);
-        self::assertStringContainsString('title="\' + strings.redirectedToPage + \'"', $source);
+        self::assertStringContainsString('Craft.escapeHtml(strings.redirectRuleMatched)', $source);
+        self::assertStringContainsString('Craft.escapeHtml(strings.yes)', $source);
+        self::assertSame(2, substr_count($source, 'aria-label="\' + redirectRuleMatched + \'"'));
         self::assertStringContainsString('Craft.escapeHtml(intentLabel(s.intent))', $source);
 
         // Raw English tooltips / raw intent capitalization must be gone.
         self::assertStringNotContainsString('title="Redirected"', $source);
         self::assertStringNotContainsString('title="Synonyms used"', $source);
         self::assertStringNotContainsString('title="Redirected to another page"', $source);
+        self::assertStringNotContainsString('strings.redirected', $source);
+        self::assertStringNotContainsString('strings.redirectedToPage', $source);
+        self::assertStringNotContainsString('strings.synonymsUsed', $source);
         self::assertStringNotContainsString('Craft.escapeHtml(s.intent.charAt(0).toUpperCase() + s.intent.slice(1))', $source);
+
+        $dist = $this->readPluginFile('src/web/assets/analytics/dist/analytics.js');
+        self::assertStringContainsString('redirectRuleMatched', $dist);
+        self::assertStringContainsString('aria-label', $dist);
+        self::assertStringNotContainsString('redirectedToPage', $dist);
     }
 
     public function testAnalyticsDistWiresTranslatedEnumLabels(): void

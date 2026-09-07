@@ -753,19 +753,21 @@
         }
 
         data.forEach(function(s) {
+            var redirectRuleMatched = Craft.escapeHtml(strings.redirectRuleMatched);
+            var yes = Craft.escapeHtml(strings.yes);
             var hits;
             if (s.wasRedirected) {
-                hits = '<span class="lr-text-purple" title="' + strings.redirected + '">\u2014</span>';
+                hits = '<span class="lr-text-purple" title="' + redirectRuleMatched + '" aria-label="' + redirectRuleMatched + '">\u2014</span>';
             } else if (s.resultsCount > 0) {
                 hits = '<span class="lr-text-green">' + Number(s.resultsCount).toLocaleString() + '</span>';
             } else {
                 hits = '<span class="lr-text-red">0</span>';
             }
 
-            var synonyms = s.synonymsExpanded ? '<span class="status green" title="' + strings.synonymsUsed + '"></span>' : '<span class="light">\u2014</span>';
-            var rules = s.rulesMatched > 0 ? '<span class="lr-text-blue">' + s.rulesMatched + '</span>' : '<span class="light">\u2014</span>';
-            var promos = s.promotionsShown > 0 ? '<span class="lr-text-amber">' + s.promotionsShown + '</span>' : '<span class="light">\u2014</span>';
-            var redirected = s.wasRedirected ? '<span class="status red" title="' + strings.redirectedToPage + '"></span>' : '<span class="light">\u2014</span>';
+            var rules = s.rulesMatched > 0 ? Number(s.rulesMatched).toLocaleString() : '<span class="light">\u2014</span>';
+            var synonyms = s.synonymsExpanded ? yes : '<span class="light">\u2014</span>';
+            var redirected = s.wasRedirected ? '<span title="' + redirectRuleMatched + '" aria-label="' + redirectRuleMatched + '">' + yes + '</span>' : '<span class="light">\u2014</span>';
+            var promotions = s.promotionsShown > 0 ? Number(s.promotionsShown).toLocaleString() : '<span class="light">\u2014</span>';
             var intent = s.intent ? Craft.escapeHtml(intentLabel(s.intent)) : '\u2014';
             var source = {cp: 'CP', frontend: strings.frontend || '', api: 'API'}[s.source] || Craft.escapeHtml((s.source || '').charAt(0).toUpperCase() + (s.source || '').slice(1));
 
@@ -775,10 +777,10 @@
                 '<td><code>' + Craft.escapeHtml(s.query) + '</code></td>' +
                 '<td>' + Craft.escapeHtml(s.siteName || '\u2014') + '</td>' +
                 '<td>' + hits + '</td>' +
-                '<td>' + synonyms + '</td>' +
                 '<td>' + rules + '</td>' +
-                '<td>' + promos + '</td>' +
+                '<td>' + synonyms + '</td>' +
                 '<td>' + redirected + '</td>' +
+                '<td>' + promotions + '</td>' +
                 '<td>' + Craft.escapeHtml(s.indexHandle || '\u2014') + '</td>' +
                 '<td>' + Craft.escapeHtml(labels[s.backend] || (s.backend ? s.backend.charAt(0).toUpperCase() + s.backend.slice(1) : '\u2014')) + '</td>' +
                 '<td>' + intent + '</td>' +
@@ -1396,6 +1398,7 @@
             handleAnalyticsInit: handleAnalyticsInit,
             loadInitialCharts: loadInitialCharts,
             loadTabData: loadTabData,
+            renderRecentSearches: renderRecentSearches,
             resetRequestGeneration: resetRequestGeneration,
             state: function() {
                 return {

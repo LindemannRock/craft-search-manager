@@ -201,7 +201,10 @@ function createJquery(document, requests) {
 				});
 				return this;
 			},
-			append() {
+			append(value) {
+				elements.forEach((element) => {
+					element.textContent += value || '';
+				});
 				return this;
 			},
 		};
@@ -228,7 +231,8 @@ function createEnvironment(options = {}) {
 	overview.appendChild(target);
 	const trendTarget = new FakeElement('canvas', '404-trend-chart');
 	overview.appendChild(trendTarget);
-	addElement(document, 'div', 'searches', 'lr-tab-content hidden');
+	const searches = addElement(document, 'div', 'searches', 'lr-tab-content hidden');
+	searches.appendChild(new FakeElement('tbody', 'recent-searches-body'));
 	addElement(document, 'div', 'content-gaps', 'lr-tab-content hidden');
 	addElement(document, 'div', 'lr-analytics-content');
 
@@ -276,8 +280,11 @@ function createEnvironment(options = {}) {
 		endpoints: {data: 'search-manager/analytics/get-data'},
 		strings: {
 			analyticsLoadError: 'Analytics failed.',
+			redirectRuleMatched: 'Redirect rule matched',
+			frontend: 'Frontend',
 			retry: 'Retry',
 			loading: 'Loading...',
+			yes: 'Yes',
 		},
 	});
 
@@ -329,6 +336,40 @@ test('all 23 analytics call sites use the shared request authority', () => {
 	]) {
 		assert.match(source, new RegExp(`['"]${type}['"]`));
 	}
+});
+
+test('recent searches renders neutral outcome values in header order without claiming navigation', () => {
+	const env = createEnvironment();
+	env.hooks.renderRecentSearches([
+		{
+			date: '2026-09-04',
+			time: '10:00',
+			query: 'matched redirect rule',
+			resultsCount: 0,
+			rulesMatched: 3,
+			synonymsExpanded: true,
+			wasRedirected: true,
+			promotionsShown: 2,
+		},
+		{
+			date: '2026-09-04',
+			time: '10:01',
+			query: 'no redirect rule',
+			resultsCount: 0,
+			rulesMatched: 0,
+			synonymsExpanded: false,
+			wasRedirected: false,
+			promotionsShown: 0,
+		},
+	]);
+
+	const markup = env.document.getElementById('recent-searches-body').textContent;
+	assert.equal((markup.match(/aria-label="Redirect rule matched"/g) || []).length, 2);
+	assert.match(markup, /matched redirect rule<\/code>[\s\S]*?<td><span class="lr-text-purple"[^>]*>\u2014<\/span><\/td><td>3<\/td><td>Yes<\/td><td><span title="Redirect rule matched" aria-label="Redirect rule matched">Yes<\/span><\/td><td>2<\/td>/);
+	assert.match(markup, /no redirect rule<\/code>[\s\S]*?<td><span class="lr-text-red">0<\/span><\/td>(?:<td><span class="light">\u2014<\/span><\/td>){4}/);
+	assert.doesNotMatch(markup, /class="status (?:green|red)"/);
+	assert.doesNotMatch(markup, /lr-text-(?:blue|amber)/);
+	assert.doesNotMatch(markup, /Redirected to another page|title="Redirected"/);
 });
 
 test('coverage guard detects a request that bypasses the shared authority', () => {
