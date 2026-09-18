@@ -78,7 +78,8 @@ final class StorageMaintenanceSelectionTest extends TestCase
         self::assertSame([], $this->storageOptionValues($html));
         self::assertStringNotContainsString('Loading...', $html);
         self::assertStringNotContainsString('id="clear-storage-by-type"', $html);
-        self::assertStringContainsString('No data available', $html);
+        self::assertStringContainsString('id="storage-clear-section" class="hidden"', $html);
+        self::assertStringContainsString('Rebuild All Indices', $html);
     }
 
     public function testRenderedSelectorContainsOnlyEligibleFinalLabelsInDeterministicOrder(): void
@@ -110,6 +111,7 @@ final class StorageMaintenanceSelectionTest extends TestCase
         self::assertStringNotContainsString('value="redis"', $html);
         self::assertStringNotContainsString('Loading...', $html);
         self::assertStringContainsString('id="clear-storage-by-type"', $html);
+        self::assertStringContainsString('id="storage-clear-section">', $html);
     }
 
     public function testConfiguredUsageMapsDisabledLocalBackendsAndIgnoresHostedBackends(): void

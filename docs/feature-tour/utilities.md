@@ -58,7 +58,7 @@ After a target clears successfully, Search Manager resets the stored document co
 - **Troubleshooting** — An index rebuild fails or produces stale results. Clear the storage type and rebuild fresh.
 - **Resetting a storage driver** — You want to wipe one storage driver completely before rebuilding the affected indices.
 
-The database option automatically detects whether you're running MySQL or PostgreSQL and labels itself accordingly. If no local storage type is currently eligible, the section shows a safe empty state with no clear action.
+The database option automatically detects whether you're running MySQL or PostgreSQL and labels itself accordingly. If no local storage type is currently eligible, the entire storage-clearing subsection is hidden, including its explanation and deletion warning. Rebuild All Indices remains visible. This also applies after clearing the last orphaned data from an unconfigured storage type.
 
 ### Orphaned handles
 

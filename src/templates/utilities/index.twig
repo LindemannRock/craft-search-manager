@@ -162,32 +162,34 @@
                     </button>
                 </form>
 
-                <p class="light" style="margin-bottom: 12px;">{{ "Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting."|t('search-manager') }}</p>
+                <div id="storage-clear-section"{% if storageOptions is empty %} class="hidden"{% endif %}>
+                    <p class="light" style="margin-bottom: 12px;">{{ "Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting."|t('search-manager') }}</p>
 
-                {% if storageOptions is not empty %}
-                <div id="storage-clear-controls" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                    {{ forms.select({
-                        id: 'storage-type-select',
-                        name: 'storageType',
-                        options: storageOptions,
-                        value: storageOptions[0].value,
-                    }) }}
+                    {% if storageOptions is not empty %}
+                    <div id="storage-clear-controls" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        {{ forms.select({
+                            id: 'storage-type-select',
+                            name: 'storageType',
+                            options: storageOptions,
+                            value: storageOptions[0].value,
+                        }) }}
 
-                    <button type="button" class="btn secondary" id="clear-storage-by-type">
-                        <span class="clear-storage-text">{{ "Clear Storage"|t('search-manager') }}</span>
-                        <span class="spinner clear-storage-spinner hidden" aria-hidden="true"></span>
-                    </button>
+                        <button type="button" class="btn secondary" id="clear-storage-by-type">
+                            <span class="clear-storage-text">{{ "Clear Storage"|t('search-manager') }}</span>
+                            <span class="spinner clear-storage-spinner hidden" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                    {% endif %}
+
+                    <p id="storage-clear-empty" class="light{% if storageOptions is not empty %} hidden{% endif %}">{{ "No data available"|t('search-manager') }}</p>
+                    <p id="clear-storage-status" class="light hidden" aria-live="polite" style="margin-top: 12px;"></p>
+
+                    {% include 'lindemannrock-base/_components/info-box' with {
+                        message: 'This will delete all search index data stored in the selected storage type across all indices. You\'ll need to rebuild affected indices afterwards.'|t('search-manager'),
+                        type: 'warning',
+                        bg: 'white'
+                    } %}
                 </div>
-                {% endif %}
-
-                <p id="storage-clear-empty" class="light{% if storageOptions is not empty %} hidden{% endif %}">{{ "No data available"|t('search-manager') }}</p>
-                <p id="clear-storage-status" class="light hidden" aria-live="polite" style="margin-top: 12px;"></p>
-
-                {% include 'lindemannrock-base/_components/info-box' with {
-                    message: 'This will delete all search index data stored in the selected storage type across all indices. You\'ll need to rebuild affected indices afterwards.'|t('search-manager'),
-                    type: 'warning',
-                    bg: 'white'
-                } %}
             </div>
         {% endif %}
 
@@ -279,6 +281,7 @@ function applyStorageOptions(options) {
     });
 
     var hasOptions = options.length > 0;
+    $('#storage-clear-section').toggleClass('hidden', !hasOptions);
     $('#storage-clear-controls').toggleClass('hidden', !hasOptions);
     $('#storage-clear-empty').toggleClass('hidden', hasOptions);
     $('#clear-storage-by-type').prop('disabled', !hasOptions);

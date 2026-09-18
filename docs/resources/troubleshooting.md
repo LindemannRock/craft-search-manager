@@ -4,6 +4,12 @@ When search isn't behaving the way you expect — no results, the wrong results,
 
 Before changing templates or client code, reproduce the same index and query in [Testing tools](testing-tools.md). **Search Manager → Settings → Test** shows the backend, cache state, snippets, promotions, query rules, and debug metadata, which helps separate indexing problems from frontend integration problems.
 
+## Clear Storage is missing from Utilities
+
+The storage-clearing controls appear only when a local storage type is reachable and either a configured backend uses it or it contains data to clear. With only remote backends and no eligible leftover local data, the subsection is hidden; **Rebuild All Indices** remains visible.
+
+This is expected. For Algolia, Meilisearch, or Typesense, rebuild or clear configured indices individually, and remove old provider indices in the provider dashboard. See [Utilities](../feature-tour/utilities.md#clear-storage-by-type) for local storage cleanup.
+
 ## Search returns no results
 
 **Check the basics first:**
