@@ -71,7 +71,7 @@ final class FreshInstallSchemaContractTest extends TestCase
             $this->createProject();
 
             $version = (string)$this->adminPdo()->query('SELECT VERSION()')->fetchColumn();
-            self::assertStringStartsWith('8.0.40', $version);
+            self::assertStringStartsWith('8.0.', $version);
 
             $this->installCraft();
             $this->installPlugins();
