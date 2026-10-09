@@ -157,6 +157,18 @@ test('Composer declares the release dependency and directly invoked PHPStan floo
     assert.equal(composer['require-dev']['phpstan/phpstan'], '^1.12.33');
 });
 
+test('Composer full suite routes through the disposable project and keeps direct PHPUnit explicit', () => {
+    const composer = JSON.parse(readFileSync(path.join(pluginRoot, 'composer.json'), 'utf8'));
+    assert.equal(composer.scripts.test, 'php tests/Fixtures/Project/run.php --no-progress');
+    assert.equal(composer.scripts['test:direct'], 'phpunit --colors=always');
+    assert.deepEqual(composer.scripts['ci:full'], ['@ci', '@test']);
+
+    const runner = readFileSync(path.join(pluginRoot, 'tests/Fixtures/Project/run.php'), 'utf8');
+    assert.match(runner, /SEARCH_MANAGER_FIXTURE_SOURCE_VENDOR_ROOT/);
+    assert.match(runner, /\$packageRoot \. '\/vendor'/);
+    assert.match(runner, /dirname\(\$packageRoot, 2\) \. '\/vendor'/);
+});
+
 test('canonical Composer quality gate disables only its process timeout', () => {
     const composer = JSON.parse(readFileSync(path.join(pluginRoot, 'composer.json'), 'utf8'));
     assert.deepEqual(composer.scripts['quality-gate'], [
@@ -178,6 +190,42 @@ test('successful aggregate invokes every constituent in canonical order', () => 
         assert.deepEqual(current.ids(), expectedIds);
     } finally {
         current.cleanup();
+    }
+});
+
+test('DDEV container routing executes constituents directly without nesting DDEV', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'search-manager-ddev-routing-'));
+    const binRoot = path.join(root, 'bin');
+    const logPath = path.join(root, 'commands.log');
+    mkdirSync(binRoot);
+    try {
+        for (const executable of ['composer', 'bash', 'php', 'node', 'npm', 'ddev']) {
+            const status = executable === 'ddev' ? 79 : 0;
+            const executablePath = path.join(binRoot, executable);
+            writeFileSync(executablePath, `#!/bin/sh
+printf '%s|%s|%s|%s\\n' "${executable}" "$*" "$SEARCH_MANAGER_FIXTURE_SOURCE_VENDOR_ROOT" "$PWD" >> "$SEARCH_MANAGER_DDEV_ROUTING_LOG"
+exit ${status}
+`, {mode: 0o700});
+            chmodSync(executablePath, 0o700);
+        }
+
+        const result = spawnSync(process.execPath, [gatePath], {
+            cwd: pluginRoot,
+            encoding: 'utf8',
+            env: {
+                ...process.env,
+                IS_DDEV_PROJECT: 'true',
+                PATH: `${binRoot}:/usr/bin:/bin`,
+                SEARCH_MANAGER_DDEV_ROUTING_LOG: logPath,
+            },
+        });
+        assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+        const commands = readFileSync(logPath, 'utf8');
+        assert.doesNotMatch(commands, /^ddev\|/m);
+        assert.match(commands, new RegExp(`^composer\\|check-platform-reqs --no-interaction\\|\\|${path.dirname(path.dirname(pluginRoot))}$`, 'm'));
+        assert.match(commands, /^php\|tests\/Fixtures\/Project\/run\.php --no-progress\|.*\/vendor\|/m);
+    } finally {
+        rmSync(root, {recursive: true, force: true});
     }
 });
 

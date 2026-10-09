@@ -9,6 +9,9 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const workspaceRoot = path.resolve(packageRoot, '../..');
 const workspaceMode = packageRoot === path.join(workspaceRoot, 'plugins/search-manager')
     && existsSync(path.join(workspaceRoot, '.ddev/config.yaml'));
+const insideDdev = process.env.IS_DDEV_PROJECT === 'true';
+const workspaceHostMode = workspaceMode && !insideDdev;
+const runtimeVendorRoot = insideDdev ? path.join(workspaceRoot, 'vendor') : path.join(packageRoot, 'vendor');
 
 const phpConstituents = [
     {
@@ -41,7 +44,7 @@ const phpConstituents = [
         standalone: ['php', ['tests/Fixtures/Project/run.php', '--no-progress']],
         workspace: ['ddev', ['exec', 'cd plugins/search-manager && SEARCH_MANAGER_FIXTURE_SOURCE_VENDOR_ROOT=/var/www/html/vendor php tests/Fixtures/Project/run.php --no-progress']],
         standaloneEnvironment: {
-            SEARCH_MANAGER_FIXTURE_SOURCE_VENDOR_ROOT: path.join(packageRoot, 'vendor'),
+            SEARCH_MANAGER_FIXTURE_SOURCE_VENDOR_ROOT: runtimeVendorRoot,
         },
     },
 ];
@@ -106,7 +109,7 @@ function commandFor(constituent) {
         return [probeExecutable, [constituent.id, constituent.family], packageRoot, process.env];
     }
 
-    if (workspaceMode && constituent.workspace) {
+    if (workspaceHostMode && constituent.workspace) {
         return [constituent.workspace[0], constituent.workspace[1], workspaceRoot, process.env];
     }
 
@@ -114,7 +117,12 @@ function commandFor(constituent) {
         ...process.env,
         ...(constituent.standaloneEnvironment ?? {}),
     };
-    return [constituent.standalone[0], constituent.standalone[1], packageRoot, environment];
+    return [
+        constituent.standalone[0],
+        constituent.standalone[1],
+        insideDdev && constituent.id === 'platform-compatibility' ? workspaceRoot : packageRoot,
+        environment,
+    ];
 }
 
 for (const constituent of constituents) {
