@@ -79,6 +79,7 @@ final class AnalyticsGeoDefaultsTest extends TestCase
         self::assertIsArray($location);
         self::assertSame('US', $location['countryCode']);
         self::assertSame('New York', $location['city']);
+        self::assertArrayNotHasKey('timezone', $location);
     }
 
     public function testPrivateIpUsesEuropeanLocaleDefaults(): void
@@ -101,6 +102,7 @@ final class AnalyticsGeoDefaultsTest extends TestCase
             self::assertSame($countryCode, $location['countryCode']);
             self::assertSame($country, $location['country']);
             self::assertSame($city, $location['city']);
+            self::assertArrayNotHasKey('timezone', $location);
         }
     }
 

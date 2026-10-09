@@ -6,7 +6,7 @@ Make sure your environment meets these requirements before you install Search Ma
 
 | Requirement | Version |
 |-------------|---------|
-| [Craft CMS](https://craftcms.com/) | 5.10+ |
+| [Craft CMS](https://craftcms.com/) | 5.11+ |
 | [PHP](https://php.net/) | 8.2+ |
 
 ## Search backends
@@ -31,7 +31,7 @@ Composer pulls these packages automatically. Craft plugin dependencies also need
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| [lindemannrock/craft-plugin-base](https://github.com/LindemannRock/craft-plugin-base) | 5.38.2+ | Shared base plugin utilities (helpers, traits, layouts) |
+| [lindemannrock/craft-plugin-base](https://github.com/LindemannRock/craft-plugin-base) | 5.39.0+ | Shared base plugin utilities (helpers, traits, layouts) |
 | [lindemannrock/craft-logging-library](https://github.com/LindemannRock/craft-logging-library) | 5.18.2+ | Optional — install in CP for log viewing |
 | [algolia/algoliasearch-client-php](https://github.com/algolia/algoliasearch-client-php) | 4.0+ | Algolia backend integration |
 | [meilisearch/meilisearch-php](https://github.com/meilisearch/meilisearch-php) | 1.0+ | Meilisearch backend integration |

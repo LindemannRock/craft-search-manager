@@ -512,13 +512,9 @@ class AnalyticsBreakdownService
     public function getLocationFromIp(string $ip): ?array
     {
         try {
-            // Skip local/private IPs - return default location data for local development
-            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-                return $this->getDefaultLocation();
-            }
-
-            // Use centralized geo lookup from base plugin
-            $geoData = $this->lookupGeoIp($ip, $this->getGeoConfig());
+            $geoData = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false
+                ? $this->getDefaultLocation()
+                : $this->lookupGeoIp($ip, $this->getGeoConfig());
 
             if ($geoData === null) {
                 return null;
@@ -563,68 +559,10 @@ class AnalyticsBreakdownService
             return null;
         }
 
-        // Predefined locations for common cities worldwide
-        $locations = [
-            'US' => [
-                'New York' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'New York', 'region' => 'New York', 'lat' => 40.7128, 'lon' => -74.0060],
-                'Los Angeles' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'Los Angeles', 'region' => 'California', 'lat' => 34.0522, 'lon' => -118.2437],
-                'Chicago' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'Chicago', 'region' => 'Illinois', 'lat' => 41.8781, 'lon' => -87.6298],
-                'San Francisco' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'San Francisco', 'region' => 'California', 'lat' => 37.7749, 'lon' => -122.4194],
-            ],
-            'GB' => [
-                'London' => ['countryCode' => 'GB', 'country' => 'United Kingdom', 'city' => 'London', 'region' => 'England', 'lat' => 51.5074, 'lon' => -0.1278],
-                'Manchester' => ['countryCode' => 'GB', 'country' => 'United Kingdom', 'city' => 'Manchester', 'region' => 'England', 'lat' => 53.4808, 'lon' => -2.2426],
-            ],
-            'AE' => [
-                'Dubai' => ['countryCode' => 'AE', 'country' => 'United Arab Emirates', 'city' => 'Dubai', 'region' => 'Dubai', 'lat' => 25.2048, 'lon' => 55.2708],
-                'Abu Dhabi' => ['countryCode' => 'AE', 'country' => 'United Arab Emirates', 'city' => 'Abu Dhabi', 'region' => 'Abu Dhabi', 'lat' => 24.4539, 'lon' => 54.3773],
-            ],
-            'SA' => [
-                'Riyadh' => ['countryCode' => 'SA', 'country' => 'Saudi Arabia', 'city' => 'Riyadh', 'region' => 'Riyadh Province', 'lat' => 24.7136, 'lon' => 46.6753],
-                'Jeddah' => ['countryCode' => 'SA', 'country' => 'Saudi Arabia', 'city' => 'Jeddah', 'region' => 'Makkah Province', 'lat' => 21.5433, 'lon' => 39.1728],
-            ],
-            'DE' => [
-                'Berlin' => ['countryCode' => 'DE', 'country' => 'Germany', 'city' => 'Berlin', 'region' => 'Berlin', 'lat' => 52.5200, 'lon' => 13.4050],
-                'Munich' => ['countryCode' => 'DE', 'country' => 'Germany', 'city' => 'Munich', 'region' => 'Bavaria', 'lat' => 48.1351, 'lon' => 11.5820],
-            ],
-            'FR' => [
-                'Paris' => ['countryCode' => 'FR', 'country' => 'France', 'city' => 'Paris', 'region' => 'Île-de-France', 'lat' => 48.8566, 'lon' => 2.3522],
-            ],
-            'NL' => [
-                'Amsterdam' => ['countryCode' => 'NL', 'country' => 'Netherlands', 'city' => 'Amsterdam', 'region' => 'North Holland', 'lat' => 52.3676, 'lon' => 4.9041],
-            ],
-            'SE' => [
-                'Stockholm' => ['countryCode' => 'SE', 'country' => 'Sweden', 'city' => 'Stockholm', 'region' => 'Stockholm County', 'lat' => 59.3293, 'lon' => 18.0686],
-            ],
-            'DK' => [
-                'Copenhagen' => ['countryCode' => 'DK', 'country' => 'Denmark', 'city' => 'Copenhagen', 'region' => 'Capital Region of Denmark', 'lat' => 55.6761, 'lon' => 12.5683],
-            ],
-            'NO' => [
-                'Oslo' => ['countryCode' => 'NO', 'country' => 'Norway', 'city' => 'Oslo', 'region' => 'Oslo', 'lat' => 59.9139, 'lon' => 10.7522],
-            ],
-            'CA' => [
-                'Toronto' => ['countryCode' => 'CA', 'country' => 'Canada', 'city' => 'Toronto', 'region' => 'Ontario', 'lat' => 43.6532, 'lon' => -79.3832],
-                'Vancouver' => ['countryCode' => 'CA', 'country' => 'Canada', 'city' => 'Vancouver', 'region' => 'British Columbia', 'lat' => 49.2827, 'lon' => -123.1207],
-            ],
-            'AU' => [
-                'Sydney' => ['countryCode' => 'AU', 'country' => 'Australia', 'city' => 'Sydney', 'region' => 'New South Wales', 'lat' => -33.8688, 'lon' => 151.2093],
-                'Melbourne' => ['countryCode' => 'AU', 'country' => 'Australia', 'city' => 'Melbourne', 'region' => 'Victoria', 'lat' => -37.8136, 'lon' => 144.9631],
-            ],
-            'JP' => [
-                'Tokyo' => ['countryCode' => 'JP', 'country' => 'Japan', 'city' => 'Tokyo', 'region' => 'Tokyo', 'lat' => 35.6762, 'lon' => 139.6503],
-            ],
-            'SG' => [
-                'Singapore' => ['countryCode' => 'SG', 'country' => 'Singapore', 'city' => 'Singapore', 'region' => 'Singapore', 'lat' => 1.3521, 'lon' => 103.8198],
-            ],
-            'IN' => [
-                'Mumbai' => ['countryCode' => 'IN', 'country' => 'India', 'city' => 'Mumbai', 'region' => 'Maharashtra', 'lat' => 19.0760, 'lon' => 72.8777],
-                'Delhi' => ['countryCode' => 'IN', 'country' => 'India', 'city' => 'Delhi', 'region' => 'Delhi', 'lat' => 28.7041, 'lon' => 77.1025],
-            ],
-        ];
+        $location = GeoHelper::getDefaultLocation($defaultCountry, $defaultCity);
 
-        // Return the configured location if it exists
-        if (isset($locations[$defaultCountry][$defaultCity])) {
-            return $locations[$defaultCountry][$defaultCity];
+        if ($location !== null) {
+            return $location;
         }
 
         Craft::warning('Configured default analytics location was not found; leaving local/private IP geo fields empty. | ' . json_encode([
