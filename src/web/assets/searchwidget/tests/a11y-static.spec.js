@@ -915,3 +915,87 @@ test.describe('Search Widget A11y - Static Fixture', () => {
     });
 
 });
+
+// Exercise the shipped renderer and navigation handlers, not fixture HTML injection.
+for (const mode of [
+    { name: 'light', theme: 'light' },
+    { name: 'dark', theme: 'dark' },
+    { name: 'debug', theme: 'dark', debug: true },
+    { name: 'promoted tint', theme: 'dark', tint: true },
+    { name: 'hierarchy individual', theme: 'light', hierarchy: 'individual' },
+    { name: 'hierarchy unified debug', theme: 'dark', hierarchy: 'unified', debug: true },
+]) {
+    test(`one active result with stationary pointer: ${mode.name}`, async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 1800 });
+        const hits = Array.from({ length: 6 }, (_, i) => ({
+            id: i + 1, elementId: i + 1, title: `Eco result ${i + 1}`,
+            url: `/result/${i + 1}`, type: 'entry', score: 10 - i,
+            promoted: mode.tint && i === 3,
+            headings: mode.hierarchy ? [
+                { title: 'Eco first heading', id: 'first', level: 2 },
+                { title: 'Eco second heading', id: 'second', level: 2 },
+                { title: 'Eco third heading', id: 'third', level: 2 },
+            ] : [],
+        }));
+        await page.route('**/actions/search-manager/**', route => route.fulfill({
+            json: { hits, total: hits.length },
+        }));
+        await page.goto(TEST_PAGE);
+        await page.evaluate(async mode => {
+            await customElements.whenDefined('search-modal');
+            const widget = document.createElement('search-modal');
+            widget.id = 'selection-test';
+            widget.setAttribute('theme', mode.theme);
+            widget.setAttribute('results-grouping-enabled', 'false');
+            if (mode.debug) widget.setAttribute('debug-enabled', 'true');
+            if (mode.tint) widget.setAttribute('promotion-display', 'tint');
+            if (mode.hierarchy) {
+                widget.setAttribute('results-layout', 'hierarchical');
+                widget.setAttribute('hierarchy-display', mode.hierarchy);
+            }
+            document.body.append(widget);
+            widget.open();
+        }, mode);
+        const widget = page.locator('#selection-test');
+        const input = widget.locator('.sm-input');
+        const items = widget.locator('.sm-result-item');
+        await input.fill('eco');
+        await expect(items.nth(5)).toBeVisible();
+        await expect(items.nth(0)).toHaveAttribute('aria-selected', 'true');
+        const hoveredItem = items.nth(1);
+        const appearance = () => hoveredItem.evaluate(el => {
+            const row = el.closest('.sm-hierarchy-child-row') || el;
+            const debug = el.querySelector('.sm-debug-info');
+            return {
+                background: getComputedStyle(el).backgroundColor,
+                color: getComputedStyle(el.querySelector('.sm-result-title')).color,
+                rowBackground: getComputedStyle(row).backgroundColor,
+                connector: getComputedStyle(row, '::before').borderColor,
+                debug: debug ? getComputedStyle(debug).backgroundColor : null,
+                arrow: getComputedStyle(el.querySelector('.sm-result-arrow')).opacity,
+            };
+        });
+        const resting = await appearance();
+        await hoveredItem.hover();
+        await expect(hoveredItem).toHaveAttribute('aria-selected', 'true');
+        await page.keyboard.press('ArrowDown');
+        await expect(items.nth(2)).toHaveAttribute('aria-selected', 'true');
+        await expect(widget.locator('.sm-selected')).toHaveCount(1);
+        await expect.poll(appearance).toEqual(resting);
+        expect(await hoveredItem.evaluate(el => el.matches(':hover'))).toBe(true);
+
+        // New results reset selection while the pointer remains over another row.
+        const response = page.waitForResponse(res => res.url().includes('/api/search'));
+        await input.fill('ec');
+        await response;
+        await expect(items.nth(0)).toHaveAttribute('aria-selected', 'true');
+        await expect.poll(appearance).toEqual(resting);
+        expect(await hoveredItem.evaluate(el => el.matches(':hover'))).toBe(true);
+
+        // Actual pointer movement can take selection back from the keyboard.
+        const box = await hoveredItem.boundingBox();
+        await page.mouse.move(box.x + box.width / 2 + 2, box.y + box.height / 2);
+        await expect(hoveredItem).toHaveAttribute('aria-selected', 'true');
+        await expect(widget.locator('.sm-selected')).toHaveCount(1);
+    });
+}

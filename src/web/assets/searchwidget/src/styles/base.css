@@ -270,31 +270,26 @@
     transition: background 0.1s ease;
 }
 
-/* Hover and selected share the same visual — pointer movement sets .sm-selected,
-   so separate hover colors would never be visible. Use one set of active colors.
+/* Mouse movement and keyboard navigation both update .sm-selected.
+   A stationary pointer must not highlight a second row through :hover.
    box-shadow color changes from --_border-shadow (gray) to --_active-shadow (blue). */
-.sm-result-item:hover,
 .sm-result-item.sm-selected {
     background: var(--sm-selected-bg);
     box-shadow: var(--_active-shadow);
 }
 
-.sm-result-item:hover .sm-result-title,
 .sm-result-item.sm-selected .sm-result-title {
     color: var(--sm-result-active-text-color, var(--sm-text-primary));
 }
 
-.sm-result-item:hover .sm-result-desc,
 .sm-result-item.sm-selected .sm-result-desc {
     color: var(--sm-result-active-desc-color, var(--sm-text-secondary));
 }
 
-.sm-result-item:hover .sm-result-icon,
 .sm-result-item.sm-selected .sm-result-icon {
     color: var(--sm-result-icon-active-resolved, var(--sm-result-active-muted-color, var(--sm-text-muted)));
 }
 
-.sm-result-item:hover .sm-result-arrow,
 .sm-result-item.sm-selected .sm-result-arrow {
     color: var(--sm-arrow-resolved, var(--sm-result-active-muted-color, var(--sm-text-muted)));
 }
@@ -346,7 +341,6 @@
     transition: opacity 0.1s ease;
 }
 
-.sm-result-item:hover .sm-result-arrow,
 .sm-result-item.sm-selected .sm-result-arrow {
     opacity: 1;
 }
@@ -385,22 +379,17 @@
     color: var(--sm-icon);
 }
 
-.sm-result-item:hover .sm-hierarchy-icon,
 .sm-result-item.sm-selected .sm-hierarchy-icon {
     color: var(--sm-icon-active-resolved, var(--sm-icon));
 }
 
-/* Hovered/selected child row recolors its connector segment.
+/* Selected child row recolors its connector segment.
    Connectors are drawn with borders only — never set a background here
    (it fills the last-row curve box into a solid square). */
-.sm-hierarchy-child-row:hover::before,
-.sm-hierarchy-child-row:hover::after,
-.sm-hierarchy-child-row.sm-selected::before,
-.sm-hierarchy-child-row.sm-selected::after,
-.sm-hierarchy-child-row:hover .sm-debug-enabled .sm-result-main::before,
-.sm-hierarchy-child-row:hover .sm-debug-enabled .sm-result-main::after,
-.sm-hierarchy-child-row.sm-selected .sm-debug-enabled .sm-result-main::before,
-.sm-hierarchy-child-row.sm-selected .sm-debug-enabled .sm-result-main::after {
+.sm-hierarchy-child-row:has(.sm-selected)::before,
+.sm-hierarchy-child-row:has(.sm-selected)::after,
+.sm-hierarchy-child-row:has(.sm-selected) .sm-debug-enabled .sm-result-main::before,
+.sm-hierarchy-child-row:has(.sm-selected) .sm-debug-enabled .sm-result-main::after {
     border-color: var(--sm-hierarchy-connector-active-resolved, var(--sm-hierarchy-connector-color));
 }
 
@@ -582,10 +571,9 @@
 }
 
 /* Suppress result-item active state in unified card —
-   hover/active is handled at parent row / child-row level instead.
-   Text color hover rules (.sm-result-item:hover .sm-result-title etc.)
+   Selection is handled at parent row / child-row level instead.
+   Selected text color rules (.sm-result-item.sm-selected .sm-result-title etc.)
    still fire normally since they target child elements. */
-.sm-hierarchy-block--unified .sm-result-item:hover,
 .sm-hierarchy-block--unified .sm-result-item.sm-selected {
     background: transparent;
     box-shadow: none;
@@ -629,7 +617,6 @@
 
 /* Full-row active state on child rows (covers connector gutter + content).
    No card border, so outline-offset: 0 sits flush at the card edge. */
-.sm-hierarchy-block--unified .sm-hierarchy-child-row:hover,
 .sm-hierarchy-block--unified .sm-hierarchy-child-row:has(.sm-selected) {
     background: var(--sm-selected-bg);
     outline: var(--sm-result-border-width, 1px) solid var(--sm-selected-border);
@@ -640,7 +627,6 @@
 .sm-hierarchy-block--unified .sm-hierarchy-parent--has-children {
     border-bottom: 1px solid var(--sm-result-border-color, #e5e7eb);
 }
-.sm-hierarchy-block--unified .sm-hierarchy-parent:hover,
 .sm-hierarchy-block--unified .sm-hierarchy-parent.sm-selected {
     background: var(--sm-selected-bg);
     outline: var(--sm-result-border-width, 1px) solid var(--sm-selected-border);
@@ -701,61 +687,57 @@
     margin-inline-end: 0;
 }
 
-/* Badge on the hovered/selected row — empty keys keep the base colors */
-.sm-result-item.sm-selected .sm-promoted-badge,
-.sm-result-item:hover .sm-promoted-badge {
+/* Badge on the selected row — empty keys keep the base colors */
+.sm-result-item.sm-selected .sm-promoted-badge {
     background: var(--sm-promoted-active-bg, var(--sm-promoted-bg));
     color: var(--sm-promoted-active-color, var(--sm-promoted-color));
 }
 
-:host([data-theme="dark"]) .sm-result-item.sm-selected .sm-promoted-badge,
-:host([data-theme="dark"]) .sm-result-item:hover .sm-promoted-badge {
+:host([data-theme="dark"]) .sm-result-item.sm-selected .sm-promoted-badge {
     background: var(--sm-promoted-active-bg-dark, var(--sm-promoted-bg));
     color: var(--sm-promoted-active-color-dark, var(--sm-promoted-color));
 }
 
 /* Row tint mode — resting rows; the tint text color (when set) covers
    title, description, and type in one color */
-.sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) {
+.sm-result-item.sm-promoted--tint:not(.sm-selected) {
     background: var(--sm-promoted-tint-bg, #eff6ff);
 }
 
-:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) {
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected) {
     background: var(--sm-promoted-tint-bg-dark, #1e3a8a);
 }
 
-.sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-title {
+.sm-result-item.sm-promoted--tint:not(.sm-selected) .sm-result-title {
     color: var(--sm-promoted-tint-text, var(--sm-text-primary));
 }
 
-.sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-desc {
+.sm-result-item.sm-promoted--tint:not(.sm-selected) .sm-result-desc {
     color: var(--sm-promoted-tint-text, var(--sm-text-secondary));
 }
 
-.sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-type {
+.sm-result-item.sm-promoted--tint:not(.sm-selected) .sm-result-type {
     color: var(--sm-promoted-tint-text, var(--sm-text-muted));
 }
 
-:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-title {
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected) .sm-result-title {
     color: var(--sm-promoted-tint-text-dark, var(--sm-text-primary));
 }
 
-:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-desc {
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected) .sm-result-desc {
     color: var(--sm-promoted-tint-text-dark, var(--sm-text-secondary));
 }
 
-:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected):not(:hover) .sm-result-type {
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:not(.sm-selected) .sm-result-type {
     color: var(--sm-promoted-tint-text-dark, var(--sm-text-muted));
 }
 
-/* Tinted row hover/selection — empty key falls back to the normal active bg */
-.sm-result-item.sm-promoted--tint.sm-selected,
-.sm-result-item.sm-promoted--tint:hover {
+/* Tinted row selection — empty key falls back to the normal active bg */
+.sm-result-item.sm-promoted--tint.sm-selected {
     background: var(--sm-promoted-tint-active-bg, var(--sm-selected-bg));
 }
 
-:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint.sm-selected,
-:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint:hover {
+:host([data-theme="dark"]) .sm-result-item.sm-promoted--tint.sm-selected {
     background: var(--sm-promoted-tint-active-bg-dark, var(--sm-selected-bg));
 }
 
@@ -771,8 +753,7 @@
     padding: 0 2px;
 }
 
-/* Keep highlights legible when the row background changes on hover/selection */
-.sm-result-item:hover .sm-highlight,
+/* Keep highlights legible when the row background changes on selection */
 .sm-result-item.sm-selected .sm-highlight {
     background: var(--sm-highlight-active-bg);
     color: var(--sm-highlight-active-color);
