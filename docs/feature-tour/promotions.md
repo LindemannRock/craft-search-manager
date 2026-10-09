@@ -85,6 +85,14 @@ A global promotion, a site-specific promotion, and several matching query patter
 
 This precedence applies only to overlapping promotions for the same searched-site element. It does not collapse different promoted elements, even when they use the same position.
 
+## Searching multiple indices
+
+A promotion scoped to **Commerce**, for example, also participates in an **All indices** search that includes Commerce. You do not need to change its scope to **All Indices**. Its target still needs an indexed document in the searched index and site.
+
+Positions apply to the combined results before pagination. A position-1 promotion stays ahead of organic matches; a position-3 promotion occupies the third spot when enough results are available. When promotions compete for a position, the earlier-created promotion comes first and the others follow. The requested offset and limit then select the visible page, so a promotion can legitimately fall outside that page.
+
+The same element indexed in two different indices can remain a separate result from each index. In widgets that group results by type, groups control the visual layout while results within each group retain their returned order.
+
 ## Bulk actions
 
 Select multiple promotions using checkboxes to:

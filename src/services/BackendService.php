@@ -1223,10 +1223,7 @@ class BackendService extends Component
             }
         }
 
-        // Sort merged hits by score (descending)
-        usort($allHits, function($a, $b) {
-            return ($b['score'] ?? 0) <=> ($a['score'] ?? 0);
-        });
+        $allHits = $this->sortAggregateHits($allHits, $searchOutcomes);
 
         if ($limit > 0) {
             $allHits = array_slice($allHits, $offset, $limit);
@@ -1393,6 +1390,56 @@ class BackendService extends Component
             'wasRedirected' => $wasRedirected,
             'promotions' => array_values($promotionSnapshots),
         ];
+    }
+
+    /**
+     * Restore configured promotion positions after merging organic relevance scores.
+     * Child outcomes supply creation precedence without adding public hit fields.
+     *
+     * @param list<array<string, mixed>> $hits
+     * @param array<string, array<string, mixed>> $outcomes
+     * @return list<array<string, mixed>>
+     */
+    private function sortAggregateHits(array $hits, array $outcomes): array
+    {
+        $promotionIds = [];
+        foreach ($outcomes as $indexHandle => $outcome) {
+            foreach ($outcome['promotions'] ?? [] as $promotion) {
+                $identity = $promotion['elementId'] . ':' . $promotion['position'];
+                $promotionIds[$indexHandle][$identity] = $promotion['id'];
+            }
+        }
+
+        $organic = [];
+        $promoted = [];
+        foreach ($hits as $order => $hit) {
+            if (($hit['promoted'] ?? false) !== true || !is_int($hit['position'] ?? null)) {
+                $organic[] = $hit;
+                continue;
+            }
+
+            $identity = SearchHitIdentityHelper::elementId($hit) . ':' . $hit['position'];
+            $promoted[] = [
+                'hit' => $hit,
+                'id' => $promotionIds[$hit['_index']][$identity] ?? PHP_INT_MAX,
+                'order' => $order,
+            ];
+        }
+
+        usort($organic, static fn(array $a, array $b): int => ($b['score'] ?? 0) <=> ($a['score'] ?? 0));
+        usort($promoted, static fn(array $a, array $b): int => $a['hit']['position'] <=> $b['hit']['position']
+            ?: $a['id'] <=> $b['id']
+            ?: $a['order'] <=> $b['order']);
+
+        // Match single-index collision precedence before the aggregate page slice.
+        $lastInsertPosition = -1;
+        foreach ($promoted as $candidate) {
+            $insertPosition = max(0, $candidate['hit']['position'] - 1, $lastInsertPosition + 1);
+            array_splice($organic, $insertPosition, 0, [$candidate['hit']]);
+            $lastInsertPosition = $insertPosition;
+        }
+
+        return $organic;
     }
 
     /**

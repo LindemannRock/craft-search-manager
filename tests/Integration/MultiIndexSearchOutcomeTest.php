@@ -168,6 +168,49 @@ final class MultiIndexSearchOutcomeTest extends TestCase
         });
     }
 
+    public function testPromotionCollisionsUseCreationOrderBeforeFinalSliceAndAnalytics(): void
+    {
+        $indices = [$this->index('outcome-alpha'), $this->index('outcome-beta')];
+        $responses = [];
+        $backends = [];
+        foreach (['outcome-alpha' => 302, 'outcome-beta' => 301] as $handle => $promotionId) {
+            $backends[$handle] = new NamedOutcomeBackend($handle);
+            $responses[$handle] = [
+                'hits' => [
+                    ['elementId' => $promotionId, 'siteId' => 1, 'score' => null, 'promoted' => true, 'position' => 2],
+                    ['elementId' => 901, 'siteId' => 1, 'score' => 20.5],
+                ],
+                'total' => 1,
+                '_searchOutcome' => [
+                    'cached' => false,
+                    'duration' => 1.0,
+                    'backend' => $handle,
+                    'resultsCount' => 1,
+                    'synonymsExpanded' => false,
+                    'matchedRules' => [],
+                    'wasRedirected' => false,
+                    'promotions' => [['id' => $promotionId, 'elementId' => $promotionId, 'position' => 2]],
+                ],
+            ];
+        }
+        $service = new AggregateFixtureBackendService($backends, $responses);
+        $analytics = new MultiOutcomeRecordingAnalyticsService();
+        $this->swapPluginComponent('search-manager', 'backend', $service);
+        $this->swapPluginComponent('search-manager', 'analytics', $analytics);
+        $this->swapPluginComponent('search-manager', 'queryRules', new OutcomeQueryRuleService([]));
+
+        $this->withOnlySearchIndices($indices, function() use ($service, $analytics): void {
+            $handles = ['outcome-alpha', 'outcome-beta'];
+            $full = $service->searchMultiple($handles, 'promotion collision', ['limit' => 0, 'skipAnalytics' => true]);
+            self::assertSame([901, 301, 302, 901], array_column($full['hits'], 'elementId'));
+            self::assertSame(['outcome-alpha', 'outcome-beta', 'outcome-alpha', 'outcome-beta'], array_column($full['hits'], '_index'));
+            $page = $service->searchMultiple($handles, 'promotion collision', ['offset' => 1, 'limit' => 1]);
+            self::assertSame([301], array_column($page['hits'], 'elementId'));
+            self::assertSame(2, $page['total']);
+            self::assertSame([[], [301]], array_map(static fn(array $call): array => array_column($call['matchedPromotions'], 'id'), $analytics->calls));
+        });
+    }
+
     public function testFreshAndCachedSearchesCaptureTheSameExactRuleAndSynonymTruth(): void
     {
         $handle = 'outcome-cache';

@@ -359,7 +359,7 @@ final class PromotionPresentationTruthTest extends TestCase
         );
         $this->installPipelineBackend(
             $index,
-            ['hits' => [], 'total' => 0],
+            ['hits' => [['elementId' => 9001, 'siteId' => (int)$element->siteId, 'type' => 'entry', 'score' => 30.5]], 'total' => 1],
             [
                 (int)$element->id => $this->indexedDocument($element, 'entry'),
                 $omittedElementId => [
@@ -455,6 +455,73 @@ final class PromotionPresentationTruthTest extends TestCase
         return [
             'missing indexed target' => ['entry', false, null],
             'target removed by supported type filter' => ['asset', true, 'entry'],
+        ];
+    }
+
+    #[DataProvider('aggregatePositionProvider')]
+    public function testAggregatePositionsSurviveOrganicScoresAndPagination(bool $global, int $position, int $offset, int $limit, array $expectedPromotedPositions): void
+    {
+        [$index, $element] = $this->workingIndexAndElement();
+        $query = self::PREFIX . 'aggregate_position_' . StringHelper::randomString(12);
+        $promotionId = $this->seedPromotion($global ? null : $index, $element, $query, 'exact', $position, null);
+        $counter = (object)['searches' => 0];
+        $this->installPipelineBackend($index, [
+            'hits' => [
+                ['elementId' => 9001, 'siteId' => (int)$element->siteId, 'type' => 'entry', 'score' => 30.5],
+                ['elementId' => 9002, 'siteId' => (int)$element->siteId, 'type' => 'entry', 'score' => 10.5],
+            ],
+            'total' => 2,
+        ], [(int)$element->id => $this->indexedDocument($element, 'entry')], $counter);
+        $second = clone $index;
+        $second->handle = 'smPosition' . StringHelper::randomString(8);
+
+        try {
+            $this->withOnlySearchIndices([$index, $second], function() use ($index, $second, $element, $query, $promotionId, $counter, $offset, $limit, $expectedPromotedPositions): void {
+                $options = ['siteId' => (int)$element->siteId, 'offset' => $offset, 'limit' => $limit, '_captureSearchOutcome' => true];
+                $fresh = SearchManager::$plugin->backend->searchMultiple([$index->handle, $second->handle], $query, $options);
+                $searches = $counter->searches;
+                $cached = SearchManager::$plugin->backend->searchMultiple([$index->handle, $second->handle], $query, $options);
+                self::assertSame($searches, $counter->searches);
+                self::assertSame($fresh['hits'], $cached['hits']);
+                foreach ([$fresh, $cached] as $result) {
+                    self::assertSame(4, $result['total']);
+                    $positions = [];
+                    $organicScores = [];
+                    foreach ($result['hits'] as $i => $hit) {
+                        if ($hit['promoted'] ?? false) {
+                            $positions[] = $i;
+                            self::assertNull($hit['score']);
+                            self::assertSame((int)$element->id, $hit['elementId']);
+                        } else {
+                            $organicScores[] = $hit['score'];
+                        }
+                    }
+                    self::assertSame($expectedPromotedPositions, $positions);
+                    $sortedScores = $organicScores;
+                    rsort($sortedScores);
+                    self::assertSame($sortedScores, $organicScores);
+                    foreach ($result['_searchOutcomes'] as $handle => $outcome) {
+                        $presented = array_filter($result['hits'], static fn(array $hit): bool => ($hit['promoted'] ?? false) && $hit['_index'] === $handle);
+                        self::assertSame($presented === [] ? [] : [$promotionId], array_column($outcome['promotions'], 'id'));
+                    }
+                }
+            });
+        } finally {
+            SearchManager::$plugin->backend->clearSearchCache($second->handle);
+        }
+    }
+
+    public static function aggregatePositionProvider(): array
+    {
+        return [
+            'scoped first survives limit' => [false, 1, 0, 1, [0]],
+            'global first keeps both index identities' => [true, 1, 0, 0, [0, 1]],
+            'scoped later position' => [false, 3, 0, 0, [2]],
+            'global equal positions' => [true, 2, 0, 0, [1, 2]],
+            'later promotion outside page' => [false, 3, 0, 1, []],
+            'offset includes promotion' => [false, 3, 2, 2, [0]],
+            'offset excludes first promotion' => [false, 1, 1, 2, []],
+            'unbounded offset' => [false, 2, 1, 0, [0]],
         ];
     }
 

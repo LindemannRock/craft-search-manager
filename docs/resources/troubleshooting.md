@@ -30,6 +30,16 @@ This is expected. For Algolia, Meilisearch, or Typesense, rebuild or clear confi
 - Enable debug logging: set `logLevel` to `'debug'` in your config
 - If using `replaceNativeSearch`, verify it only works with built-in backends (MySQL, PostgreSQL, Redis, File)
 
+## A promotion appears too low when searching All indices
+
+**Symptom:** A position-1 promotion appears first when searching one index, but below ordinary matches—or outside the first page—when searching multiple indices.
+
+Check the promotion's **Position**, query pattern, index, and site under **Search Manager → Promotions**. An index-scoped promotion also applies when **All indices** includes that index; changing the promotion to global scope is unnecessary. The target must be indexed in the searched index and site.
+
+Earlier affected builds sorted combined results by score after inserting promotions, pushing their unscored hits below scored matches. Deploy the promotion-position correction and repeat the same query for one index and All indices. The correction orders organic matches, inserts promotions at their configured positions, then selects the requested page. It requires no reindex or schema migration.
+
+If several promotions request the same position, earlier-created promotions come first. Pagination can exclude later promotions, and widget type grouping can change their absolute visual location. See [Searching multiple indices](../feature-tour/promotions.md#searching-multiple-indices).
+
 ## Dashboard redirects to another section or shows access denied
 
 **Symptom:** A delegated operator opens **Search Manager** or `/admin/search-manager` but lands on another Search Manager section or receives an access-denied response.
