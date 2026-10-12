@@ -1,6 +1,6 @@
 # Changelog
 
-## [5.56.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.55.2...v5.56.0) (2026-10-12)
+## [5.56.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.55.2...v5.56.0) - 2026-10-12
 
 
 ### Added
