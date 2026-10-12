@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.56.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.55.2...v5.56.0) (2026-10-12)
+
+
+### Added
+
+* **geo:** use shared default locations ([cde6e8f](https://github.com/LindemannRock/craft-search-manager/commit/cde6e8f628f19516ca48e9a2d81aed3244656138))
+
+
+### Fixed
+
+* **analytics:** align recent search outcomes ([fddcdd9](https://github.com/LindemannRock/craft-search-manager/commit/fddcdd91e5c8d8d08e11b48f84b45376fae9f4fa))
+* **analytics:** preserve canonical widget outcomes ([5c084dc](https://github.com/LindemannRock/craft-search-manager/commit/5c084dc57dd14fc74b61613d75cc9fb1eef0d730))
+* **analytics:** preserve per-index search outcomes ([fd71e22](https://github.com/LindemannRock/craft-search-manager/commit/fd71e22e9c73550ad868adb18c20cfc8f52592a2))
+* **promotions:** preserve positions across combined search results ([824c432](https://github.com/LindemannRock/craft-search-manager/commit/824c43214cf399539777d5154b5908ff48965348))
+* **templates:** make search examples site-aware ([f4803bd](https://github.com/LindemannRock/craft-search-manager/commit/f4803bd84f97def6fc8b14ceafce9f7ff200e781))
+* **utilities:** hide unavailable storage clearing section ([3492cea](https://github.com/LindemannRock/craft-search-manager/commit/3492cea8a62863a4fc88dc3c05cad6546f6a46d5))
+* **widgets:** keep result highlighting aligned with selection ([cc8e824](https://github.com/LindemannRock/craft-search-manager/commit/cc8e824635c29e4050057b55c4ff46e9d9e13380))
+
 ## [5.55.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.55.1...v5.55.2) - 2026-08-31
 
 
