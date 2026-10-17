@@ -307,7 +307,8 @@ if [[ "$PACKAGE_TYPE" == "craft-plugin" ]]; then
     echo "Installing required Craft plugin dependencies"
     while IFS= read -r DEPENDENCY_HANDLE; do
       [[ -z "$DEPENDENCY_HANDLE" ]] && continue
-      ddev craft plugin/install "$DEPENDENCY_HANDLE"
+      # DDEV must not consume the remaining dependency handles from this loop.
+      ddev craft plugin/install "$DEPENDENCY_HANDLE" </dev/null
     done <<< "$DEPENDENCY_HANDLES"
   fi
 
