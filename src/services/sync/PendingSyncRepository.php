@@ -20,6 +20,9 @@ use lindemannrock\searchmanager\jobs\BatchSyncJob;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
+use yii\db\Command;
+use yii\db\Connection;
+use yii\db\Exception as DbException;
 use yii\db\Expression;
 
 /**
@@ -233,7 +236,7 @@ class PendingSyncRepository extends Component
         $ids = array_map('intval', $ids);
         $claimToken = StringHelper::UUID();
 
-        Craft::$app->getDb()
+        $command = Craft::$app->getDb()
             ->createCommand()
             ->update(
                 '{{%searchmanager_pending_syncs}}',
@@ -249,8 +252,8 @@ class PendingSyncRepository extends Component
                     ['id' => $ids],
                     $eligibleCondition,
                 ]
-            )
-            ->execute();
+            );
+        $this->executeWorkerCommand($command);
 
         return (new Query())
             ->from('{{%searchmanager_pending_syncs}}')
@@ -271,7 +274,7 @@ class PendingSyncRepository extends Component
         $ids = array_map('intval', $ids);
         $this->requeueDirtyRows($ids, $claimToken);
 
-        Craft::$app->getDb()
+        $command = Craft::$app->getDb()
             ->createCommand()
             ->delete(
                 '{{%searchmanager_pending_syncs}}',
@@ -281,8 +284,8 @@ class PendingSyncRepository extends Component
                     ['claimToken' => $claimToken],
                     ['dirtyAt' => null],
                 ],
-            )
-            ->execute();
+            );
+        $this->executeWorkerCommand($command);
     }
 
     /**
@@ -326,7 +329,7 @@ class PendingSyncRepository extends Component
             $nextAttemptAt = Db::prepareDateForDb((new \DateTime())->modify("+{$delay} seconds"));
             $nowDb = Db::prepareDateForDb(new \DateTime());
 
-            Craft::$app->getDb()
+            $command = Craft::$app->getDb()
                 ->createCommand()
                 ->update(
                     '{{%searchmanager_pending_syncs}}',
@@ -344,8 +347,8 @@ class PendingSyncRepository extends Component
                         ['id' => $retryIds],
                         ['claimToken' => $claimToken],
                     ],
-                )
-                ->execute();
+                );
+            $this->executeWorkerCommand($command);
         }
 
         $this->markAbandoned($abandonIds, $error, $claimToken);
@@ -371,7 +374,7 @@ class PendingSyncRepository extends Component
         }
 
         $nowDb = Db::prepareDateForDb(new \DateTime());
-        Craft::$app->getDb()
+        $command = Craft::$app->getDb()
             ->createCommand()
             ->update(
                 '{{%searchmanager_pending_syncs}}',
@@ -384,8 +387,8 @@ class PendingSyncRepository extends Component
                     'dateUpdated' => $nowDb,
                 ],
                 $condition
-            )
-            ->execute();
+            );
+        $this->executeWorkerCommand($command);
     }
 
     /**
@@ -399,7 +402,7 @@ class PendingSyncRepository extends Component
 
         $nowDb = Db::prepareDateForDb(new \DateTime());
 
-        return Craft::$app->getDb()
+        $command = Craft::$app->getDb()
             ->createCommand()
             ->update(
                 '{{%searchmanager_pending_syncs}}',
@@ -420,22 +423,96 @@ class PendingSyncRepository extends Component
                     ['claimToken' => $claimToken],
                     ['not', ['dirtyAt' => null]],
                 ],
-            )
-            ->execute();
+            );
+        return $this->executeWorkerCommand($command);
     }
 
     public function purgeOld(int $maxAgeSeconds): int
     {
         $cutoff = Db::prepareDateForDb((new \DateTime())->modify('-' . max(60, $maxAgeSeconds) . ' seconds'));
 
-        return Craft::$app->getDb()
+        $command = Craft::$app->getDb()
             ->createCommand()
             ->delete('{{%searchmanager_pending_syncs}}', [
                 'and',
                 ['status' => self::STATUS_ABANDONED],
                 ['<', 'lastProcessedAt', $cutoff],
-            ])
-            ->execute();
+            ]);
+        return $this->executeWorkerCommand($command);
+    }
+
+    /**
+     * Retry only an independently rolled-back worker statement, never a caller's
+     * transaction or a method containing earlier committed/backend work.
+     */
+    private function executeWorkerCommand(Command $command): int
+    {
+        $db = $command->db;
+        if ($db->getDriverName() !== 'mysql') {
+            return $command->execute();
+        }
+
+        $pdo = $db->getMasterPdo();
+        // Capture BEFORE execution: MySQL can roll back the entire transaction
+        // while Yii still retains its nesting metadata.
+        $standalone = $this->isStandaloneWorkerConnection($db, $pdo);
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                return $command->execute();
+            } catch (\Throwable $error) {
+                if (!$standalone || $attempt >= 3 || !$this->isMySqlDeadlock($error)) {
+                    throw $error;
+                }
+                if (!$this->isStandaloneWorkerConnection($db, $pdo)) {
+                    throw $error;
+                }
+
+                usleep($attempt === 1 ? random_int(25000, 75000) : random_int(75000, 200000));
+                if (!$this->isStandaloneWorkerConnection($db, $pdo)) {
+                    throw $error;
+                }
+                // Rebuild just this command, retaining its original token and
+                // predicates. The claim's subsequent SELECT is never replayed.
+                $command = $db->createCommand($command->getSql(), $command->params);
+            }
+        }
+    }
+
+    private function isStandaloneWorkerConnection(Connection $db, \PDO $pdo): bool
+    {
+        try {
+            if ($db->getTransaction() !== null || $db->getMasterPdo() !== $pdo || $pdo->inTransaction()) {
+                return false;
+            }
+
+            // Read server state on the WRITE connection. PDO's configured
+            // attribute alone need not reflect a raw SET autocommit=0.
+            $statement = $pdo->query('SELECT @@SESSION.autocommit');
+            if ($statement === false) {
+                return false;
+            }
+            $autocommit = (int)$statement->fetchColumn() === 1;
+            $statement->closeCursor();
+            return $autocommit;
+        } catch (\Throwable) {
+            // An unverifiable boundary permits the original execution only.
+            return false;
+        }
+    }
+
+    private function isMySqlDeadlock(\Throwable $error): bool
+    {
+        do {
+            if ($error instanceof DbException || $error instanceof \PDOException) {
+                $info = $error->errorInfo;
+                if (is_array($info) && ($info[0] ?? null) === '40001' && in_array($info[1] ?? null, [1213, '1213'], true)) {
+                    return true;
+                }
+            }
+            $error = $error->getPrevious();
+        } while ($error !== null);
+
+        return false;
     }
 
     public function hasDueRows(): bool

@@ -20,7 +20,15 @@ The sync buffer, automatic draining, retries, abandonment, and cleanup remain ac
 
 Saving an entry triggers the auto-sync listener (when `autoIndex` is on), which queues rows into the buffer. `BatchSyncJob` then runs as part of Craft's queue and drains the buffer to your backend, claiming rows in `syncBatchSize` chunks and looping until empty (or until its time budget is exhausted on a true mega-import, in which case it schedules a continuation).
 
-Save entry → rows queue → `BatchSyncJob` drains → search backend updated. Sub-10-second round trip.
+Save entry → rows queue → `BatchSyncJob` drains → search backend updated. Timing depends on the flush interval, queue availability, and backend response time.
+
+### Transient database deadlocks
+
+When MySQL reports a deadlock (`40001` / `1213`) during a standalone worker buffer write, Search Manager tries that statement up to three times. It waits briefly between attempts: 25–75 ms before the second and 75–200 ms before the third. This covers claiming rows, recording success or failure, abandonment, and old-abandoned cleanup. A completion retry finishes the buffer bookkeeping without repeating the backend write or after-index event. A newer save or delete remains queued for its own pass.
+
+These short retries are separate from the row's **Attempts** count and backend-failure backoff. A rolled-back claim does not add a persisted attempt. Enqueue writes, operator actions, PostgreSQL errors, lock timeouts, and connection failures do not use this MySQL retry policy. If a caller has an open transaction or disabled autocommit, the error goes back to that caller; only the caller can restart its complete transaction safely.
+
+If all three attempts fail, the Craft queue job still fails visibly. On exit, the job tries to schedule remaining work for its next eligible time. Claimed rows cannot be taken immediately: their claim must be older than the greater of 300 seconds or six flush intervals, with recovery scheduled one second past that boundary. This requires a working database, queue, and worker. Recovery after an exhausted completion failure can repeat backend writes and after-index events; this is not an exactly-once delivery guarantee.
 
 ## What the page shows (Pro)
 
@@ -39,7 +47,7 @@ Use this page to monitor delta sync from saves, deletes, and scheduled status ch
 - **`pending`** — queued, waiting for the next `BatchSyncJob` claim.
 - **`processing`** — a queue worker has claimed the row and is working on it. Worker-active rows have row actions (Retry / Delete) disabled until the worker either finishes or its claim ages past the stale cutoff.
 - **`failed`** — last `batchIndex`/`batchDelete` call to the backend returned an error. The row will retry on its scheduled `next attempt` with exponential backoff.
-- **`abandoned`** — the row hit `batchMaxAttempts` failed attempts and stopped retrying. It will sit here forever until you `Retry` it (after fixing the cause) or `Purge` it.
+- **`abandoned`** — the row hit `batchMaxAttempts` failed attempts and stopped retrying. Retry it after fixing the cause, or purge it if the work is no longer needed. Worker startup also removes abandoned rows older than `pendingMaxAge`.
 
 Typical triggers for `failed`/`abandoned`:
 
@@ -113,7 +121,7 @@ Typical assignment:
 
 1. Open Pending Syncs.
 2. If rows show at `failed` or `abandoned`, hover the **Last error** column — that's usually the cause (auth, network, schema, backend offline).
-3. If the page is empty, the buffer is healthy. The issue is elsewhere — see [Troubleshooting → Pending Syncs Are Not Draining](../resources/troubleshooting.md#pending-syncs-are-not-draining).
+3. If the page is empty, no work is currently buffered. Check the affected document in the backend and the Craft queue's failed jobs before concluding that search is current — see [Troubleshooting → Pending Syncs Are Not Draining](../resources/troubleshooting.md#pending-syncs-are-not-draining).
 4. If you're tracking down a count discrepancy, the per-index **Indexed** count on the Indices page is **eventually consistent** — see [Document Count Looks Wrong After a Bulk Import](../resources/troubleshooting.md#document-count-looks-wrong-after-a-bulk-import).
 
 ### "Backend was down, want to retry everything that failed"

@@ -256,6 +256,16 @@ If saved elements are not appearing in search:
 
 For a triage view of the buffer with filters, per-row retry, and a one-click "Failed & Abandoned" preset, open **Search Manager → Pending Syncs**. See [Pending Syncs](../feature-tour/pending-syncs.md) for the operator runbook.
 
+### A pending-sync job failed with MySQL error 1213
+
+MySQL chose a database statement as a deadlock victim. Search Manager retries eligible standalone worker buffer writes up to three times with short delays. It retries only the failed statement, so recovering a completion write does not repeat the backend work that just succeeded. Enqueue upserts and writes inside a caller-owned transaction do not receive these local retries; the transaction owner must handle rollback and restart of its whole operation.
+
+If the deadlock persists, the job remains failed in Craft's queue. Check for the successor job and keep the worker running: pending or failed rows are scheduled at their next eligible time, while processing rows wait until their claim expires. The claim lifetime is the greater of five minutes or six times `batchFlushInterval`, and the recovery wake-up is one second later. A database or queue failure can prevent that scheduling too. See [Transient database deadlocks](../feature-tour/pending-syncs.md#transient-database-deadlocks) for the retry and recovery limits.
+
+Compare the affected element, index, and site with the backend's current document or deletion state. An empty buffer means no current backlog; it does not prove what happened to an earlier job. A failed job can remain visible after a successor recovers the work, and `BatchSyncJob` displaying 0% does not mean it performed no backend writes. Recovery after exhausted completion retries can replay those writes and after-index events.
+
+For recurring failures, retain the job IDs, timestamps with timezone, SQLSTATE/vendor error code, and existing database or application logs. Those details help identify the competing operations. The error alone does not establish a particular lock order, and changing schema or database isolation is not required to deploy this correction.
+
 ## An automatic field is missing from an indexed document
 
 Automatic field extraction is best-effort. If one searchable attribute, custom field, nested field, relation, or container throws while Search Manager reads it, the failing source is skipped while healthy fields continue and the element is still indexed. This avoids turning one broken field integration into a retry loop for the whole element.

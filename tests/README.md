@@ -39,3 +39,19 @@ Before handoff, run focused PHPUnit coverage for every changed behavior family, 
 The mechanical convention guard is `php scripts/check-test-conventions.php`. Its exception ledger records only pre-existing identifier debt. New exceptions fail, and an exception that disappears becomes stale and must be removed from the ledger, so the allowed set can only shrink. Comments, fixture values, and ordinary display strings are not identifiers; structured JavaScript `test()`, `it()`, and `describe()` names are checked without treating unrelated strings as declarations.
 
 `composer quality-gate` is the complete package verification authority used by CI and Act. It covers Composer platform compatibility and audit, PHPStan/ECS, the convention guard, the disposable MySQL PHPUnit suite, hook/orchestration regressions, analytics JavaScript, widget unit tests, static accessibility, and the bulk-response handler. Live browser/provider checks and PostgreSQL runtime verification remain separate gates.
+
+## Pending-sync worker recovery
+
+`PendingSyncDeadlockRecoveryTest` launches `Fixtures/PendingSyncWorkerRecoveryTest.php` in a separate PHP process inside the runner's disposable Craft project/database. That process has no enclosing test transaction or connection-private temporary tables. It owns persistent clones of the pending and queue tables, a controlled lock table, unique index/entry IDs, and authenticated barrier files. `PendingSyncFaultCommand` routes pending SQL to the exact owned table and injects failures before execution; `PendingSyncConcurrentWorker.php` boots independent connections to those same tables. Existing process registration and the disposable runner own interruption cleanup.
+
+The fixture reaches pending, dirty, failed, and abandoned states through supported saves, deletes, claims, processor results, and bookkeeping. It checks statement recovery separately from backend replay, overlapping claims, a save/completion lock wait, and a controlled real MySQL transaction rollback. The controlled lock cycle demonstrates rollback semantics; it does not reconstruct a production deadlock.
+
+The complete gate includes an elapsed-time test lasting just over five minutes. It executes a real Craft queue job, preserves its failed record, waits through the actual claim lifetime, executes the successor, and checks backend output. For iteration only, run:
+
+```bash
+ddev exec "cd plugins/search-manager && composer test -- --exclude-group elapsed-worker-recovery tests/Fixtures/PendingSyncWorkerRecoveryTest.php"
+```
+
+Omit `--exclude-group elapsed-worker-recovery` for the complete focused family. The discovered wrapper reports one parent test; its child reports the full behavioral counts separately in captured diagnostics. Normal package verification remains PHP 8.3. Focused exception/PDO checks can run with `php8.2`, `php8.4`, or `php8.5` through `tests/Fixtures/Project/run.php`; PHP 8.2 may require a separate compatible vendor tree supplied with `SEARCH_MANAGER_FIXTURE_SOURCE_VENDOR_ROOT`.
+
+`Fixtures/PendingSyncPostgres.php` is a separate direct-only dialect check. Its caller must create and remove a dedicated ephemeral PostgreSQL container named `sm-pending-pg-` plus 12 lowercase hex characters, with the `worker_fixture` database/user/password, reachable from DDEV. Invoke it with that exact container name. It verifies repository SQL, token handling, and immediate PostgreSQL error propagation; it is not a full Craft producer or provider integration test. The caller owns container cleanup on every exit, and the fixture drops its table and temporary application directory.
