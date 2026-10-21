@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.56.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.56.0...v5.56.1) - 2026-10-21
+
+
+### Fixed
+
+* **sync:** recover transient pending-sync deadlocks ([22e6112](https://github.com/LindemannRock/craft-search-manager/commit/22e61124865a222cca951dc322c0f402550171f6))
+
 ## [5.56.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.55.2...v5.56.0) - 2026-10-12
 
 
